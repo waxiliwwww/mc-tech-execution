@@ -11,7 +11,7 @@
 执行 `./start.sh`。本机默认无需凭据。远程监听配置：
 
 ```json
-{"host":"0.0.0.0","port":8770,"path":"/mcp","publicUrl":"https://your-server.example/mcp","name":"mc-agent-tools","version":"0.5.0","clientName":"mc"}
+{"host":"0.0.0.0","port":8770,"path":"/mcp","publicUrl":"https://your-server.example/mcp","name":"mc-agent-tools","version":"0.5.1","clientName":"mc"}
 ```
 
 服务器环境设置 `MCP_AUTH_TOKEN`，通过现有HTTPS入口提供服务。publicUrl必须是真实客户端地址，不是监听通配地址。启动成功后生成connection.json，其中密钥是环境变量占位符；不要把真实token写入配置或工具说明。`/info`与MCP使用相同Bearer，`/health`只检查进程。

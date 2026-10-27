@@ -40,7 +40,22 @@ class CleanupRecords(unittest.TestCase):
         return cleanup.plan(self.root,list(jobs),list(scans),days,allow)
 
     def invoke(self,*args):
-        return subprocess.run([sys.executable,str(ROOT/'scripts/cleanup_artifacts.py'),'--workspace',str(self.root),*args],capture_output=True,text=True)
+        return subprocess.run([str(ROOT/'cleanup.sh'),'--workspace',str(self.root),*args],capture_output=True,text=True)
+
+    def test_shell_entry_runs_from_other_cwd_and_preserves_relative_workspace(self):
+        source=self.record('job',J)
+        package=self.root/'package with spaces';(package/'scripts').mkdir(parents=True)
+        shutil.copy2(ROOT/'cleanup.sh',package/'cleanup.sh')
+        shutil.copy2(ROOT/'scripts/cleanup_artifacts.py',package/'scripts/cleanup_artifacts.py')
+        client=self.root/'client cwd';data=client/'data';data.mkdir(parents=True)
+        shutil.copytree(source,data/'.mc-jobs'/J)
+        run=subprocess.run([str(package/'cleanup.sh'),'--job-id',J,'--json'],cwd=client,
+                           env={**os.environ,'MC_WORKSPACE':'data'},capture_output=True,text=True)
+        self.assertEqual(run.returncode,0,run.stderr)
+        result=json.loads(run.stdout)
+        self.assertEqual(result['state'],'preview')
+        self.assertEqual(result['plan']['workspace'],str(data))
+        self.assertTrue((data/'.mc-jobs'/J).exists())
 
     def test_default_preview_and_apply_require_explicit_selection(self):
         target=self.record('job',J)

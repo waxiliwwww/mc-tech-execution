@@ -2,7 +2,7 @@
 
 将OpenMC公开能力封装为可供下游部署、调用和扩展的独立工具包。支持直接CLI和标准MCP服务，共用参数校验和业务实现；不依赖Harness、特定智能体或大模型账号。
 
-当前源码版本0.5.0，OpenMC适配基线0.16.0。工具已具备可运行的工程能力；CAD、HPC、微调输入生成、专业规则和指定基准等尚未全部完成，范围见[开发计划](docs/验收导向开发计划.md)。工程示例与自测不等于专业验收。
+当前源码版本0.5.1，OpenMC适配基线0.16.0。工具已具备可运行的工程能力；CAD、HPC、微调输入生成、专业规则和指定基准等尚未全部完成，范围见[开发计划](docs/验收导向开发计划.md)。工程示例与自测不等于专业验收。
 
 ## 能做什么
 
@@ -75,11 +75,11 @@ mcp/.venv/bin/python examples/mcp_client.py --url http://127.0.0.1:8770/mcp --to
 - [测试与验收说明](docs/测试与验收说明.md)：局部、真实OpenMC与正式验收分别验证。
 
 ```bash
-python3 scripts/cleanup_artifacts.py
+./cleanup.sh
 ./verify.sh
 ./package.sh
 ```
 
-清理默认只列出记录，不删除。verify检查工程行为；完整仓库检查包含可选Harness的Node22/pnpm回归，工具运行本身无需Node。只验证Python工具时按测试说明运行对应套件。package生成dist/mc-tech-execution-0.5.0.tar.gz及MANIFEST.json/SHA256SUMS；打包不代替测试。
+清理默认只列出记录，不删除。verify检查工程行为；完整仓库检查包含可选Harness的Node22/pnpm回归，工具运行本身无需Node。只验证Python工具时按测试说明运行对应套件。package生成dist/mc-tech-execution-0.5.1.tar.gz及MANIFEST.json/SHA256SUMS；打包不代替测试。
 
 包内有源码、依赖清单、配置模板、示例、测试与文档；不含个人密钥、本机配置、已安装环境、运行产物和原始合同。接收方按部署文档准备环境；解压即可找到完整说明，不必依赖此前聊天。
