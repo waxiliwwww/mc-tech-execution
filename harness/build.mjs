@@ -1,0 +1,10 @@
+import { build } from 'esbuild';
+import { createHash } from 'node:crypto';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const root = dirname(fileURLToPath(import.meta.url));
+await build({ absWorkingDir: root, entryPoints: ['cli.mjs'], outfile: 'terminal.mjs', bundle: true, platform: 'node', target: 'node22', format: 'esm', legalComments: 'eof', banner: { js: 'import { createRequire as __bundleCreateRequire } from "node:module"; const require = __bundleCreateRequire(import.meta.url);' } });
+const hash = path => createHash('sha256').update(readFileSync(resolve(root, path))).digest('hex');
+writeFileSync(resolve(root, 'BUILD.json'), JSON.stringify({ builtAt: new Date().toISOString(), node: process.version, coreTarballSha256: hash('vendor/helix-agent-harness-0.0.0.tgz'), terminalSha256: hash('terminal.mjs'), sourceSha256: Object.fromEntries(['cli.mjs', 'lib/config.mjs', 'lib/policy.mjs', 'lib/render.mjs'].map(path => [path, hash(path)])), coreSourceCommit: '0e10e25b6a8e782cbc4d230f66f89e0d2f2b7371', coreSourceDirty: true }, null, 2) + '\n');
+console.log('Built terminal.mjs; runtime needs Node.js 22 only.');

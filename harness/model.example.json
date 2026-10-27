@@ -1,0 +1,26 @@
+{
+  "_说明": "通用模板，不是本机工作配置。端点、模型名和密钥变量名只是格式示例，未在本项目实际验收；换成你方许可的真实服务后再使用。本机可直接使用的配置在 model.local.json，不要用本文件覆盖它。",
+  "primary": {
+    "url": "https://api.deepseek.com/v1",
+    "model": "deepseek-chat",
+    "apiKeyEnv": "MC_PRIMARY_API_KEY",
+    "protocol": "chat_completions",
+    "timeoutMs": 60000,
+    "maxOutputTokens": 4096
+  },
+  "fallback": {
+    "url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "model": "qwen-plus",
+    "apiKeyEnv": "MC_FALLBACK_API_KEY",
+    "protocol": "chat_completions",
+    "timeoutMs": 60000,
+    "maxOutputTokens": 4096
+  },
+  "mcpRegistry": "mcp-servers.json",
+  "confirmation": {
+    "writeTools": ["mc__apply_repair"],
+    "previewTools": { "mc__apply_repair": "mc__read_repair_plan" }
+  },
+  "maxSteps": 12,
+  "reasoning": "off"
+}

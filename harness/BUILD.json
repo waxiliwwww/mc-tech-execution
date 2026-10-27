@@ -1,0 +1,14 @@
+{
+  "builtAt": "2026-10-16T08:08:59.798Z",
+  "node": "v22.22.1",
+  "coreTarballSha256": "49fac3cedc594620ceb05c0a4841ecd020ff799db9507262b6f70bdfe54a757b",
+  "terminalSha256": "acf98a11b934a11944377111a25edacca412031ca698037d2d325b893a95f5b2",
+  "sourceSha256": {
+    "cli.mjs": "0096a5d0cf7365d880cace6acf2d16d08ad753d866cd947d348d5c03d4976a92",
+    "lib/config.mjs": "095eb241165ad7bbb73fed493161ccf638c1dfcd86852213ab4dbb4404225eb0",
+    "lib/policy.mjs": "b3a943bc43c418386155edea3386ca099af92557578815a59936acd69ec52b49",
+    "lib/render.mjs": "5be2cccb723b34b0c00ca40c161a8a22376092fc4b926e7d14b3befa75f4ffaa"
+  },
+  "coreSourceCommit": "0e10e25b6a8e782cbc4d230f66f89e0d2f2b7371",
+  "coreSourceDirty": true
+}

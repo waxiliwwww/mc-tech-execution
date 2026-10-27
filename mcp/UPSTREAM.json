@@ -1,0 +1,17 @@
+{
+  "source": "mcp-toolkit/python",
+  "copiedAt": "2026-10-13T02:33:56.890258+00:00",
+  "mcpSdk": "1.30.0",
+  "files": {
+    "server.py": "de0140b1ebd80011b4f399680afc67c304691a0e02086da8040fa85b435381e1",
+    "adapters.py": "3fe0ff28f06c4b77145a83487a2a51772115306afc773038a421519664d0dc29",
+    "start.sh": "c2c418a01e8b91c46f095c9105c87b4ec9521b5a0a66ebf38f661d28df133282",
+    "requirements.txt": "f07970e99d407a8a9bc2ab5b6edc93c0321f6f92d6e1b4887a686031e96fc111"
+  },
+  "projectOverrides": [
+    "tools.py",
+    "business.py",
+    "service.config.json"
+  ],
+  "notes": "Source provenance only; no runtime dependency on the original source path."
+}

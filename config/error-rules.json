@@ -1,0 +1,20 @@
+[
+  {
+    "pattern": "geometry.*overlap|overlap.*geometry",
+    "category": "geometry_overlap",
+    "suggestion": "核对日志中涉及的cell/surface编号与边界定义；需要业务人员确认几何关系。",
+    "status": "seed_rule_pending_domain_review"
+  },
+  {
+    "pattern": "nuclide.*(missing|not found)|missing.*nuclide",
+    "category": "missing_nuclide",
+    "suggestion": "核对核素名称、截面数据路径和核数据库版本；不自动删除核素。",
+    "status": "seed_rule_pending_domain_review"
+  },
+  {
+    "pattern": "syntax error|parse error",
+    "category": "syntax",
+    "suggestion": "核对日志指向的输入文件和行号，再提出具体修改。",
+    "status": "seed_rule_pending_domain_review"
+  }
+]

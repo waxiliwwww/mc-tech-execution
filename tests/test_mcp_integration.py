@@ -1,0 +1,156 @@
+"""Actual project MCP and terminal integration using synthetic files; no model calls."""
+import asyncio
+import json
+import os
+from pathlib import Path
+import pty
+import select
+import socket
+import subprocess
+import sys
+import tempfile
+import time
+import unittest
+import urllib.request
+
+from mcp import ClientSession
+from mcp.client.streamable_http import streamablehttp_client
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class ProjectIntegration(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="mc integration ")
+        self.directory = Path(self.temp.name)
+        self.workspace = self.directory / "workspace"
+        self.workspace.mkdir()
+        self.input = self.workspace / "input.txt"
+        self.input.write_text("particles = -1\n")
+        self.log = (self.directory / "server.log").open("w+")
+        with socket.socket() as listener:
+            listener.bind(("127.0.0.1", 0))
+            port = listener.getsockname()[1]
+        self.url = f"http://127.0.0.1:{port}/mcp"
+        self.config = self.directory / "service.json"
+        self.config.write_text(json.dumps({"host": "127.0.0.1", "port": port, "path": "/mcp", "name": "mc-integration", "version": "0.1.0", "clientName": "mc"}))
+        self.registry = self.directory / "registry.json"
+        self.registry.write_text(json.dumps([{"name": "mc", "transport": "streamable-http", "url": self.url}]))
+        self.env = {k: v for k, v in os.environ.items() if not k.startswith(("MCP_", "MC_", "HARNESS_"))}
+        self.env.update(MCP_CONFIG_FILE=str(self.config), MC_WORKSPACE=str(self.workspace), MCP_CONNECTION_FILE=str(self.directory / "connection.json"))
+        self.server = subprocess.Popen([sys.executable, str(ROOT / "mcp/server.py")], cwd=ROOT / "mcp", env=self.env, stdout=self.log, stderr=self.log)
+        for _ in range(100):
+            try:
+                with urllib.request.urlopen(self.url.replace("/mcp", "/health"), timeout=.2):
+                    break
+            except OSError:
+                if self.server.poll() is not None:
+                    self.log.seek(0)
+                    self.fail("server failed: " + self.log.read())
+                await asyncio.sleep(.05)
+        else:
+            self.fail("MCP server startup timed out")
+
+    async def asyncTearDown(self):
+        self.server.terminate()
+        try:
+            self.server.wait(timeout=8)
+        except subprocess.TimeoutExpired:
+            self.server.kill()
+            self.server.wait()
+        self.log.close()
+        self.temp.cleanup()
+
+    async def call(self, name, arguments):
+        async with streamablehttp_client(self.url) as (read, write, _):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                return await session.call_tool(name, arguments)
+
+    def data(self, result):
+        self.assertFalse(result.isError, str(result))
+        return result.structuredContent or json.loads(result.content[0].text)
+
+    async def plan(self):
+        return self.data(await self.call("preview_repair", {"path": "input.txt", "old_text": "-1", "new_text": "100"}))["plan_id"]
+
+    async def test_discovery_matches_info_and_queries_do_not_fabricate_results(self):
+        async with streamablehttp_client(self.url) as (read, write, _):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                tools = (await session.list_tools()).tools
+        with urllib.request.urlopen(self.url.replace("/mcp", "/info")) as response:
+            info = json.load(response)
+        self.assertEqual({t.name for t in tools}, {t["name"] for t in info["tools"]})
+        self.assertEqual(len(tools), 7)
+        self.assertFalse(self.data(await self.call("get_case", {"case_id": "CLEAR-S"}))["runnable"])
+        self.assertEqual(self.data(await self.call("search_knowledge", {"query": "unfindable_76044865"}))["matches"], [])
+        self.assertTrue(self.data(await self.call("search_knowledge", {"query": "particles"}))["matches"])
+
+    async def test_stale_and_ambiguous_errors_are_actionable_over_mcp(self):
+        bad = await self.call("preview_repair", {"path": "input.txt", "old_text": "missing", "new_text": "x"})
+        self.assertTrue(bad.isError)
+        self.assertIn("恰好出现一次", bad.content[0].text)
+        plan_id = await self.plan()
+        self.input.write_text("edited elsewhere\n")
+        bad = await self.call("apply_repair", {"plan_id": plan_id})
+        self.assertTrue(bad.isError)
+        self.assertIn("文件在预览后发生变化", bad.content[0].text)
+        self.assertEqual(self.input.read_text(), "edited elsewhere\n")
+
+    async def test_noninteractive_harness_refuses_real_project_write(self):
+        plan_id = await self.plan()
+        result = await asyncio.to_thread(subprocess.run,
+            ["node", str(ROOT / "harness/terminal.mjs"), "--registry", str(self.registry), "--prompt", '/call mc__apply_repair ' + json.dumps({"plan_id": plan_id})],
+            env=self.env, capture_output=True, text=True, timeout=15)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("非交互输入不能代替人工确认", result.stdout + result.stderr)
+        self.assertEqual(self.input.read_text(), "particles = -1\n")
+
+    async def test_actual_terminal_no_then_yes_changes_real_project_file_once(self):
+        plan_id = await self.plan()
+        def terminal(decision):
+            master, slave = pty.openpty()
+            process = subprocess.Popen(["node", str(ROOT / "harness/terminal.mjs"), "--registry", str(self.registry)], stdin=slave, stdout=slave, stderr=slave, env=self.env, close_fds=True)
+            os.close(slave)
+            captured = bytearray()
+            def until(needle):
+                deadline = time.monotonic() + 15
+                start = len(captured)
+                while time.monotonic() < deadline:
+                    if needle in captured[start:].decode("utf-8", errors="replace"):
+                        return
+                    if select.select([master], [], [], .1)[0]:
+                        try: chunk = os.read(master, 65536)
+                        except OSError: break
+                        if not chunk: break
+                        captured.extend(chunk)
+                raise AssertionError(f"Did not receive {needle}: " + captured.decode("utf-8", errors="replace"))
+            try:
+                until("你> ")
+                command = '/call mc__apply_repair ' + json.dumps({"plan_id": plan_id})
+                os.write(master, (command + "\n").encode())
+                until("其他输入拒绝 > ")
+                self.assertIn("-particles = -1", captured.decode("utf-8", errors="replace"))
+                os.write(master, (decision + "\n").encode())
+                until("你> ")
+                os.write(master, b"/exit\n")
+                process.wait(timeout=10)
+                return captured.decode("utf-8", errors="replace")
+            finally:
+                if process.poll() is None:
+                    process.terminate()
+                    process.wait(timeout=5)
+                os.close(master)
+        output = await asyncio.to_thread(terminal, "no")
+        self.assertIn("用户拒绝", output)
+        self.assertEqual(self.input.read_text(), "particles = -1\n")
+        await asyncio.to_thread(terminal, "yes")
+        self.assertEqual(self.input.read_text(), "particles = 100\n")
+        duplicate = await self.call("apply_repair", {"plan_id": plan_id})
+        self.assertTrue(duplicate.isError)
+        self.assertIn("已经执行", duplicate.content[0].text)
+
+
+if __name__ == "__main__":
+    unittest.main()
