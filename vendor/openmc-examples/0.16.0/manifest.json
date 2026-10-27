@@ -1,0 +1,20 @@
+{
+  "upstream": "openmc-dev/openmc",
+  "version": "0.16.0",
+  "commit": "617d35a5063c57796b43428bc401e627d2011046",
+  "retrieved_at": "2026-10-27T05:37:40.043251+00:00",
+  "license": "MIT",
+  "note": "原始RST精选；跨文件引用/include/autodoc未展开，不是完整离线网站或官方中文译文。",
+  "files": [
+    {
+      "file": "pincell_multigroup.py",
+      "title": "Official multigroup pin-cell (C5G7 data)",
+      "version": "0.16.0",
+      "sha256": "92b46fe166cbe10fece5a7e34a9f8e1fb13a80e089595abfd78d46acdb550943",
+      "source_url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/examples/pincell_multigroup/build_xml.py",
+      "raw_url": "https://raw.githubusercontent.com/openmc-dev/openmc/617d35a5063c57796b43428bc401e627d2011046/examples/pincell_multigroup/build_xml.py",
+      "license": "MIT",
+      "content_kind": "official_original"
+    }
+  ]
+}

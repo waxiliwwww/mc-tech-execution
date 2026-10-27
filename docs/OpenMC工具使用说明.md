@@ -144,3 +144,9 @@ axes每轴是非空数值列表，全组合先检查再提交；默认上限是�
 扫描目录`workspace/.mc-scans/<scan_id>/`包含基线/各组输入、持久记录、summary.json/csv、曲线及report文件；每次真实计算仍在`.mc-jobs/<job_id>/`。openmc_list_artifacts只列已生成业务产物，不列运行配置和内部控制记录；原始输出给出matches_recorded_output便于发现事后改动。这里是服务端存储清单，不是下载授权或客户端路径。部署人员安排磁盘容量、归档与删除，运行中不能移动或清理目录。
 
 扫描取消后尚未运行项为not_run；stop_on_error为true时首个失败即不再提交下一组，默认false继续并最终partial/failed。MCP服务退出不等于取消扫描。扫描监控被终止则interrupted，不自动重提；查询active_job_id并取消该计算，再以新scan_id重新提交需要的范围。结果保留原批次，不能把重跑记录覆盖为首次成功。
+
+## 9. 官方资料、例题与确认修复
+
+新增list_knowledge_sources/read_knowledge提供固定版本官方原文及行号；search_knowledge支持中文参数导航。openmc_prepare_example从注册例题生成输入，官方多群例题自带C5G7公开数据；生成后仍须submit/query/read。CLEAR-S和17×17保留待料。
+
+openmc_diagnose_job诊断真实失败，openmc_prepare_repair复制新副本并准备差异；apply_repair在直接CLI强制TTY确认，在MCP由宿主确认；openmc_recheck_repair校核已应用计划并关联提交一次新计算。当前自动建议仅普通run的run_mode唯一近似拼写，其他问题保留人工判断，不能改写原失败快照。完整命令/边界/示例见[公开资料与例题修复](公开资料与例题修复.md)。

@@ -3,18 +3,42 @@
     "pattern": "geometry.*overlap|overlap.*geometry",
     "category": "geometry_overlap",
     "suggestion": "核对日志中涉及的cell/surface编号与边界定义；需要业务人员确认几何关系。",
-    "status": "seed_rule_pending_domain_review"
+    "status": "seed_rule_pending_domain_review",
+    "reference": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/troubleshoot.rst"
   },
   {
     "pattern": "nuclide.*(missing|not found)|missing.*nuclide",
     "category": "missing_nuclide",
     "suggestion": "核对核素名称、截面数据路径和核数据库版本；不自动删除核素。",
-    "status": "seed_rule_pending_domain_review"
+    "status": "seed_rule_pending_domain_review",
+    "reference": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/troubleshoot.rst"
   },
   {
     "pattern": "syntax error|parse error",
     "category": "syntax",
     "suggestion": "核对日志指向的输入文件和行号，再提出具体修改。",
-    "status": "seed_rule_pending_domain_review"
+    "status": "seed_rule_pending_domain_review",
+    "reference": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/troubleshoot.rst"
+  },
+  {
+    "pattern": "(invalid|unknown|unrecognized).*(run|simulation).*mode|invalid run_mode",
+    "category": "invalid_run_mode",
+    "suggestion": "核对settings.xml/model.xml的run_mode；可用模式见官方settings格式，不自动改变物理设置。",
+    "status": "documented_input_check",
+    "reference": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/io_formats/settings.rst"
+  },
+  {
+    "pattern": "(could not find|missing|not found).*(cross.section|material|nuclide)|(cross.section|material|nuclide).*(not found|missing)",
+    "category": "missing_input_data",
+    "suggestion": "核对材料编号和截面文件/路径；缺失数据不可通过删除材料或核素绕过。",
+    "status": "rule_hint_pending_domain_review",
+    "reference": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/materials.rst"
+  },
+  {
+    "pattern": "lost particle|could not be located in any cell",
+    "category": "lost_particle",
+    "suggestion": "按官方说明检查几何边界、cell/surface/lattice及几何调试覆盖，不自动改物理几何。",
+    "status": "rule_hint_pending_domain_review",
+    "reference": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/troubleshoot.rst"
   }
 ]

@@ -80,6 +80,22 @@ def execute(action: str, params: dict) -> dict:
             model = openmc.examples.pwr_pin_cell()
             data_kind = 'public_example_requires_nuclear_data'
             note = 'OpenMC官方PWR pin-cell示例；运行须配置相应真实核数据，不是甲方指定基准。'
+        elif template == 'pincell-multigroup':
+            import hashlib
+            import runpy
+            directory = Path(__file__).resolve().parents[1] / 'vendor/openmc-examples/0.16.0'
+            source = directory / 'pincell_multigroup.py'
+            metadata = json.loads((directory / 'manifest.json').read_text())['files'][0]
+            if hashlib.sha256(source.read_bytes()).hexdigest() != metadata['sha256']:
+                raise ValueError('官方例题源码与清单不一致，拒绝执行')
+            # Fixed, bundled upstream code; the caller cannot supply a script path.
+            namespace = runpy.run_path(str(source))
+            model = openmc.Model(namespace['geometry'], namespace['materials_file'],
+                                 namespace['settings'], namespace['tallies'])
+            plot = openmc.Plot(); plot.width = (1.26, 1.26); plot.pixels = (400, 400); plot.color_by = 'material'
+            model.plots = openmc.Plots([plot])
+            data_kind = 'public_c5g7_multigroup_example'
+            note = 'OpenMC官方多群pin-cell，使用源码自带C5G7多群数据；本次运行设置由调用参数指定，未作甲方基准或专业准确率验证。'
         else:
             raise ValueError('Unsupported template')
         model.settings.particles = params['particles']
@@ -94,14 +110,17 @@ def execute(action: str, params: dict) -> dict:
             model.plots = openmc.Plots([plot])
         model.export_to_xml()
         model.plots.export_to_xml()
-        if template == 'synthetic-mgxs':
+        if template in ('synthetic-mgxs', 'pincell-multigroup'):
             # Keep the generated engineering example movable with its own data file.
             from lxml import etree as ET
             tree = ET.parse('materials.xml')
-            tree.getroot().find('cross_sections').text = 'synthetic-mgxs.h5'
+            tree.getroot().find('cross_sections').text = 'synthetic-mgxs.h5' if template == 'synthetic-mgxs' else 'mgxs.h5'
             tree.write('materials.xml', encoding='utf-8', xml_declaration=True)
         marker = {'template': template, 'data_kind': data_kind, 'openmc_version': openmc.__version__,
                   'professional_acceptance': False, 'note': note}
+        if template == 'pincell-multigroup':
+            marker.update(source_url=metadata['source_url'], source_sha256=metadata['sha256'],
+                          runtime_overrides={k: params[k] for k in ('particles', 'batches', 'inactive')})
         Path('mc-case.json').write_text(json.dumps(marker, ensure_ascii=False, indent=2), encoding='utf-8')
         return {**marker, 'files': sorted(p.name for p in Path('.').iterdir() if p.is_file())}
     if action == 'validate':

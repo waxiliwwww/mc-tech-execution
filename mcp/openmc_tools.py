@@ -42,8 +42,8 @@ def environment() -> dict:
 
 def create_model(case_dir: str, template: str = 'synthetic-mgxs', particles: int = 200,
                  batches: int = 10, inactive: int = 2) -> dict:
-    if template not in ('synthetic-mgxs', 'pwr-pin-cell'):
-        raise Error('当前支持synthetic-mgxs及pwr-pin-cell模板')
+    if template not in ('synthetic-mgxs', 'pwr-pin-cell', 'pincell-multigroup'):
+        raise Error('当前支持synthetic-mgxs、pwr-pin-cell及pincell-multigroup模板')
     if any(type(v) is not int for v in (particles, batches, inactive)) or particles <= 0 or not 0 <= inactive < batches or batches - inactive < 2:
         raise Error('particles须为正整数，batches-inactive至少为2，inactive非负')
     directory = path_in_workspace(case_dir, exists=False)

@@ -20,5 +20,51 @@
       "准确率95%与物理结果90%的统计定义",
       "参考结果和容差"
     ]
+  },
+  {
+    "id": "synthetic-mgxs",
+    "name": "合成单群截面工程示例",
+    "status": "ready_to_prepare",
+    "template": "synthetic-mgxs",
+    "data_kind": "synthetic_mgxs",
+    "purpose": "接口/运行/产物工程验证，不是专业基准",
+    "dependencies": [
+      "OpenMC0.16.0运行时，Quick Start可准备"
+    ],
+    "professional_acceptance": false
+  },
+  {
+    "id": "openmc-pincell-mg",
+    "name": "OpenMC官方多群燃料棒示例",
+    "status": "ready_to_prepare",
+    "template": "pincell-multigroup",
+    "data_kind": "public_c5g7_multigroup_example",
+    "source_url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/examples/pincell_multigroup/build_xml.py",
+    "dependencies": [
+      "OpenMC0.16.0；自带公开C5G7多群数据，无需外部核数据库"
+    ],
+    "professional_acceptance": false
+  },
+  {
+    "id": "run-mode-typo",
+    "name": "运行模式拼写错误修复练习",
+    "status": "ready_to_prepare",
+    "template": "synthetic-mgxs",
+    "fault": "run_mode_typo",
+    "expected_first_run": "failed",
+    "data_kind": "synthetic_mgxs",
+    "purpose": "故意引入eigenvale拼写错误，检验真实日志、真人确认和重算；不改物理材料参数",
+    "professional_acceptance": false
+  },
+  {
+    "id": "openmc-pwr-pin-cell",
+    "name": "OpenMC官方连续能PWR pin-cell",
+    "status": "requires_nuclear_data",
+    "template": "pwr-pin-cell",
+    "data_kind": "public_example_requires_nuclear_data",
+    "missing": [
+      "与该模型适配的真实核数据库及配置"
+    ],
+    "professional_acceptance": false
   }
 ]

@@ -34,6 +34,18 @@ def main() -> int:
                 arguments = json.loads(args.arguments)
             except ValueError as exc:
                 raise ToolExecutionError('arguments须为有效JSON对象') from exc
+            if args.tool == 'apply_repair':
+                preview_tool = next(t for t in TOOLS if t['name'] == 'read_repair_plan')
+                preview = asyncio.run(execute_tool(preview_tool, arguments))
+                if preview['state'] != 'proposed':raise ToolExecutionError('计划已经执行；不会重复写入')
+                if not preview['file_unchanged']:raise ToolExecutionError('文件在预览后发生变化；请重新生成修复计划并确认')
+                print(preview['diff'], file=sys.stderr)
+                if not sys.stdin.isatty():raise ToolExecutionError('非交互输入不能代替人工确认；请在终端查看差异并确认，或使用有确认策略的MCP宿主。')
+                print('只应用上述差异；专业正确性仍需校核和重算。确认修改？[y/N] ', end='', file=sys.stderr, flush=True)
+                if sys.stdin.readline().strip().lower() not in ('y', 'yes'):
+                    raise ToolExecutionError('用户拒绝本次修改，文件保持不变')
+                current = asyncio.run(execute_tool(preview_tool, arguments))
+                if current != preview:raise ToolExecutionError('确认期间计划或输入发生变化，请重新预览后确认')
             value = asyncio.run(execute_tool(tool, arguments))
         print(json.dumps(value, ensure_ascii=False, allow_nan=False, indent=2))
         return 0

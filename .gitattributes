@@ -1,0 +1,3 @@
+# Preserve upstream source bytes: their SHA256 manifests must survive Windows clones.
+/knowledge/openmc-0.16.0/** -text
+/vendor/openmc-examples/0.16.0/** -text

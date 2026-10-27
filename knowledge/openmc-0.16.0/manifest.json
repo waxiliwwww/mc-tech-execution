@@ -1,0 +1,90 @@
+{
+  "upstream": "openmc-dev/openmc",
+  "version": "0.16.0",
+  "commit": "617d35a5063c57796b43428bc401e627d2011046",
+  "retrieved_at": "2026-10-27T05:37:40.043251+00:00",
+  "license": "MIT",
+  "note": "原始RST精选；跨文件引用/include/autodoc未展开，不是完整离线网站或官方中文译文。",
+  "documents": [
+    {
+      "file": "usersguide/settings.rst",
+      "title": "执行设置：particles、batches、inactive及源项",
+      "version": "0.16.0",
+      "sha256": "bcd7b64c0702ff14c4f8a74cb9524541fbace55270b18a3634669e5020b589fc",
+      "source_url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/settings.rst",
+      "raw_url": "https://raw.githubusercontent.com/openmc-dev/openmc/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/settings.rst",
+      "license": "MIT",
+      "content_kind": "official_original"
+    },
+    {
+      "file": "usersguide/materials.rst",
+      "title": "材料、密度和核素",
+      "version": "0.16.0",
+      "sha256": "b047385e5d2f0e2e3ce7f533996b1dbfa8a92f3389a3887f8f8f8600e7ea67aa",
+      "source_url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/materials.rst",
+      "raw_url": "https://raw.githubusercontent.com/openmc-dev/openmc/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/materials.rst",
+      "license": "MIT",
+      "content_kind": "official_original"
+    },
+    {
+      "file": "usersguide/geometry.rst",
+      "title": "几何与边界条件",
+      "version": "0.16.0",
+      "sha256": "6fe22d3d1f14aed32891f960d0a7d74801acb6b1cfb220a644d061b7e385e6e4",
+      "source_url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/geometry.rst",
+      "raw_url": "https://raw.githubusercontent.com/openmc-dev/openmc/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/geometry.rst",
+      "license": "MIT",
+      "content_kind": "official_original"
+    },
+    {
+      "file": "usersguide/tallies.rst",
+      "title": "计分、过滤器与分数",
+      "version": "0.16.0",
+      "sha256": "25c8a12ec6cd6fa9b52942c4c1c3d294ff817bbc615148933989e61dc7c0c2fd",
+      "source_url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/tallies.rst",
+      "raw_url": "https://raw.githubusercontent.com/openmc-dev/openmc/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/tallies.rst",
+      "license": "MIT",
+      "content_kind": "official_original"
+    },
+    {
+      "file": "usersguide/troubleshoot.rst",
+      "title": "运行故障排查",
+      "version": "0.16.0",
+      "sha256": "8e6569eed29cd8b2ab1c62806f1712884398e2a944a0f867e8e61fdcd8abf1fd",
+      "source_url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/troubleshoot.rst",
+      "raw_url": "https://raw.githubusercontent.com/openmc-dev/openmc/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/troubleshoot.rst",
+      "license": "MIT",
+      "content_kind": "official_original"
+    },
+    {
+      "file": "usersguide/processing.rst",
+      "title": "StatePoint与结果处理",
+      "version": "0.16.0",
+      "sha256": "de3c2b4b4f6f869f317901fb1cf688a6210c92ca9af6d13755ee8306376dbbe0",
+      "source_url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/processing.rst",
+      "raw_url": "https://raw.githubusercontent.com/openmc-dev/openmc/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/processing.rst",
+      "license": "MIT",
+      "content_kind": "official_original"
+    },
+    {
+      "file": "usersguide/scripts.rst",
+      "title": "求解器命令与几何调试",
+      "version": "0.16.0",
+      "sha256": "60df8f66871097d85d4abea475e0507966142dba998ad1276e5f7a5b75b35222",
+      "source_url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/scripts.rst",
+      "raw_url": "https://raw.githubusercontent.com/openmc-dev/openmc/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/scripts.rst",
+      "license": "MIT",
+      "content_kind": "official_original"
+    },
+    {
+      "file": "io_formats/settings.rst",
+      "title": "settings.xml字段规范",
+      "version": "0.16.0",
+      "sha256": "d4e918e5c69c893233de5221f0d1bad703c6e056177a92a0e066e4f5bf2759f8",
+      "source_url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/io_formats/settings.rst",
+      "raw_url": "https://raw.githubusercontent.com/openmc-dev/openmc/617d35a5063c57796b43428bc401e627d2011046/docs/source/io_formats/settings.rst",
+      "license": "MIT",
+      "content_kind": "official_original"
+    }
+  ]
+}

@@ -87,7 +87,7 @@ def spawn_worker(directory: Path, script: str, identifier: str) -> None:
 
 
 def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | None = None,
-           _internal: bool = False, _job_id: str | None = None) -> dict:
+           _internal: bool = False, _job_id: str | None = None, _expected_inputs: dict | None = None) -> dict:
     if not sys.platform.startswith('linux'):
         raise Error('本地持久作业目前支持Linux/WSL；其他系统请在Linux服务器部署MCP')
     if mode not in ('run', 'plot', 'geometry-debug') or type(threads) is not int or not 1 <= threads <= 64:
@@ -109,6 +109,8 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
             raise Error('算例包含符号链接，未提交')
     shutil.copytree(source, copied, ignore=lambda _directory, names: [n for n in names if is_old_output(n)])
     input_files = {str(p.relative_to(copied)): file_hash(p) for p in copied.rglob('*') if p.is_file()}
+    if _expected_inputs is not None and input_files != _expected_inputs:
+        raise Error('输入在校核与快照之间发生变化，未启动计算；保留未完成目录供核对')
     record = {'job_id': job_id, 'state': 'queued', 'submitted_at': time.time(),
               'case_dir': case_dir, 'mode': mode, 'threads': threads,
               'provenance': provenance(source, cfg), 'runtime': cfg,

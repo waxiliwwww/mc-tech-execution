@@ -29,8 +29,8 @@ def _path(relative: str) -> Path:
     if not isinstance(relative, str) or not relative or Path(relative).is_absolute():
         raise MCInputError("path 必须是工作目录内的相对路径")
     candidate = WORKSPACE / relative
-    if any(part in {"..", ".mc-plans", ".mc-backups"} for part in Path(relative).parts):
-        raise MCInputError("不允许访问上级目录或内部修复记录")
+    if any(part == '..' or part.startswith('.mc-') for part in Path(relative).parts):
+        raise MCInputError("不允许访问上级目录或内部作业/修复记录")
     current = WORKSPACE
     for part in Path(relative).parts:
         current = current / part
@@ -63,7 +63,7 @@ def _write_json(path: Path, value: dict) -> None:
             os.unlink(temp)
 
 
-def preview_repair(path: str, old_text: str, new_text: str) -> dict:
+def preview_repair(path: str, old_text: str, new_text: str, _context: dict | None = None) -> dict:
     """Prepare an exact, single-occurrence text change without changing the input file."""
     target = _path(path)
     before = target.read_bytes()
@@ -84,6 +84,7 @@ def preview_repair(path: str, old_text: str, new_text: str) -> dict:
     plan = {"plan_id": plan_id, "path": path, "old_text": old_text, "new_text": new_text,
             "before_sha256": _sha(before), "after_sha256": _sha(after), "diff": diff,
             "state": "proposed", "validation": "仅精确文本替换；未进行蒙卡专业校核"}
+    if _context is not None:plan['context'] = _context
     _write_json(WORKSPACE / ".mc-plans" / (plan_id + ".json"), plan)
     return {key: value for key, value in plan.items() if key not in {"old_text", "new_text"}}
 
@@ -102,7 +103,11 @@ def read_repair_plan(plan_id: str) -> dict:
 
 def apply_repair(plan_id: str) -> dict:
     """Host must obtain human confirmation for this call; there is no model-controlled yes flag."""
-    with _repair_lock:
+    import fcntl
+    public = read_repair_plan(plan_id)
+    lock_path = WORKSPACE / '.mc-plans' / (_sha(str(_path(public['path'])).encode()) + '.lock')
+    with _repair_lock, lock_path.open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
         public = read_repair_plan(plan_id)
         if public["state"] != "proposed":
             raise MCInputError("计划已经执行；不会重复写入")
@@ -140,7 +145,7 @@ def apply_repair(plan_id: str) -> dict:
         return {"plan_id": plan_id, "path": plan["path"], "state": "applied",
                 "before_sha256": plan["before_sha256"], "after_sha256": _sha(target.read_bytes()),
                 "backup": str(backup.relative_to(WORKSPACE)),
-                "validation": "文件修改已完成；蒙卡输入校核和重算仍需业务校核工具"}
+                "validation": "文件修改已完成；继续调用openmc_recheck_repair或校核/计算工具确认结果。"}
 
 
 def diagnose_log(path: str) -> dict:
@@ -159,23 +164,8 @@ def diagnose_log(path: str) -> dict:
 
 
 def search_knowledge(query: str, limit: int = 5) -> dict:
-    """Small transparent local text search; no invented physics knowledge or vector service."""
-    if not query.strip() or len(query) > 500 or not 1 <= limit <= 10:
-        raise MCInputError("query须为1..500字符，limit须为1..10")
-    terms = list(dict.fromkeys(re.findall(r"[\w-]+", query.lower())))
-    hits = []
-    directory = ROOT / "knowledge"
-    for path in sorted(directory.rglob("*")):
-        if path.is_symlink() or not path.is_file() or path.suffix.lower() not in {".md", ".txt"}:
-            continue
-        for number, paragraph in enumerate(_read_text(path).splitlines(), 1):
-            score = sum(term in paragraph.lower() for term in terms)
-            if score:
-                hits.append({"source": str(path.relative_to(directory)), "line": number,
-                             "text": paragraph[:2000], "score": score})
-    hits.sort(key=lambda h: (-h["score"], h["source"], h["line"]))
-    return {"query": query, "matches": hits[:limit],
-            "note": "返回原文片段和出处；没有命中时不得编造参数说明。PDF/DOCX需先转换成经核对的文本。"}
+    from openmc_knowledge import search
+    return search(query, limit)
 
 
 def list_cases() -> dict:
@@ -186,6 +176,8 @@ def list_cases() -> dict:
 def get_case(case_id: str) -> dict:
     for case in list_cases()["cases"]:
         if case["id"] == case_id:
-            return {"case": case, "runnable": False,
-                    "next_step": "由业务方提供授权算例、依赖、运行脚本和参考结果，再接入执行工具"}
+            runnable = case.get('status') == 'ready_to_prepare'
+            return {"case": case, "runnable": runnable, 'execution_status': 'not_run',
+                    "next_step": "用openmc_prepare_example生成新目录，再提交/查询计算。" if runnable else
+                    "缺少业务材料或运行条件，不能当作已可运行的验收基准。"}
     raise MCInputError("未找到算例；可先调用list_cases")
