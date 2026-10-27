@@ -63,7 +63,7 @@ mcp/.venv/bin/python examples/scan_report_demo.py
 codex mcp add mc --url http://127.0.0.1:8770/mcp
 ```
 
-在新的Codex会话中可说：“用mc工具创建一个合成示例，查看支持的参数；扫描材料宏观截面倍率0.8、1.0、1.2，完成后画flux曲线、导出PDF并列出产物。合成数据只做工程验证。”宿主仍需可用的模型及工具调用权限，模型响应和专业结果另行验证。
+在新的Codex会话中可说：“用mc工具创建一个合成示例，查看支持的参数；扫描材料宏观截面倍率0.8、1.0、1.2，完成后画flux曲线、导出PDF并列出产物。合成数据只做工程验证。”宿主仍需可用的模型及工具调用权限。本轮已完成一次真实Codex自然语言全流程；DSH尚未实测，专业结果另行验证。
 
 [Codex与DSH接入说明](docs/MCP平台接入.md)提供带鉴权配置、DSH示例及自然语言用法。远程部署在[mcp配置](mcp/README.md)设置真实访问URL、Bearer环境变量和现有HTTPS入口；工具与宿主解耦。仅运行工具无需Node.js；可选Harness需要Node22，使用方法见[harness/README](harness/README.md)。
 
