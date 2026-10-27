@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """A real failure, reviewed diff, terminal confirmation, then explicit validation/recalculation."""
 import argparse
+from demo_output import emit_result, output_option
 import asyncio
 import json
 from pathlib import Path
@@ -52,17 +53,19 @@ async def demo(args):
         print('5/7 等待终端用户确认', file=sys.stderr)
         applied = await confirmed_apply(call, prepared['plan'], args.mcp_url)
         if applied['state'] != 'applied':
-            return {'outcome': 'not_applied', 'case': case, 'failed_job': failed, 'diagnosis': diagnosis,
+            artifacts = await call('openmc_list_artifacts', {'kind':'job','identifier':failed['job_id']})
+            return {'artifacts': artifacts, 'outcome': 'not_applied', 'case': case, 'failed_job': failed, 'diagnosis': diagnosis,
                     'prepared': prepared, 'application': applied, 'rerun': None, 'professional_acceptance': False}
         print('6/7 显式校核并提交关联重算', file=sys.stderr)
         checked = await call('openmc_recheck_repair', {'plan_id': prepared['plan']['plan_id']})
         if not checked['job']:raise RuntimeError('修复后校核仍未通过：' + json.dumps(checked, ensure_ascii=False))
         finished = await wait_job(call, checked['job']['job_id'], args.timeout)
-        if finished['state'] != 'completed':raise RuntimeError('重算仍失败，保留新旧编号：' + json.dumps(finished, ensure_ascii=False))
+        if finished['state'] != 'completed':raise RuntimeError('重算仍失败：' + finished['state'] + '；原job_id=' + failed['job_id'] + '；新job_id=' + finished['job_id'])
         print('7/7 读取新计算结果并导出报告', file=sys.stderr)
         result = await call('openmc_read_results', {'job_id': finished['job_id']})
         report = await call('openmc_export_report', {'job_id': finished['job_id'], 'format': 'markdown'})
-        return {'outcome': 'recalculation_completed', 'case': case, 'failed_job': failed, 'diagnosis': diagnosis,
+        artifacts = await call('openmc_list_artifacts', {'kind':'job','identifier':finished['job_id']})
+        return {'artifacts': artifacts, 'outcome': 'recalculation_completed', 'case': case, 'failed_job': failed, 'diagnosis': diagnosis,
                 'prepared': prepared, 'application': applied, 'recheck': checked, 'rerun': finished,
                 'results': result, 'report': report, 'professional_acceptance': False}
 
@@ -72,6 +75,8 @@ if __name__ == '__main__':
     parser.add_argument('--mcp-url')
     parser.add_argument('--case-dir')
     parser.add_argument('--timeout', type=float, default=120)
-    try:print(json.dumps(asyncio.run(demo(parser.parse_args())), ensure_ascii=False, indent=2, allow_nan=False))
+    output_option(parser)
+    args = parser.parse_args()
+    try:emit_result(asyncio.run(demo(args)), args, '确认修复执行结果')
     except Exception as error:
         print('修复演示未完成：' + error_text(error), file=sys.stderr); sys.exit(1)

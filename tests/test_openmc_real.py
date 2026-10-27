@@ -47,7 +47,7 @@ class RealOpenMC(unittest.TestCase):
         (target / name).write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n')
 
     def test_direct_demo_plot_and_changed_output_refusal(self):
-        result = subprocess.run([sys.executable, str(ROOT / 'examples/openmc_demo.py')],
+        result = subprocess.run([sys.executable, str(ROOT / 'examples/openmc_demo.py'), '--json'],
                                 env=self.env, text=True, capture_output=True, timeout=180)
         self.assertEqual(result.returncode, 0, result.stderr)
         data = json.loads(result.stdout)
@@ -99,7 +99,7 @@ class RealOpenMC(unittest.TestCase):
                         if server.poll() is not None:
                             log.seek(0); self.fail(log.read())
                         time.sleep(.05)
-                result = subprocess.run([sys.executable, str(ROOT / 'examples/openmc_demo.py'), '--mcp-url', f'http://127.0.0.1:{port}/mcp'],
+                result = subprocess.run([sys.executable, str(ROOT / 'examples/openmc_demo.py'), '--json', '--mcp-url', f'http://127.0.0.1:{port}/mcp'],
                                         env=self.env, text=True, capture_output=True, timeout=180)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 data = json.loads(result.stdout)

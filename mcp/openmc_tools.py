@@ -12,12 +12,13 @@ import xml.etree.ElementTree as ET
 
 import openmc_jobs as jobs
 from openmc_runtime import (Error, api, atomic_json, command, config, path_in_workspace,
-                            provenance, relative, workspace)
+                            provenance, relative, workspace, file_location)
 
 
 def environment() -> dict:
     cfg = config()
     result = {'runtime': cfg['runtime'], 'expected_version': cfg['expected_version'],
+              'workspace': str(workspace()), 'location': 'server',
               'api_available': False, 'executable_available': False,
               'cross_sections_configured': bool(__import__('os').environ.get('OPENMC_CROSS_SECTIONS')),
               'professional_acceptance': False}
@@ -57,7 +58,9 @@ def create_model(case_dir: str, template: str = 'synthetic-mgxs', particles: int
         # Keep any partial products for diagnosis rather than deleting user-visible evidence.
         atomic_json(directory / 'creation-failed.json', {'state': 'failed', 'note': '生成失败，不能当作完整输入使用。'})
         raise
-    return {'case_dir': case_dir, **value, 'generation_method': 'deterministic_public_api_template',
+    return {'case_dir': case_dir, **value, 'workspace': str(workspace()),
+            'case_server_path': str(directory), 'location': 'server',
+            'generation_method': 'deterministic_public_api_template',
             'fine_tuned_model_used': False}
 
 
@@ -179,6 +182,6 @@ def export_report(job_id: str, format: str = 'markdown') -> dict:
         output = stream.getvalue(); name = 'report.csv'
     report = directory / name
     report.write_text(output, encoding='utf-8')
-    return {'job_id': job_id, 'format': format, 'path': relative(report),
+    return {'job_id': job_id, 'format': format, **file_location(report),
             'provenance': data['provenance'], 'professional_acceptance': False,
             'note': '完整shape、filter及原始计分归一化说明见同作业results.json；截断状态随结果保留。'}

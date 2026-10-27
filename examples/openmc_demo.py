@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Same synthetic-MGXS example via the direct CLI or a standard MCP client. No LLM."""
 import argparse
+from demo_output import emit_result, output_option
 import asyncio
 from contextlib import asynccontextmanager
 import json
@@ -72,13 +73,14 @@ async def demo(args):
                 raise RuntimeError('示例等待超时，已请求取消；请继续查询作业：' + job_id)
             await asyncio.sleep(0.2)
         if status['state'] != 'completed':
-            raise RuntimeError('作业未成功：' + json.dumps(status, ensure_ascii=False))
+            raise RuntimeError('作业未成功：' + status['state'] + '；job_id=' + job_id + '；查询openmc_job_status查看日志和原因')
         print('5/6 读取真实求解器的statepoint', file=sys.stderr)
         results = await call('openmc_read_results', {'job_id': job_id})
         print('6/6 导出Markdown及CSV', file=sys.stderr)
         reports = [await call('openmc_export_report', {'job_id': job_id, 'format': format})
                    for format in ('markdown', 'csv')]
-        return {'case': created, 'runtime': runtime, 'validation': validation, 'job': status,
+        artifacts = await call('openmc_list_artifacts', {'kind': 'job', 'identifier': job_id})
+        return {'artifacts': artifacts, 'case': created, 'runtime': runtime, 'validation': validation, 'job': status,
                 'results': results, 'reports': reports, 'professional_acceptance': False}
 
 
@@ -87,9 +89,10 @@ if __name__ == '__main__':
     parser.add_argument('--mcp-url', help='省略时走直接CLI；提供时用标准MCP客户端')
     parser.add_argument('--case-dir', help='服务端工作区内的新目录；默认随机名，避免覆盖')
     parser.add_argument('--timeout', type=float, default=120)
+    output_option(parser)
     args = parser.parse_args()
     try:
-        print(json.dumps(asyncio.run(demo(args)), ensure_ascii=False, indent=2, allow_nan=False))
+        emit_result(asyncio.run(demo(args)), args, '本地计算执行结果')
     except Exception as error:
         print('示例失败：' + error_text(error), file=sys.stderr)
         sys.exit(1)

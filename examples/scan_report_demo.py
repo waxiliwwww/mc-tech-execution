@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run a real synthetic-data parameter scan via CLI or standard MCP, then plot and report."""
 import argparse
+from demo_output import emit_result, output_option
 import asyncio
 import json
 import sys
@@ -27,7 +28,7 @@ async def demo(args):
                 await call('openmc_cancel_scan', {'scan_id': scan_id})
                 raise RuntimeError('等待超时，已请求取消，请继续查询：' + scan_id)
             await asyncio.sleep(.3)
-        if status['state'] != 'completed':raise RuntimeError('扫描未全部成功：' + json.dumps(status, ensure_ascii=False))
+        if status['state'] != 'completed':raise RuntimeError('扫描未全部成功：' + status['state'] + '；scan_id=' + scan_id + '；查询openmc_scan_status查看逐项原因')
         print('3/5 绘制flux扫描曲线及单个结果图', file=sys.stderr)
         scan_plot = await call('openmc_plot_scan', {'scan_id': scan_id, 'x_parameter': density['name'], 'metric': 'tally', 'score': 'flux'})
         job_id = status['cases'][0]['job_id']
@@ -47,6 +48,8 @@ if __name__ == '__main__':
     parser.add_argument('--timeout', type=float, default=180)
     parser.add_argument('--formats', nargs='+', choices=['markdown', 'csv', 'docx', 'pdf', 'doc'],
                         default=['markdown', 'csv', 'docx', 'pdf', 'doc'])
-    try:print(json.dumps(asyncio.run(demo(parser.parse_args())), ensure_ascii=False, indent=2, allow_nan=False))
+    output_option(parser)
+    args = parser.parse_args()
+    try:emit_result(asyncio.run(demo(args)), args, '参数扫描执行结果')
     except Exception as error:
         print('扫描示例失败：' + error_text(error), file=sys.stderr); sys.exit(1)

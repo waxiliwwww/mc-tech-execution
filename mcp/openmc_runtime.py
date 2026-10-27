@@ -42,6 +42,13 @@ def relative(path: Path) -> str:
     return path.relative_to(workspace()).as_posix()
 
 
+def file_location(path: Path) -> dict:
+    """Keep workspace-relative API paths and identify their server-side base."""
+    root = workspace()
+    return {'path': path.relative_to(root).as_posix(), 'workspace': str(root),
+            'server_path': str(path), 'location': 'server'}
+
+
 def config() -> dict:
     local = ROOT / 'config/openmc.local.json'
     source = Path(os.environ.get('MC_OPENMC_CONFIG', local if local.exists() else ROOT / 'config/openmc.json'))

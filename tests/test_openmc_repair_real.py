@@ -183,7 +183,7 @@ except ValueError as error:
         self.evidence('real-repair-still-fails.json',{'origin_job_id':identifier,'recheck':checked,'failed_again':failed_again,'diagnosis':diagnostic})
 
     def test_public_official_case_cli_end_to_end(self):
-        result=subprocess.run([sys.executable,str(ROOT/'examples/public_case_demo.py')],env=self.env,capture_output=True,text=True,timeout=180)
+        result=subprocess.run([sys.executable,str(ROOT/'examples/public_case_demo.py'), '--json'],env=self.env,capture_output=True,text=True,timeout=180)
         self.assertEqual(result.returncode,0,result.stderr)
         data=json.loads(result.stdout)
         self.assertEqual(data['job']['state'],'completed')
@@ -195,7 +195,7 @@ except ValueError as error:
 
     def test_repair_demo_cli_decline_then_accept(self):
         for choice,expected in [('n','not_applied'),('y','recalculation_completed')]:
-            command=[sys.executable,str(ROOT/'examples/repair_demo.py'),'--case-dir','demo-cli-'+choice]
+            command=[sys.executable,str(ROOT/'examples/repair_demo.py'), '--json','--case-dir','demo-cli-'+choice]
             code,output,transcript,answered=terminal_run(command,self.env,choice)
             self.assertTrue(answered);self.assertEqual(code,0,transcript)
             data=json.loads(output);self.assertEqual(data['outcome'],expected)
@@ -215,12 +215,24 @@ except ValueError as error:
                 for _ in range(100):
                     try:urllib.request.urlopen(f'http://127.0.0.1:{port}/health',timeout=.2).close();break
                     except OSError:time.sleep(.05)
-                result=subprocess.run([sys.executable,str(ROOT/'examples/public_case_demo.py'),'--mcp-url',url],env=env,capture_output=True,text=True,timeout=180)
+                result=subprocess.run([sys.executable,str(ROOT/'examples/public_case_demo.py'), '--json','--mcp-url',url],env=env,capture_output=True,text=True,timeout=180)
                 self.assertEqual(result.returncode,0,result.stderr)
                 data=json.loads(result.stdout);self.assertEqual(data['job']['state'],'completed')
                 self.evidence('real-public-case-mcp.json',data)
+                client_folder=self.directory/'separate-client';client_folder.mkdir()
+                remote=subprocess.run([sys.executable,str(ROOT/'examples/public_case_demo.py'),'--mcp-url',url],
+                    env={**env,'MC_WORKSPACE':str(client_folder/'not-server-data')},cwd=client_folder,capture_output=True,text=True,timeout=180)
+                self.assertEqual(remote.returncode,0,remote.stderr)
+                self.assertIn('工作区（服务端）：'+str(self.workspace),remote.stdout)
+                self.assertNotIn(str(client_folder/'not-server-data'),remote.stdout)
+                self.evidence('real-mcp-human-remote-paths.json',{'stdout':remote.stdout,'stderr':remote.stderr})
+                discovery=subprocess.run([sys.executable,str(ROOT/'examples/mcp_client.py'),'--url',url],
+                    env=env,cwd=client_folder,capture_output=True,text=True,timeout=30)
+                self.assertEqual(discovery.returncode,0,discovery.stderr)
+                self.assertIn('openmc_submit_job',[tool['name'] for tool in json.loads(discovery.stdout)['tools']])
+
                 for choice in ['n','y']:
-                    command=[sys.executable,str(ROOT/'examples/repair_demo.py'),'--mcp-url',url,'--case-dir','demo-mcp-'+choice]
+                    command=[sys.executable,str(ROOT/'examples/repair_demo.py'), '--json','--mcp-url',url,'--case-dir','demo-mcp-'+choice]
                     code,output,transcript,answered=terminal_run(command,env,choice)
                     self.assertTrue(answered);self.assertEqual(code,0,transcript)
                     result=json.loads(output)

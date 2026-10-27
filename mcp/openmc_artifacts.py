@@ -32,6 +32,7 @@ def list_artifacts(kind: str, identifier: str) -> dict:
         artifacts.append({'path': relative(path), 'server_path': str(path), 'bytes': path.stat().st_size,
                           'sha256': digest, 'mime_type': mimetypes.guess_type(path.name)[0] or 'application/octet-stream',
                           'matches_recorded_output': digest == original if original else None})
-    return {'kind': kind, 'identifier': identifier, 'workspace': str(workspace()), 'artifacts': artifacts,
+    return {'kind': kind, 'identifier': identifier, 'workspace': str(workspace()),
+            'directory': str(target), 'artifacts': artifacts,
             'location': 'server', 'download_supported': False, 'provenance': record['provenance'],
             'note': '路径位于服务端；本轮不提供远程下载。输入与大型核数据不会自动清理，请按部署环境管理磁盘。'}

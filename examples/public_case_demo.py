@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run a registered official OpenMC example over CLI or MCP; no LLM or private data."""
 import argparse
+from demo_output import emit_result, output_option
 import asyncio
 import json
 import sys
@@ -33,7 +34,7 @@ async def demo(args):
         print('3/5 真实计算并查询终态', file=sys.stderr)
         submitted = await call('openmc_submit_job', {'case_dir': name})
         status = await wait_job(call, submitted['job_id'], args.timeout)
-        if status['state'] != 'completed':raise RuntimeError('官方例题计算未成功：' + json.dumps(status, ensure_ascii=False))
+        if status['state'] != 'completed':raise RuntimeError('官方例题计算未成功：' + status['state'] + '；job_id=' + submitted['job_id'] + '；查询openmc_job_status')
         print('4/5 提取结果并绘制能谱计分', file=sys.stderr)
         result = await call('openmc_read_results', {'job_id': submitted['job_id']})
         tally = next(t for t in result['tallies'] if t['name'] == 'Flux spectrum')
@@ -52,6 +53,8 @@ if __name__ == '__main__':
     parser.add_argument('--case-dir')
     parser.add_argument('--timeout', type=float, default=120)
     parser.add_argument('--report-format', choices=['markdown', 'csv', 'docx', 'pdf', 'doc'], default='markdown')
-    try:print(json.dumps(asyncio.run(demo(parser.parse_args())), ensure_ascii=False, indent=2, allow_nan=False))
+    output_option(parser)
+    args = parser.parse_args()
+    try:emit_result(asyncio.run(demo(args)), args, '公开例题执行结果')
     except Exception as error:
         print('公开例题失败：' + error_text(error), file=sys.stderr); sys.exit(1)

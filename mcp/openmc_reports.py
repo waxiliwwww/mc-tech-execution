@@ -11,7 +11,7 @@ import tempfile
 import zipfile
 
 import openmc_jobs as jobs
-from openmc_runtime import Error, ROOT, api, relative
+from openmc_runtime import Error, ROOT, api, relative, file_location
 
 
 def office_command(runtime):
@@ -56,7 +56,7 @@ def render(target, data, runtime, format, image=None):
             if format != 'docx':convert(document, stage / ('report.' + format), format, runtime)
             output = target / ('report.' + format)
             os.replace(stage / ('report.' + format), output)
-    return {'format': format, 'path': relative(output), 'provenance': data['provenance'],
+    return {'format': format, **file_location(output), 'provenance': data['provenance'],
             'professional_acceptance': False}
 
 
@@ -92,4 +92,4 @@ def export_scan(scan_id: str, format: str = 'markdown'):
     else:
         image = next(iter(sorted(target.glob('scan-*.png'), key=lambda p: p.stat().st_mtime, reverse=True)), None)
         return {'scan_id': scan_id, **render(target, record, jobs.read(target)['runtime'], format, str(image) if image else None)}
-    return {'scan_id': scan_id, 'format': format, 'path': relative(path), 'provenance': record['provenance'], 'professional_acceptance': False}
+    return {'scan_id': scan_id, 'format': format, **file_location(path), 'provenance': record['provenance'], 'professional_acceptance': False}

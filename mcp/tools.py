@@ -1,4 +1,5 @@
 """Shared public tool registry for the standalone CLI and standard MCP service."""
+from functools import wraps
 from adapters import ToolExecutionError
 from business import (MCInputError, apply_repair, diagnose_log, get_case, list_cases, preview_repair,
                       read_repair_plan, search_knowledge)
@@ -124,6 +125,7 @@ for tool in TOOLS:
 
 
 def safe_business(function):
+    @wraps(function)
     def call(**arguments):
         try:
             return function(**arguments)

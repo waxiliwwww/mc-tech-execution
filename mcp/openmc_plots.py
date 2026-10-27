@@ -6,7 +6,7 @@ from pathlib import Path
 import uuid
 
 import openmc_jobs as jobs
-from openmc_runtime import Error, api, relative
+from openmc_runtime import Error, api, relative, file_location
 
 
 def options(style, format, title):
@@ -27,7 +27,7 @@ def plot_results(job_id: str, tally_id: int | None = None, score: str | None = N
               'max_points': record['runtime'].get('max_plot_points', 20000),
               'source_sha256': record['output_files'][point.name]}
     value = api('plot-result', target, params, record['runtime'])
-    return {'job_id': job_id, **value, 'path': relative(target / filename),
+    return {'job_id': job_id, **value, **file_location(target / filename),
             'series_json': relative(target / value['series_json']), 'series_csv': relative(target / value['series_csv']),
             'provenance': record['provenance'], 'professional_acceptance': False}
 
@@ -78,6 +78,6 @@ def plot_scan(scan_id: str, x_parameter: str, metric: str = 'keff', fixed: dict 
     filename = 'scan-' + uuid.uuid4().hex[:12] + '.' + format
     value = api('plot-series', target, {'series': series, 'filename': filename, 'style': 'line',
                 'title': title, 'provenance': record['provenance']}, runtime)
-    return {'scan_id': scan_id, **value, 'path': relative(target / filename),
+    return {'scan_id': scan_id, **value, **file_location(target / filename),
             'series_json': relative(target / value['series_json']), 'series_csv': relative(target / value['series_csv']),
             'provenance': record['provenance'], 'professional_acceptance': False}
