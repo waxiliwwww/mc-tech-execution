@@ -8,6 +8,9 @@ printf '开始校验：检查依赖并运行工程测试。\n'
 printf '[1/4] 检查 Python 依赖...\n'
 if [[ ! -x mcp/.venv/bin/python ]]; then "${PYTHON:-python3}" -m venv mcp/.venv; fi
 mcp/.venv/bin/python -m pip install --disable-pip-version-check --quiet -r mcp/requirements.txt
+if [[ -n "${MC_TEST_OPENMC_CONFIG:-}" ]]; then
+  mcp/.venv/bin/python -m pip install --disable-pip-version-check --quiet -r tests/requirements-real.txt
+fi
 mcp/.venv/bin/python -m pip check > artifacts/python-dependencies.log
 printf '[2/4] 安装锁定的 Harness 开发依赖...\n'
 corepack pnpm@10.23.0 --dir harness install --frozen-lockfile --ignore-scripts > artifacts/node-dependencies.log

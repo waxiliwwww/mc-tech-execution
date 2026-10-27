@@ -111,9 +111,7 @@ def submit_job(case_dir: str, mode: str = 'run', threads: int = 1) -> dict:
     return jobs.submit(case_dir, mode, threads)
 
 
-def read_results(job_id: str, max_values: int = 1000) -> dict:
-    if type(max_values) is not int or not 1 <= max_values <= 10000:
-        raise Error('max_values须为1..10000')
+def verified_result(job_id: str):
     status = jobs.status(job_id)
     if status['state'] != 'completed':
         raise Error('作业尚未成功完成；先查询openmc_job_status')
@@ -135,6 +133,14 @@ def read_results(job_id: str, max_values: int = 1000) -> dict:
         raise Error('结果文件不能是符号链接')
     if not point.is_file() or jobs.file_hash(point) != record['output_files'][point.name]:
         raise Error('结果文件缺失或已在计算后改变；不能作为本作业原始产物读取')
+    return directory, record, point
+
+
+def read_results(job_id: str, max_values: int = 1000) -> dict:
+    if type(max_values) is not int or not 1 <= max_values <= 10000:
+        raise Error('max_values须为1..10000')
+    directory, record, point = verified_result(job_id)
+    status = jobs.status(job_id)
     cfg = jobs.read(directory)['runtime']
     data = api('results', directory / 'work', {'statepoint': point.name, 'max_values': max_values}, cfg)
     data.update(job_id=job_id, provenance=status['provenance'],
@@ -145,6 +151,9 @@ def read_results(job_id: str, max_values: int = 1000) -> dict:
 
 
 def export_report(job_id: str, format: str = 'markdown') -> dict:
+    if format in ('pdf', 'doc', 'docx'):
+        from openmc_reports import export_job
+        return export_job(job_id, format)
     if format not in ('markdown', 'csv'):
         raise Error('首版支持markdown/csv；PDF和DOC仍列在后续计划中')
     data = read_results(job_id)

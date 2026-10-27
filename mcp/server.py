@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Generic MCP host, 2026-10-13. Start with ./start.sh; customize tools.py."""
 import asyncio
+import base64
 import contextlib
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -20,7 +21,7 @@ from urllib.parse import urlsplit
 from mcp.server.lowlevel import Server
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from mcp.server.transport_security import TransportSecuritySettings, TransportSecurityMiddleware
-from mcp.types import CallToolResult, TextContent, Tool
+from mcp.types import CallToolResult, ImageContent, TextContent, Tool
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -216,6 +217,14 @@ def create_app(config, log, tools=None):
             result = await execute_tool(registry[name], arguments)
             with contextlib.suppress(Exception):
                 log.emit("INFO", "tool.executed", name=name, arguments=parameters)
+            if name in ('openmc_plot_results', 'openmc_plot_scan') and result.get('path', '').endswith('.png'):
+                from openmc_runtime import path_in_workspace
+                preview = path_in_workspace(result['path'], internal=True)
+                if preview.stat().st_size <= 2 * 1024 * 1024:
+                    data = preview.read_bytes()
+                    if data.startswith(b'\x89PNG\r\n\x1a\n'):
+                        return CallToolResult(structuredContent=result, content=[TextContent(type='text', text=json.dumps(result, ensure_ascii=False)),
+                                              ImageContent(type='image', data=base64.b64encode(data).decode(), mimeType='image/png')])
             return result
         except Exception as error:
             # The user requested submitted arguments. Auth headers, environment

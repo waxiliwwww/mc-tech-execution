@@ -23,6 +23,28 @@ def execute(action: str, params: dict) -> dict:
 
     if action == 'probe':
         return {'python_api': True, 'api_version': openmc.__version__}
+    if action in ('plot-result', 'plot-series', 'render-report', 'select-series'):
+        from openmc_visuals import draw, plot_result, render_docx, selected_series
+        if action == 'plot-result':return plot_result(params)
+        if action == 'plot-series':return draw(params['series'], Path(params['filename']), params)
+        if action == 'render-report':return render_docx(params)
+        with openmc.StatePoint(params['statepoint'], autolink=False) as point:
+            return selected_series(point, params)
+    if action in ('parameters', 'check-parameters', 'update-parameters'):
+        from openmc_parameters import apply, checked, describe, load_model, write_parameters
+        model = load_model()
+        if action == 'parameters':
+            return {'parameters': describe(model), 'note': '仅列当前适配器支持的公开属性；sum密度及未适配表面不提供修改入口。'}
+        if action == 'check-parameters':
+            for values in params['combinations']:checked(model, values)
+            return {'valid': True, 'combinations': len(params['combinations']), 'parameters': describe(model)}
+        changes = apply(model, params['parameters'])
+        write_parameters(model, params['parameters'])
+        marker = Path('mc-case.json')
+        info = json.loads(marker.read_text()) if marker.exists() else {'data_kind': 'user_supplied_unverified'}
+        info.update(parameter_changes=changes, professional_acceptance=False)
+        marker.write_text(json.dumps(info, ensure_ascii=False, indent=2, default=numpy_scalar), encoding='utf-8')
+        return {'changes': changes, 'professional_acceptance': False}
     if action == 'create':
         template = params['template']
         if template == 'synthetic-mgxs':
@@ -72,6 +94,12 @@ def execute(action: str, params: dict) -> dict:
             model.plots = openmc.Plots([plot])
         model.export_to_xml()
         model.plots.export_to_xml()
+        if template == 'synthetic-mgxs':
+            # Keep the generated engineering example movable with its own data file.
+            from lxml import etree as ET
+            tree = ET.parse('materials.xml')
+            tree.getroot().find('cross_sections').text = 'synthetic-mgxs.h5'
+            tree.write('materials.xml', encoding='utf-8', xml_declaration=True)
         marker = {'template': template, 'data_kind': data_kind, 'openmc_version': openmc.__version__,
                   'professional_acceptance': False, 'note': note}
         Path('mc-case.json').write_text(json.dumps(marker, ensure_ascii=False, indent=2), encoding='utf-8')

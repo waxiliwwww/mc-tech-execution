@@ -9,7 +9,7 @@
 执行 `./start.sh`。本机默认无需凭据。远程监听配置：
 
 ```json
-{"host":"0.0.0.0","port":8770,"path":"/mcp","publicUrl":"https://your-server.example/mcp","name":"mc-agent-tools","version":"0.2.0","clientName":"mc"}
+{"host":"0.0.0.0","port":8770,"path":"/mcp","publicUrl":"https://your-server.example/mcp","name":"mc-agent-tools","version":"0.3.0","clientName":"mc"}
 ```
 
 服务器环境设置 `MCP_AUTH_TOKEN`，通过现有HTTPS入口提供服务。publicUrl必须是真实客户端地址，不是监听通配地址。启动成功后生成connection.json，其中密钥是环境变量占位符；不要把真实token写入配置或工具说明。`/info`与MCP使用相同Bearer，`/health`只检查进程。
@@ -20,4 +20,6 @@ diagnose_log只提供待业务审定的日志规则提示；preview_repair/read_
 
 通用程序/HTTP适配器仍在adapters.py中。后续接入实际蒙卡脚本时提供固定argv、工作目录、输入输出schema、运行依赖和参考样例。长计算应由业务接口返回任务ID并实现查询、取消，不能占用同步工具无限等待。
 
-本服务现有8个OpenMC接口和原7个辅助接口，实时清单以标准MCP发现为准。宿主终端（本项目 `harness/`）另有本地工具 `read`、`bash`、`edit`、`write`，不经过本服务；边界见 [Harness 手册](../harness/README.md)。
+本服务已扩展参数扫描、图表、报告及产物清单，原7个辅助接口保留；实时清单以标准MCP发现为准。宿主终端（本项目 `harness/`）另有本地工具 `read`、`bash`、`edit`、`write`，不经过本服务；边界见 [Harness 手册](../harness/README.md)。
+
+图表工具可返回标准MCP图像内容及结构化结果；所有文件保存在服务端。openmc_list_artifacts提供清单/路径/大小/哈希，本轮未增加远程下载路由。Codex与DSH配置见[平台接入](../docs/MCP平台接入.md)。

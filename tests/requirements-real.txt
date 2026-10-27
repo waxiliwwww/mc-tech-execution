@@ -1,0 +1,4 @@
+# Validation only; these are not product runtime dependencies.
+pypdf==6.21.2
+olefile==0.47
+PyMuPDF==2.0

@@ -12,6 +12,8 @@ parser.add_argument('--prefix', required=True, help='已安装OpenMC的Conda/mic
 args = parser.parse_args()
 prefix = Path(args.prefix).resolve()
 config = json.loads((root / 'config/openmc.json').read_text())
+target = root / 'config/openmc.local.json'
+if target.exists():config.update(json.loads(target.read_text()))
 python = prefix / 'bin/python'
 solver = prefix / 'bin/openmc'
 try:
@@ -22,7 +24,6 @@ try:
 except (OSError, subprocess.SubprocessError, ValueError) as error:
     raise SystemExit('配置未修改：' + str(error))
 config.update(python_command=[str(python)], openmc_command=[str(solver)])
-target = root / 'config/openmc.local.json'
 target.write_text(json.dumps(config, ensure_ascii=False, indent=2) + '\n')
 os.chmod(target, 0o600)
 print('已配置OpenMC ' + api_version + '：' + str(target))

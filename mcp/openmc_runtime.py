@@ -60,6 +60,9 @@ def config() -> dict:
     for key in ('api_timeout_seconds', 'job_timeout_seconds', 'max_log_bytes'):
         if type(value.get(key)) is not int or value[key] <= 0:
             raise Error(key + "须为正整数")
+    for key in ('max_scan_cases', 'max_plot_points', 'max_report_rows', 'report_timeout_seconds'):
+        if key in value and (type(value[key]) is not int or value[key] <= 0):
+            raise Error(key + '须为正整数')
     if not isinstance(value.get('expected_version'), str) or not value['expected_version']:
         raise Error("expected_version须填写已核实的OpenMC版本")
     if value.get('data_kind') not in ('user_supplied_unverified', 'mock_process_fixture'):
@@ -109,7 +112,7 @@ def command(cfg: dict, directory: Path, *, action: str | None = None,
 
 def api(action: str, directory: Path, payload: dict, cfg: dict | None = None) -> dict:
     cfg = cfg or config()
-    payload = {**payload, '_expected_version': cfg['expected_version']}
+    payload = {**payload, '_expected_version': cfg['expected_version'], '_font_path': cfg.get('font_path')}
     try:
         result = subprocess.run(command(cfg, directory, action=action), cwd=directory,
                                 input=json.dumps(payload, allow_nan=False), text=True,

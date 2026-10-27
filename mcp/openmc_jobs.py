@@ -72,16 +72,32 @@ def update(directory: Path, **fields) -> dict:
         return value
 
 
-def submit(case_dir: str, mode: str = 'run', threads: int = 1) -> dict:
+def spawn_worker(directory: Path, script: str, identifier: str) -> None:
+    try:
+        with (directory / 'worker.log').open('ab') as log:
+            process = subprocess.Popen([sys.executable, str(ROOT / 'mcp' / script), identifier],
+                                       stdin=subprocess.DEVNULL, stdout=log, stderr=log,
+                                       start_new_session=True,
+                                       env={**os.environ, 'MC_WORKSPACE': str(workspace())})
+        update(directory, worker_pid=process.pid, worker_identity=identity(process.pid))
+        threading.Thread(target=process.wait, daemon=True).start()
+    except OSError as exc:
+        update(directory, state='failed', error='计算监控进程启动失败', finished_at=time.time())
+        raise Error('计算监控进程启动失败') from exc
+
+
+def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | None = None,
+           _internal: bool = False, _job_id: str | None = None) -> dict:
     if not sys.platform.startswith('linux'):
         raise Error('本地持久作业目前支持Linux/WSL；其他系统请在Linux服务器部署MCP')
     if mode not in ('run', 'plot', 'geometry-debug') or type(threads) is not int or not 1 <= threads <= 64:
         raise Error('mode须为run/plot/geometry-debug；threads须为1..64')
-    source = path_in_workspace(case_dir)
+    source = path_in_workspace(case_dir, internal=_internal)
     if not source.is_dir() or source == workspace():
         raise Error('case_dir须为工作区内的具体算例子目录')
-    cfg = config()
-    job_id = uuid.uuid4().hex
+    cfg = _runtime or config()
+    job_id = _job_id or uuid.uuid4().hex
+    if not re.fullmatch('[a-f0-9]{32}', job_id):raise Error('无效预留作业编号')
     jobs = path_in_workspace('.mc-jobs', exists=False, internal=True)
     jobs.mkdir(exist_ok=True)
     directory = jobs / job_id
@@ -98,18 +114,7 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1) -> dict:
               'provenance': provenance(source, cfg), 'runtime': cfg,
               'work_dir': relative(copied), 'input_files': input_files}
     atomic_json(directory / 'job.json', record)
-    try:
-        with (directory / 'worker.log').open('ab') as log:
-            process = subprocess.Popen([sys.executable, str(ROOT / 'mcp/openmc_jobs.py'), job_id],
-                                       stdin=subprocess.DEVNULL, stdout=log, stderr=log,
-                                       start_new_session=True,
-                                       env={**os.environ, 'MC_WORKSPACE': str(workspace())})
-        update(directory, worker_pid=process.pid, worker_identity=identity(process.pid))
-        # Reap the detached worker in a long-lived MCP service; CLI exits do not own its lifetime.
-        threading.Thread(target=process.wait, daemon=True).start()
-    except OSError as exc:
-        update(directory, state='failed', error='作业监控进程启动失败', finished_at=time.time())
-        raise Error('作业监控进程启动失败') from exc
+    spawn_worker(directory, 'openmc_jobs.py', job_id)
     return {'job_id': job_id, 'state': read(directory)['state'],
             'provenance': record['provenance'], 'next': '使用openmc_job_status查询，提交不等于计算完成。'}
 
@@ -147,7 +152,12 @@ def cancel(job_id: str) -> dict:
     if value['state'] in TERMINAL:
         return {'job_id': job_id, 'state': value['state'], 'changed': False}
     pid = value.get('worker_pid')
-    if not pid or not value.get('worker_identity') or identity(pid) != value['worker_identity']:
+    if not pid:
+        # A scan may have died after preparing the record but before worker startup.
+        # Keep the durable request even if the worker is just entering Python.
+        update(directory, cancel_requested=True, state='cancelled', finished_at=time.time())
+        return {'job_id': job_id, 'state': 'cancelled', 'changed': True}
+    if not value.get('worker_identity') or identity(pid) != value['worker_identity']:
         return {**status(job_id), 'changed': False}
     # The worker polls this durable request, including before solver startup.
     # Avoid SIGTERM before Python has installed its handler for a newly queued job.

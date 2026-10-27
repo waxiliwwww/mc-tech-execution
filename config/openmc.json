@@ -6,5 +6,10 @@
   "data_kind": "user_supplied_unverified",
   "api_timeout_seconds": 120,
   "job_timeout_seconds": 3600,
-  "max_log_bytes": 10485760
+  "max_log_bytes": 10485760,
+  "max_scan_cases": 100,
+  "max_plot_points": 20000,
+  "max_report_rows": 1000,
+  "report_timeout_seconds": 120,
+  "office_command": ["soffice"]
 }

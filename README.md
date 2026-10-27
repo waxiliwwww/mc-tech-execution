@@ -1,111 +1,102 @@
 # MC 技术执行工具包
 
-把OpenMC等蒙卡程序的公开能力封装成独立软件工具，提供直接CLI、标准MCP服务、配置和调用示例，供下游平台接入与甲方联调。专业计算复用已有求解器，运行不依赖Harness。
+把OpenMC等蒙卡程序的公开能力封装为独立工具包。可直接在终端调用，也可作为标准MCP服务接入智能体。源码、配置模板、示例、测试与说明随包提供；运行不依赖其他项目源码，也不依赖Harness。Harness是可选客户端，可以换成其他MCP宿主。
 
-当前源码版本0.2.0，OpenMC适配基线0.16.0（本轮核实的最新正式版）。这是接口工程迭代，全部15项合同功能与正式验收的状态见[开发计划](docs/验收导向开发计划.md)。
+当前版本0.3.0，OpenMC适配基线0.16.0。这是可执行的接口工程版本；全部15项合同功能的状态、专业验证条件和后续路线见[开发计划](docs/验收导向开发计划.md)。
 
-## 现在能做什么
+## 能做什么、什么时候用
 
-| 能力 | 当前范围 |
+| 功能 | 当前范围 |
 | --- | --- |
-| 环境探测 | 分别检查OpenMC Python API、可执行程序和版本；核数据单独配置 |
-| 示例输入 | 通过公开API生成合成单群截面示例或官方PWR pin-cell，输出实际XML文件 |
-| 输入检查 | XML结构、基础运行参数和可选官方API模型读取；不作专业正确性判定 |
-| 本地作业 | 计算、绘图、几何调试的提交/查询/取消，保存输入快照、退出码、日志和本作业产物 |
-| 结果与报告 | 用StatePoint读取keff、tally均值/标准差及维度，导出Markdown/CSV |
-| 辅助接口 | 保留日志规则提示、人工确认文本修复、本地文本检索、基准目录查询 |
-| 分发 | 独立MCP服务、可选Harness客户端、源码包和校验清单 |
+| 准备与检查环境 | Quick Start准备运行依赖，分别检查OpenMC API、求解器和版本 |
+| 输入模型 | 生成合成截面示例或官方pin-cell，检查XML及API解析，发现并修改已适配参数 |
+| 计算与扫描 | 本地计算、几何绘图/调试；参数笛卡尔组合串行扫描；查询、取消、逐项结果与失败记录 |
+| 结果图表 | 从完整StatePoint选择tally、score、nuclide和filter，生成PNG/SVG及对应数据；支持扫描曲线 |
+| 报告 | 单作业或扫描导出Markdown、CSV、DOCX、PDF及真实Word97 DOC |
+| 产物管理 | 服务端按计算/扫描目录保存；清单含路径、大小和SHA256；本轮不提供远程下载 |
+| 调用方式 | CLI无需模型；MCP可供Codex等宿主使用；保留原日志、确认文本修复、文本检索等辅助工具 |
 
-新8个OpenMC接口与原7个辅助接口共用同一注册表。工具数量不等于合同功能完成数；CAD、HPC、批量、微调生成、完整专业规则、PDF/DOC等仍需按计划补齐。
+先用示例确认环境和接口，再换入正式模型/核数据。业务联调时核对参数、结果及产物；智能体只负责选择和编排这些工具。工具数量不等于合同功能完成数，CAD、HPC、微调输入生成及专业规则等仍在后续计划中。
 
-## 什么时候用
+## Quick Start：准备一次，随后直接使用
 
-- 开发者先用CLI验证接口，无需模型密钥或启动MCP服务。
-- 下游接入智能体/其他MCP宿主时启动MCP服务，工具定义由协议发现。
-- 甲方接到源码或部署包后，按示例复现，再替换为正式模型、核数据和环境开展联调。
-
-## 环境与安装
-
-首版在Linux/WSL运行。本地持久作业依赖Linux进程接口；Windows用户可在WSL或Linux服务器部署服务，再远程接入。
-
-- MCP：Python 3.10+及`mcp/requirements.txt`，启动脚本自动创建项目虚拟环境。
-- OpenMC：求解器及Python API均为0.16.0；API要求Python≥3.12，可与MCP使用不同Python环境。
-- Harness：可选，需要Node.js 22。仅调用CLI/MCP时无需Node。
-- 核数据：合成示例自行生成单群数据，无需下载真实核数据库；正式模型使用对应核数据。合成示例不代表真实物理结果或合同验收。
-
-安装OpenMC可参照[官方安装说明](https://docs.openmc.org/en/stable/quickinstall.html)，例如已有Conda时：
+服务端支持Linux/WSL，建议Debian/Ubuntu。准备基础环境：Bash、Python3.10+（含venv）、curl、tar/bzip2；自动准备Office还需要apt-get和dpkg-deb。首次需要访问软件源并预留数GB磁盘，后续计算不访问其他开发目录；正式核数据库另行配置。
 
 ```bash
-conda create -n mc-openmc -c conda-forge python=3.12 openmc=0.16.0
-conda run -n mc-openmc python -c 'import sys; print(sys.prefix)'
+./quickstart.sh
+mcp/.venv/bin/python examples/scan_report_demo.py
 ```
 
-将上一条输出的环境目录填入：
+第一条创建项目内CLI/MCP虚拟环境、OpenMC0.16.0运行时和图表/报告依赖；没有系统LibreOffice时在项目内提取Office与中文字体，不修改系统安装或shell启动文件。安装阶段输出进度，失败则停止并保留诊断。可重新执行；不会覆盖计算数据。包不预装完整操作系统或核数据库。
+
+第二条无需模型密钥：创建合成单群截面输入→扫描三个宏观截面倍率→真实调用OpenMC→生成flux曲线和单个结果图→导出五种报告→列出服务端产物。进度在标准错误，JSON结果在标准输出。合成数据只验证工程链路，不代表真实材料或专业验收。
+
+已有OpenMC环境可复用：
 
 ```bash
-python3 mcp/configure_openmc.py --prefix /实际的环境目录
+./quickstart.sh --openmc-prefix /实际的OpenMC环境目录
 ```
 
-脚本先核对API和可执行程序版本，再生成本机`config/openmc.local.json`。它不入Git、不进入部署包；换机器后重新配置。配置优先级：CLI `--config` > `MC_OPENMC_CONFIG` > 本机local文件 > `config/openmc.json`。默认配置通过PATH查找python3和openmc，不自动安装/切换求解器或用模拟结果兜底。
+非Debian/Ubuntu可先按[OpenMC官方安装说明](https://docs.openmc.org/en/stable/quickinstall.html)及LibreOffice安装说明准备环境，再指定已有prefix；也可`--skip-office`先用Markdown/CSV/DOCX（示例加`--formats markdown csv docx`）。PDF/DOC需要转换组件，缺依赖会明确失败，不伪造文件。
 
-## 最快跑一次：不需要智能体
+配置优先级：CLI `--config` > `MC_OPENMC_CONFIG` > `config/openmc.local.json` > `config/openmc.json`。本机local配置不入Git/部署包。换目录或换机器后重新执行Quick Start配置运行环境。其他设置和逐步命令见[工具手册](docs/OpenMC工具使用说明.md)。
 
-在项目根目录执行：
+## 用终端或智能体调用
+
+先查工具、参数，再调用，无需启动MCP：
 
 ```bash
 ./mc.sh list
 ./mc.sh call openmc_environment
-mcp/.venv/bin/python examples/openmc_demo.py
+./mc.sh call openmc_list_parameters '{"case_dir":"实际算例相对目录"}'
 ```
 
-示例会新建独立目录，依次生成合成截面及XML、检查输入、真实调用OpenMC、查询完成、读取statepoint、导出两种报告。标准输出为完整JSON记录；进度在标准错误。结果返回`job_id`和报告相对路径，文件位于服务端`workspace/`，不是客户端本地路径。
-
-示例失败会返回非0并说明原因，不自动回退到模拟计算。可按返回作业编号继续查询。逐步命令、参数与返回值见[OpenMC工具使用说明](docs/OpenMC工具使用说明.md)。
-
-## 通过MCP调用
-
-终端A：
+需要智能体使用时：
 
 ```bash
 ./mcp/start.sh
 ```
 
-默认地址`http://127.0.0.1:8770/mcp`；`/info`提供便于阅读的接入信息，正式工具发现及调用遵守MCP。
-
-终端B，可先用标准MCP客户端运行同一示例：
+默认地址`http://127.0.0.1:8770/mcp`。Codex添加一次即可发现工具：
 
 ```bash
-mcp/.venv/bin/python examples/openmc_demo.py --mcp-url http://127.0.0.1:8770/mcp
+codex mcp add mc --url http://127.0.0.1:8770/mcp
 ```
 
-其他宿主填同一服务URL即可发现工具。远程部署设置`mcp/service.config.json`的监听地址、publicUrl及服务器环境中的`MCP_AUTH_TOKEN`，通过已有HTTPS入口接入；见[mcp/README](mcp/README.md)。跨机器时输入模型和产物位于服务端工作区，远程文件传输按现场环境安排，本版没有新增任意文件上传下载服务。
+在新的Codex会话中可说：“用mc工具创建一个合成示例，查看支持的参数；扫描材料宏观截面倍率0.8、1.0、1.2，完成后画flux曲线、导出PDF并列出产物。合成数据只做工程验证。”宿主仍需可用的模型及工具调用权限，模型响应和专业结果另行验证。
 
-如需终端自然语言交互，按[Harness手册](harness/README.md)配置模型后执行`./harness/run.sh`。MCP包可配其他宿主；Harness也可接其他标准MCP，不互相绑定。输入修改的人工确认由使用宿主执行，换宿主要配置其审批策略。
+[Codex与DSH接入说明](docs/MCP平台接入.md)提供带鉴权配置、DSH示例及自然语言用法。远程部署在[mcp配置](mcp/README.md)设置真实访问URL、Bearer环境变量和现有HTTPS入口；工具与宿主解耦。仅运行工具无需Node.js；可选Harness需要Node22，使用方法见[harness/README](harness/README.md)。
 
-## 验证与打包
+先不用智能体也能检验MCP整条流程：
 
-**验证检查当前代码行为；打包用于交给别人部署和保留版本。**
+```bash
+mcp/.venv/bin/python examples/scan_report_demo.py --mcp-url http://127.0.0.1:8770/mcp
+```
+
+## 产物在哪里
+
+默认在服务端`workspace/`：每次计算在`.mc-jobs/<job_id>/`，每次扫描在`.mc-scans/<scan_id>/`。扫描记录保存参数与每次计算编号，汇总JSON/CSV、图表及报告在扫描目录。调用`openmc_list_artifacts`返回文件相对路径、服务端绝对位置、大小及哈希；返回路径不表示客户端已经下载文件。
+
+原始输入不被扫描覆盖，各组从同一基线复制。失败/取消/未执行项保留；缺失结果不填0。MCP服务重启后按已有编号查询，不重新提交；监控进程丢失标interrupted，需人工查询并取消其已记录计算。结果会占用磁盘，不自动清理；结束后可由部署人员归档，清理后对应编号将不能继续查询。远程下载按本轮决定后续再做。
+
+## 验证与打包各有什么用
+
+**验证检查代码和实际行为；打包用于交给别人部署及保留源码版本。**
 
 ```bash
 ./verify.sh
 ./package.sh
 ```
 
-`verify.sh`运行工程测试及原Harness回归，不访问外部模型、不替代正式指标测试；成功会明确输出“校验成功”，详细日志在`artifacts/`。真实OpenMC示例另外运行，具体见[测试与验收说明](docs/测试与验收说明.md)。
+verify成功明确输出“校验成功”，日志在`artifacts/`。默认包含受控工程与Harness测试；真实OpenMC套件需显式启用，方法见[测试与验收说明](docs/测试与验收说明.md)。工具/报告的自测不替代全部合同验收。
 
-`package.sh`生成`dist/mc-tech-execution-0.2.0.tar.gz`、`MANIFEST.json`和`SHA256SUMS`，包含源码、运行入口、配置模板、固定Harness核心、示例和文档。它不自动验证，也不包含已安装环境、密钥、本机配置、运行结果或原始合同材料。接收方按本README安装运行依赖、配置OpenMC后使用；这不是预装核数据库的离线镜像。
+package生成`dist/mc-tech-execution-0.3.0.tar.gz`、`MANIFEST.json`和`SHA256SUMS`，包含源码、Quick Start、示例、配置和文档。打包不自动验证，不包含已安装环境、密钥、本机配置、计算产物或原始合同。接收方解压后先运行Quick Start；这份源码包不是完全离线的预装镜像。相同版本打包会覆盖同名文件，留版前保留旧包与测试证据。
 
-同版本重打包会覆盖同名文件，正式留版应先保存旧包与测试证据，更新`VERSION`并提交Git。修改Harness源码后按其手册先构建再验证。
+## 开发与Git入口
 
-## 开发与交付入口
+- [开发计划](docs/验收导向开发计划.md)：15项工具、公开接口、测法、协作条件和实际状态。
+- [工具使用说明](docs/OpenMC工具使用说明.md)：支持参数、调用示例、失败处理和来源。
+- [测试与验收说明](docs/测试与验收说明.md)：工程用例、真实运行、专业验收和证据。
+- [实施与验收边界](docs/实施与验收.md)：当前实现与合同要求的关系。
 
-- [开发计划](docs/验收导向开发计划.md)：15项功能、公开接口、测试方法、协作条件及当前状态。
-- [工具使用说明](docs/OpenMC工具使用说明.md)：新8工具、调用方法、来源和限制。
-- [测试与验收说明](docs/测试与验收说明.md)：工程/真实运行/专业验收分层及执行方法。
-- [实施与验收边界](docs/实施与验收.md)：当前实现与原合同要求之间的关系。
-
-## Git管理
-
-远端为私有仓库`waxiliwwww/mc-tech-execution`。Git保存源码和公共配置/示例；原始合同`references/`、本机密钥与local配置、运行数据、环境和测试日志均忽略。私有仓库权限不代替项目资料使用权限。
-
-日常先看`git status`，完成一批修改后检查差异、自测并提交，再推送。不要把“代码已推送”写成“服务已重启”或“甲方验收通过”。源码打包与测试记录分开保存，实际运行环境按说明复现。
+私有仓库为`waxiliwwww/mc-tech-execution`。Git保存源码和公共配置/示例；`references/`原始合同、密钥、local配置、环境及运行证据均忽略。修改一批后检查差异、自测、提交再推送。源码推送、服务启动和甲方验收分别记录。
