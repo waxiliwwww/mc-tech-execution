@@ -29,7 +29,8 @@ async def demo(args):
         definition = await call('get_case', {'case_id': 'openmc-pincell-mg'})
         print('2/5 生成官方多群燃料棒例题（公开C5G7数据）', file=sys.stderr)
         name = args.case_dir or 'demos/public-mg-' + uuid.uuid4().hex[:10]
-        case = await call('openmc_prepare_example', {'case_id': 'openmc-pincell-mg', 'case_dir': name})
+        parameters = {key: getattr(args, key) for key in ('particles', 'batches', 'inactive') if getattr(args, key) is not None}
+        case = await call('openmc_prepare_example', {'case_id': 'openmc-pincell-mg', 'case_dir': name, **parameters})
         validation = await call('openmc_validate_inputs', {'case_dir': name, 'api_check': True})
         print('3/5 真实计算并查询终态', file=sys.stderr)
         submitted = await call('openmc_submit_job', {'case_dir': name})
@@ -51,6 +52,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--mcp-url')
     parser.add_argument('--case-dir')
+    parser.add_argument('--particles', type=int, help='每代粒子数；省略时采用工具默认值')
+    parser.add_argument('--batches', type=int, help='总批次；应与inactive共同满足工具约束')
+    parser.add_argument('--inactive', type=int, help='非活跃批次；省略时采用工具默认值')
     parser.add_argument('--timeout', type=float, default=120)
     parser.add_argument('--report-format', choices=['markdown', 'csv', 'docx', 'pdf', 'doc'], default='markdown')
     output_option(parser)

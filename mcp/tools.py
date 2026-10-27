@@ -1,5 +1,6 @@
 """Shared public tool registry for the standalone CLI and standard MCP service."""
 from functools import wraps
+import inspect
 from adapters import ToolExecutionError
 from business import (MCInputError, apply_repair, diagnose_log, get_case, list_cases, preview_repair,
                       read_repair_plan, search_knowledge)
@@ -13,6 +14,7 @@ from openmc_artifacts import list_artifacts
 from openmc_knowledge import list_sources, read as read_knowledge
 from openmc_examples import prepare_example
 from openmc_diagnostics import diagnose_job, prepare_repair, recheck_repair
+from tool_metadata import document_tools
 
 
 def schema(properties, required=()):
@@ -65,7 +67,7 @@ TOOLS += [
     {"name": "openmc_read_results", "description": "通过官方StatePoint读取已成功计算的keff及tally均值/标准差；保留计分维度、数据来源和截断说明，不进行专业验收。",
      "inputSchema": schema({"job_id": TEXT, "max_values": {"type": "integer", "minimum": 1, "maximum": 10000}}, ["job_id"]),
      "outputSchema": OUTPUT, "function": read_results},
-    {"name": "openmc_export_report", "description": "导出已完成计算的Markdown/CSV/PDF/DOCX或真实Word97 DOC报告，保留来源及不可用统计量提示。PDF/DOC需初始配置LibreOffice。",
+    {"name": "openmc_export_report", "description": "导出已完成计算的Markdown/CSV/PDF/DOCX或真实Word97 DOC报告，保留来源及不可用统计量提示。PDF/DOC需配置LibreOffice。同一作业同格式重复导出会覆盖报告，留多版须归档。",
      "inputSchema": schema({"job_id": TEXT, "format": {"type": "string", "enum": ["markdown", "csv", "pdf", "docx", "doc"]}}, ["job_id"]),
      "outputSchema": OUTPUT, "function": export_report,
      "annotations": {"readOnlyHint": False, "destructiveHint": False}},
@@ -116,7 +118,7 @@ TOOLS += [
      "inputSchema": schema({"scan_id": TEXT, "x_parameter": TEXT, "metric": {"type": "string", "enum": ['keff', 'tally']},
                             "fixed": NUMBERS, "bin_index": {"type": "integer", "minimum": 0}, **PLOT_FIELDS}, ['scan_id', 'x_parameter']),
      "outputSchema": OUTPUT, "function": plot_scan, "annotations": WRITE},
-    {"name": "openmc_export_scan_report", "description": "导出扫描的Markdown/CSV/PDF/DOCX/Word97 DOC报告，逐项保留参数、状态和结果；若已生成PNG扫描曲线则纳入Word/PDF报告。",
+    {"name": "openmc_export_scan_report", "description": "导出扫描Markdown/CSV/PDF/DOCX/Word97 DOC报告，逐项保留参数、状态和结果；已有PNG曲线纳入Word/PDF。同批次同格式重复导出会覆盖，留多版须归档。",
      "inputSchema": schema({"scan_id": TEXT, "format": {"type": "string", "enum": ['markdown', 'csv', 'pdf', 'docx', 'doc']}}, ['scan_id']),
      "outputSchema": OUTPUT, "function": export_scan, "annotations": WRITE},
 ]
@@ -125,6 +127,12 @@ for tool in TOOLS:
 
 
 def safe_business(function):
+    if inspect.iscoroutinefunction(function):
+        @wraps(function)
+        async def call_async(**arguments):
+            try:return await function(**arguments)
+            except MCInputError as error:raise ToolExecutionError(str(error)) from error
+        return call_async
     @wraps(function)
     def call(**arguments):
         try:
@@ -134,5 +142,12 @@ def safe_business(function):
     return call
 
 
-for tool in TOOLS:
-    tool["function"] = safe_business(tool["function"])
+def prepare_tools(definitions):
+    """Finalize any supported adapter without treating programs as functions."""
+    for tool in definitions:
+        if 'function' in tool:
+            tool['function'] = safe_business(tool['function'])
+    return document_tools(definitions)
+
+
+prepare_tools(TOOLS)

@@ -88,6 +88,15 @@ class ProjectIntegration(unittest.IsolatedAsyncioTestCase):
         with urllib.request.urlopen(self.url.replace("/mcp", "/info")) as response:
             info = json.load(response)
         self.assertEqual({t.name for t in tools}, {t["name"] for t in info["tools"]})
+        found = {tool.name:tool for tool in tools}
+        for tool in tools:
+            for field in tool.inputSchema.get('properties',{}).values():self.assertTrue(field.get('description'))
+        submitted = found['openmc_submit_job'].inputSchema['properties']
+        self.assertIn('MC_WORKSPACE',submitted['case_dir']['description'])
+        self.assertEqual(submitted['threads']['default'],1)
+        self.assertIn('job_id',found['openmc_submit_job'].outputSchema['properties'])
+        self.assertEqual(found['openmc_submit_scan'].inputSchema,
+                         next(t for t in info['tools'] if t['name']=='openmc_submit_scan')['inputSchema'])
         self.assertTrue({'openmc_submit_job', 'openmc_job_status', 'openmc_read_results'} <= {t.name for t in tools})
         self.assertFalse(self.data(await self.call("get_case", {"case_id": "CLEAR-S"}))["runnable"])
         self.assertEqual(self.data(await self.call("search_knowledge", {"query": "unfindable_76044865"}))["matches"], [])
