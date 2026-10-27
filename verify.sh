@@ -16,5 +16,10 @@ mcp/.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v > artifacts
 printf '[4/4] 运行 Harness 策略与终端测试...\n'
 node --test tests/harness-*.mjs > artifacts/harness-tests.log 2>&1
 printf '\n校验成功：已执行的工程检查均通过，未发现明显问题。\n'
-printf '检查范围：依赖一致性、MCP 调用、修复确认、Harness 模型备用策略。\n'
+printf '检查范围：依赖一致性、OpenMC 接口与计算作业、MCP 调用、修复确认、Harness 模型备用策略。\n'
+if [[ -n "${MC_TEST_OPENMC_CONFIG:-}" ]]; then
+  printf '真实 OpenMC 检查：已启用（合成截面工程联调，不作专业验收）。\n'
+else
+  printf '真实 OpenMC 检查：未启用，启用方法见 docs/测试与验收说明.md。\n'
+fi
 printf '详细记录：%s/artifacts\n' "$mc_verify_root"

@@ -38,6 +38,12 @@ class ProjectIntegration(unittest.IsolatedAsyncioTestCase):
         self.registry.write_text(json.dumps([{"name": "mc", "transport": "streamable-http", "url": self.url}]))
         self.env = {k: v for k, v in os.environ.items() if not k.startswith(("MCP_", "MC_", "HARNESS_"))}
         self.env.update(MCP_CONFIG_FILE=str(self.config), MC_WORKSPACE=str(self.workspace), MCP_CONNECTION_FILE=str(self.directory / "connection.json"))
+        runtime = json.loads((ROOT / 'config/openmc.json').read_text())
+        runtime.update(openmc_command=[sys.executable, str(ROOT / 'tests/fixtures/mock_openmc.py')],
+                       python_command=[sys.executable], data_kind='mock_process_fixture')
+        self.runtime_config = self.directory / 'openmc.json'
+        self.runtime_config.write_text(json.dumps(runtime))
+        self.env['MC_OPENMC_CONFIG'] = str(self.runtime_config)
         self.server = subprocess.Popen([sys.executable, str(ROOT / "mcp/server.py")], cwd=ROOT / "mcp", env=self.env, stdout=self.log, stderr=self.log)
         for _ in range(100):
             try:
@@ -82,7 +88,7 @@ class ProjectIntegration(unittest.IsolatedAsyncioTestCase):
         with urllib.request.urlopen(self.url.replace("/mcp", "/info")) as response:
             info = json.load(response)
         self.assertEqual({t.name for t in tools}, {t["name"] for t in info["tools"]})
-        self.assertEqual(len(tools), 7)
+        self.assertTrue({'openmc_submit_job', 'openmc_job_status', 'openmc_read_results'} <= {t.name for t in tools})
         self.assertFalse(self.data(await self.call("get_case", {"case_id": "CLEAR-S"}))["runnable"])
         self.assertEqual(self.data(await self.call("search_knowledge", {"query": "unfindable_76044865"}))["matches"], [])
         self.assertTrue(self.data(await self.call("search_knowledge", {"query": "particles"}))["matches"])
@@ -97,6 +103,39 @@ class ProjectIntegration(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(bad.isError)
         self.assertIn("文件在预览后发生变化", bad.content[0].text)
         self.assertEqual(self.input.read_text(), "edited elsewhere\n")
+
+    async def test_openmc_job_failure_and_query_use_actual_mcp(self):
+        case = self.workspace / 'case'; case.mkdir()
+        for name in ('materials', 'geometry', 'settings'):
+            (case / (name + '.xml')).write_text('<' + name + '/>')
+        (case / 'mock-mode.json').write_text(json.dumps({'mode': 'fail'}))
+        submitted = self.data(await self.call('openmc_submit_job', {'case_dir': 'case'}))
+        self.assertEqual(submitted['provenance']['execution_kind'], 'mock_process_fixture')
+        for _ in range(80):
+            status = self.data(await self.call('openmc_job_status', {'job_id': submitted['job_id']}))
+            if status['state'] in ('failed', 'completed', 'interrupted'):break
+            await asyncio.sleep(.05)
+        self.assertEqual(status['state'], 'failed')
+        self.assertEqual(status['exit_code'], 7)
+        bad = await self.call('openmc_read_results', {'job_id': submitted['job_id']})
+        self.assertTrue(bad.isError)
+        self.server.terminate(); self.server.wait(timeout=8)
+        self.server = subprocess.Popen([sys.executable, str(ROOT / 'mcp/server.py')],
+                                       cwd=ROOT / 'mcp', env=self.env, stdout=self.log, stderr=self.log)
+        for _ in range(100):
+            try:
+                with urllib.request.urlopen(self.url.replace('/mcp', '/health'), timeout=.2):break
+            except OSError:await asyncio.sleep(.05)
+        recovered = self.data(await self.call('openmc_job_status', {'job_id': submitted['job_id']}))
+        self.assertEqual(recovered['state'], 'failed')
+        self.assertEqual(recovered['exit_code'], 7)
+
+    async def test_openmc_bad_xml_returns_problem_list_without_computing(self):
+        case = self.workspace / 'case'; case.mkdir()
+        (case / 'geometry.xml').write_text('<geometry>')
+        result = self.data(await self.call('openmc_validate_inputs', {'case_dir': 'case'}))
+        self.assertFalse(result['structure_valid'])
+        self.assertTrue(result['problems'])
 
     async def test_noninteractive_harness_refuses_real_project_write(self):
         plan_id = await self.plan()

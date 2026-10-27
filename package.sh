@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Package MC sources, fixed kernels and reference inputs, 2026-10-13.
+# Package source/runtime examples; local credentials, raw contract materials and run data stay local.
 set -euo pipefail
 mc_package_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 python3 - "$mc_package_root" <<'PY'
@@ -7,7 +7,7 @@ from pathlib import Path
 import hashlib,json,sys,tarfile
 root=Path(sys.argv[1]); out=root/'dist'; out.mkdir(exist_ok=True)
 excluded={'node_modules','.venv','__pycache__','dist','logs','artifacts','.git','.mc-plans','.mc-backups'}
-allowed={'README.md','.gitignore','CHANGELOG.md','package.sh','verify.sh','mcp','harness','docs','config','knowledge','workspace','references','vendor','tests','examples'}
+allowed={'README.md','.gitignore','CHANGELOG.md','VERSION','mc.sh','package.sh','verify.sh','mcp','harness','docs','config','knowledge','workspace','vendor','tests','examples'}
 files=[]
 for path in sorted(root.rglob('*')):
     rel=path.relative_to(root)
@@ -16,9 +16,10 @@ for path in sorted(root.rglob('*')):
     if rel.parts[0]=='workspace' and rel.parts[1:2]!=('examples',): continue
     if path.is_symlink(): raise RuntimeError(f'Project archive must not contain symlinks: {rel}')
     if path.is_file(): files.append(path)
-manifest={'version':'0.1.0','files':{str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in files}}
+version=(root/'VERSION').read_text().strip()
+manifest={'version':version,'files':{str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in files}}
 (out/'MANIFEST.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n')
-archive=out/'mc-tech-execution-0.1.0.tar.gz'
+archive=out/f'mc-tech-execution-{version}.tar.gz'
 with tarfile.open(archive,'w:gz') as tar:
     for path in files: tar.add(path,arcname=str(Path('mc-tech-execution')/path.relative_to(root)),recursive=False)
     tar.add(out/'MANIFEST.json',arcname='mc-tech-execution/MANIFEST.json')

@@ -1,0 +1,10 @@
+{
+  "runtime": "native",
+  "expected_version": "0.16.0",
+  "python_command": ["python3"],
+  "openmc_command": ["openmc"],
+  "data_kind": "user_supplied_unverified",
+  "api_timeout_seconds": 120,
+  "job_timeout_seconds": 3600,
+  "max_log_bytes": 10485760
+}
