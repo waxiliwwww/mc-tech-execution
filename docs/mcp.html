@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>封装与部署 MCP · MC 工具包</title><link rel="stylesheet" href="assets/manual.css"><script src="assets/manual.js" defer></script></head>
+<body><a class="sr-only" href="#content">跳到正文</a><aside class="sidebar"><a class="brand" href="index.html">MC 工具包<br>使用与开发手册</a><p class="edition">OpenMC · 独立 MCP</p><nav aria-label="文档导航"><a href="index.html">认识工具包</a><a href="compute.html">完成一次计算</a><a href="inputs.html">自有模型与源码</a><a href="mcp.html" aria-current="page">封装与部署 MCP</a><a href="reference.html">查工具参数</a></nav><p class="minor">先沿一个实际任务操作。<br>参数全集随用随查。<br>本手册可离线打开。</p></aside><main id="content">
+<p class="eyebrow">供下游调用</p><h1>一个 MCP 服务，可以提供多个工具</h1>
+<p class="lead">MCP 是调用方发现和调用工具的标准协议。你需要准备可执行能力、参数说明与服务地址；平台连接后通过 <code>tools/list</code> 读取工具定义，再通过 <code>tools/call</code> 调用。</p>
+<div class="jump"><a href="#mc-service">发布现有 OpenMC 工具</a><a href="#own-service">封装自己的程序</a><a href="#register">接函数 / 程序 / API</a><a href="#handoff">交给调用方</a></div>
+<h2 id="mc-service">已经用本包计算，想开放远程调用</h2>
+<p>先按<a href="compute.html">计算教程</a>确认环境与输入可运行，然后在工具包根目录启动：</p>
+<pre class="command"><code>./mcp/start.sh</code></pre>
+<p>默认地址为 <code>http://127.0.0.1:8770/mcp</code>，传输为 Streamable HTTP，提供本包注册的全部工具。它调用的实现、参数校验和工作区与 CLI 一致；服务不需要 Harness 或模型账号。</p>
+<p>另开终端，在包根目录用标准 SDK 验证发现和一次调用：</p>
+<pre class="command"><code>mcp/.venv/bin/python examples/mcp_client.py --url http://127.0.0.1:8770/mcp
+mcp/.venv/bin/python examples/mcp_client.py --url http://127.0.0.1:8770/mcp --tool openmc_environment</code></pre>
+<p>第一条应返回工具列表及参数 Schema；第二条的 <code>structuredContent</code> 应含实际环境探测结果，<code>isError</code> 不应为 true。探活、协议成功和实际计算是三件事；还可将公开例题 demo 加 <code>--mcp-url</code>，复用同一工作流验证远端计算。</p>
+<h2 id="own-service">已有函数或程序：先创建独立服务</h2>
+<p>这条路线无需安装 OpenMC。在包根目录创建一个新的 Python 服务：</p>
+<pre class="command"><code>./create-mcp.sh ./my-mcp</code></pre>
+<p>它从包内固定源码模板复制完整服务，创建时不联网、不安装、不启动；目录必须是新的。生成的 <code>my-mcp/</code> 可以移到其它位置独立运行。TypeScript 业务可改用 <code>./create-mcp.sh ./my-ts-mcp --language typescript</code>。</p>
+<div class="table-wrap"><table><thead><tr><th>文件</th><th>你需要处理什么</th></tr></thead><tbody><tr><td><code>business.py</code> / <code>src/business.ts</code></td><td>写或导入现有业务函数。</td></tr><tr><td><code>tools.py</code> / <code>src/tools.ts</code></td><td>声明工具名、用途、输入输出和执行绑定；继续追加定义即可在同服务提供更多工具。</td></tr><tr><td><code>programs/</code></td><td>存放随包分发的命令行程序或转换脚本。</td></tr><tr><td><code>service.config.json</code></td><td>改服务名、监听端口和实际对外地址。</td></tr><tr><td><code>start.sh</code> / <code>package.sh</code></td><td>启动服务、生成部署包；详细语言说明随新目录 README 一并复制。</td></tr></tbody></table></div>
+<p>不改模板，先进入它的目录启动：</p>
+<pre class="command"><code>cd my-mcp
+./start.sh</code></pre>
+<p>Python 默认 <code>http://127.0.0.1:8766/mcp</code>，需要 Python 3.10+ 与 venv/pip；首次在自身目录安装锁定依赖。TypeScript 默认 8765，需要 Node 22、Corepack/pnpm，启动时编译。端口以实际配置为准。</p>
+<p>另一个终端<strong>回到原 MC 包根目录</strong>，仅准备测试客户端，无需装 OpenMC：</p>
+<pre class="command"><code>./mcp/setup.sh
+mcp/.venv/bin/python examples/mcp_client.py --url http://127.0.0.1:8766/mcp
+mcp/.venv/bin/python examples/mcp_client.py --url http://127.0.0.1:8766/mcp --tool add --arguments &#x27;{&quot;a&quot;:20,&quot;b&quot;:23}&#x27;
+mcp/.venv/bin/python examples/mcp_client.py --url http://127.0.0.1:8766/mcp --tool add_program --arguments &#x27;{&quot;a&quot;:20,&quot;b&quot;:23}&#x27;</code></pre>
+<p>预期同一地址发现两个工具：<code>add</code> 调函数、<code>add_program</code> 调真实程序。Python 结果为 <code>result=43</code>；TS 端口改为 8765，字段为 <code>sum=43</code>。这里的 MC 客户端只是测试方式，服务可配合其它标准客户端使用。</p>
+<h2 id="register">换成自己的能力，主要改实现和注册表</h2>
+<p>先从现有函数得到明确输入输出，再照模板更新注册表。以下示例使用生成的 <strong>Python 服务</strong>；TS 对应使用 <code>src/tools.ts</code> 的 Zod 定义和 <code>.describe()</code>。</p>
+<details id="function" open><summary>例：把 add 换成自己的函数，并补齐参数含义</summary>
+<p>例如在 <code>business.py</code> 实现两数乘积，替换该服务的 <code>tools.py</code> 为下列定义。业务换成别的内容时，字段、范围和副作用也须随之修改。</p>
+<pre><code># business.py
+def multiply(a, b):
+    return {&quot;result&quot;: a * b}
+
+# tools.py
+from business import multiply
+
+TOOLS = [{
+    &quot;name&quot;: &quot;multiply&quot;,
+    &quot;description&quot;: &quot;计算两个有限数的乘积，无文件或外部系统写入。&quot;,
+    &quot;inputSchema&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;properties&quot;: {
+            &quot;a&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;description&quot;: &quot;第一个乘数。&quot;},
+            &quot;b&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;description&quot;: &quot;第二个乘数。&quot;}
+        },
+        &quot;required&quot;: [&quot;a&quot;, &quot;b&quot;], &quot;additionalProperties&quot;: False
+    },
+    &quot;outputSchema&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;properties&quot;: {&quot;result&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;description&quot;: &quot;两数乘积。&quot;}},
+        &quot;required&quot;: [&quot;result&quot;], &quot;additionalProperties&quot;: False
+    },
+    &quot;annotations&quot;: {&quot;readOnlyHint&quot;: True, &quot;destructiveHint&quot;: False},
+    &quot;function&quot;: multiply
+}]</code></pre>
+<p>保存并重启这个服务，再调用 <code>multiply</code>，传 <code>{"a":20,"b":23}</code>，预期 <code>result=460</code>。继续往 <code>TOOLS</code> 数组追加不同名字的工具即可；不需要为每个函数部署一个端口。</p></details>
+<details id="program"><summary>已有命令行程序：用 JSON 薄适配连接</summary>
+<p>Python 注册表的执行绑定可换为 <code>program</code>。其协议为 stdin 接收一个 JSON 对象，stdout 返回符合输出 Schema 的 JSON 对象，运行提示写 stderr。模板的 <code>programs/add_json.py</code> 已示范。</p>
+<pre><code># 一个工具定义中的执行绑定；配套 inputSchema/outputSchema 仍需填写。
+&quot;program&quot;: {
+    &quot;argv&quot;: [sys.executable, str(Path(__file__).parent / &quot;programs/add_json.py&quot;)],
+    &quot;timeoutSeconds&quot;: 30,
+    &quot;maxOutputBytes&quot;: 65536
+}</code></pre>
+<p>在 tools.py 中导入 <code>sys</code>、<code>Path</code>。普通 CLI 如果使用 argv/文件输入、纯文本输出，就写一个小脚本将 JSON 转成它所需输入，再把结果转成 JSON；不能直接把任意命令字符串交给智能体执行。命令、工作目录、解释器和所需库由部署者固定配置。</p>
+<p>TS 的 <code>runJsonProgram</code> 示例位于 <code>src/tools.ts</code>。长计算应返回持久编号，另设查询/取消接口；通用模板不会自动获得 OpenMC 的计算、扫描和产物管理。</p></details>
+<details id="http"><summary>已有 HTTP API，或者已经是 MCP 地址</summary>
+<p>Python 的 <code>http</code> 适配器向固定 URL 发送 POST JSON，并校验返回对象；API 形状不同则用函数转换。TS 可用 <code>postJson</code>。</p>
+<pre><code>&quot;http&quot;: {
+    &quot;url&quot;: &quot;https://your-api.example/calculate&quot;,
+    &quot;tokenEnv&quot;: &quot;BUSINESS_API_TOKEN&quot;,
+    &quot;timeoutSeconds&quot;: 10,
+    &quot;maxOutputBytes&quot;: 65536
+}</code></pre>
+<p>URL 换为真实业务端点，令牌从环境注入，不放进模型参数。若对方给的已经是标准 MCP URL，客户端直接连接即可，无需再封一层 HTTP 适配。</p></details>
+<h3 id="meaning">让调用方知道怎么填参数</h3>
+<p>工具说明写“做什么、何时用、有何副作用”；每个参数写“含义、来源、单位、范围、省略行为”。动态编号和参数名应从前一步结果取得，不让智能体猜。复杂对象的子字段也需要描述。</p>
+<p>这些说明要进入实际 <code>tools/list</code>，只写在网页里不够。本包已有 OpenMC 工具的<a href="reference.html">参考页</a>从同一 Schema 生成。Schema 的 default 只是注解，运行默认必须由业务实现；可省略不代表可填 null。annotations 是提示，不代替权限或人工确认。</p>
+<h2 id="handoff">部署后，交给调用方哪些东西？</h2>
+<div class="table-wrap"><table><thead><tr><th>必须交接</th><th>怎么用</th></tr></thead><tbody><tr><td>实际 MCP URL</td><td>例如同机 <code>http://127.0.0.1:8770/mcp</code>；远端使用可达的真实地址。不要交 <code>0.0.0.0</code> 或另一台机器的 localhost。</td></tr><tr><td>传输与鉴权</td><td>Streamable HTTP；如有 Bearer，告诉对方认证头配置方式，真实令牌另行提供。</td></tr><tr><td>服务别名与工具说明</td><td>别名由客户端区分服务；连接后 <code>tools/list</code> 自动获取工具名和参数，不用手抄所有函数。</td></tr><tr><td>数据和产物约定</td><td>OpenMC 的 case_dir 相对服务端工作区，文件保存在服务器；通用工具的文件输入输出需由其业务接口明确。</td></tr></tbody></table></div>
+<p>启动成功后生成的 <code>connection.json</code> 和受鉴权保护的 <code>/info</code> 是交接辅助。连接文件停服后仍存在；<code>/health</code> 只探活。它们不是所有平台统一的配置文件，按客户端要求填写 URL/认证头即可。Codex/DSH 等<a href="MCP平台接入.md">宿主示例</a>是可选扩展。</p>
+<details id="remote"><summary>远程监听、鉴权和打包</summary>
+<p>例如在计算服务器上设置以下环境；路径、域名和令牌须由部署者替换：</p>
+<pre class="command"><code>export MC_WORKSPACE=/srv/mc-data
+export MCP_HOST=0.0.0.0
+export MCP_PORT=8770
+export MCP_PUBLIC_URL=https://mc.example.org/mcp
+export MCP_AUTH_TOKEN=&#x27;部署方生成的令牌&#x27;
+./mcp/start.sh</code></pre>
+<p>通用服务在它自己的目录执行 <code>./start.sh</code>，按自身配置选择端口。非回环监听须有实际 publicUrl 和 Bearer；公网 HTTPS、防火墙、DNS 和代理由部署环境落实，代理保留 Host/Authorization。客户端的环境占位符是否展开，由其自身支持决定。</p>
+<p>在独立服务目录运行 <code>./package.sh</code>；Python 接收方重建环境，新增业务模块还须加入其打包清单，<code>programs/</code> 会随包。TS 生成编译后的部署包，源码变更后重新编译打包。分发前在新位置解压，检查每个工具、非法参数、上游失败和产物约定，排除密钥/日志。</p>
+<p>独立服务不依赖创建它的 MC 目录。函数/程序所需的第三方环境和数据仍需部署；源码打包不等于所有依赖自动内置。协议调用成功、模型能否正确选择工具、业务结果是否合格，分别验证。</p></details>
+<p class="next">要放入本包现有服务？在 <code>mcp/tools.py</code> 的最终 <code>prepare_tools(TOOLS)</code> 前追加定义，参数写 description，再生成<a href="reference.html">接口参考</a>。源码职责见<a href="inputs.html#source">开发入口</a>。</p>
+<footer>随包使用文档 · CLI 与 MCP 共用工具实现 · 工程流程验证不等于专业验收</footer></main></body></html>

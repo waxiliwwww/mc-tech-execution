@@ -32,6 +32,34 @@ class ToolContracts(unittest.TestCase):
         selection = self.tool('openmc_plot_results')['inputSchema']['properties']['filter_selection']
         self.assertTrue(selection['items']['properties']['bins']['items']['description'])
 
+    def test_shared_schema_nodes_keep_each_parameter_meaning(self):
+        case = self.tool('openmc_prepare_case')['inputSchema']['properties']
+        self.assertIn('新副本目录', case['target_dir']['description'])
+        self.assertEqual(case['target_dir']['examples'], ['cases/my-case-copy'])
+        scan = self.tool('openmc_plot_scan')['inputSchema']['properties']
+        self.assertIn('批次编号', scan['scan_id']['description'])
+        self.assertIn('axes键', scan['x_parameter']['description'])
+        self.assertIn('核素', scan['nuclide']['description'])
+        self.assertIn('计分类型', scan['score']['description'])
+        selection = scan['filter_selection']['items']['properties']['type']
+        self.assertIn('过滤器类名', selection['description'])
+        repair = self.tool('preview_repair')['inputSchema']['properties']
+        self.assertIn('精确原文', repair['old_text']['description'])
+
+    def test_nested_aliases_are_detached_before_parameter_annotations(self):
+        number = {'type': 'number'}
+        definition = {'name': 'openmc_submit_scan', 'description': 'nested alias guard',
+                      'inputSchema': {'type':'object','properties': {
+                          'parameters': {'type':'object','additionalProperties':number},
+                          'axes': {'type':'object','additionalProperties':{'type':'array','items':number}}}},
+                      'outputSchema': {'type':'object'}}
+        from tool_metadata import document_tools
+        document_tools([definition])
+        fields = definition['inputSchema']['properties']
+        self.assertIn('有限数值', fields['parameters']['additionalProperties']['description'])
+        self.assertIn('候选数值', fields['axes']['additionalProperties']['items']['description'])
+        self.assertNotIn('description',number)
+
     def test_omitted_automatic_selection_is_not_advertised_as_explicit_null(self):
         definition = self.tool('openmc_plot_results')['inputSchema']
         self.assertTrue(Draft202012Validator(definition).is_valid({'job_id':'1'*32}))

@@ -1,0 +1,76 @@
+// Optional documentation check. Requires Playwright and its Chromium; no product runtime.
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+const { chromium } = await import(process.env.MC_PLAYWRIGHT_MODULE || 'playwright');
+const root = path.resolve(process.argv[2] || '.');
+const out = path.resolve(process.argv[3] || 'artifacts/manual-browser');
+await fs.mkdir(out, {recursive:true});
+const browser = await chromium.launch({headless:true, ...(process.env.MC_CHROMIUM_EXECUTABLE ? {executablePath:process.env.MC_CHROMIUM_EXECUTABLE} : {})});
+const context = await browser.newContext({viewport:{width:1400,height:1000},reducedMotion:'reduce'});
+const page = await context.newPage();
+const problems = [], remoteRequests = [], screenshots = [];
+page.on('pageerror', error => problems.push(error.message));
+page.on('console', message => {if(message.type()==='error')problems.push(message.text());});
+page.on('request', request => {if(/^https?:/.test(request.url()))remoteRequests.push(request.url());});
+const url = name => pathToFileURL(path.join(root,'docs',name)).href;
+const shot = async name => {await page.screenshot({path:path.join(out,name+'.png')});screenshots.push(name+'.png');};
+try {
+  await page.goto(url('index.html'));
+  await shot('01-entry');
+  await page.locator('#demo-options > summary').click();
+  assert.equal(await page.locator('#demo-options').getAttribute('open'),'');
+  assert.match(await page.locator('#demo-options').innerText(),/--particles/);
+  await page.locator('#demo-options').scrollIntoViewIfNeeded();await shot('02-demo-options');
+  await page.locator('nav a[href="compute.html"]').click();
+  await page.locator('.jump a[href="#change"]').click();
+  await page.waitForFunction(()=>Math.abs(document.getElementById('change').getBoundingClientRect().top-28)<4);
+  await shot('03-input-change');
+  const command = page.locator('pre[data-run="change"]');
+  const original = await command.locator('code').textContent();
+  await command.locator('button').click();
+  await page.waitForFunction(()=>/已复制|已选中/.test(document.querySelector('pre[data-run="change"] button').textContent));
+  assert.match(await command.locator('button').innerText(),/已复制|已选中/);
+  assert.match(original,/settings\.particles.*400/);
+  // Exercise selection fallback too; file viewers may not grant clipboard access.
+  await page.evaluate(() => Object.defineProperty(navigator,'clipboard',{value:undefined,configurable:true}));
+  await command.locator('button').click();
+  assert.equal(await page.evaluate(()=>window.getSelection().toString()),original);
+  await page.locator('.jump a[href="#results"]').click();
+  await page.waitForFunction(()=>Math.abs(document.getElementById('results').getBoundingClientRect().top-28)<4);
+  await shot('04-results-location');
+  await page.locator('nav a[href="inputs.html"]').click();
+  await shot('05-model-layers');
+  await page.locator('#native > summary').click();
+  assert.match(await page.locator('#native').innerText(),/pincell_multigroup|官方多群例题源码/);
+  await page.locator('nav a[href="mcp.html"]').click();
+  await page.locator('.jump a[href="#register"]').click();
+  await page.waitForFunction(()=>Math.abs(document.getElementById('register').getBoundingClientRect().top-28)<4);
+  await shot('06-own-tools');
+  await page.locator('#program > summary').click();
+  assert.match(await page.locator('#program').innerText(),/stdin/);
+  await page.goto(url('reference.html'));
+  await page.locator('#tool-search').fill('this_tool_does_not_exist');
+  assert.equal(await page.locator('#no-results').isVisible(),true);
+  await page.locator('#tool-search').fill('openmc_prepare_case');
+  assert.equal(await page.locator('#openmc_prepare_case').isVisible(),true);
+  await page.locator('#openmc_prepare_case > summary').click();
+  assert.match(await page.locator('#openmc_prepare_case').innerText(),/target_dir/);
+  assert.match(await page.locator('#openmc_prepare_case').innerText(),/新副本目录/);
+  await shot('07-parameter-search');
+  await page.goto(url('reference.html')+'#openmc_plot_results');
+  assert.equal(await page.locator('#openmc_plot_results').getAttribute('open'),'');
+  await page.locator('#openmc_plot_results details').first().locator('summary').click();
+  assert.match(await page.locator('#openmc_plot_results details').first().innerText(),/filter_selection/);
+  await shot('08-schema-anchor');
+  await page.setViewportSize({width:390,height:844});
+  for(const name of ['index.html','compute.html','inputs.html','mcp.html','reference.html']) {
+    await page.goto(url(name));
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal page overflow: '+name);
+  }
+  await page.goto(url('index.html'));await shot('09-mobile');
+  assert.deepEqual(problems,[]);assert.deepEqual(remoteRequests,[]);
+  await fs.writeFile(path.join(out,'receipt.json'),JSON.stringify({passed:true,pages:5,problems,remoteRequests,screenshots,entry:url('index.html'),checks:['offline file navigation','demo explanation disclosure','exact command copy/selection fallback','source/model layers','own program disclosure','search/no-match','deep-link reveals schema','mobile no page overflow']},null,2));
+  process.stdout.write('HTML browser checks passed; screenshots: '+out+'\n');
+} finally {await browser.close();}

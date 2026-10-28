@@ -56,4 +56,4 @@ else
   printf '[4/4] 按选项跳过Office准备；PDF/DOC须另行配置，DOCX无需转换组件。\n'
 fi
 ./mc.sh call openmc_environment
-printf '\n环境准备完成。先运行公开例题：\n  mcp/.venv/bin/python examples/public_case_demo.py\n再试修改计算设置：\n  mcp/.venv/bin/python examples/public_case_demo.py --particles 400\n启动MCP：\n  ./mcp/start.sh\n完整流程：docs/使用指南.md；首次准备需要软件源网络，日常计算无需连接其他项目目录。\n'
+printf '\n环境准备完成。请用浏览器打开：\n  %s/docs/index.html\n逐步计算：docs/compute.html（输入、改参目的、校核、计算与产物）\n快速例题：\n  mcp/.venv/bin/python examples/public_case_demo.py\n例题参数及预期见 docs/index.html#demo-options；首次准备需软件源网络。\n' "$mc_quick_root"

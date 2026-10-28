@@ -49,14 +49,16 @@ async def demo(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--mcp-url')
-    parser.add_argument('--case-dir')
-    parser.add_argument('--particles', type=int, help='每代粒子数；省略时采用工具默认值')
-    parser.add_argument('--batches', type=int, help='总批次；应与inactive共同满足工具约束')
-    parser.add_argument('--inactive', type=int, help='非活跃批次；省略时采用工具默认值')
-    parser.add_argument('--timeout', type=float, default=120)
-    parser.add_argument('--report-format', choices=['markdown', 'csv', 'docx', 'pdf', 'doc'], default='markdown')
+    parser = argparse.ArgumentParser(description='公开C5G7例题：新建输入→真实OpenMC计算→通量图和报告；摘要给出服务端绝对位置。',
+                                     epilog='先理解输入与预期：浏览器打开 docs/index.html#demo-options；逐步操作见 docs/compute.html。')
+    parser.add_argument('--mcp-url', help='实际MCP URL；省略时直接CLI调用，无需启动服务')
+    parser.add_argument('--case-dir', help='服务端工作区内的新输入目录；默认demos/public-mg-随机后缀，不覆盖已有目录')
+    parser.add_argument('--particles', type=int, help='每代粒子数，正整数；省略时工具默认200，不表示专业推荐值')
+    parser.add_argument('--batches', type=int, help='总批次数；省略时工具默认10，须比inactive至少多2')
+    parser.add_argument('--inactive', type=int, help='非活跃批次数，非负；省略时工具默认2')
+    parser.add_argument('--timeout', type=float, default=120, help='脚本等待计算终态的秒数，默认120；超时请求取消后仍需查询终态')
+    parser.add_argument('--report-format', choices=['markdown', 'csv', 'docx', 'pdf', 'doc'], default='markdown',
+                        help='报告格式，默认markdown；pdf/doc需Office转换组件')
     output_option(parser)
     args = parser.parse_args()
     try:emit_result(asyncio.run(demo(args)), args, '公开例题执行结果')

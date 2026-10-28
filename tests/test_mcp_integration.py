@@ -94,6 +94,13 @@ class ProjectIntegration(unittest.IsolatedAsyncioTestCase):
         submitted = found['openmc_submit_job'].inputSchema['properties']
         self.assertIn('MC_WORKSPACE',submitted['case_dir']['description'])
         self.assertEqual(submitted['threads']['default'],1)
+        copied = found['openmc_prepare_case'].inputSchema['properties']
+        self.assertIn('新副本目录',copied['target_dir']['description'])
+        plotted = found['openmc_plot_scan'].inputSchema['properties']
+        self.assertIn('axes键',plotted['x_parameter']['description'])
+        self.assertIn('核素',plotted['nuclide']['description'])
+        self.assertIn('计分类型',plotted['score']['description'])
+        self.assertIn('批次编号',plotted['scan_id']['description'])
         self.assertIn('job_id',found['openmc_submit_job'].outputSchema['properties'])
         self.assertEqual(found['openmc_submit_scan'].inputSchema,
                          next(t for t in info['tools'] if t['name']=='openmc_submit_scan')['inputSchema'])

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>认识工具包 · MC 工具包</title><link rel="stylesheet" href="assets/manual.css"><script src="assets/manual.js" defer></script></head>
+<body><a class="sr-only" href="#content">跳到正文</a><aside class="sidebar"><a class="brand" href="index.html">MC 工具包<br>使用与开发手册</a><p class="edition">OpenMC · 独立 MCP</p><nav aria-label="文档导航"><a href="index.html" aria-current="page">认识工具包</a><a href="compute.html">完成一次计算</a><a href="inputs.html">自有模型与源码</a><a href="mcp.html">封装与部署 MCP</a><a href="reference.html">查工具参数</a></nav><p class="minor">先沿一个实际任务操作。<br>参数全集随用随查。<br>本手册可离线打开。</p></aside><main id="content">
+<p class="eyebrow">开始使用 · 0.6.1</p><h1>把计算输入，变成可追踪的结果</h1>
+<p class="lead">你提供 OpenMC 模型，这个工具包负责检查输入、启动本地计算、保存每次记录，再把结果整理成图和报告。也可以把这些操作作为 MCP 工具，交给平台或智能体调用。</p>
+<div class="routes"><section class="route"><h2>我要用 OpenMC 做计算</h2><p>还没有模型：用随包公开例题学习一次完整操作。已有模型：直接接入自己的 XML，不必重新套用例题。</p><a class="button" href="compute.html">从环境到图和报告</a></section><section class="route"><h2>我要封装自己的工具</h2><p>已有函数、命令行程序或 HTTP 接口：创建一个独立 MCP 服务，在同一服务里注册多个工具。</p><a class="button" href="mcp.html#own-service">从程序到 MCP 服务</a></section></div>
+<h2 id="role">它在现有计算中负责什么</h2>
+<div class="flow" role="img" aria-label="你准备模型输入，工具包检查并管理计算，OpenMC求解，工具包保存结果和产物"><span>你的模型输入</span><span>校核与输入快照</span><span>OpenMC 求解</span><span>结果、图表、报告</span></div>
+<p>OpenMC 是蒙特卡罗粒子输运计算软件，模型描述几何、材料、源和要统计的量。本包复用它的计算能力，增加一套统一的调用与文件管理方式。熟悉 OpenMC 的用户可以沿用自己的建模流程；不熟悉业务的用户先用公开例题理解工具操作。</p>
+<div class="table-wrap"><table><thead><tr><th>你要做的事</th><th>本包当前能提供</th></tr></thead><tbody><tr><td>带入输入</td><td>接收已导出的 OpenMC XML 与所需数据，检查 XML 和基础设置，可选官方 API 解析。</td></tr><tr><td>重复计算、比较设置</td><td>保留原输入创建参数副本；提交、查询、取消；按发现的参数做串行批量扫描。</td></tr><tr><td>整理结果</td><td>读取 StatePoint 结果文件、选择计分生成图及对应 JSON/CSV，导出多种格式报告。</td></tr><tr><td>管理文件</td><td>独立计算编号、输入快照、日志、产物位置与哈希清单；提供预览和显式清理入口。</td></tr><tr><td>交给下游调用</td><td>终端 CLI 与标准 MCP 调用同一组工具；MCP 参数带类型、含义和来源说明。</td></tr></tbody></table></div>
+<div class="note"><strong>参数有三个层次。</strong>演示脚本只开放少量命令行选项；工具接口用 JSON 描述一次操作；完整模型由 OpenMC 的 Python/XML 表达。三者如何衔接、哪些字段能自动修改，见<a href="inputs.html#layers">自有模型与源码</a>。</div>
+<p>专业模型、核数据库、结果判断由业务方准备和确认。当前已有工具不能替代完整合同交付；CAD、HPC、微调生成和指定专业基准等状态，仍见<a href="验收导向开发计划.md">项目计划（维护记录）</a>。</p>
+<h2 id="demo">只想先试运行：先知道它会做什么</h2>
+<p><a href="compute.html#setup">完成环境准备</a>后，可用下面的脚本快速检查链路。它会新建一个公开多群燃料棒算例，实际运行 OpenMC，画通量能谱图并导出 Markdown 报告。它固定了模型和流程；你不需要从这个脚本继承自己的业务。</p>
+<pre class="command"><code>mcp/.venv/bin/python examples/public_case_demo.py</code></pre>
+<p>本包例题默认<strong>每代 200 个粒子、总批次 10、非活跃批次 2</strong>，用于短流程练习。正常结束会打印计算编号，以及输入、记录目录、图和报告的<strong>服务端绝对路径</strong>。统计提示保留，不以这组小规模设置证明收敛或专业准确性。</p>
+<details id="demo-options"><summary>这个脚本到底有哪些参数？</summary>
+<div class="table-wrap"><table><thead><tr><th>选项</th><th>含义 / 省略后的行为</th></tr></thead><tbody><tr><td><code>--particles</code></td><td>每代模拟粒子数，正整数；工具默认 200。改变统计采样量，不能保证某次结果更准确。</td></tr><tr><td><code>--batches</code></td><td>总批次数；工具默认 10。</td></tr><tr><td><code>--inactive</code></td><td>非活跃批次数，不计入活跃批次统计；工具默认 2。非负，且 batches − inactive 至少为 2。</td></tr><tr><td><code>--case-dir</code></td><td>服务端工作区内的新输入目录；默认 <code>demos/public-mg-随机后缀</code>。已存在会报错，不覆盖。</td></tr><tr><td><code>--report-format</code></td><td>markdown（默认）、csv、docx、pdf、doc；后两者需 Office 转换组件。</td></tr><tr><td><code>--timeout</code></td><td>脚本等待计算终态的秒数，默认 120；超时会请求取消，后续按编号查询。不是服务端作业时限。</td></tr><tr><td><code>--mcp-url</code></td><td>实际服务地址；省略时直接 CLI 调用，无需启动 MCP 服务。</td></tr><tr><td><code>--json</code></td><td>将默认人读摘要换成完整 JSON；进度仍写到 stderr。</td></tr><tr><td><code>-h / --help</code></td><td>查看脚本选项，不执行计算。</td></tr></tbody></table></div>
+<p>这些选项只有运行设置与演示控制，不包含任意几何或材料字段。要改变模型，走<a href="compute.html#change">参数发现与输入副本</a>，或<a href="inputs.html#bring">准备自己的输入</a>。</p></details>
+<details id="other-demos"><summary>其它 demo 用来验证什么？它们能调哪些参数？</summary>
+<p>四个脚本都支持 <code>--mcp-url</code>、<code>--case-dir</code>、<code>--timeout</code>、<code>--json</code> 和 <code>--help</code>。目录默认各自随机生成；普通/修复例题等待默认 120 秒，扫描默认 180 秒。</p>
+<div class="table-wrap"><table><thead><tr><th>脚本</th><th>固定流程与可额外调整项</th></tr></thead><tbody><tr><td><code>public_case_demo.py</code></td><td>公开 C5G7 例题 → 计算 → 通量图 → 报告；上表列出全部选项。</td></tr><tr><td><code>openmc_demo.py</code></td><td>合成单群模型 → 计算 → Markdown/CSV；无额外模型参数选项。</td></tr><tr><td><code>scan_report_demo.py</code></td><td>合成模型的第一项密度参数按 0.8 / 1.0 / 1.2 扫描，画图并导出报告；额外 <code>--formats</code> 可选多个格式，默认五种全导出。没有扫描轴命令行选项，改扫描任务应调用扫描工具。</td></tr><tr><td><code>repair_demo.py</code></td><td>故意的运行模式拼写错误 → 失败日志 → 副本差异 → 人工确认 → 重算；没有额外参数，需交互终端。</td></tr></tbody></table></div>
+<p>扫描例的 <code>macro</code> 是宏观截面倍率，不能当真实质量密度；keff 可能几乎不变，统计量也可能不可用。这些演示用于看懂工程行为。</p></details>
+<p class="next">接下来：<a href="compute.html">拆开演示，亲手完成一次计算</a>。每一步都说明输入从哪来、会改什么、应该看到什么。</p>
+<footer>随包使用文档 · CLI 与 MCP 共用工具实现 · 工程流程验证不等于专业验收</footer></main></body></html>

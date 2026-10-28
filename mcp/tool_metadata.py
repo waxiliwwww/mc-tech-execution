@@ -133,11 +133,25 @@ OUTPUT_KEYS = {
 }
 
 
+def independent_schema(value):
+    """Detach every JSON node: deepcopy alone preserves aliases inside a schema.
+
+    Reusable TEXT/number definitions may occur at several top-level and nested
+    fields. Each occurrence needs its own annotations; JSON $ref strings remain
+    unchanged, as do validation keywords and accepted values.
+    """
+    if isinstance(value, dict):
+        return {key: independent_schema(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [independent_schema(item) for item in value]
+    return deepcopy(value)
+
+
 def document_tools(definitions):
-    """Copy aliases before annotations; never change runtime argument handling."""
+    """Detach schema occurrences before annotating; preserve argument handling."""
     for tool in definitions:
         known = tool['name'] in RESULTS
-        tool['inputSchema'] = deepcopy(tool['inputSchema'])
+        tool['inputSchema'] = independent_schema(tool['inputSchema'])
         fields = tool['inputSchema'].get('properties', {})
         for name, field in fields.items():
             explicit = bool(field.get('description'))
@@ -180,7 +194,7 @@ def document_tools(definitions):
                 except (TypeError, ValueError):continue
                 if Draft202012Validator(fields[name]).is_valid(parameter.default):
                     fields[name].setdefault('default', deepcopy(parameter.default))
-        result = deepcopy(tool.get('outputSchema', {'type': 'object'}))
+        result = independent_schema(tool.get('outputSchema', {'type': 'object'}))
         result.setdefault('description', RESULTS.get(tool['name'], tool['description']))
         # Description-only optional properties preserve all pre-existing return
         # shapes, nulls and extra fields, including submission/status differences.

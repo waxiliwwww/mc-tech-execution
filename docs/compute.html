@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>完成一次计算 · MC 工具包</title><link rel="stylesheet" href="assets/manual.css"><script src="assets/manual.js" defer></script></head>
+<body><a class="sr-only" href="#content">跳到正文</a><aside class="sidebar"><a class="brand" href="index.html">MC 工具包<br>使用与开发手册</a><p class="edition">OpenMC · 独立 MCP</p><nav aria-label="文档导航"><a href="index.html">认识工具包</a><a href="compute.html" aria-current="page">完成一次计算</a><a href="inputs.html">自有模型与源码</a><a href="mcp.html">封装与部署 MCP</a><a href="reference.html">查工具参数</a></nav><p class="minor">先沿一个实际任务操作。<br>参数全集随用随查。<br>本手册可离线打开。</p></aside><main id="content">
+<p class="eyebrow">主操作流程</p><h1>用同一个算例，完成一次计算</h1>
+<p class="lead">本页用随包公开例题走到可打开的图和报告。你会看到输入文件、修改后的副本和计算记录各在哪里；之后换成自己的输入，操作顺序相同。</p>
+<div class="jump"><a href="#setup">环境</a><a href="#prepare">准备输入</a><a href="#change">发现与修改</a><a href="#run">校核与计算</a><a href="#results">读取与产物</a><a href="#maintenance">清理</a></div>
+<p>以下命令在<strong>同一个 Bash 终端、工具包根目录</strong>依次执行。工具调用格式是 <code>./mc.sh call 工具名 'JSON参数'</code>；返回 JSON 方便脚本继续使用。无需启动服务或配置大模型。</p>
+<h2 id="setup"><span class="step">01 / 环境</span><br>安装在哪台机器，就在哪里运行工具</h2>
+<p>计算服务器使用 Linux/WSL。先具备 Python 3.10+ 与 venv、Bash、curl、tar/bzip2 和包源网络；默认 Office 准备还需 apt-get/dpkg-deb。Windows 可在 WSL 运行，或连接另一台服务器的 MCP。</p>
+<pre class="command"><code>./quickstart.sh</code></pre>
+<p>脚本准备 <code>mcp/.venv</code>（调用层）、<code>.runtime/openmc</code>（OpenMC 0.16.0 / Python 3.12）和图表/报告依赖，写入本机配置 <code>config/openmc.local.json</code>；不修改 shell 配置或安装系统包。首次需下载，部署包不包含正式核数据。</p>
+<details id="config"><summary>已有 OpenMC、只需部分报告、或者想改数据位置</summary>
+<pre class="command"><code>./quickstart.sh --openmc-prefix /opt/openmc-env --skip-office</code></pre>
+<p>将路径换成已安装且有 <code>bin/python</code>、<code>bin/openmc</code> 的环境。<code>--skip-office</code> 跳过 PDF/DOC 转换准备；本页 Markdown 和 PNG 不需要它。</p>
+<div class="table-wrap"><table><thead><tr><th>配置</th><th>选择与生效</th></tr></thead><tbody><tr><td>工作区</td><td>CLI <code>--workspace</code> &gt; <code>MC_WORKSPACE</code> &gt; 包根目录 <code>workspace/</code>。本页不改根目录；如已设置环境变量，以探测结果为准。</td></tr><tr><td>OpenMC 运行配置</td><td>CLI <code>--config</code> &gt; <code>MC_OPENMC_CONFIG</code> &gt; <code>config/openmc.local.json</code> &gt; <code>config/openmc.json</code>。其中命令数组、超时等由部署者设置。计算记录保存当次配置。</td></tr><tr><td>MCP 监听和鉴权</td><td>见<a href="mcp.html#remote">部署配置</a>，修改后重启服务；直接 CLI 不需要这一层。</td></tr></tbody></table></div>
+<p>若更换工作区，请在新 Bash 会话开始时导出<strong>绝对路径</strong> <code>MC_WORKSPACE</code>，后续每一步用同一配置。不要把客户端本地目录当成远程服务端路径。</p></details>
+<pre class="command" data-run="environment"><code>./mc.sh call openmc_environment</code></pre>
+<p><strong>继续前看四项：</strong><code>api_available</code>、<code>executable_available</code>、<code>version_matches</code> 应为 true；记住 <code>workspace</code> 的绝对路径。本例自带多群数据，<code>cross_sections_configured=false</code> 本身不妨碍它运行；自己的连续能模型需要适用核数据。</p>
+<h2 id="prepare"><span class="step">02 / 输入</span><br>先看得到输入，再谈修改</h2>
+<p>本例 <code>openmc-pincell-mg</code> 来自随包的 OpenMC 官方多群燃料棒代码，内含公开 C5G7 数据。下面先建立 <code>cases/tutorial</code>，明确使用 200 / 10 / 2 的练习设置。生成输入还没有开始计算。</p>
+<pre class="command" data-run="prepare"><code>./mc.sh call openmc_prepare_example &#x27;{
+  &quot;case_id&quot;:&quot;openmc-pincell-mg&quot;, &quot;case_dir&quot;:&quot;cases/tutorial&quot;,
+  &quot;particles&quot;:200, &quot;batches&quot;:10, &quot;inactive&quot;:2
+}&#x27;
+mc_workspace=$(./mc.sh call openmc_environment | python3 -c &#x27;import json,sys; print(json.load(sys.stdin)[&quot;workspace&quot;])&#x27;)
+ls &quot;$mc_workspace/cases/tutorial&quot;</code></pre>
+<p>你会看到 <code>geometry.xml</code>（几何）、<code>materials.xml</code>（材料与截面引用）、<code>settings.xml</code>（运行设置）、<code>tallies.xml</code>（统计什么量）、<code>mgxs.h5</code>（本例多群截面数据），以及绘图和来源文件。用文本编辑器打开 XML；本例的 <code>settings.xml</code> 应含以下设置：</p>
+<pre><code>&lt;particles&gt;200&lt;/particles&gt;
+&lt;batches&gt;10&lt;/batches&gt;
+&lt;inactive&gt;2&lt;/inactive&gt;</code></pre>
+<p><code>case_dir</code> 相对刚才查到的 <code>workspace</code>，与终端当前目录无关。本例的真实输入位置就是 <code>$mc_workspace/cases/tutorial</code>。目标已存在时换一个新目录名，并在后续命令同步替换；工具不会覆盖。</p>
+<h2 id="change"><span class="step">03 / 修改</span><br>知道能改什么，再创建新副本</h2>
+<pre class="command" data-run="discover"><code>./mc.sh call openmc_list_parameters &#x27;{&quot;case_dir&quot;:&quot;cases/tutorial&quot;}&#x27;</code></pre>
+<p>返回的 <code>parameters</code> 是当前输入中<strong>已适配为可修改</strong>的字段。每项有 <code>name</code>、<code>current</code>、类型、单位和范围。例如：</p>
+<pre><code>{&quot;name&quot;:&quot;settings.particles&quot;, &quot;type&quot;:&quot;integer&quot;, &quot;minimum&quot;:1,
+ &quot;current&quot;:200, &quot;unit&quot;:&quot;particles/generation&quot;}</code></pre>
+<p><strong>这次为何改成 400？</strong>练习只改一个统计设置，并确认原输入保留、新输入生效。<code>particles</code> 是每代模拟粒子数；400 让“200 → 400”的变化容易核对，不是业务推荐值。相同代数下采样量增加；耗时、keff 和标准差是否变化，需要实际观察，不能预先保证精度改善。</p>
+<pre class="command" data-run="change"><code>./mc.sh call openmc_prepare_case &#x27;{
+  &quot;case_dir&quot;:&quot;cases/tutorial&quot;, &quot;target_dir&quot;:&quot;cases/tutorial-400&quot;,
+  &quot;parameters&quot;:{&quot;settings.particles&quot;:400}
+}&#x27;
+python3 - &quot;$mc_workspace&quot; &lt;&lt;&#x27;PY&#x27;
+from pathlib import Path
+import sys, xml.etree.ElementTree as ET
+for name in (&quot;tutorial&quot;, &quot;tutorial-400&quot;):
+    file = Path(sys.argv[1]) / &quot;cases&quot; / name / &quot;settings.xml&quot;
+    print(str(file), &quot;particles=&quot; + ET.parse(file).findtext(&quot;particles&quot;))
+PY</code></pre>
+<p><strong>预期：</strong>返回 <code>changes</code> 中的 before=200、after=400；上面的文件检查显示原目录仍为 200，副本为 400。几何、材料和计分定义沿用原输入。这是本步骤应能验证的变化。</p>
+<p>别的字段同样先取 <code>name</code> 和单位，不能照搬另一模型的材料/表面 ID。当前自动修改支持哪些字段、未支持的怎么处理，见<a href="inputs.html#edit">输入与参数范围</a>。</p>
+<h2 id="run"><span class="step">04 / 执行</span><br>校核通过后，提交这份副本</h2>
+<pre class="command" data-run="validate"><code>./mc.sh call openmc_validate_inputs &#x27;{&quot;case_dir&quot;:&quot;cases/tutorial-400&quot;,&quot;api_check&quot;:true}&#x27;</code></pre>
+<p>先检查结果：<code>structure_valid=true</code>、<code>problems=[]</code>，且 <code>openmc_api.api_parsed=true</code>。否则先处理错误，<strong>不要执行下一条提交命令</strong>。这里只检查结构和官方 API 能否解析，不保证几何无重叠或物理正确。</p>
+<pre class="command" data-run="submit"><code>mc_job_id=$(./mc.sh call openmc_submit_job &#x27;{&quot;case_dir&quot;:&quot;cases/tutorial-400&quot;,&quot;threads&quot;:1}&#x27; | python3 -c &#x27;import json,sys; print(json.load(sys.stdin)[&quot;job_id&quot;])&#x27;)
+printf &#x27;本次计算编号：%s\n&#x27; &quot;$mc_job_id&quot;
+./mc.sh call openmc_job_status &quot;{\&quot;job_id\&quot;:\&quot;$mc_job_id\&quot;}&quot;</code></pre>
+<p><code>openmc_api</code> 仅在请求 API 校核且结构通过时出现，API 解析失败会返回工具错误。</p>
+<p>提交会复制当次输入并返回唯一 <code>job_id</code>，不等于计算结束。上面用 Bash 变量自动保存编号；以后查询、读结果都用这个编号。</p>
+<pre class="command" data-run="status"><code>./mc.sh call openmc_job_status &quot;{\&quot;job_id\&quot;:\&quot;$mc_job_id\&quot;}&quot;</code></pre>
+<p>如果还是 <code>queued</code> / <code>running</code>，隔一会重复<strong>查询</strong>，等到 <code>completed</code> 再继续。不要重复提交，否则会创建另一份计算。</p>
+<details id="states"><summary>失败、取消和终端关闭后怎么办？</summary>
+<p><code>failed</code>：查看状态错误和记录目录的 <code>solver.log</code>/<code>worker.log</code>；保留原记录。<code>interrupted</code>：终态未确认，可能仍有求解器，先由部署者核对进程。<code>completed</code> 也仍需看统计提示和实际产物。</p>
+<pre class="command"><code>./mc.sh call openmc_cancel_job &quot;{\&quot;job_id\&quot;:\&quot;$mc_job_id\&quot;}&quot;</code></pre>
+<p>取消后继续查终态，不能只看取消请求成功。关闭终端/停止 MCP 不自动停止独立 worker；在同一工作区可继续按编号查询。丢失 Bash 变量时，从先前输出或 <code>.mc-jobs</code> 目录找回编号，不用重新计算。</p></details>
+<h2 id="results"><span class="step">05 / 结果</span><br>读哪些量、画什么图，由输入决定</h2>
+<pre class="command" data-run="read"><code>./mc.sh call openmc_read_results &quot;{\&quot;job_id\&quot;:\&quot;$mc_job_id\&quot;,\&quot;max_values\&quot;:10}&quot;</code></pre>
+<p><code>keff</code> 是有效增殖因数；<code>mean</code> 是估计均值，<code>std_dev</code> 是统计标准差。<code>tallies</code> 列出输入中定义的计分（Tally），含名称、ID、score、核素和筛选维度。<code>max_values=10</code> 只限制返回预览，不截断原始结果文件。</p>
+<p>本例的输入定义了名为 <code>Flux spectrum</code> 的通量能谱计分。下面从结果中取它的真实 ID，再画 <code>flux</code>。自己的模型要改用自己的计分，工具不会自动替你决定业务上应看哪个量。</p>
+<pre class="command" data-run="artifacts"><code>mc_tally_id=$(./mc.sh call openmc_read_results &quot;{\&quot;job_id\&quot;:\&quot;$mc_job_id\&quot;,\&quot;max_values\&quot;:10}&quot; | python3 -c &#x27;import json,sys; print(next(t[&quot;id&quot;] for t in json.load(sys.stdin)[&quot;tallies&quot;] if t[&quot;name&quot;]==&quot;Flux spectrum&quot;))&#x27;)
+./mc.sh call openmc_plot_results &quot;{\&quot;job_id\&quot;:\&quot;$mc_job_id\&quot;,\&quot;tally_id\&quot;:$mc_tally_id,\&quot;score\&quot;:\&quot;flux\&quot;}&quot;
+./mc.sh call openmc_export_report &quot;{\&quot;job_id\&quot;:\&quot;$mc_job_id\&quot;,\&quot;format\&quot;:\&quot;markdown\&quot;}&quot;
+./mc.sh call openmc_list_artifacts &quot;{\&quot;kind\&quot;:\&quot;job\&quot;,\&quot;identifier\&quot;:\&quot;$mc_job_id\&quot;}&quot;</code></pre>
+<p><strong>现在应该拿到：</strong>一张 PNG、图表对应的 JSON/CSV、一份 Markdown 报告，以及原始 StatePoint 和日志的清单。图/报告响应的 <code>server_path</code> 是可以在<strong>服务器</strong>上打开的绝对文件路径；清单的 <code>directory</code> 是记录根目录。</p>
+<pre><code>工作区：                 $mc_workspace
+原输入（200）：           cases/tutorial/settings.xml
+修改副本（400）：         cases/tutorial-400/settings.xml
+本次计算：               .mc-jobs/&lt;本次job_id&gt;/
+  job.json               编号、状态、输入与配置记录
+  work/                  输入快照、StatePoint等OpenMC产物
+  solver.log、worker.log  求解器/监控日志
+  results.json           提取后的结构化结果
+  plot-….png / json / csv 图与绘图数据
+  report.md              导出的Markdown报告</code></pre>
+<pre class="command" data-run="locate"><code>ls -la &quot;$mc_workspace/.mc-jobs/$mc_job_id&quot;</code></pre>
+<div class="note"><strong>目录名前有点号，所以默认隐藏。</strong><code>path</code>、<code>series_json</code> 等相对服务端工作区；优先使用返回的 <code>server_path</code>，不要仅拿 <code>image</code> 文件名拼路径。异机调用只获得位置，当前没有自动下载接口，可由部署方通过已有 SSH/SFTP 等方式交付文件。</div>
+<p>图保留 OpenMC 原始归一化，不自动转换为业务单位。<code>std_dev=null</code> 不是零误差，<code>warnings</code> 不能忽略。报告还支持 CSV/DOCX/PDF/DOC；同一编号重复导出同一格式会覆盖该报告，需要多版时先另行归档。</p>
+<h2 id="more">后续操作，按需要做</h2>
+<details id="scan"><summary>批量计算：从一份模型生成多组参数</summary>
+<p>继续用已发现的 <code>settings.particles</code>，在原输入上建立 200 和 400 两组计算：</p>
+<pre class="command"><code>./mc.sh call openmc_submit_scan &#x27;{&quot;case_dir&quot;:&quot;cases/tutorial&quot;,&quot;axes&quot;:{&quot;settings.particles&quot;:[200,400]},&quot;threads&quot;:1}&#x27;</code></pre>
+<p>它返回 <code>scan_id</code>，用 <a href="reference.html#openmc_scan_status">openmc_scan_status</a> 查询；多轴取笛卡尔积，当前串行执行。图和报告保存到 <code>.mc-scans/&lt;scan_id&gt;</code>；失败项保留，曲线不以 0 替代缺失值。横轴、固定维度与报告参数见<a href="reference.html#openmc_plot_scan">扫描绘图</a>和<a href="reference.html#openmc_export_scan_report">扫描报告</a>。</p></details>
+<details id="repair"><summary>诊断与确认修复：先看差异，再决定</summary>
+<p><code>openmc_diagnose_job</code> 读取指定计算的日志，提供有证据的提示；受支持问题可在新副本生成修复计划。只有用户看过差异并明确确认后才应用，再校核或关联重算。</p>
+<p>现成练习用 <code>mcp/.venv/bin/python examples/repair_demo.py</code>。它故意制造运行模式拼写错误，并保留第一次失败。当前自动修复仅限普通 run 中唯一的 <code>run_mode</code> 近似拼写；不自动修物理参数。CLI 需要交互终端确认，MCP 需要可信宿主逐次取得批准。</p></details>
+<h2 id="maintenance">产物清理：预览，确认，再删除</h2>
+<p>在计算服务器与相同 PID 命名空间执行。先预览本次记录：</p>
+<pre class="command"><code>./cleanup.sh --job-id &quot;$mc_job_id&quot;</code></pre>
+<p>需要删除时，先归档结果并确认计算结束；停止 MCP 和其它 CLI 写入，进入维护窗口，再对<strong>同一选择</strong>加 <code>--apply</code>：</p>
+<pre class="command"><code>./cleanup.sh --job-id &quot;$mc_job_id&quot; --apply</code></pre>
+<p>它删除选定终态记录及其快照、日志、图和报告；原 <code>cases/</code> / <code>demos/</code> 输入保留。删除后不能再按编号查询。扫描按整批用 <code>--scan-id</code>；运行中、未确认中断、关联冲突等会拒绝。<code>./cleanup.sh --help</code> 可查保留时间和修复引用选项；默认不删，失败非 0，不应无条件重试。</p>
+<p class="next">已经知道怎么跑：<a href="inputs.html">换成自己的模型，了解参数与扩展入口</a>；需要远程调用：<a href="mcp.html#mc-service">把现有工具作为 MCP 服务</a>。</p>
+<p class="source">实现依据：<a href="../mcp/openmc_examples.py">例题准备</a>、<a href="../mcp/openmc_parameters.py">参数适配</a>、<a href="../mcp/openmc_jobs.py">输入快照/计算</a>、<a href="../mcp/openmc_worker.py">官方 API 与结果读取</a>。接口完整约束见<a href="reference.html">参数参考</a>。</p>
+<footer>随包使用文档 · CLI 与 MCP 共用工具实现 · 工程流程验证不等于专业验收</footer></main></body></html>
