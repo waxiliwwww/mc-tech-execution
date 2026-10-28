@@ -69,6 +69,15 @@ class ToolContracts(unittest.TestCase):
         self.assertEqual(self.tool('read_knowledge')['inputSchema']['properties']['limit']['default'],60)
         self.assertEqual(self.tool('search_knowledge')['inputSchema']['properties']['limit']['default'],5)
 
+    def test_report_discovery_accepts_the_same_selection_as_plotting(self):
+        report = self.tool('openmc_export_report')['inputSchema']
+        for key in ['tally_id','score','nuclide','filter_selection']:
+            field = report['properties'][key]
+            self.assertIn('全作业摘要',field['description'])
+            self.assertNotIn('default',field)
+            self.assertFalse(Draft202012Validator(report).is_valid({'job_id':'1'*32,key:None}))
+        self.assertTrue(Draft202012Validator(report).is_valid({'job_id':'1'*32,'filter_selection':[]}))
+
     def test_annotations_cannot_change_other_tools_or_original_shared_input(self):
         shared={'type':'string','description':'自定义字符串'}
         def f(value='first'):return {'value':value}

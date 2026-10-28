@@ -12,6 +12,7 @@ import zipfile
 
 import openmc_jobs as jobs
 from openmc_runtime import Error, ROOT, api, relative, file_location
+from openmc_visuals import selection_label, selected_report_rows
 
 
 def office_command(runtime):
@@ -24,7 +25,11 @@ def office_command(runtime):
 
 def convert(source: Path, target: Path, format: str, runtime):
     with tempfile.TemporaryDirectory(prefix='.office-profile-', dir=target.parent) as profile:
-        filter_name = 'pdf:writer_pdf_Export' if format == 'pdf' else 'doc:MS Word 97'
+        # Preserve scientific chart pixels instead of Office's default JPEG recompression.
+        # https://help.libreoffice.org/latest/en-US/text/shared/guide/pdf_params.html
+        pdf_options = {'UseLosslessCompression': {'type':'boolean', 'value':'true'},
+                       'ReduceImageResolution': {'type':'boolean', 'value':'false'}}
+        filter_name = 'pdf:writer_pdf_Export:' + json.dumps(pdf_options) if format == 'pdf' else 'doc:MS Word 97'
         invocation = office_command(runtime) + ['-env:UserInstallation=' + Path(profile).as_uri(), '--headless',
                      '--convert-to', filter_name, '--outdir', str(target.parent), str(source)]
         try:
@@ -72,7 +77,64 @@ def export_job(job_id: str, format: str):
             if '所选数据点过多' not in str(error) and '没有可绘制的有限结果' not in str(error):raise
             data['warnings'] = [*data['warnings'], '报告数表保留；默认图未生成：' + str(error)]
     image = str(target / chart['image']) if chart else None
-    return {'job_id': job_id, **render(target, data, runtime, format, image)}
+    return {'job_id': job_id, 'selection_mode': 'job_summary', **render(target, data, runtime, format, image)}
+
+
+def export_selected_job(job_id: str, format: str, selection: dict):
+    """One native selection supplies chart, complete data and every report format."""
+    from openmc_tools import read_results
+    from openmc_plots import plot_results
+    target = jobs.job_directory(job_id)
+    # Validate/select before replacing any report. Never silently fall back to tally 1.
+    chart = plot_results(job_id, **selection)
+    image = target / chart['image']
+    series = json.loads(image.with_suffix('.json').read_text())
+    data = read_results(job_id, max_values=1)
+    data.pop('tallies')  # The unselected job preview is not the requested report data.
+    data.update(selected_series=series, series_json=image.with_suffix('.json').name,
+                series_csv=image.with_suffix('.csv').name)
+    if any(v is None for v in series['mean'] + series['std_dev']):
+        data['warnings'].append('所选统计量含不可用值；保留为空，不替换为0。')
+    runtime = jobs.read(target)['runtime']
+    preview = selected_report_rows(series, min(20, runtime.get('max_report_rows', 1000)))
+    if format in ('pdf', 'doc', 'docx'):
+        result = render(target, data, runtime, format, str(image))
+    else:
+        if format == 'csv':
+            content = image.with_suffix('.csv').read_bytes()
+            name = 'report.csv'
+        else:
+            rows = ['# OpenMC所选结果报告', '', '作业：' + job_id,
+                    '结果选择：' + selection_label(series),
+                    '过滤条件：' + json.dumps(series['filter_selection'], ensure_ascii=False), '',
+                    '数据来源：' + data['provenance']['data_kind'],
+                    '来源StatePoint SHA256：' + data['statepoint_sha256'],
+                    '**专业验收：未进行。** 保留OpenMC原始归一化，未换算实际源强或功率。', '',
+                    '横轴：' + series['x_label'], series['coordinate_note'], '',
+                    f"![所选结果图]({image.name})", '',
+                    f"完整{len(series['mean'])}点数据：[CSV]({data['series_csv']})；[JSON与元数据]({data['series_json']})。",
+                    '全局keff：' + json.dumps(data['keff'], ensure_ascii=False), '',
+                    f"数据预览：{len(preview)}/{len(series['mean'])}点，9位有效数字；完整数据保存在上述文件。", '',
+                    '|量/计分项|核素/过滤箱|均值|标准差|说明|', '|---|---|---|---|---|']
+            rows += ['|' + '|'.join(row) + '|' for row in preview]
+            rows += ['', *('提示：' + warning for warning in data['warnings'])]
+            content = ('\n'.join(rows) + '\n').encode('utf-8'); name = 'report.md'
+        output = target / name
+        with (target / 'report.lock').open('a') as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            with tempfile.NamedTemporaryFile(mode='wb', dir=target, delete=False) as pending:
+                pending_path = Path(pending.name)
+                try:
+                    pending.write(content); pending.flush()
+                    os.replace(pending_path, output)
+                finally:pending_path.unlink(missing_ok=True)
+        result = {'format': format, **file_location(output), 'provenance': data['provenance'],
+                  'professional_acceptance': False}
+    return {'job_id': job_id, **result, 'selection_mode': 'selected',
+            'selection': {k:series[k] for k in ('tally_id', 'score', 'nuclide', 'filter_selection')},
+            'points': len(series['mean']), 'preview_rows': len(preview),
+            'chart': relative(image), 'series_json': chart['series_json'], 'series_csv': chart['series_csv'],
+            'note': '图与正文使用同一选择；正文数表仅预览，完整数据和坐标见配套CSV/JSON。CSV格式导出全部所选数据。'}
 
 
 def export_scan(scan_id: str, format: str = 'markdown'):

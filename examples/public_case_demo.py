@@ -39,9 +39,10 @@ async def demo(args):
         print('4/5 提取结果并绘制能谱计分', file=sys.stderr)
         result = await call('openmc_read_results', {'job_id': submitted['job_id']})
         tally = next(t for t in result['tallies'] if t['name'] == 'Flux spectrum')
-        chart = await call('openmc_plot_results', {'job_id': submitted['job_id'], 'tally_id': tally['id'], 'score': 'flux'})
+        selection = {'job_id': submitted['job_id'], 'tally_id': tally['id'], 'score': 'flux', 'nuclide': 'total'}
+        chart = await call('openmc_plot_results', selection)
         print('5/5 导出报告和服务端清单', file=sys.stderr)
-        report = await call('openmc_export_report', {'job_id': submitted['job_id'], 'format': args.report_format})
+        report = await call('openmc_export_report', {**selection, 'format': args.report_format})
         artifacts = await call('openmc_list_artifacts', {'kind': 'job', 'identifier': submitted['job_id']})
         return {'knowledge': knowledge, 'definition': definition, 'case': case, 'validation': validation,
                 'job': status, 'results': result, 'chart': chart, 'report': report, 'artifacts': artifacts,

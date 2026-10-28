@@ -153,12 +153,19 @@ def read_results(job_id: str, max_values: int = 1000) -> dict:
     return data
 
 
-def export_report(job_id: str, format: str = 'markdown') -> dict:
+def export_report(job_id: str, format: str = 'markdown', tally_id: int | None = None,
+                  score: str | None = None, nuclide: str | None = None,
+                  filter_selection: list | None = None) -> dict:
+    if format not in ('markdown', 'csv', 'pdf', 'doc', 'docx'):
+        raise Error('format须为markdown/csv/pdf/docx/doc')
+    selection = dict(tally_id=tally_id, score=score, nuclide=nuclide, filter_selection=filter_selection)
+    # Presence matters: an explicit [] means select all bins, not job-summary mode.
+    if any(value is not None for value in selection.values()):
+        from openmc_reports import export_selected_job
+        return export_selected_job(job_id, format, selection)
     if format in ('pdf', 'doc', 'docx'):
         from openmc_reports import export_job
         return export_job(job_id, format)
-    if format not in ('markdown', 'csv'):
-        raise Error('首版支持markdown/csv；PDF和DOC仍列在后续计划中')
     data = read_results(job_id)
     directory = jobs.job_directory(job_id)
     note = data['provenance'].get('note', '')
@@ -182,6 +189,6 @@ def export_report(job_id: str, format: str = 'markdown') -> dict:
         output = stream.getvalue(); name = 'report.csv'
     report = directory / name
     report.write_text(output, encoding='utf-8')
-    return {'job_id': job_id, 'format': format, **file_location(report),
+    return {'job_id': job_id, 'format': format, 'selection_mode': 'job_summary', **file_location(report),
             'provenance': data['provenance'], 'professional_acceptance': False,
             'note': '完整shape、filter及原始计分归一化说明见同作业results.json；截断状态随结果保留。'}

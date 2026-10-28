@@ -23,6 +23,10 @@ def schema(properties, required=()):
 
 TEXT = {"type": "string", "minLength": 1}
 OUTPUT = {"type": "object"}
+SELECTION = {"type": "array", "items": schema({"type": TEXT, "bins": {"type": "array", "minItems": 1,
+             "items": {"anyOf": [{"type": "number"}, {"type": "array", "items": {"type": "number"}}]}}}, ['type', 'bins'])}
+RESULT_SELECTION = {"tally_id": {"type": "integer", "minimum": 1}, "score": TEXT,
+                    "nuclide": TEXT, "filter_selection": SELECTION}
 TOOLS = [
     {"name": "diagnose_log", "description": "读取工作目录内的日志并返回带行号的规则提示；不是专业正确性证明。",
      "inputSchema": schema({"path": TEXT}, ["path"]), "outputSchema": OUTPUT, "function": diagnose_log},
@@ -67,16 +71,13 @@ TOOLS += [
     {"name": "openmc_read_results", "description": "通过官方StatePoint读取已成功计算的keff及tally均值/标准差；保留计分维度、数据来源和截断说明，不进行专业验收。",
      "inputSchema": schema({"job_id": TEXT, "max_values": {"type": "integer", "minimum": 1, "maximum": 10000}}, ["job_id"]),
      "outputSchema": OUTPUT, "function": read_results},
-    {"name": "openmc_export_report", "description": "导出已完成计算的Markdown/CSV/PDF/DOCX或真实Word97 DOC报告，保留来源及不可用统计量提示。PDF/DOC需配置LibreOffice。同一作业同格式重复导出会覆盖报告，留多版须归档。",
-     "inputSchema": schema({"job_id": TEXT, "format": {"type": "string", "enum": ["markdown", "csv", "pdf", "docx", "doc"]}}, ["job_id"]),
+    {"name": "openmc_export_report", "description": "导出Markdown/CSV/PDF/DOCX或真实Word97 DOC。传任一结果选择参数时，图/数表/完整CSV及JSON沿用同一选择；正文预览最多20点，CSV保留全部所选点。全部省略时保留旧全作业摘要。PDF/DOC需LibreOffice。同作业同格式覆盖，留多版须归档。",
+     "inputSchema": schema({"job_id": TEXT, **RESULT_SELECTION, "format": {"type": "string", "enum": ["markdown", "csv", "pdf", "docx", "doc"]}}, ["job_id"]),
      "outputSchema": OUTPUT, "function": export_report,
      "annotations": {"readOnlyHint": False, "destructiveHint": False}},
 ]
 NUMBERS = {"type": "object", "additionalProperties": {"type": "number"}}
-SELECTION = {"type": "array", "items": schema({"type": TEXT, "bins": {"type": "array", "minItems": 1,
-             "items": {"anyOf": [{"type": "number"}, {"type": "array", "items": {"type": "number"}}]}}}, ['type', 'bins'])}
-PLOT_FIELDS = {"tally_id": {"type": "integer", "minimum": 1}, "score": TEXT, "nuclide": TEXT,
-               "filter_selection": SELECTION, "format": {"type": "string", "enum": ["png", "svg"]},
+PLOT_FIELDS = {**RESULT_SELECTION, "format": {"type": "string", "enum": ["png", "svg"]},
                "title": {"type": "string", "maxLength": 200}}
 WRITE = {"readOnlyHint": False, "destructiveHint": False}
 TOOLS += [
@@ -111,7 +112,7 @@ TOOLS += [
     {"name": "openmc_cancel_scan", "description": "取消当前扫描计算并阻止后续组合提交；查询终态确认取消完成。",
      "inputSchema": schema({"scan_id": TEXT}, ['scan_id']), "outputSchema": OUTPUT, "function": cancel_scan,
      "annotations": {"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True}},
-    {"name": "openmc_plot_results", "description": "从完整StatePoint按tally/score/nuclide/filter选择数据，生成PNG或SVG及对应数据JSON/CSV；默认选首个tally/score，不消费预览截断片段，不做功率归一化。",
+    {"name": "openmc_plot_results", "description": "从完整StatePoint选择tally/score/nuclide/filter，生成PNG/SVG与完整JSON/CSV。单一能量过滤器用eV区间中点，保留上下界；多过滤器用明确的展平分箱索引，不冒充物理坐标。默认首个tally/score，不用截断预览，不做功率或能宽归一化。",
      "inputSchema": schema({"job_id": TEXT, **PLOT_FIELDS, "style": {"type": "string", "enum": ['line', 'bar']}}, ['job_id']),
      "outputSchema": OUTPUT, "function": plot_results, "annotations": WRITE},
     {"name": "openmc_plot_scan", "description": "按x_parameter绘制扫描曲线，metric选keff或tally。多维扫描须用fixed固定其它维度；tally可选计分与bin_index。失败/缺失保留空缺，不填0或连过缺口。",

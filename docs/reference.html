@@ -575,9 +575,9 @@
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_tools.py">mcp/openmc_tools.py</a>。</p></details>
 <details class="tool" id="openmc_export_report"><summary>openmc_export_report
-<span class="tool-purpose">导出已完成计算的Markdown/CSV/PDF/DOCX或真实Word97 DOC报告，保留来源及不可用统计量提示。PDF/DOC需配置LibreOffice。同一作业同格式重复导出会覆盖报告，留多版须归档。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>job_id</td><td>string</td><td>是</td><td>不可省略</td><td>计算编号，直接使用openmc_submit_job或扫描子项返回的job_id；不是目录、文件名或scan_id。查询/读取不会自动提交新计算。</td><td>—</td></tr><tr><td>format</td><td>string</td><td>否</td><td>&quot;markdown&quot;</td><td>报告格式：markdown/csv/docx无需Office；pdf/doc需要已配置转换组件，doc是真实Word97格式。</td><td>—</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>path/server_path标明报告在服务端的位置，不代表已经下载到客户端。同一job_id重复导出同格式会覆盖该报告，留多版需另行归档。</p>
+<span class="tool-purpose">导出Markdown/CSV/PDF/DOCX或真实Word97 DOC。传任一结果选择参数时，图/数表/完整CSV及JSON沿用同一选择；正文预览最多20点，CSV保留全部所选点。全部省略时保留旧全作业摘要。PDF/DOC需LibreOffice。同作业同格式覆盖，留多版须归档。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>job_id</td><td>string</td><td>是</td><td>不可省略</td><td>计算编号，直接使用openmc_submit_job或扫描子项返回的job_id；不是目录、文件名或scan_id。查询/读取不会自动提交新计算。</td><td>—</td></tr><tr><td>tally_id</td><td>integer</td><td>否</td><td>省略时见说明</td><td>四个选择参数全部省略时生成旧全作业摘要；传任一项（含filter_selection=[]）则生成所选结果报告。进入所选模式后：计分器ID，先从openmc_read_results返回的tallies[].id选择。省略时取StatePoint首个tally，不等于自动选择业务上正确的量；不要传null。</td><td>—</td></tr><tr><td>score</td><td>string</td><td>否</td><td>省略时见说明</td><td>四个选择参数全部省略时生成旧全作业摘要；传任一项（含filter_selection=[]）则生成所选结果报告。进入所选模式后：计分类型，取所选tally的scores，例如flux。省略时使用首个score；不要传null，也不要为不存在的计分编造名称。</td><td>—</td></tr><tr><td>nuclide</td><td>string</td><td>否</td><td>省略时见说明</td><td>四个选择参数全部省略时生成旧全作业摘要；传任一项（含filter_selection=[]）则生成所选结果报告。进入所选模式后：计分核素，取所选tally的nuclides。省略时优先total，否则首个核素；不要传null。</td><td>—</td></tr><tr><td>filter_selection</td><td>array</td><td>否</td><td>省略时见说明</td><td>四个选择参数全部省略时生成旧全作业摘要；传任一项（含filter_selection=[]）则生成所选结果报告。进入所选模式后：可选计分过滤条件。先读取tally定义，再按OpenMC过滤器类名及其有效bin选择。省略保留全部bin；不要传null。</td><td>[{&quot;type&quot;: &quot;EnergyFilter&quot;, &quot;bins&quot;: [[0.0, 1.0]]}]</td></tr><tr><td>format</td><td>string</td><td>否</td><td>&quot;markdown&quot;</td><td>报告格式：markdown/csv/docx无需Office；pdf/doc需要已配置转换组件，doc是真实Word97格式。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>path/server_path为服务端报告位置。selection_mode=selected时，selection为实际选择，chart/series_json/series_csv关联同一完整数据；正文仅预览，完整CSV/JSON不截断。四个选择参数全省略时为job_summary，沿用旧全作业摘要及截断提示。同作业同格式覆盖，留多版需归档。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>job_id</td><td>计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。</td></tr><tr><td>path</td><td>相对服务端MC_WORKSPACE的产物路径；不是客户端本地路径。</td></tr><tr><td>server_path</td><td>服务端绝对文件位置；远程调用不会自动下载文件。</td></tr><tr><td>workspace</td><td>服务端绝对数据根；工作区相对路径以它为基准。</td></tr><tr><td>provenance</td><td>数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
@@ -588,6 +588,73 @@
       &quot;type&quot;: &quot;string&quot;,
       &quot;minLength&quot;: 1,
       &quot;description&quot;: &quot;计算编号，直接使用openmc_submit_job或扫描子项返回的job_id；不是目录、文件名或scan_id。查询/读取不会自动提交新计算。&quot;
+    },
+    &quot;tally_id&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 1,
+      &quot;description&quot;: &quot;四个选择参数全部省略时生成旧全作业摘要；传任一项（含filter_selection=[]）则生成所选结果报告。进入所选模式后：计分器ID，先从openmc_read_results返回的tallies[].id选择。省略时取StatePoint首个tally，不等于自动选择业务上正确的量；不要传null。&quot;
+    },
+    &quot;score&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;四个选择参数全部省略时生成旧全作业摘要；传任一项（含filter_selection=[]）则生成所选结果报告。进入所选模式后：计分类型，取所选tally的scores，例如flux。省略时使用首个score；不要传null，也不要为不存在的计分编造名称。&quot;
+    },
+    &quot;nuclide&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;四个选择参数全部省略时生成旧全作业摘要；传任一项（含filter_selection=[]）则生成所选结果报告。进入所选模式后：计分核素，取所选tally的nuclides。省略时优先total，否则首个核素；不要传null。&quot;
+    },
+    &quot;filter_selection&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;properties&quot;: {
+          &quot;type&quot;: {
+            &quot;type&quot;: &quot;string&quot;,
+            &quot;minLength&quot;: 1,
+            &quot;description&quot;: &quot;所选tally实际包含且唯一的OpenMC过滤器类名，例如EnergyFilter；区分大小写。&quot;
+          },
+          &quot;bins&quot;: {
+            &quot;type&quot;: &quot;array&quot;,
+            &quot;minItems&quot;: 1,
+            &quot;items&quot;: {
+              &quot;anyOf&quot;: [
+                {
+                  &quot;type&quot;: &quot;number&quot;
+                },
+                {
+                  &quot;type&quot;: &quot;array&quot;,
+                  &quot;items&quot;: {
+                    &quot;type&quot;: &quot;number&quot;
+                  }
+                }
+              ],
+              &quot;description&quot;: &quot;实际有效的bin编号/区间；依据tally定义填写，不在此枚举全部过滤器类型。&quot;
+            },
+            &quot;description&quot;: &quot;该过滤器的有效bin列表；区间bin按[下界,上界]表示，单位依实际过滤器定义。&quot;
+          }
+        },
+        &quot;required&quot;: [
+          &quot;type&quot;,
+          &quot;bins&quot;
+        ],
+        &quot;additionalProperties&quot;: false,
+        &quot;description&quot;: &quot;一个过滤器类名与所选bin集合；类型不可重复。&quot;
+      },
+      &quot;description&quot;: &quot;四个选择参数全部省略时生成旧全作业摘要；传任一项（含filter_selection=[]）则生成所选结果报告。进入所选模式后：可选计分过滤条件。先读取tally定义，再按OpenMC过滤器类名及其有效bin选择。省略保留全部bin；不要传null。&quot;,
+      &quot;examples&quot;: [
+        [
+          {
+            &quot;type&quot;: &quot;EnergyFilter&quot;,
+            &quot;bins&quot;: [
+              [
+                0.0,
+                1.0
+              ]
+            ]
+          }
+        ]
+      ]
     },
     &quot;format&quot;: {
       &quot;type&quot;: &quot;string&quot;,
@@ -611,7 +678,7 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;path/server_path标明报告在服务端的位置，不代表已经下载到客户端。同一job_id重复导出同格式会覆盖该报告，留多版需另行归档。&quot;,
+  &quot;description&quot;: &quot;path/server_path为服务端报告位置。selection_mode=selected时，selection为实际选择，chart/series_json/series_csv关联同一完整数据；正文仅预览，完整CSV/JSON不截断。四个选择参数全省略时为job_summary，沿用旧全作业摘要及截断提示。同作业同格式覆盖，留多版需归档。&quot;,
   &quot;properties&quot;: {
     &quot;job_id&quot;: {
       &quot;description&quot;: &quot;计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。&quot;
@@ -1191,9 +1258,9 @@
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_scan.py">mcp/openmc_scan.py</a>。</p></details>
 <details class="tool" id="openmc_plot_results"><summary>openmc_plot_results
-<span class="tool-purpose">从完整StatePoint按tally/score/nuclide/filter选择数据，生成PNG或SVG及对应数据JSON/CSV；默认选首个tally/score，不消费预览截断片段，不做功率归一化。</span></summary>
+<span class="tool-purpose">从完整StatePoint选择tally/score/nuclide/filter，生成PNG/SVG与完整JSON/CSV。单一能量过滤器用eV区间中点，保留上下界；多过滤器用明确的展平分箱索引，不冒充物理坐标。默认首个tally/score，不用截断预览，不做功率或能宽归一化。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>job_id</td><td>string</td><td>是</td><td>不可省略</td><td>计算编号，直接使用openmc_submit_job或扫描子项返回的job_id；不是目录、文件名或scan_id。查询/读取不会自动提交新计算。</td><td>—</td></tr><tr><td>tally_id</td><td>integer</td><td>否</td><td>省略时见说明</td><td>计分器ID，先从openmc_read_results返回的tallies[].id选择。省略时取StatePoint首个tally，不等于自动选择业务上正确的量；不要传null。</td><td>—</td></tr><tr><td>score</td><td>string</td><td>否</td><td>省略时见说明</td><td>计分类型，取所选tally的scores，例如flux。省略时使用首个score；不要传null，也不要为不存在的计分编造名称。</td><td>—</td></tr><tr><td>nuclide</td><td>string</td><td>否</td><td>省略时见说明</td><td>计分核素，取所选tally的nuclides。省略时优先total，否则首个核素；不要传null。</td><td>—</td></tr><tr><td>filter_selection</td><td>array</td><td>否</td><td>省略时见说明</td><td>可选计分过滤条件。先读取tally定义，再按OpenMC过滤器类名及其有效bin选择。省略保留全部bin；不要传null。</td><td>[{&quot;type&quot;: &quot;EnergyFilter&quot;, &quot;bins&quot;: [[0.0, 1.0]]}]</td></tr><tr><td>format</td><td>string</td><td>否</td><td>&quot;png&quot;</td><td>图文件格式，png或svg；同次另存对应JSON/CSV数据。</td><td>—</td></tr><tr><td>title</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选图标题，最多200字符；省略时使用默认标题，不改变计分数据、单位或归一化。不要传null。</td><td>—</td></tr><tr><td>style</td><td>string</td><td>否</td><td>&quot;line&quot;</td><td>line为折线，bar为柱图。仅控制单次计分图的呈现，省略时line。</td><td>—</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>path/server_path为图，series_json/series_csv为所选完整数据；保留原归一化与来源。</p>
+<h3>返回怎么看</h3><p>path/server_path为图，series_json/series_csv为所选完整数据。单一能量过滤器的x为算术中点、x_lower/x_upper为eV区间，正下界用对数轴，有零下界用线性轴；多维结果为展平索引。均值不除能宽，保留原归一化与来源。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>job_id</td><td>计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。</td></tr><tr><td>path</td><td>相对服务端MC_WORKSPACE的产物路径；不是客户端本地路径。</td></tr><tr><td>server_path</td><td>服务端绝对文件位置；远程调用不会自动下载文件。</td></tr><tr><td>workspace</td><td>服务端绝对数据根；工作区相对路径以它为基准。</td></tr><tr><td>provenance</td><td>数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
@@ -1305,7 +1372,7 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;path/server_path为图，series_json/series_csv为所选完整数据；保留原归一化与来源。&quot;,
+  &quot;description&quot;: &quot;path/server_path为图，series_json/series_csv为所选完整数据。单一能量过滤器的x为算术中点、x_lower/x_upper为eV区间，正下界用对数轴，有零下界用线性轴；多维结果为展平索引。均值不除能宽，保留原归一化与来源。&quot;,
   &quot;properties&quot;: {
     &quot;job_id&quot;: {
       &quot;description&quot;: &quot;计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。&quot;

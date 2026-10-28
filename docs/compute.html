@@ -67,10 +67,15 @@ printf &#x27;本次计算编号：%s\n&#x27; &quot;$mc_job_id&quot;
 <p><code>keff</code> 是有效增殖因数；<code>mean</code> 是估计均值，<code>std_dev</code> 是统计标准差。<code>tallies</code> 列出输入中定义的计分（Tally），含名称、ID、score、核素和筛选维度。<code>max_values=10</code> 只限制返回预览，不截断原始结果文件。</p>
 <p>本例的输入定义了名为 <code>Flux spectrum</code> 的通量能谱计分。下面从结果中取它的真实 ID，再画 <code>flux</code>。自己的模型要改用自己的计分，工具不会自动替你决定业务上应看哪个量。</p>
 <pre class="command" data-run="artifacts"><code>mc_tally_id=$(./mc.sh call openmc_read_results &quot;{\&quot;job_id\&quot;:\&quot;$mc_job_id\&quot;,\&quot;max_values\&quot;:10}&quot; | python3 -c &#x27;import json,sys; print(next(t[&quot;id&quot;] for t in json.load(sys.stdin)[&quot;tallies&quot;] if t[&quot;name&quot;]==&quot;Flux spectrum&quot;))&#x27;)
-./mc.sh call openmc_plot_results &quot;{\&quot;job_id\&quot;:\&quot;$mc_job_id\&quot;,\&quot;tally_id\&quot;:$mc_tally_id,\&quot;score\&quot;:\&quot;flux\&quot;}&quot;
-./mc.sh call openmc_export_report &quot;{\&quot;job_id\&quot;:\&quot;$mc_job_id\&quot;,\&quot;format\&quot;:\&quot;markdown\&quot;}&quot;
+./mc.sh call openmc_plot_results &quot;{\&quot;job_id\&quot;:\&quot;$mc_job_id\&quot;,\&quot;tally_id\&quot;:$mc_tally_id,\&quot;score\&quot;:\&quot;flux\&quot;,\&quot;nuclide\&quot;:\&quot;total\&quot;}&quot;
+./mc.sh call openmc_export_report &quot;{\&quot;job_id\&quot;:\&quot;$mc_job_id\&quot;,\&quot;tally_id\&quot;:$mc_tally_id,\&quot;score\&quot;:\&quot;flux\&quot;,\&quot;nuclide\&quot;:\&quot;total\&quot;,\&quot;format\&quot;:\&quot;markdown\&quot;}&quot;
 ./mc.sh call openmc_list_artifacts &quot;{\&quot;kind\&quot;:\&quot;job\&quot;,\&quot;identifier\&quot;:\&quot;$mc_job_id\&quot;}&quot;</code></pre>
 <p><strong>现在应该拿到：</strong>一张 PNG、图表对应的 JSON/CSV、一份 Markdown 报告，以及原始 StatePoint 和日志的清单。图/报告响应的 <code>server_path</code> 是可以在<strong>服务器</strong>上打开的绝对文件路径；清单的 <code>directory</code> 是记录根目录。</p>
+<p><strong>核对是不是同一份结果：</strong>这里的绘图和报告都明确传入同一个 <code>tally_id</code>、<code>score=flux</code>、<code>nuclide=total</code>；不能只对绘图选参、报告却省略。报告返回 <code>selection_mode=selected</code> 和实际 <code>selection</code>，并给出对应图与完整数据的 <code>chart</code>、<code>series_json</code>、<code>series_csv</code>。打开报告，核对选择名称、图标题和数表中的计分项一致，而不只是看文件存在。</p>
+<details id="report-selection"><summary>图的横轴是什么意思？报告为什么只放少量数据？</summary>
+<p>本例只有一个能量过滤器的通量计分，横轴用能量区间的<strong>算术中点，单位 eV</strong>；数据 CSV/JSON 同时保存 <code>x_lower</code> 和 <code>x_upper</code> 上下界。所有下界为正时使用对数横轴，有零下界时使用线性轴。均值仍是该区间的原始统计值，<strong>未除以能宽</strong>，不能当作每 eV 的谱密度；也未换算实际源强或功率。多种过滤器组合的结果仍用明确标注的展平分箱序号，不能把序号解释成距离或能量。</p>
+<p>所选结果报告以图和摘要为主，正文最多预览前 20 点（受配置 <code>max_report_rows</code> 的更小上限约束），数表显示 9 位有效数字。完整所选均值、标准差、坐标和来源保存在配套 CSV/JSON 中；CSV 格式报告导出全部所选点，不受正文预览限制。原 StatePoint 保留。超出 <code>max_plot_points</code> 时须缩小 <code>filter_selection</code>，不会静默截断。</p>
+<p>自己选择其它结果时，给绘图与报告传入相同的四项选择：<code>tally_id</code>、<code>score</code>、<code>nuclide</code>、<code>filter_selection</code>。其中任一项出现就进入所选模式，空数组表示所有分箱。<strong>四项全部省略</strong>才使用兼容旧调用的全作业摘要；它保留预览/截断提示，Word/PDF 默认附图取首个统计项目，不表示自动理解用户之前画过哪张图。</p></details>
 <pre><code>工作区：                 $mc_workspace
 原输入（200）：           cases/tutorial/settings.xml
 修改副本（400）：         cases/tutorial-400/settings.xml

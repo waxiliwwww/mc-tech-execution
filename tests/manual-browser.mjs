@@ -40,6 +40,11 @@ try {
   await page.locator('.jump a[href="#results"]').click();
   await page.waitForFunction(()=>Math.abs(document.getElementById('results').getBoundingClientRect().top-28)<4);
   await shot('04-results-location');
+  await page.locator('#report-selection > summary').click();
+  assert.match(await page.locator('#report-selection').innerText(),/算术中点/);
+  assert.match(await page.locator('#report-selection').innerText(),/全部所选点/);
+  await page.locator('#report-selection').scrollIntoViewIfNeeded();
+  await shot('04b-selected-report');
   await page.locator('nav a[href="inputs.html"]').click();
   await shot('05-model-layers');
   await page.locator('#native > summary').click();
