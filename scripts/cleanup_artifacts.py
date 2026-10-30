@@ -47,7 +47,7 @@ def process_identity(pid):
 
 def inventory(workspace):
     records = {}
-    for kind, folder in [('job', '.mc-jobs'), ('scan', '.mc-scans')]:
+    for kind, folder in [('job', '.mc-jobs'), ('scan', '.mc-scans'), ('example', '.mc-examples')]:
         base = workspace / folder
         if base.is_symlink():raise CleanupError('内部目录不能是符号链接：' + str(base))
         if not base.exists():continue
@@ -56,8 +56,8 @@ def inventory(workspace):
             if target.is_symlink():raise CleanupError('内部记录包含符号链接：' + str(target))
             if not target.is_dir():continue
             if not IDENTIFIER.fullmatch(target.name):raise CleanupError('记录目录编号无效：' + str(target))
-            record = read_json(target / 'job.json')
-            if record.get(kind + '_id') != target.name:raise CleanupError('记录编号与目录不一致：' + str(target))
+            record = read_json(target / ('example.json' if kind == 'example' else 'job.json'))
+            if record.get('instance_id' if kind == 'example' else kind + '_id') != target.name:raise CleanupError('记录编号与目录不一致：' + str(target))
             records[(kind, target.name)] = {'kind': kind, 'path': target, 'record': record}
     return records
 
@@ -84,6 +84,10 @@ def safe_record(item, now):
     finished = record.get('finished_at')
     if type(finished) not in (int, float) or not math.isfinite(finished) or not 0 < finished <= now:
         raise CleanupError('缺少有效完成时间：' + str(item['path']))
+    if item['kind'] == 'example':
+        # Examples own a sequence of child jobs, not a separate worker. Child
+        # identities and terminal states are checked when adding the full graph.
+        return
     pid, expected = record.get('worker_pid'), record.get('worker_identity')
     if type(pid) is not int or pid <= 0 or not isinstance(expected, str) or not expected:
         raise CleanupError('缺少工作进程身份记录，拒绝推断已经退出：' + str(item['path']))
@@ -94,10 +98,11 @@ def safe_record(item, now):
         raise CleanupError('扫描仍有未核对的active_job_id：' + str(item['path']))
 
 
-def plan(workspace, job_ids, scan_ids, older_than_days=None, allow_repair_references=False):
+def plan(workspace, job_ids, scan_ids, older_than_days=None, allow_repair_references=False, example_ids=None):
     now = time.time()
     records = inventory(workspace)
     selected = {('job', value) for value in job_ids} | {('scan', value) for value in scan_ids}
+    selected.update(('example', value) for value in (example_ids or []))
     for kind, identifier in selected:
         if not IDENTIFIER.fullmatch(identifier):raise CleanupError('编号须为32位小写十六进制')
         if (kind, identifier) not in records:raise CleanupError('记录不存在：' + identifier)
@@ -123,6 +128,23 @@ def plan(workspace, job_ids, scan_ids, older_than_days=None, allow_repair_refere
             children.append(child)
         if ('scan', identifier) in selected:
             selected.update(('job', child) for child in children)
+    example_references = {}
+    for (kind, identifier), item in records.items():
+        if kind != 'example':continue
+        steps = item['record'].get('steps')
+        if not isinstance(steps, dict):raise CleanupError('例题步骤记录损坏：' + identifier)
+        children=[]
+        for step in steps.values():
+            child=step.get('job_id') if isinstance(step,dict) else None
+            if not isinstance(child,str) or not IDENTIFIER.fullmatch(child):
+                raise CleanupError('例题关联作业编号无效：' + identifier)
+            example_references.setdefault(child,set()).add(identifier);children.append(child)
+        if ('example',identifier) in selected:selected.update(('job',child) for child in children)
+    for kind,identifier in list(selected):
+        if kind=='job' and any(('example',parent) not in selected for parent in example_references.get(identifier,())):
+            if identifier in job_ids or any(('scan',parent) in selected for parent in references.get(identifier,())):
+                raise CleanupError('作业仍被官方例题引用，请选择全部相关--example-id：'+identifier)
+            selected.remove((kind,identifier));skipped.append('保留仍被官方例题引用的作业：'+identifier)
     # An age filter must never silently break an otherwise retained scan.
     for kind, identifier in list(selected):
         if kind == 'job' and any(('scan', parent) not in selected for parent in references.get(identifier, ())):
@@ -148,7 +170,7 @@ def plan(workspace, job_ids, scan_ids, older_than_days=None, allow_repair_refere
         raise CleanupError('所选作业被修复计划引用：' + json.dumps(repair_references, ensure_ascii=False) +
                            '；归档并接受无法继续追溯/重验后，可显式加--allow-repair-references。计划和备份仍保留。')
     entries = []
-    for key in sorted(selected, key=lambda value: (value[0] == 'scan', value[1])):
+    for key in sorted(selected, key=lambda value: ({'job':0,'scan':1,'example':2}[value[0]], value[1])):
         if key not in records:raise CleanupError('扫描引用的作业记录缺失，拒绝部分清理：' + key[1])
         item = records[key];safe_record(item, now)
         stamp, size = fingerprint(item['path'])
@@ -198,6 +220,7 @@ def main():
     parser.add_argument('--workspace', default=os.environ.get('MC_WORKSPACE', str(ROOT / 'workspace')))
     parser.add_argument('--job-id', action='append', default=[])
     parser.add_argument('--scan-id', action='append', default=[])
+    parser.add_argument('--example-id', action='append', default=[], help='官方例题实例编号；连同所属步骤作业清理，保留原输入')
     parser.add_argument('--older-than-days', type=float)
     parser.add_argument('--allow-repair-references', action='store_true', help='接受修复关联作业被删后无法继续查询/重验；不删除计划和备份')
     parser.add_argument('--apply', action='store_true', help='确认已停止服务及其他CLI写操作，永久删除列出的内部记录')
@@ -210,9 +233,9 @@ def main():
         if not workspace.is_dir():raise CleanupError('工作区须为目录')
         if args.older_than_days is not None and (not math.isfinite(args.older_than_days) or args.older_than_days < 0):
             raise CleanupError('older-than-days须为非负有限天数')
-        selected = bool(args.job_id or args.scan_id or args.older_than_days is not None)
+        selected = bool(args.job_id or args.scan_id or args.example_id or args.older_than_days is not None)
         if args.apply and not selected:raise CleanupError('--apply必须显式指定编号或older-than-days')
-        refresh = lambda: plan(workspace, args.job_id, args.scan_id, args.older_than_days, args.allow_repair_references)
+        refresh = lambda: plan(workspace, args.job_id, args.scan_id, args.older_than_days, args.allow_repair_references, args.example_id)
         value = refresh()
         if not selected:
             value['inventory'] = [{'kind':kind,'identifier':identifier,'state':item['record'].get('state')}

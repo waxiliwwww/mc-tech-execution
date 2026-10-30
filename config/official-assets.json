@@ -1,0 +1,61 @@
+{
+  "note": "官方固定Notebook实际引用的输入资产；ENDF采用同版NNDC官方源替代不可访问的LANL旧站，不放宽TLS校验。",
+  "sources": [
+    {
+      "id": "cad-fuel-pin",
+      "request_url": "https://tinyurl.com/y3ugwz6w",
+      "filename": "dagmc.h5m",
+      "bytes": 1233420,
+      "sha256": "e65ec96039d68a03cda5f885cd4999dbf7722205d7b6fa88153eeddfae71933f",
+      "download_url": "https://drive.google.com/uc?export=download&id=1sdCY1JxjoQg9Y3-3XlEnBDlwZtERnR_4"
+    },
+    {
+      "id": "cad-teapot",
+      "request_url": "https://tinyurl.com/y4mcmc3u",
+      "filename": "teapot.h5m",
+      "bytes": 29642852,
+      "sha256": "66754a4a9a06a6add7cee8262765bddc7a8f7ed8cb15f5321d7b94a0a6929b74",
+      "download_url": "https://drive.google.com/uc?export=download&id=1fYp2XKgEx7oCkF1IJJMx9Pi5WcgSkQLX"
+    },
+    {
+      "id": "cad-paramak",
+      "request_url": "https://tinyurl.com/y7w238th",
+      "filename": "paramak_with_graveyard.h5m",
+      "bytes": 18701516,
+      "sha256": "796c4773652144a9af31cc98479648846bfdd57328da3d441e159a618c1ea1e6",
+      "download_url": "https://anl.app.box.com/public/static/313tr9lkl81xg0mlr74xofvqhuoon5tk.h5m"
+    },
+    {
+      "id": "pin-mesh-moab",
+      "request_url": "https://tinyurl.com/u9ce9d7",
+      "filename": "pin_mesh.h5m",
+      "bytes": 22356720,
+      "sha256": "ea90636a00bb53ba4e937372a8001fc22d296bfbccf78453f3be4bb9888617e5",
+      "download_url": "https://anl.app.box.com/public/static/6yf39qsdzzsvr897sr9zsmmw6ibfd2os.h5m"
+    },
+    {
+      "id": "pin-mesh-libmesh",
+      "request_url": "https://tinyurl.com/yysgs3tr",
+      "filename": "pin_mesh.e",
+      "bytes": 10084440,
+      "sha256": "6db7639262054659b0aa43699f30663ac1e93bc111b292baf6b68d5b92164ca4",
+      "download_url": "https://anl.app.box.com/public/static/ps78x848nco6j6zef1dtnj7j51k2raef.e"
+    },
+    {
+      "id": "manifold-geometry",
+      "request_url": "https://tinyurl.com/rp7grox",
+      "filename": "dagmc.h5m",
+      "bytes": 103024236,
+      "sha256": "d027cf46ddc755232754eaeeec72699f15172599d50d979c096b6af2d2cd0890",
+      "download_url": "https://anl.app.box.com/public/static/kcitg5dyg4c1lcz8gaf2ekdy13lvev27.h5m"
+    },
+    {
+      "id": "manifold-mesh",
+      "request_url": "https://tinyurl.com/wojemuh",
+      "download_url": "https://anl.app.box.com/public/static/k58h1vx178g7grxbl5b24vri4ieu0ocf.h5m",
+      "filename": "manifold.h5m",
+      "bytes": 5647344,
+      "sha256": "671c6a01278947d558131d2c07aedf604d9e6576c762d5c33fee74253ed80664"
+    }
+  ]
+}

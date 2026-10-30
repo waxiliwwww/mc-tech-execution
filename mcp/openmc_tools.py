@@ -120,6 +120,11 @@ def verified_result(job_id: str):
         raise Error('作业尚未成功完成；先查询openmc_job_status')
     directory = jobs.job_directory(job_id)
     record = jobs.read(directory)
+    workflow=record.get('example_workflow')
+    if workflow:
+        from official_catalog import definition
+        if definition(workflow['example_id'])['workflow']=='notebook':
+            raise Error('Notebook可含多次求解，不能默认取最后StatePoint画图或导出报告；用openmc_read_example_results的calculation_id选择原始结果，查看对应Notebook报告。')
     if record['mode'] == 'plot':
         raise Error('绘图作业不提供计算statepoint；请查看作业files中的图像')
     candidates = [directory / 'work' / name for name in record.get('output_files', {})

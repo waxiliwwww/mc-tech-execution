@@ -69,13 +69,23 @@ try {
   await page.locator('#openmc_plot_results details').first().locator('summary').click();
   assert.match(await page.locator('#openmc_plot_results details').first().innerText(),/filter_selection/);
   await shot('08-schema-anchor');
+  await page.goto(url('official-examples.html'));
+  assert.equal(await page.locator('main table').last().locator('tbody tr').count(),50);
+  assert.match(await page.locator('main').innerText(),/本轮完成其余48项/);
+  assert.match(await page.locator('main').innerText(),/calculation 0002/);
+  await shot('08b-official-examples');
+  await page.locator('nav a[href="reference.html"]').click();
+  await page.locator('#tool-search').fill('openmc_read_example_results');
+  await page.locator('#openmc_read_example_results > summary').click();
+  assert.match(await page.locator('#openmc_read_example_results').innerText(),/calculation_id/);
+  await shot('08c-stage-selection');
   await page.setViewportSize({width:390,height:844});
-  for(const name of ['index.html','compute.html','inputs.html','mcp.html','reference.html']) {
+  for(const name of ['index.html','compute.html','inputs.html','mcp.html','reference.html','official-examples.html']) {
     await page.goto(url(name));
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal page overflow: '+name);
   }
   await page.goto(url('index.html'));await shot('09-mobile');
   assert.deepEqual(problems,[]);assert.deepEqual(remoteRequests,[]);
-  await fs.writeFile(path.join(out,'receipt.json'),JSON.stringify({passed:true,pages:5,problems,remoteRequests,screenshots,entry:url('index.html'),checks:['offline file navigation','demo explanation disclosure','exact command copy/selection fallback','source/model layers','own program disclosure','search/no-match','deep-link reveals schema','mobile no page overflow']},null,2));
+  await fs.writeFile(path.join(out,'receipt.json'),JSON.stringify({passed:true,pages:6,problems,remoteRequests,screenshots,entry:url('index.html'),checks:['offline file navigation','demo explanation disclosure','exact command copy/selection fallback','source/model layers','own program disclosure','search/no-match','deep-link reveals schema','mobile no page overflow']},null,2));
   process.stdout.write('HTML browser checks passed; screenshots: '+out+'\n');
 } finally {await browser.close();}

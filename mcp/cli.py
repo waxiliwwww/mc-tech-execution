@@ -13,6 +13,8 @@ def main() -> int:
     parser.add_argument('--config', help='OpenMC运行配置；默认config/openmc.json')
     sub = parser.add_subparsers(dest='action', required=True)
     sub.add_parser('list', help='输出工具定义和输入输出schema')
+    from examples_cli import configure_parser
+    configure_parser(sub.add_parser('examples', help='按官方例题逐步准备、计算和查看产物'))
     call = sub.add_parser('call', help='调用一个工具')
     call.add_argument('tool')
     call.add_argument('arguments', nargs='?', default='{}', help='一个JSON对象')
@@ -24,6 +26,27 @@ def main() -> int:
     from adapters import ToolExecutionError, execute_tool, public_tool
     from tools import TOOLS
     try:
+        if args.action == 'examples':
+            from examples_cli import execute
+            try:return execute(args)
+            except (ValueError, OSError, KeyboardInterrupt) as exc:
+                context=getattr(args,'_example_context',{})
+                message='等待被中断；不代表计算停止' if isinstance(exc,KeyboardInterrupt) else str(exc)
+                failure={'error':message,**context}
+                instance=context.get('instance_id')
+                if instance:
+                    failure['next_actions']=[f'./mc.sh examples status {instance}',f'./mc.sh examples cancel {instance}']
+                    try:
+                        from example_workflows import example_status
+                        current=example_status(instance);failure['state']=current['state']
+                        if context.get('step') in current['steps']:
+                            failure['job_id']=current['steps'][context['step']]['job_id']
+                    except (ValueError,OSError):failure['state']='unknown'
+                if args.json:print(json.dumps(failure,ensure_ascii=False),file=sys.stderr)
+                else:
+                    print('官方例题操作失败：'+message,file=sys.stderr)
+                    if instance:print('实例：'+instance+'\n继续查询：'+failure['next_actions'][0],file=sys.stderr)
+                return 130 if isinstance(exc,KeyboardInterrupt) else 1
         if args.action == 'list':
             value = {'tools': [public_tool(t) for t in TOOLS]}
         else:

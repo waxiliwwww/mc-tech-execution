@@ -5,7 +5,7 @@
 <a class="sr-only" href="#content">跳到正文</a><aside class="sidebar">
 <a class="brand" href="index.html">MC 工具包<br>使用与开发手册</a>
 <p class="edition">OpenMC · 独立 MCP</p><nav aria-label="文档导航">
-<a href="index.html">认识工具包</a><a href="compute.html">完成一次计算</a><a href="inputs.html">自有模型与源码</a><a href="mcp.html">封装与部署 MCP</a><a href="reference.html" aria-current="page">查工具参数</a>
+<a href="index.html">认识工具包</a><a href="compute.html">完成一次计算</a><a href="official-examples.html">全部官方例题</a><a href="inputs.html">自有模型与源码</a><a href="mcp.html">封装与部署 MCP</a><a href="reference.html" aria-current="page">查工具参数</a>
 </nav><p class="minor">先沿一个实际任务操作。<br>参数全集随用随查。<br>本手册可离线打开。</p></aside>
 <main id="content"><p class="eyebrow">按需查阅 · 来自实际工具注册表</p><h1>查一个工具的参数</h1>
 <p class="lead">先按操作指南完成任务，本页用于查询具体字段。CLI 与 MCP 使用同一 Schema；
@@ -1612,5 +1612,282 @@
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_reports.py">mcp/openmc_reports.py</a>。</p></details>
+<details class="tool" id="openmc_list_official_examples"><summary>openmc_list_official_examples
+<span class="tool-purpose">列出固定版本的全部官方源码例题、内置模型和Notebook，含来源、步骤与实际适配状态；未适配或未实跑的条目不能算通过。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>group</td><td>string</td><td>否</td><td>&quot;all&quot;</td><td>按官方来源筛选；省略显示全部三处，第三方不在清单。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>列出固定版本的全部官方源码例题、内置模型和Notebook，含来源、步骤与实际适配状态；未适配或未实跑的条目不能算通过。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;group&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;all&quot;,
+        &quot;source&quot;,
+        &quot;api&quot;,
+        &quot;notebook&quot;
+      ],
+      &quot;description&quot;: &quot;按官方来源筛选；省略显示全部三处，第三方不在清单。&quot;,
+      &quot;default&quot;: &quot;all&quot;
+    }
+  },
+  &quot;required&quot;: [],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;列出固定版本的全部官方源码例题、内置模型和Notebook，含来源、步骤与实际适配状态；未适配或未实跑的条目不能算通过。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/official_catalog.py">mcp/official_catalog.py</a>。</p></details>
+<details class="tool" id="openmc_get_official_example"><summary>openmc_get_official_example
+<span class="tool-purpose">查指定官方例题的固定来源、步骤和可用范围。先看此说明，再提供输入并准备实例。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>example_id</td><td>string</td><td>是</td><td>不可省略</td><td>固定官方例题ID；先从openmc_list_official_examples返回的examples[].example_id选择，不是脚本路径。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>查指定官方例题的固定来源、步骤和可用范围。先看此说明，再提供输入并准备实例。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;example_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;固定官方例题ID；先从openmc_list_official_examples返回的examples[].example_id选择，不是脚本路径。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;example_id&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;查指定官方例题的固定来源、步骤和可用范围。先看此说明，再提供输入并准备实例。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/official_catalog.py">mcp/official_catalog.py</a>。</p></details>
+<details class="tool" id="openmc_prepare_official_example"><summary>openmc_prepare_official_example
+<span class="tool-purpose">创建独立官方例题实例，复制固定来源并登记输入；不执行计算，不覆盖已有目录。省略参数保留官方设置。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>example_id</td><td>string</td><td>是</td><td>不可省略</td><td>固定官方例题ID；先从openmc_list_official_examples返回的examples[].example_id选择，不是脚本路径。</td><td>—</td></tr><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>工作区内新的相对算例目录，必须不存在；不接受客户端绝对路径。</td><td>—</td></tr><tr><td>parameters</td><td>object</td><td>否</td><td>省略时见说明</td><td>可选的运行设置覆盖及该官方工厂的输入；用get_official_example查询逐例参数。省略保留官方设置。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>创建独立官方例题实例，复制固定来源并登记输入；不执行计算，不覆盖已有目录。省略参数保留官方设置。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;example_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;固定官方例题ID；先从openmc_list_official_examples返回的examples[].example_id选择，不是脚本路径。&quot;
+    },
+    &quot;case_dir&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;工作区内新的相对算例目录，必须不存在；不接受客户端绝对路径。&quot;
+    },
+    &quot;parameters&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;description&quot;: &quot;可选的运行设置覆盖及该官方工厂的输入；用get_official_example查询逐例参数。省略保留官方设置。&quot;,
+      &quot;properties&quot;: {
+        &quot;particles&quot;: {
+          &quot;type&quot;: &quot;integer&quot;,
+          &quot;minimum&quot;: 1,
+          &quot;description&quot;: &quot;显式覆盖每代/每批粒子数，具体语义依运行模式。&quot;
+        },
+        &quot;batches&quot;: {
+          &quot;type&quot;: &quot;integer&quot;,
+          &quot;minimum&quot;: 1,
+          &quot;description&quot;: &quot;显式覆盖总批次。&quot;
+        },
+        &quot;inactive&quot;: {
+          &quot;type&quot;: &quot;integer&quot;,
+          &quot;minimum&quot;: 0,
+          &quot;description&quot;: &quot;显式覆盖非活跃批次，仅本征值模式可用。&quot;
+        },
+        &quot;seed&quot;: {
+          &quot;type&quot;: &quot;integer&quot;,
+          &quot;minimum&quot;: 1,
+          &quot;description&quot;: &quot;显式覆盖随机种子；保留实际值以便复核。&quot;
+        },
+        &quot;factory&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;description&quot;: &quot;仅该例题公开工厂支持的参数；先查例题说明。&quot;,
+          &quot;properties&quot;: {
+            &quot;second_temp&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;,
+              &quot;description&quot;: &quot;随机射线pin-cell/lattice启用官方第二温度数据。&quot;
+            },
+            &quot;num_regions&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 1,
+              &quot;description&quot;: &quot;slab_mg一维分区数，截面须含mat_1至mat_N。&quot;
+            },
+            &quot;mat_names&quot;: {
+              &quot;type&quot;: &quot;array&quot;,
+              &quot;items&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              },
+              &quot;description&quot;: &quot;slab_mg显示材料名；数量等于num_regions，截面组仍须mat_N。&quot;
+            }
+          },
+          &quot;additionalProperties&quot;: false
+        },
+        &quot;mgxs_file&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;description&quot;: &quot;slab_mg必需的真实多群HDF5输入，工作区内相对路径；复制快照后按2g.h5供原工厂读取。&quot;
+        }
+      },
+      &quot;additionalProperties&quot;: false
+    }
+  },
+  &quot;required&quot;: [
+    &quot;example_id&quot;,
+    &quot;case_dir&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;创建独立官方例题实例，复制固定来源并登记输入；不执行计算，不覆盖已有目录。省略参数保留官方设置。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/example_workflows.py">mcp/example_workflows.py</a>。</p></details>
+<details class="tool" id="openmc_run_example_step"><summary>openmc_run_example_step
+<span class="tool-purpose">按实例next_step提交一个已注册步骤，返回持久作业编号。依次准备输入、核数据和计算；不允许调用方指定脚本或命令，重复调用沿用同一步记录。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>instance_id</td><td>string</td><td>是</td><td>不可省略</td><td>准备官方例题返回的instance_id；关联该实例的各步骤和计算编号。</td><td>—</td></tr><tr><td>step</td><td>string</td><td>是</td><td>不可省略</td><td>严格使用openmc_example_status返回的next_step.id；不能跳过前置步骤。</td><td>—</td></tr><tr><td>threads</td><td>integer</td><td>否</td><td>1</td><td>该步骤使用的本地OpenMC线程数；省略为1。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>按实例next_step提交一个已注册步骤，返回持久作业编号。依次准备输入、核数据和计算；不允许调用方指定脚本或命令，重复调用沿用同一步记录。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;instance_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{32}$&quot;,
+      &quot;description&quot;: &quot;准备官方例题返回的instance_id；关联该实例的各步骤和计算编号。&quot;
+    },
+    &quot;step&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;description&quot;: &quot;严格使用openmc_example_status返回的next_step.id；不能跳过前置步骤。&quot;
+    },
+    &quot;threads&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 1,
+      &quot;maximum&quot;: 64,
+      &quot;description&quot;: &quot;该步骤使用的本地OpenMC线程数；省略为1。&quot;,
+      &quot;default&quot;: 1
+    }
+  },
+  &quot;required&quot;: [
+    &quot;instance_id&quot;,
+    &quot;step&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;按实例next_step提交一个已注册步骤，返回持久作业编号。依次准备输入、核数据和计算；不允许调用方指定脚本或命令，重复调用沿用同一步记录。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/example_workflows.py">mcp/example_workflows.py</a>。</p></details>
+<details class="tool" id="openmc_example_status"><summary>openmc_example_status
+<span class="tool-purpose">查询官方例题各步骤的真实状态、日志尾部、job_id和下一步；失败/取消不伪装成完成，也不自动重新提交。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>instance_id</td><td>string</td><td>是</td><td>不可省略</td><td>准备官方例题返回的instance_id；关联该实例的各步骤和计算编号。</td><td>—</td></tr><tr><td>wait_seconds</td><td>integer</td><td>否</td><td>0</td><td>可选有界等待秒数，默认0立即返回；运行中可用30等待本步骤变化，减少反复轮询。到时仍运行不代表失败，不要重复提交。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>查询官方例题各步骤的真实状态、日志尾部、job_id和下一步；失败/取消不伪装成完成，也不自动重新提交。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;instance_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{32}$&quot;,
+      &quot;description&quot;: &quot;准备官方例题返回的instance_id；关联该实例的各步骤和计算编号。&quot;
+    },
+    &quot;wait_seconds&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 0,
+      &quot;maximum&quot;: 30,
+      &quot;description&quot;: &quot;可选有界等待秒数，默认0立即返回；运行中可用30等待本步骤变化，减少反复轮询。到时仍运行不代表失败，不要重复提交。&quot;,
+      &quot;default&quot;: 0
+    }
+  },
+  &quot;required&quot;: [
+    &quot;instance_id&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;查询官方例题各步骤的真实状态、日志尾部、job_id和下一步；失败/取消不伪装成完成，也不自动重新提交。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/example_workflows.py">mcp/example_workflows.py</a>。</p></details>
+<details class="tool" id="openmc_cancel_example"><summary>openmc_cancel_example
+<span class="tool-purpose">取消官方例题实例正在执行的步骤；保留原记录，继续查询以确认终态。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>instance_id</td><td>string</td><td>是</td><td>不可省略</td><td>准备官方例题返回的instance_id；关联该实例的各步骤和计算编号。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>取消官方例题实例正在执行的步骤；保留原记录，继续查询以确认终态。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;instance_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{32}$&quot;,
+      &quot;description&quot;: &quot;准备官方例题返回的instance_id；关联该实例的各步骤和计算编号。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;instance_id&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;取消官方例题实例正在执行的步骤；保留原记录，继续查询以确认终态。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/example_workflows.py">mcp/example_workflows.py</a>。</p></details>
+<details class="tool" id="openmc_read_example_results"><summary>openmc_read_example_results
+<span class="tool-purpose">按官方实例读取实际计算结果和每阶段产物位置；包含原始数据和日志，不假造不存在的计分或物理结论。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>instance_id</td><td>string</td><td>是</td><td>不可省略</td><td>准备官方例题返回的instance_id；关联该实例的各步骤和计算编号。</td><td>—</td></tr><tr><td>calculation_id</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选Notebook求解阶段编号；先省略查看阶段清单，再选择0001等实际编号读取该次求解的StatePoint。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>按官方实例读取实际计算结果和每阶段产物位置；包含原始数据和日志，不假造不存在的计分或物理结论。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;instance_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{32}$&quot;,
+      &quot;description&quot;: &quot;准备官方例题返回的instance_id；关联该实例的各步骤和计算编号。&quot;
+    },
+    &quot;calculation_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;pattern&quot;: &quot;^[0-9]{4}$&quot;,
+      &quot;description&quot;: &quot;可选Notebook求解阶段编号；先省略查看阶段清单，再选择0001等实际编号读取该次求解的StatePoint。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;instance_id&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;按官方实例读取实际计算结果和每阶段产物位置；包含原始数据和日志，不假造不存在的计分或物理结论。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/example_workflows.py">mcp/example_workflows.py</a>。</p></details>
 <footer>由 scripts/generate_tool_reference.py 从实际注册表生成 · 无需联网或启动服务</footer>
 </main></body></html>

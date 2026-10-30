@@ -16,6 +16,7 @@ import sys
 import threading
 import time
 import uuid
+from owned_processes import OwnedProcessTree, ProcessControlError
 
 from openmc_runtime import (Error, ROOT, atomic_json, command, config, path_in_workspace,
                             provenance, relative, workspace)
@@ -87,7 +88,8 @@ def spawn_worker(directory: Path, script: str, identifier: str) -> None:
 
 
 def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | None = None,
-           _internal: bool = False, _job_id: str | None = None, _expected_inputs: dict | None = None) -> dict:
+           _internal: bool = False, _job_id: str | None = None, _expected_inputs: dict | None = None,
+           _example_workflow: dict | None = None, _preserve_outputs: bool = False) -> dict:
     if not sys.platform.startswith('linux'):
         raise Error('本地持久作业目前支持Linux/WSL；其他系统请在Linux服务器部署MCP')
     if mode not in ('run', 'plot', 'geometry-debug') or type(threads) is not int or not 1 <= threads <= 64:
@@ -107,7 +109,10 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
     for path in source.rglob('*'):
         if path.is_symlink():
             raise Error('算例包含符号链接，未提交')
-    shutil.copytree(source, copied, ignore=lambda _directory, names: [n for n in names if is_old_output(n)])
+    # Ordinary jobs reject stale outputs; typed workflows explicitly carry their
+    # predecessor's verified resources (including images/HDF5) into the next step.
+    shutil.copytree(source, copied, ignore=None if _preserve_outputs else
+                    lambda _directory, names: [n for n in names if is_old_output(n)])
     input_files = {str(p.relative_to(copied)): file_hash(p) for p in copied.rglob('*') if p.is_file()}
     if _expected_inputs is not None and input_files != _expected_inputs:
         raise Error('输入在校核与快照之间发生变化，未启动计算；保留未完成目录供核对')
@@ -115,6 +120,8 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
               'case_dir': case_dir, 'mode': mode, 'threads': threads,
               'provenance': provenance(source, cfg), 'runtime': cfg,
               'work_dir': relative(copied), 'input_files': input_files}
+    if _example_workflow is not None:
+        record['example_workflow'] = _example_workflow
     atomic_json(directory / 'job.json', record)
     spawn_worker(directory, 'openmc_jobs.py', job_id)
     return {'job_id': job_id, 'state': read(directory)['state'],
@@ -141,7 +148,7 @@ def status(job_id: str) -> dict:
             log.seek(max(0, log_path.stat().st_size - 4000))
             tail = log.read().decode('utf-8', errors='replace')
     result = {key: value[key] for key in ('job_id', 'state', 'mode', 'case_dir', 'submitted_at',
-              'started_at', 'finished_at', 'exit_code', 'error', 'provenance', 'log_truncated') if key in value}
+              'started_at', 'finished_at', 'exit_code', 'error', 'provenance', 'log_truncated', 'process_cleanup', 'cancel_requested') if key in value}
     result['log_tail'] = tail
     result['input_files'] = sorted(value.get('input_files', {}))
     result['files'] = sorted(value.get('output_files', {}))
@@ -181,6 +188,8 @@ def run_worker(job_id: str) -> None:
     update(directory, worker_pid=os.getpid(), worker_identity=identity(os.getpid()),
            state='running', started_at=time.time())
     process = None
+    process_tree = None
+    cleanup = None
     try:
         if read(directory).get('cancel_requested'):
             update(directory, state='cancelled', finished_at=time.time(), exit_code=None)
@@ -193,10 +202,26 @@ def run_worker(job_id: str) -> None:
         if (work / 'model.xml').exists():
             arguments.append('model.xml')
         invocation = command(cfg, work, arguments=arguments)
+        if value.get('example_workflow'):
+            workflow = value['example_workflow']
+            invocation = cfg['python_command'] + [str(ROOT / 'mcp/official_runner.py'),
+                workflow['example_id'], workflow['step'], '--parameters', json.dumps(workflow['parameters']),
+                '--threads', str(value['threads'])]
+        from nuclear_data import runtime_env
+        child_env = runtime_env(cfg)
+        # Child runners and notebook kernels read the same immutable runtime
+        # as this job; later administrator edits cannot switch its data library.
+        snapshot = directory / 'runtime.json'
+        atomic_json(snapshot, cfg)
+        snapshot.chmod(0o600)
+        child_env['MC_OPENMC_CONFIG'] = str(snapshot)
+        child_env['OMP_NUM_THREADS'] = str(value['threads'])
+        process_tree=OwnedProcessTree()
         with (directory / 'solver.log').open('wb') as output:
             process = subprocess.Popen(invocation, cwd=work, stdout=subprocess.PIPE,
                                        stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
-                                       start_new_session=True)
+                                       start_new_session=True, env=child_env)
+            update(directory,child_pid=process.pid,child_identity=identity(process.pid))
             output_size = 0
             truncated = False
             os.set_blocking(process.stdout.fileno(), False)
@@ -210,15 +235,16 @@ def run_worker(job_id: str) -> None:
                 if stopped.is_set() or read(directory).get('cancel_requested') or time.monotonic() > deadline:
                     timed_out = time.monotonic() > deadline
                     if not group_stopped:
-                        try:os.killpg(process.pid, signal.SIGKILL)
-                        except ProcessLookupError:pass
+                        cleanup=process_tree.stop(process,kill_runner=True)
                         group_stopped = True
+                        if not cleanup['verified_empty']:break
                 if process.poll() is not None:
                     if not group_stopped:
-                        # A wrapper may exit while its children still hold stdout.
-                        try:os.killpg(process.pid, signal.SIGKILL)
-                        except ProcessLookupError:pass
+                        # Jupyter kernels create independent sessions. The worker
+                        # adopts them and their solvers before sealing artifacts.
+                        cleanup=process_tree.stop(process,kill_runner=False)
                         group_stopped = True
+                        if not cleanup['verified_empty']:break
                     if drain_deadline is None:drain_deadline = time.monotonic() + 2
                     if time.monotonic() > drain_deadline:break
                 for key, _mask in selector.select(timeout=0.1):
@@ -231,24 +257,34 @@ def run_worker(job_id: str) -> None:
                     output_size += min(remaining, len(chunk))
                     truncated |= len(chunk) > remaining
             selector.close()
-            process.wait()
+            if process.poll() is not None:process.wait()
             process.stdout.close()
+        if cleanup is None:cleanup=process_tree.stop(process,kill_runner=False)
+        if not cleanup['verified_empty']:
+            update(directory,state='interrupted',exit_code=process.returncode,finished_at=time.time(),
+                   process_cleanup=cleanup,error='子进程清理尚未确认；产物未固化，不可视为完成或取消成功')
+            return
         cancelled = stopped.is_set() or read(directory).get('cancel_requested')
         state = 'cancelled' if cancelled else ('completed' if process.returncode == 0 and not timed_out else 'failed')
+        unexpected_normal_exit=not cancelled and not timed_out and process.returncode==0 and bool(cleanup['unexpected_descendants'])
+        if unexpected_normal_exit:state='failed'
         output_files = {str(p.relative_to(work)): file_hash(p) for p in work.rglob('*')
-                        if p.is_file() and not p.is_symlink() and str(p.relative_to(work)) not in value['input_files']}
+                        if p.is_file() and not p.is_symlink() and
+                        (str(p.relative_to(work)) not in value['input_files'] or
+                         file_hash(p) != value['input_files'][str(p.relative_to(work))])}
         update(directory, state=state, exit_code=process.returncode, finished_at=time.time(), output_files=output_files,
-               log_truncated=truncated,
-               error='超过配置的作业时限' if timed_out else (None if state in ('completed', 'cancelled') else '程序非零退出；查看log_tail或solver.log'))
+               log_truncated=truncated,process_cleanup=cleanup,
+               error='程序退出后仍有后台子进程，已清理，不能报告完整计算' if unexpected_normal_exit else '超过配置的作业时限' if timed_out else (None if state in ('completed', 'cancelled') else '程序非零退出；查看log_tail或solver.log'))
     except Exception as exc:
-        if process and process.poll() is None:
-            try:
-                os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            process.wait()
-        update(directory, state='failed', finished_at=time.time(),
-               error='运行失败：' + type(exc).__name__ + '；检查程序或输入依赖。')
+        if process and process_tree:
+            cleanup=process_tree.stop(process,kill_runner=True)
+            if process.poll() is None and cleanup['verified_empty']:process.wait()
+        unknown=cleanup is not None and not cleanup['verified_empty']
+        update(directory,state='interrupted' if unknown else 'failed',finished_at=time.time(),
+               process_cleanup=cleanup,
+               error=('进程清理尚未确认，不能报告完成' if unknown else
+                      str(exc) if isinstance(exc,ProcessControlError) else
+                      '运行失败：'+type(exc).__name__+'；检查程序或输入依赖。'))
 
 
 if __name__ == '__main__':

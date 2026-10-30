@@ -14,6 +14,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 [[ "$(uname -s)" == Linux ]] || { printf '服务端请使用Linux/WSL；其他系统可作为MCP客户端。\n' >&2; exit 1; }
+command -v g++ > /dev/null || { printf '初配需要C++编译器（gcc/g++与make）；请在系统环境准备后重试。\n' >&2; exit 1; }
+command -v make > /dev/null || { printf '初配需要make；请先准备系统构建工具。\n' >&2; exit 1; }
 printf '[1/4] 准备独立CLI与MCP环境...\n'
 ./mcp/setup.sh
 if [[ ! -x "$mc_quick_prefix/bin/openmc" || ! -x "$mc_quick_prefix/bin/python" ]]; then
@@ -26,14 +28,30 @@ if [[ ! -x "$mc_quick_prefix/bin/openmc" || ! -x "$mc_quick_prefix/bin/python" ]
     curl --fail --location --retry 2 "https://micro.mamba.pm/api/micromamba/$mc_quick_platform/latest" --output .runtime/install/micromamba.tar.bz2
     tar -xjf .runtime/install/micromamba.tar.bz2 -C .runtime/install bin/micromamba
   fi
-  "$mc_quick_mamba" --no-rc -r "$mc_quick_root/.runtime/mamba-root" create -y -p "$mc_quick_prefix" --override-channels -c conda-forge 'python=3.12' 'openmc=0.16.0' 'openmc=*=*nompi*'
+  if [[ "$(uname -m)" == x86_64 ]]; then
+    "$mc_quick_mamba" --no-rc -r "$mc_quick_root/.runtime/mamba-root" create -y -p "$mc_quick_prefix" --file config/openmc-linux-64.lock
+  else
+    "$mc_quick_mamba" --no-rc -r "$mc_quick_root/.runtime/mamba-root" create -y -p "$mc_quick_prefix" --override-channels -c conda-forge 'python=3.12' 'openmc=0.16.0' 'openmc=*=*dagmc_nompi*' 'eigen=3.4' njoy2016
+  fi
 else
   printf '[2/4] 检查已有OpenMC环境...\n'
 fi
 python3 mcp/configure_openmc.py --prefix "$mc_quick_prefix"
 printf '[3/4] 准备图表/报告Python依赖...\n'
 "$mc_quick_prefix/bin/python" -m pip install --disable-pip-version-check -r config/report-requirements.txt
+"$mc_quick_prefix/bin/python" -m pip install --disable-pip-version-check -r config/example-requirements.txt
 "$mc_quick_prefix/bin/python" -m pip check
+"$mc_quick_prefix/bin/python" scripts/install_openmoc.py
+./setup-example-sources.sh
+printf '初次准备官方多温度核数据库（约1.7GB下载、6.3GB展开）...\n'
+python3 scripts/install_official_data.py
+python3 - "$mc_quick_prefix" <<'PY'
+import json,sys
+from pathlib import Path
+p=Path('config/openmc.local.json');v=json.loads(p.read_text());v['nuclear_data_library']='official-endfb-vii.1'
+v['cmake_command']=[str(Path(sys.argv[1])/'bin/cmake')]
+p.write_text(json.dumps(v,ensure_ascii=False,indent=2)+'\n')
+PY
 if [[ "$mc_quick_office" == 1 ]]; then
   printf '[4/4] 准备Word/PDF转换及字体...\n'
   if command -v soffice > /dev/null; then

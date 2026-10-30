@@ -57,6 +57,24 @@ class CleanupRecords(unittest.TestCase):
         self.assertEqual(result['plan']['workspace'],str(data))
         self.assertTrue((data/'.mc-jobs'/J).exists())
 
+    def example(self,identifier,jobs,**changes):
+        target=self.root/'.mc-examples'/identifier;target.mkdir(parents=True)
+        value={'instance_id':identifier,'state':'completed','finished_at':time.time()-86400,
+               'steps':{str(i):{'job_id':job} for i,job in enumerate(jobs)}}
+        value.update(changes);(target/'example.json').write_text(json.dumps(value));return target
+
+    def test_example_children_cannot_be_removed_alone_and_explicit_instance_removes_graph(self):
+        child=self.record('job',J);instance=self.example(S,[J])
+        with self.assertRaisesRegex(cleanup.CleanupError,'官方例题引用'):self.plan([J])
+        run=self.invoke('--example-id',S,'--apply','--json')
+        self.assertEqual(run.returncode,0,run.stderr)
+        self.assertFalse(child.exists());self.assertFalse(instance.exists());self.assertTrue(self.original.exists())
+
+    def test_age_filter_preserves_job_referenced_by_recent_example(self):
+        self.record('job',J,finished_at=time.time()-8*86400)
+        self.example(S,[J],finished_at=time.time()-60)
+        self.assertEqual(self.plan(days=7)['entries'],[])
+
     def test_default_preview_and_apply_require_explicit_selection(self):
         target=self.record('job',J)
         preview=self.invoke();self.assertEqual(preview.returncode,0,preview.stderr);self.assertIn('未删除',preview.stdout);self.assertTrue(target.exists())

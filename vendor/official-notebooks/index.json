@@ -1,0 +1,223 @@
+{
+  "repository": "openmc-dev/openmc-notebooks",
+  "revision": "bb39f2509d47d8f4c997cc320685ad06207fdcc9",
+  "source_branch": "develop",
+  "note": "main分支当前仅声明0.15.0兼容；固定develop原文，逐例适配0.16.0，不依赖分支后续变化。",
+  "files": [
+    {
+      "name": "README.md",
+      "git_blob_sha": "7d7e1c3f5c2d93c4ab45055557e426f24a4ee0a8",
+      "source_bytes": 949
+    },
+    {
+      "name": "c5g7.h5",
+      "git_blob_sha": "b3dea952b161b9984697b55a429f812168f98598",
+      "source_bytes": 59512
+    },
+    {
+      "name": "cad-based-geometry.ipynb",
+      "git_blob_sha": "063304a45a03c286c493356850c6c2ca6182d336",
+      "source_bytes": 392975
+    },
+    {
+      "name": "candu.ipynb",
+      "git_blob_sha": "6bcca5692dd653abc0954bd3e0d7777618c6da93",
+      "source_bytes": 71139
+    },
+    {
+      "name": "capi.ipynb",
+      "git_blob_sha": "768f75021bd667ffe51e6aaabb5955ba6d28e9a4",
+      "source_bytes": 30279
+    },
+    {
+      "name": "chain_simple.xml",
+      "git_blob_sha": "70d5412286cf7d6f8d9941309ba8132a611bfbc9",
+      "source_bytes": 4844
+    },
+    {
+      "name": "depletion.ipynb",
+      "git_blob_sha": "623fa039f14b4436f74d2165b1c0911890663813",
+      "source_bytes": 140709
+    },
+    {
+      "name": "expansion-filters.ipynb",
+      "git_blob_sha": "cb40f64a2947d0be7c9cec1c94ea50812e4933be",
+      "source_bytes": 266297
+    },
+    {
+      "name": "flux-spectrum.ipynb",
+      "git_blob_sha": "be75d8e70aac86d7498e185aa96b989b3fb2c851",
+      "source_bytes": 47982
+    },
+    {
+      "name": "gamma-detector.ipynb",
+      "git_blob_sha": "7d62653f2ae5264c13d52d211c1483dab58e255d",
+      "source_bytes": 152377
+    },
+    {
+      "name": "hexagonal-lattice.ipynb",
+      "git_blob_sha": "1a5f542aefa89ea6cfd3936820f2d9326e4b2493",
+      "source_bytes": 32116
+    },
+    {
+      "name": "mdgxs-part-i.ipynb",
+      "git_blob_sha": "d957b91ba969626bd2ffe9585532a02216159e0d",
+      "source_bytes": 227747
+    },
+    {
+      "name": "mdgxs-part-ii.ipynb",
+      "git_blob_sha": "05a1e2ee7557ce6ffaf9f1079b3bb92cd71b66c3",
+      "source_bytes": 119212
+    },
+    {
+      "name": "mg-mode-part-i.ipynb",
+      "git_blob_sha": "f751d86134dedef7c1352e12be20c1003d22ee0c",
+      "source_bytes": 65357
+    },
+    {
+      "name": "mg-mode-part-ii.ipynb",
+      "git_blob_sha": "7b2b9a563899c5556a16462c47a7fd62c93de058",
+      "source_bytes": 155737
+    },
+    {
+      "name": "mg-mode-part-iii.ipynb",
+      "git_blob_sha": "7374681d42c50a14f81bf19fa18975a103311644",
+      "source_bytes": 106518
+    },
+    {
+      "name": "mgxs-part-i.ipynb",
+      "git_blob_sha": "3aeb5b2018f75ea63f08af8acdb6fc4eb0511702",
+      "source_bytes": 120128
+    },
+    {
+      "name": "mgxs-part-ii.ipynb",
+      "git_blob_sha": "05136d9a59271d69773a31e195c991b614420a5f",
+      "source_bytes": 171578
+    },
+    {
+      "name": "mgxs-part-iii.ipynb",
+      "git_blob_sha": "0d797176904929abff377923058a05656c795f61",
+      "source_bytes": 87915
+    },
+    {
+      "name": "nuclear-data-resonance-covariance.ipynb",
+      "git_blob_sha": "a233e44eb6ae522c8d4fc2a1098aad1eec8fbe16",
+      "source_bytes": 109347
+    },
+    {
+      "name": "nuclear-data.ipynb",
+      "git_blob_sha": "ae40bf893a129084544af55959c3c2c0322117d6",
+      "source_bytes": 200533
+    },
+    {
+      "name": "pandas-dataframes.ipynb",
+      "git_blob_sha": "20fe6f821d2a4f4873a2a945e2f5574080fdff10",
+      "source_bytes": 178299
+    },
+    {
+      "name": "pincell.ipynb",
+      "git_blob_sha": "642f090bcebb7ac2f66f0e125027232f730dbb07",
+      "source_bytes": 77061
+    },
+    {
+      "name": "post-processing.ipynb",
+      "git_blob_sha": "9ed6b4bcd1a2f972e28dcbae91cef4bf98b5d852",
+      "source_bytes": 273641
+    },
+    {
+      "name": "search.ipynb",
+      "git_blob_sha": "ee02ea42ef57df83e28dd2a80c9466a2678e9005",
+      "source_bytes": 22502
+    },
+    {
+      "name": "shielded_room_weight_window.ipynb",
+      "git_blob_sha": "a2d1e79bf3abe3cdcfebdaac47d913ce352a957f",
+      "source_bytes": 227826
+    },
+    {
+      "name": "tally-arithmetic.ipynb",
+      "git_blob_sha": "0ce32542dc45460a1080a229ffdb9ae5a810a96b",
+      "source_bytes": 60964
+    },
+    {
+      "name": "tally-power-normalization.ipynb",
+      "git_blob_sha": "58865cbc25388e1c05f17ded10a5d733259493ab",
+      "source_bytes": 11208
+    },
+    {
+      "name": "triso.ipynb",
+      "git_blob_sha": "a05b24f92fafaca3068379d1263ffe53544743f1",
+      "source_bytes": 57109
+    },
+    {
+      "name": "unstructured-mesh-part-i.ipynb",
+      "git_blob_sha": "b9b463d264776904fbfba17283603f9542b917cf",
+      "source_bytes": 860604
+    },
+    {
+      "name": "unstructured-mesh-part-ii.ipynb",
+      "git_blob_sha": "0ca30168d53a179437200f1ebae8e98b533de334",
+      "source_bytes": 235253
+    },
+    {
+      "name": "images/cs137_decay.png",
+      "git_blob_sha": "8d9663dd90aa9090314a691607317bd75543cba5",
+      "source_bytes": 190016
+    },
+    {
+      "name": "images/cylinder_mesh.png",
+      "git_blob_sha": "cd9638060d199d877c0065e7a6448b81921c0aca",
+      "source_bytes": 9928
+    },
+    {
+      "name": "images/flux3d.png",
+      "git_blob_sha": "4f706f9a2305ccf6e6083a242d796e7bc78dd201",
+      "source_bytes": 100719
+    },
+    {
+      "name": "images/manifold-cad.png",
+      "git_blob_sha": "81d8aabecac7aca9facd15ab8ff0c15b3f49cf80",
+      "source_bytes": 99580
+    },
+    {
+      "name": "images/manifold_flux.png",
+      "git_blob_sha": "6462928a8caa2047ddfbd4a91d2ae8803ffc980a",
+      "source_bytes": 61388
+    },
+    {
+      "name": "images/mdgxs.png",
+      "git_blob_sha": "b93d0f0423065531db8547394919d68976f370a0",
+      "source_bytes": 23788
+    },
+    {
+      "name": "images/mgxs.png",
+      "git_blob_sha": "3946a5b3c6d3c28579957643f8a15507de01b98e",
+      "source_bytes": 54562
+    },
+    {
+      "name": "images/pin_mesh.png",
+      "git_blob_sha": "2179da9c21137c2cb93472c88a73b61ed0c1ba14",
+      "source_bytes": 132261
+    },
+    {
+      "name": "images/teapot.jpg",
+      "git_blob_sha": "382e8838f78819e94c62b1e577f5d9db8f2ef2d0",
+      "source_bytes": 103729
+    },
+    {
+      "name": "images/umesh_flux.png",
+      "git_blob_sha": "5d31e1cda2eb855ae2aec5f1e0feaca36e2a5742",
+      "source_bytes": 198669
+    },
+    {
+      "name": "images/umesh_heating.png",
+      "git_blob_sha": "984d1e34af0fc8ffa9813e158a07ee18a0a8baef",
+      "source_bytes": 132018
+    },
+    {
+      "name": "images/umesh_w_assembly.png",
+      "git_blob_sha": "61e3ac5874a163c090d03d9d8c3f336423915d27",
+      "source_bytes": 112875
+    }
+  ]
+}

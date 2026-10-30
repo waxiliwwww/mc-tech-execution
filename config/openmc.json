@@ -1,8 +1,12 @@
 {
   "runtime": "native",
   "expected_version": "0.16.0",
-  "python_command": ["python3"],
-  "openmc_command": ["openmc"],
+  "python_command": [
+    "python3"
+  ],
+  "openmc_command": [
+    "openmc"
+  ],
   "data_kind": "user_supplied_unverified",
   "api_timeout_seconds": 120,
   "job_timeout_seconds": 3600,
@@ -11,5 +15,8 @@
   "max_plot_points": 20000,
   "max_report_rows": 1000,
   "report_timeout_seconds": 120,
-  "office_command": ["soffice"]
+  "office_command": [
+    "soffice"
+  ],
+  "nuclear_data_library": "official-endfb-vii.1"
 }

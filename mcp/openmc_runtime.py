@@ -124,7 +124,8 @@ def api(action: str, directory: Path, payload: dict, cfg: dict | None = None) ->
     try:
         result = subprocess.run(command(cfg, directory, action=action), cwd=directory,
                                 input=json.dumps(payload, allow_nan=False), text=True,
-                                capture_output=True, timeout=cfg['api_timeout_seconds'])
+                                capture_output=True, timeout=cfg['api_timeout_seconds'],
+                                env=__import__('nuclear_data').runtime_env(cfg))
     except FileNotFoundError as exc:
         raise Error("运行时程序不存在；检查python_command安装与配置") from exc
     except subprocess.TimeoutExpired as exc:

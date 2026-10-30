@@ -91,6 +91,11 @@ class ProjectIntegration(unittest.IsolatedAsyncioTestCase):
         found = {tool.name:tool for tool in tools}
         for tool in tools:
             for field in tool.inputSchema.get('properties',{}).values():self.assertTrue(field.get('description'))
+        for name in ['search_knowledge','read_knowledge','openmc_get_official_example','openmc_example_status']:
+            self.assertTrue(found[name].annotations.readOnlyHint)
+        for name in ['openmc_run_example_step','openmc_submit_job','apply_repair','openmc_export_report']:
+            self.assertFalse(found[name].annotations and found[name].annotations.readOnlyHint)
+        self.assertEqual(found['openmc_example_status'].inputSchema['properties']['wait_seconds']['maximum'],30)
         submitted = found['openmc_submit_job'].inputSchema['properties']
         self.assertIn('MC_WORKSPACE',submitted['case_dir']['description'])
         self.assertEqual(submitted['threads']['default'],1)
@@ -153,6 +158,7 @@ class ProjectIntegration(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(result['structure_valid'])
         self.assertTrue(result['problems'])
 
+    @unittest.skipIf(os.environ.get('MC_VERIFY_TOOLS_ONLY')=='1','--tools-only明确排除可选Harness宿主测试')
     async def test_noninteractive_harness_refuses_real_project_write(self):
         plan_id = await self.plan()
         result = await asyncio.to_thread(subprocess.run,
@@ -162,6 +168,7 @@ class ProjectIntegration(unittest.IsolatedAsyncioTestCase):
         self.assertIn("非交互输入不能代替人工确认", result.stdout + result.stderr)
         self.assertEqual(self.input.read_text(), "particles = -1\n")
 
+    @unittest.skipIf(os.environ.get('MC_VERIFY_TOOLS_ONLY')=='1','--tools-only明确排除可选Harness宿主测试')
     async def test_actual_terminal_no_then_yes_changes_real_project_file_once(self):
         plan_id = await self.plan()
         def terminal(decision):

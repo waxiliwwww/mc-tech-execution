@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/mit-crpg/OpenMOC",
+  "revision": "c9ac4e1ecc9c13bacb44fd470f7fce8c9355606f",
+  "url": "https://codeload.github.com/mit-crpg/OpenMOC/tar.gz/c9ac4e1ecc9c13bacb44fd470f7fce8c9355606f",
+  "bytes": 17561793,
+  "sha256": "4ec181a7c4940443651201fda01b1e7e353b7ba4e29066cb267a8f664cce1be2",
+  "swig_version": "4.2.1",
+  "precision": "double",
+  "note": "两份官方MGXS Notebook所需的真实对照求解器；只修SWIG异常绑定占位符，不改物理算法。"
+}

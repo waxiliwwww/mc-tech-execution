@@ -3,12 +3,14 @@
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 import fcntl
+import hashlib
 import os
 from pathlib import Path
 import shlex
 import shutil
 import subprocess
 import tempfile
+import uuid
 from urllib.parse import unquote
 import xml.etree.ElementTree as ET
 
@@ -29,8 +31,8 @@ with (prefix / '.install.lock').open('a') as lock:
                     print('已准备Office：' + check.stdout.decode().strip() + '；' + str(launcher))
                     raise SystemExit(0)
             except (OSError, subprocess.TimeoutExpired):pass
-    if not shutil.which('apt-get') or not shutil.which('dpkg-deb'):
-        raise SystemExit('自动准备Office需要Debian/Ubuntu的apt-get和dpkg-deb；其他系统先安装LibreOffice，再配置office_command。')
+    if not shutil.which('apt-get') or not shutil.which('dpkg-deb') or not shutil.which('curl'):
+        raise SystemExit('自动准备Office需要Debian/Ubuntu的apt-get、dpkg-deb和curl；其他系统先安装LibreOffice，再配置office_command。')
     query = subprocess.run(['apt-get', '--print-uris', '--download-only', '--yes', '--no-install-recommends',
                             '-o', 'Debug::NoLocking=true', 'install', 'libreoffice-writer', 'fonts-noto-cjk'],
                            capture_output=True, text=True, check=True)
@@ -39,19 +41,35 @@ with (prefix / '.install.lock').open('a') as lock:
         if not line.startswith("'http"):continue
         uri, filename, size, _digest = shlex.split(line)
         package, version, _arch = filename.rsplit('_', 2)
-        packages.append((package + '=' + unquote(version), filename, int(size)))
+        packages.append((package + '=' + unquote(version), filename, int(size), uri, _digest))
     if not packages and shutil.which('soffice'):
         print('系统已提供LibreOffice：' + shutil.which('soffice'))
         raise SystemExit(0)
     cache = prefix / 'packages'; cache.mkdir(exist_ok=True)
     print(f'准备Office与字体：{len(packages)}个包，下载约{sum(p[2] for p in packages)//1048576}MiB；只写入{prefix}', flush=True)
     def download(package):
-        specification, filename, _size = package
-        if (cache / filename).exists():return
-        subprocess.run(['apt-get', 'download', specification], cwd=cache, check=True,
-                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180)
+        specification, filename, expected_size, uri, expected_hash = package
+        algorithm, digest=expected_hash.split(':',1)
+        algorithm=algorithm.lower().removesuffix('sum')
+        def valid(path):
+            if not path.is_file() or path.is_symlink() or path.stat().st_size!=expected_size:return False
+            actual=hashlib.new(algorithm)
+            with path.open('rb') as source:
+                for block in iter(lambda:source.read(1024*1024),b''):actual.update(block)
+            return actual.hexdigest()==digest.lower()
+        target=cache/filename
+        if valid(target):return
+        if target.exists():target.rename(cache/(filename+'.invalid-'+uuid.uuid4().hex[:8]))
+        temporary=cache/(filename+'.partial-'+uuid.uuid4().hex[:8])
+        # HTTPS also works on hosts whose proxy blocks the distribution's
+        # default HTTP URLs. APT still supplies the package version/hash.
+        secure_uri='https://'+uri[7:] if uri.startswith('http://') else uri
+        subprocess.run(['curl','--fail','--location','--retry','1','--max-time','180',secure_uri,'--output',str(temporary)],
+                       check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=370)
+        if not valid(temporary):raise ValueError('Office软件包大小/校验和不符：'+specification)
+        temporary.rename(target)
     with ThreadPoolExecutor(max_workers=4) as pool:list(pool.map(download, packages))
-    for archive in [cache / filename for _specification, filename, _size in packages]:
+    for archive in [cache / filename for _specification, filename, _size, _uri, _digest in packages]:
         subprocess.run(['dpkg-deb', '--extract', str(archive), str(prefix)], check=True)
     for path in prefix.rglob('*'):
         if path.is_symlink():

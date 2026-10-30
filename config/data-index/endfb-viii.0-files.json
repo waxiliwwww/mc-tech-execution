@@ -1,0 +1,2630 @@
+{
+  "repository": "openmc-data-storage/ENDF-B-VIII.0-NNDC",
+  "revision": "466ab3042f70e60b693fbbd3f6f15f30dba7cd1d",
+  "files": {
+    "neutron/Ac225.h5": {
+      "git_blob_sha": "945d840aa2e84d0549762239c3a7148f6b8f6550",
+      "bytes": 3697808
+    },
+    "neutron/Ac226.h5": {
+      "git_blob_sha": "8d8a0a787e8e03ef97f4e04a9801d153fd3d95e7",
+      "bytes": 3482704
+    },
+    "neutron/Ac227.h5": {
+      "git_blob_sha": "14464bb548a1396bf58165553868e2efc31aff32",
+      "bytes": 4049528
+    },
+    "neutron/Ag107.h5": {
+      "git_blob_sha": "319282281a34c1d3252008eb8224f6aac57f8d39",
+      "bytes": 13975296
+    },
+    "neutron/Ag108.h5": {
+      "git_blob_sha": "ee225ae5353f05fc430222fa27a47e901cc498c9",
+      "bytes": 8990064
+    },
+    "neutron/Ag109.h5": {
+      "git_blob_sha": "2798c9520c3cba2c05edb5b7368aa04f1320a4f3",
+      "bytes": 17920000
+    },
+    "neutron/Ag110_m1.h5": {
+      "git_blob_sha": "70b842f1225921d965eb05998e09f5879bf740b4",
+      "bytes": 6457368
+    },
+    "neutron/Ag111.h5": {
+      "git_blob_sha": "7f1074b9921426e3f4b38093c774cf5a4f87db68",
+      "bytes": 6491608
+    },
+    "neutron/Ag112.h5": {
+      "git_blob_sha": "3f8b2f99bc0ae3dac722a255e02e86844a12a763",
+      "bytes": 4028344
+    },
+    "neutron/Ag113.h5": {
+      "git_blob_sha": "86bff9897a4b66e66779d6cbc9a2df523a21dcfd",
+      "bytes": 1890608
+    },
+    "neutron/Ag114.h5": {
+      "git_blob_sha": "2dc3e2f4eda56e46adc5a3135fd2b70e07013fc1",
+      "bytes": 2387520
+    },
+    "neutron/Ag115.h5": {
+      "git_blob_sha": "f39889f2eddd18dd9c0852a33301b27b4812899a",
+      "bytes": 2303232
+    },
+    "neutron/Ag116.h5": {
+      "git_blob_sha": "c926c4fd9edf28b18ac760709bb221ede7751558",
+      "bytes": 2506792
+    },
+    "neutron/Ag117.h5": {
+      "git_blob_sha": "1a3225038b379e6d6f6e9f9c8deb70ffebd63c4c",
+      "bytes": 1108856
+    },
+    "neutron/Ag118_m1.h5": {
+      "git_blob_sha": "afd053b8359f032569d366432951a34d53919c29",
+      "bytes": 3574040
+    },
+    "neutron/Al26_m1.h5": {
+      "git_blob_sha": "032e6b75ac0d1617cc932e2ab82ae52906c28282",
+      "bytes": 21763160
+    },
+    "neutron/Al27.h5": {
+      "git_blob_sha": "6957c0629cef7a3ff40b45783dcbe36bfe0271a7",
+      "bytes": 9231072
+    },
+    "neutron/Am240.h5": {
+      "git_blob_sha": "e464a3179f4bb3731cbb41b49993cf99374f7337",
+      "bytes": 3190280
+    },
+    "neutron/Am241.h5": {
+      "git_blob_sha": "67680698f63a889ba0068ae469b601e579b3346c",
+      "bytes": 12992800
+    },
+    "neutron/Am242.h5": {
+      "git_blob_sha": "ce843a446e1dcf3d41e96a392dcc76d4eb7392de",
+      "bytes": 4303352
+    },
+    "neutron/Am242_m1.h5": {
+      "git_blob_sha": "940dabd0c05f8386b5b365fd249e25410ad0fe3d",
+      "bytes": 3774656
+    },
+    "neutron/Am243.h5": {
+      "git_blob_sha": "80e2420ce006456dfb219cee2d35262192819b69",
+      "bytes": 5097864
+    },
+    "neutron/Am244.h5": {
+      "git_blob_sha": "90f3c8e01c4a37c946e24dc326dcc2b7468d0748",
+      "bytes": 1643600
+    },
+    "neutron/Am244_m1.h5": {
+      "git_blob_sha": "bd675840a472b0d48015285029847017837324b6",
+      "bytes": 1690408
+    },
+    "neutron/Ar36.h5": {
+      "git_blob_sha": "d1b6d1d60894b2639732253a838f5e79f73e135a",
+      "bytes": 1120744
+    },
+    "neutron/Ar37.h5": {
+      "git_blob_sha": "bb5ab4eae092bef63a4f5686bde397e3ff547c1e",
+      "bytes": 7297296
+    },
+    "neutron/Ar38.h5": {
+      "git_blob_sha": "3f33ed5e8a7d995b4a7b324ff397f9d2ec2bc7f4",
+      "bytes": 1007944
+    },
+    "neutron/Ar39.h5": {
+      "git_blob_sha": "1ad097c0d83272aa4776106d0493175a43df7f26",
+      "bytes": 3819520
+    },
+    "neutron/Ar40.h5": {
+      "git_blob_sha": "e647c592d6d2d967497a99f42fb320fa719b08bd",
+      "bytes": 10406392
+    },
+    "neutron/Ar41.h5": {
+      "git_blob_sha": "7225b19c8c66fafa855640196e0f786f20a05979",
+      "bytes": 5760248
+    },
+    "neutron/As73.h5": {
+      "git_blob_sha": "3e57e184b3f1a1c9959640ed98f416fdd6adfbf3",
+      "bytes": 7070968
+    },
+    "neutron/As74.h5": {
+      "git_blob_sha": "53eb96d988cc064dca020cc79daca45e8d4f3186",
+      "bytes": 7368840
+    },
+    "neutron/As75.h5": {
+      "git_blob_sha": "d0e35759541f3187a80e2bbf031bf3e64be6488c",
+      "bytes": 13284896
+    },
+    "neutron/Au197.h5": {
+      "git_blob_sha": "1d43fa2e5c6c06f5b11c3e54369cf9d0c938f8fe",
+      "bytes": 9173888
+    },
+    "neutron/B10.h5": {
+      "git_blob_sha": "52e9377e3ea620d8d420a9c1803219acefd6c8b2",
+      "bytes": 2461120
+    },
+    "neutron/B11.h5": {
+      "git_blob_sha": "f3becc32f43ea0ee6b0bc6933decbe45f745d3b8",
+      "bytes": 4112720
+    },
+    "neutron/Ba130.h5": {
+      "git_blob_sha": "59591f09878aa9346ce7c3a4832b357486b1999e",
+      "bytes": 6763016
+    },
+    "neutron/Ba131.h5": {
+      "git_blob_sha": "914840ca0a1faa41152c0be1fdf8ba7421a00e34",
+      "bytes": 12093096
+    },
+    "neutron/Ba132.h5": {
+      "git_blob_sha": "903a415f9ddf2b142dd5ad2778e4826f443f82f4",
+      "bytes": 3406144
+    },
+    "neutron/Ba133.h5": {
+      "git_blob_sha": "c8b35ec16673ba98d648d444564b42fe641f8d07",
+      "bytes": 6159200
+    },
+    "neutron/Ba134.h5": {
+      "git_blob_sha": "dca2f60619c37c9ed70cf0cefd4dc4b26b0cbe59",
+      "bytes": 7513120
+    },
+    "neutron/Ba135.h5": {
+      "git_blob_sha": "bbbb2cf8c9076e12c07ef063fa2e6c4a19f90b68",
+      "bytes": 8892824
+    },
+    "neutron/Ba136.h5": {
+      "git_blob_sha": "301eeddcdf49c84323d31f3ba8ca64720c70b448",
+      "bytes": 7430520
+    },
+    "neutron/Ba137.h5": {
+      "git_blob_sha": "77df404836ac9e9a49f1f497308a2849c1d285fa",
+      "bytes": 6243840
+    },
+    "neutron/Ba138.h5": {
+      "git_blob_sha": "305e778caa4062ae2a3c1044f8acb8116e4689c5",
+      "bytes": 2689512
+    },
+    "neutron/Ba139.h5": {
+      "git_blob_sha": "0398a6621c525e0f38b231da7b17a5a6bb986584",
+      "bytes": 6602040
+    },
+    "neutron/Ba140.h5": {
+      "git_blob_sha": "70a4f515a8acdbcb12adfb197a1e173fc8664c9e",
+      "bytes": 1691600
+    },
+    "neutron/Be7.h5": {
+      "git_blob_sha": "b797af2b998d99f06b000a833f5d0004490778a7",
+      "bytes": 1076152
+    },
+    "neutron/Be9.h5": {
+      "git_blob_sha": "f0242dbd78ece394acbdbd5bc0a5c722d27d099f",
+      "bytes": 1345792
+    },
+    "neutron/Bi209.h5": {
+      "git_blob_sha": "42a2e12cab46274e2f214316491266c7f075ba35",
+      "bytes": 8931720
+    },
+    "neutron/Bi210_m1.h5": {
+      "git_blob_sha": "0109ed0efe39d450174a5d08455a56d17a36ea04",
+      "bytes": 8092368
+    },
+    "neutron/Bk245.h5": {
+      "git_blob_sha": "334147e69f0fc42272a26bada13139e6a9d5ff6f",
+      "bytes": 2982104
+    },
+    "neutron/Bk246.h5": {
+      "git_blob_sha": "6d7296bcbef92eeecf3cb5baac4cda024814fb7e",
+      "bytes": 2924024
+    },
+    "neutron/Bk247.h5": {
+      "git_blob_sha": "034602d5fe688020704429db8165919a8b53683e",
+      "bytes": 3230624
+    },
+    "neutron/Bk248.h5": {
+      "git_blob_sha": "c6fc0755a602137a9db06688e73be0c17bf8decf",
+      "bytes": 3215936
+    },
+    "neutron/Bk249.h5": {
+      "git_blob_sha": "e976790034ac4f3d4817300dbede14e2475e3879",
+      "bytes": 5918064
+    },
+    "neutron/Bk250.h5": {
+      "git_blob_sha": "c16204349ade6f827ced38fbf3f27ae49d9a51c4",
+      "bytes": 4032944
+    },
+    "neutron/Br79.h5": {
+      "git_blob_sha": "1bfcbd29f8e0f708c259c22718c7db212680c17f",
+      "bytes": 13109568
+    },
+    "neutron/Br80.h5": {
+      "git_blob_sha": "4baa83b036b9a8a345847ae4b3b42d158e9b0e26",
+      "bytes": 9695488
+    },
+    "neutron/Br81.h5": {
+      "git_blob_sha": "cbcec2e7beca22fc73ebf36c10390740af9b2d80",
+      "bytes": 12360712
+    },
+    "neutron/C12.h5": {
+      "git_blob_sha": "3adf810e2d4a880fbf8cb65e92be9846e604b594",
+      "bytes": 2555816
+    },
+    "neutron/C13.h5": {
+      "git_blob_sha": "c43e398f6569e99954f18655c6453f8f36caa517",
+      "bytes": 2185496
+    },
+    "neutron/Ca40.h5": {
+      "git_blob_sha": "b4dd92811c06e63513feba8a940c9d6d05d43fe1",
+      "bytes": 17406800
+    },
+    "neutron/Ca41.h5": {
+      "git_blob_sha": "51d617a69428a7f77d0c9197c09882aec286e871",
+      "bytes": 11860368
+    },
+    "neutron/Ca42.h5": {
+      "git_blob_sha": "52ffee9ec1030c835ede03b30d082351edc71177",
+      "bytes": 7676672
+    },
+    "neutron/Ca43.h5": {
+      "git_blob_sha": "80e27c97e2ba78e2819020691a0505b1375ed903",
+      "bytes": 8580752
+    },
+    "neutron/Ca44.h5": {
+      "git_blob_sha": "4c306ec44363f2b7c076602d2e377043d27ef88c",
+      "bytes": 4858120
+    },
+    "neutron/Ca45.h5": {
+      "git_blob_sha": "2b1b1fae2dbf369c1d0efefe39928864f55ff56a",
+      "bytes": 5268616
+    },
+    "neutron/Ca46.h5": {
+      "git_blob_sha": "2b376cc7bd3f9aaf6748c8d964dcc4fc9cc549e6",
+      "bytes": 3238128
+    },
+    "neutron/Ca47.h5": {
+      "git_blob_sha": "7eb25385d643a0fea7b285651541bf408c03837e",
+      "bytes": 4805016
+    },
+    "neutron/Ca48.h5": {
+      "git_blob_sha": "3bc83c26b164554f7cca501a2b924557f2b34264",
+      "bytes": 3063880
+    },
+    "neutron/Cd106.h5": {
+      "git_blob_sha": "43e8d1252cb3ef0b75d9cd2916b1591eb2634b1f",
+      "bytes": 6425728
+    },
+    "neutron/Cd107.h5": {
+      "git_blob_sha": "05794a74ec5e1c6a715ea659d1aa2c46e68e4620",
+      "bytes": 7308264
+    },
+    "neutron/Cd108.h5": {
+      "git_blob_sha": "f8b944543c919d9016b2e633c78c6ee448ea675a",
+      "bytes": 4869632
+    },
+    "neutron/Cd109.h5": {
+      "git_blob_sha": "dcfa195f1c73c4e2bed5a5be51858ddf2b85a6b9",
+      "bytes": 7686736
+    },
+    "neutron/Cd110.h5": {
+      "git_blob_sha": "15c51ae69ed0f7dc22f0df6df7f81e703bebd3b5",
+      "bytes": 6775408
+    },
+    "neutron/Cd111.h5": {
+      "git_blob_sha": "b7c64d1c13557e0539c3ac9ad191a2e29a74f9be",
+      "bytes": 9985136
+    },
+    "neutron/Cd112.h5": {
+      "git_blob_sha": "1b5f89999a057be194c0380e27f4c22063c300d3",
+      "bytes": 8021552
+    },
+    "neutron/Cd113.h5": {
+      "git_blob_sha": "a45d9e74a0254cb9a5d2c32058206acd0fe01b8c",
+      "bytes": 12281328
+    },
+    "neutron/Cd114.h5": {
+      "git_blob_sha": "af27456f41ae26b3136029384e232b2c37bd5244",
+      "bytes": 5229472
+    },
+    "neutron/Cd115_m1.h5": {
+      "git_blob_sha": "bd292599158bddee68319a2267ee90dee3e6049a",
+      "bytes": 4839728
+    },
+    "neutron/Cd116.h5": {
+      "git_blob_sha": "0e077ab9ead61345177482b78f8281dff6fa0275",
+      "bytes": 3501408
+    },
+    "neutron/Ce136.h5": {
+      "git_blob_sha": "a9cb2f6416601c5f4e5b5257664613f5f9ec25d7",
+      "bytes": 4069608
+    },
+    "neutron/Ce137.h5": {
+      "git_blob_sha": "7826a7153d38ddcd0c8e5a293f54a20105beecaf",
+      "bytes": 10668472
+    },
+    "neutron/Ce137_m1.h5": {
+      "git_blob_sha": "d2173b073b85496adc1b11ed58592182e37c3d7f",
+      "bytes": 10832696
+    },
+    "neutron/Ce138.h5": {
+      "git_blob_sha": "27b733eba7ae49ed7c6f4888134dfff9320b9e68",
+      "bytes": 4554536
+    },
+    "neutron/Ce139.h5": {
+      "git_blob_sha": "5fdb411b165185e9888013618cb3449c254866c2",
+      "bytes": 5365080
+    },
+    "neutron/Ce140.h5": {
+      "git_blob_sha": "08a50b43ab605f228925def6df316e32da782470",
+      "bytes": 10275856
+    },
+    "neutron/Ce141.h5": {
+      "git_blob_sha": "af31110352c3b4922f7cdea1a2678cc526d00d47",
+      "bytes": 2759024
+    },
+    "neutron/Ce142.h5": {
+      "git_blob_sha": "2f2ee0d82fa649133bf262a92e973251f077384f",
+      "bytes": 4805456
+    },
+    "neutron/Ce143.h5": {
+      "git_blob_sha": "a2ca73a9d754143b3aa89987a145f552c73a3d91",
+      "bytes": 6631032
+    },
+    "neutron/Ce144.h5": {
+      "git_blob_sha": "ca70b580c262bd9ecfc0039fe31f635e0b77311a",
+      "bytes": 2436904
+    },
+    "neutron/Cf246.h5": {
+      "git_blob_sha": "e2d39add1afe3495eb8d228ad1d5a121ab62e87a",
+      "bytes": 2903008
+    },
+    "neutron/Cf247.h5": {
+      "git_blob_sha": "93683dc53a2bc515b7aefe08ff03be92271e9859",
+      "bytes": 2766032
+    },
+    "neutron/Cf248.h5": {
+      "git_blob_sha": "8a2c4084ef0c782dac04b9b1d00306d975411096",
+      "bytes": 3216224
+    },
+    "neutron/Cf249.h5": {
+      "git_blob_sha": "eaecd41f9344dbf15c05755a5332fb80c8ddabbb",
+      "bytes": 6323880
+    },
+    "neutron/Cf250.h5": {
+      "git_blob_sha": "df5e5c670e0ad50b2a80ea343e5f641550393874",
+      "bytes": 3848232
+    },
+    "neutron/Cf251.h5": {
+      "git_blob_sha": "6d2559e4417709f56f8048fde85de831ea0a6cd5",
+      "bytes": 4471184
+    },
+    "neutron/Cf252.h5": {
+      "git_blob_sha": "fcc7e83cced70d7043754d0b649ee7096193d8de",
+      "bytes": 6712200
+    },
+    "neutron/Cf253.h5": {
+      "git_blob_sha": "1335b8fb7cf4ba210ea4f4970273e532db1cb87e",
+      "bytes": 3209024
+    },
+    "neutron/Cf254.h5": {
+      "git_blob_sha": "2f16c2c068fa50048f99ac1975c5be9824629fbd",
+      "bytes": 2993264
+    },
+    "neutron/Cl35.h5": {
+      "git_blob_sha": "50ad7380096a18528581501c70ce34ec535dd5d6",
+      "bytes": 18223328
+    },
+    "neutron/Cl36.h5": {
+      "git_blob_sha": "bfe38356a8ce50263429f9e461de28ffe5b7f146",
+      "bytes": 11317208
+    },
+    "neutron/Cl37.h5": {
+      "git_blob_sha": "c93fb36c7e0e63f73020c289ba542807aa3de423",
+      "bytes": 7060664
+    },
+    "neutron/Cm240.h5": {
+      "git_blob_sha": "e8616c9f117574fc915b83dd61d95f37525f84c9",
+      "bytes": 2332552
+    },
+    "neutron/Cm241.h5": {
+      "git_blob_sha": "68fc18c86a85adcf9bdd83340f0506c15a44db6d",
+      "bytes": 2492928
+    },
+    "neutron/Cm242.h5": {
+      "git_blob_sha": "66caa450a323eb7d548d878a2bb0780f59e0ec7a",
+      "bytes": 4025592
+    },
+    "neutron/Cm243.h5": {
+      "git_blob_sha": "b956e414656870291f263885bdb0f034237d058f",
+      "bytes": 4399472
+    },
+    "neutron/Cm244.h5": {
+      "git_blob_sha": "d1378fb8004f9ab36beb28ea6f86aa8630a1ba0a",
+      "bytes": 8758928
+    },
+    "neutron/Cm245.h5": {
+      "git_blob_sha": "735227c7916fd8a56285cbb9453596c3d3bf0fc3",
+      "bytes": 5031528
+    },
+    "neutron/Cm246.h5": {
+      "git_blob_sha": "6a85087445ef7da2de2e130a477c83ea908f62cd",
+      "bytes": 6300632
+    },
+    "neutron/Cm247.h5": {
+      "git_blob_sha": "4f7df2f5b03b30ee926ff1776b28bf671aa5e4bc",
+      "bytes": 5480280
+    },
+    "neutron/Cm248.h5": {
+      "git_blob_sha": "7e73c402135f239d065996419e91016aa1dbd068",
+      "bytes": 6657104
+    },
+    "neutron/Cm249.h5": {
+      "git_blob_sha": "865e123f1ebdf67da26f5fe4e2bf9d073e84f944",
+      "bytes": 3139616
+    },
+    "neutron/Cm250.h5": {
+      "git_blob_sha": "56d9100aaa7987edeb2e06b807ae1b3d9c4d654a",
+      "bytes": 3346800
+    },
+    "neutron/Co58.h5": {
+      "git_blob_sha": "7f7beee0b789683577a7e6ec038a450254260233",
+      "bytes": 9115968
+    },
+    "neutron/Co58_m1.h5": {
+      "git_blob_sha": "ac14253fd98db74406db9ff9d2722244fc585d2d",
+      "bytes": 926184
+    },
+    "neutron/Co59.h5": {
+      "git_blob_sha": "1b1c982b9d1a9acd5893d6ce6509ee0e9d78e019",
+      "bytes": 14489888
+    },
+    "neutron/Cr50.h5": {
+      "git_blob_sha": "4be44bb3bf0ae1dab1bd952548716c359f123d97",
+      "bytes": 12522920
+    },
+    "neutron/Cr51.h5": {
+      "git_blob_sha": "de0241326d6ac2e607913dd1407557bfdf0d9799",
+      "bytes": 7792928
+    },
+    "neutron/Cr52.h5": {
+      "git_blob_sha": "2a0acdca4957e12c9fa06cec79e2ba44447ab2c1",
+      "bytes": 12524200
+    },
+    "neutron/Cr53.h5": {
+      "git_blob_sha": "8b8eadf51bc72ea28af14d9ac5f812538de695bd",
+      "bytes": 10549640
+    },
+    "neutron/Cr54.h5": {
+      "git_blob_sha": "ebb0446ec490cfbf5898a0c1864a0516cfdda47c",
+      "bytes": 6821800
+    },
+    "neutron/Cs133.h5": {
+      "git_blob_sha": "344044dc936fb87d484d3e0d66430a4c7f50f2cd",
+      "bytes": 12054184
+    },
+    "neutron/Cs134.h5": {
+      "git_blob_sha": "c68fe87ced509f2fb615399c5b4c559e625ff19b",
+      "bytes": 6600040
+    },
+    "neutron/Cs135.h5": {
+      "git_blob_sha": "730d3959badf8a1f8621989457d8d1a246509e6c",
+      "bytes": 3103544
+    },
+    "neutron/Cs136.h5": {
+      "git_blob_sha": "47919cd750ac8e1f268eaa0803f80e8c66fa54f1",
+      "bytes": 2504168
+    },
+    "neutron/Cs137.h5": {
+      "git_blob_sha": "86e2defd68c3b66c4ce7713fa9eb004c19cb1301",
+      "bytes": 2767584
+    },
+    "neutron/Cu63.h5": {
+      "git_blob_sha": "df5f4ee7657b0830914c480dc5f90b90f0accba8",
+      "bytes": 17381400
+    },
+    "neutron/Cu64.h5": {
+      "git_blob_sha": "3d668485e9e5a406984cd883829b46d8b216b2fe",
+      "bytes": 7342504
+    },
+    "neutron/Cu65.h5": {
+      "git_blob_sha": "b911d6e8bc367b529e0d35c790ad79b9b565382c",
+      "bytes": 15782600
+    },
+    "neutron/Dy154.h5": {
+      "git_blob_sha": "a0730f261002082600f83f7b45f7fc3a8dab20ef",
+      "bytes": 6742920
+    },
+    "neutron/Dy155.h5": {
+      "git_blob_sha": "a72c85c63f2dfc44bb37f4f357a78e90696883f6",
+      "bytes": 13587920
+    },
+    "neutron/Dy156.h5": {
+      "git_blob_sha": "d021ea0c70233b2adc58c34d789be176ee19b45f",
+      "bytes": 6060480
+    },
+    "neutron/Dy157.h5": {
+      "git_blob_sha": "2c44da2ba15372e6414c38027b44c215ea325926",
+      "bytes": 13746864
+    },
+    "neutron/Dy158.h5": {
+      "git_blob_sha": "6c8d49d4929fdcfa21155adce7879a9e350d86c2",
+      "bytes": 6057704
+    },
+    "neutron/Dy159.h5": {
+      "git_blob_sha": "63ba41ba33ed11f1d43099322ff0e5f096269890",
+      "bytes": 6495432
+    },
+    "neutron/Dy160.h5": {
+      "git_blob_sha": "ffd95acb4331ddd2690424ec4c712c3930e6a14d",
+      "bytes": 9485616
+    },
+    "neutron/Dy161.h5": {
+      "git_blob_sha": "92d9dccb23c3e6db0ab3cd40657e70fc0a5ba6f9",
+      "bytes": 14471016
+    },
+    "neutron/Dy162.h5": {
+      "git_blob_sha": "649485a714ee3b2bf7a8f7b0c1a34b4eadc3ea48",
+      "bytes": 11724352
+    },
+    "neutron/Dy163.h5": {
+      "git_blob_sha": "f544b28190df5cd63834a822939c20bfb9278dbe",
+      "bytes": 10892336
+    },
+    "neutron/Dy164.h5": {
+      "git_blob_sha": "3d0612b96ffed3fe9c90d6a437925ba1626ba84f",
+      "bytes": 9496552
+    },
+    "neutron/Er162.h5": {
+      "git_blob_sha": "313ce6533722b3673481cc65eb63137b899cc795",
+      "bytes": 3509352
+    },
+    "neutron/Er163.h5": {
+      "git_blob_sha": "aff25399dd0ad668d91c3e43b1a0aafc0cc56331",
+      "bytes": 13334128
+    },
+    "neutron/Er164.h5": {
+      "git_blob_sha": "aeb576b2dbefb513f60bc95dae4cb967fa7358f2",
+      "bytes": 3540728
+    },
+    "neutron/Er165.h5": {
+      "git_blob_sha": "9655f2afe00868e93996edb31a5c37a57f8b348e",
+      "bytes": 10803472
+    },
+    "neutron/Er166.h5": {
+      "git_blob_sha": "2dca4c0c339e5f04485bb3dab051fcb5e4839e8e",
+      "bytes": 11195832
+    },
+    "neutron/Er167.h5": {
+      "git_blob_sha": "1ecfeeb6c8f3bd607e3a2611fc8ab6735a8cd882",
+      "bytes": 14520304
+    },
+    "neutron/Er168.h5": {
+      "git_blob_sha": "882a82fd04e2d858c563a4db19f0741da0c389d4",
+      "bytes": 12405112
+    },
+    "neutron/Er169.h5": {
+      "git_blob_sha": "97d6edeffa387e7384d9cc969776fe2f45433b23",
+      "bytes": 8715136
+    },
+    "neutron/Er170.h5": {
+      "git_blob_sha": "24b1e48051d794a1b1fa5411517c262d36fff39d",
+      "bytes": 5684632
+    },
+    "neutron/Es251.h5": {
+      "git_blob_sha": "67ac6d0d482766523cac3cb816baec440bb96948",
+      "bytes": 2974192
+    },
+    "neutron/Es252.h5": {
+      "git_blob_sha": "c26449bca3901de4149d1a769bd40b8ee30d08ec",
+      "bytes": 3129520
+    },
+    "neutron/Es253.h5": {
+      "git_blob_sha": "506f46ef2e977ae91e30336fb7fa3a6c63773467",
+      "bytes": 3055032
+    },
+    "neutron/Es254.h5": {
+      "git_blob_sha": "da01ca8ea04f6ee53b3a268ba96a052a4722b8c9",
+      "bytes": 3290520
+    },
+    "neutron/Es254_m1.h5": {
+      "git_blob_sha": "1b1e12a914ddcfb65ba46376d19200fb681f6e41",
+      "bytes": 3591336
+    },
+    "neutron/Es255.h5": {
+      "git_blob_sha": "fad58cae8e1eec6daece8f9d097597837cf8f058",
+      "bytes": 2815760
+    },
+    "neutron/Eu151.h5": {
+      "git_blob_sha": "fde5eeb8ba73d4e0efd53cf1d803b20486bb7b71",
+      "bytes": 4764568
+    },
+    "neutron/Eu152.h5": {
+      "git_blob_sha": "6e342ea72041f2835fc0d7ce39725de3e6e2de26",
+      "bytes": 5329656
+    },
+    "neutron/Eu153.h5": {
+      "git_blob_sha": "4d5d4ccc7643529bf7202cfeeb39d4b66bc98c3b",
+      "bytes": 9669576
+    },
+    "neutron/Eu154.h5": {
+      "git_blob_sha": "061fe965913042b8d56378a10029023747110ea4",
+      "bytes": 2367360
+    },
+    "neutron/Eu155.h5": {
+      "git_blob_sha": "a17b5cf5913feddc9d42029e2dc92682ce1ab33a",
+      "bytes": 1812120
+    },
+    "neutron/Eu156.h5": {
+      "git_blob_sha": "e0a1d5b3b92fd5d38db74aeae5dd16003c55281e",
+      "bytes": 3211888
+    },
+    "neutron/Eu157.h5": {
+      "git_blob_sha": "eb71437949ac6a5cd173f07cc27a46ea039634b5",
+      "bytes": 6506208
+    },
+    "neutron/F19.h5": {
+      "git_blob_sha": "c96df5b4197e20808ad5ebf526bbac592e41a771",
+      "bytes": 4664304
+    },
+    "neutron/Fe54.h5": {
+      "git_blob_sha": "3287ab62483291aa40a476f1ab60a2d6238ec925",
+      "bytes": 44368272
+    },
+    "neutron/Fe55.h5": {
+      "git_blob_sha": "463b27a254d2e89b406f246f29e34ff89df2d1ef",
+      "bytes": 6556784
+    },
+    "neutron/Fe56.h5": {
+      "git_blob_sha": "43afecad18a8483916eee6189de4c051cadcb85a",
+      "bytes": 57405104
+    },
+    "neutron/Fe57.h5": {
+      "git_blob_sha": "3834760716304f3f196203032b4aa2708e04d878",
+      "bytes": 22030176
+    },
+    "neutron/Fe58.h5": {
+      "git_blob_sha": "99ecde90de3776c2ea7073f2ac34fadd7d9515e8",
+      "bytes": 24452440
+    },
+    "neutron/Fm255.h5": {
+      "git_blob_sha": "7d980720d0a51b2ea0bb1b427470435b841f110d",
+      "bytes": 3434592
+    },
+    "neutron/Ga69.h5": {
+      "git_blob_sha": "a3e9a13a7888b0d34152eafc5973bbc0751c9323",
+      "bytes": 3235224
+    },
+    "neutron/Ga70.h5": {
+      "git_blob_sha": "821b05800913b90131857c04faecabb1d0cea525",
+      "bytes": 5608696
+    },
+    "neutron/Ga71.h5": {
+      "git_blob_sha": "1b3859ee04675759df7f70fdb93ee305b753a09b",
+      "bytes": 2885744
+    },
+    "neutron/Gd152.h5": {
+      "git_blob_sha": "99e88afbbb09ef025fd8611281822970cefaffdf",
+      "bytes": 17907544
+    },
+    "neutron/Gd153.h5": {
+      "git_blob_sha": "49b3d84ce884d6dc3b98e18de0db086924abd740",
+      "bytes": 9375776
+    },
+    "neutron/Gd154.h5": {
+      "git_blob_sha": "bdc9bc9cd11fa55cc9f2008f1d4059517b2ee589",
+      "bytes": 19396664
+    },
+    "neutron/Gd155.h5": {
+      "git_blob_sha": "79ca77629e708775afeffcfca4a65681f61e159f",
+      "bytes": 12272560
+    },
+    "neutron/Gd156.h5": {
+      "git_blob_sha": "c3753307af8ee073d0acaa693aeff2cee3221ab6",
+      "bytes": 14571408
+    },
+    "neutron/Gd157.h5": {
+      "git_blob_sha": "422cb6b29f77334d8e401b05dfbd85799954b8b0",
+      "bytes": 11152536
+    },
+    "neutron/Gd158.h5": {
+      "git_blob_sha": "4f2cdb51e3cb710a2819c2552dcaf0ab9159bdc5",
+      "bytes": 11523880
+    },
+    "neutron/Gd159.h5": {
+      "git_blob_sha": "71cfb8830738c927bb612fdeb731ad4653a855b3",
+      "bytes": 4581440
+    },
+    "neutron/Gd160.h5": {
+      "git_blob_sha": "e93f6b7b633baacbec3b120909116a198c932f5c",
+      "bytes": 8994720
+    },
+    "neutron/Ge70.h5": {
+      "git_blob_sha": "d2fe08e84abe2e474887c399471798aa40d584df",
+      "bytes": 14157912
+    },
+    "neutron/Ge71.h5": {
+      "git_blob_sha": "e5661e948abeca9af6e443fec4ee4b3c735649eb",
+      "bytes": 12438432
+    },
+    "neutron/Ge72.h5": {
+      "git_blob_sha": "725a688058532f1e749078a6cf81f883cfb744c3",
+      "bytes": 8301016
+    },
+    "neutron/Ge73.h5": {
+      "git_blob_sha": "4e6a1deb5f05dbf847cca8d566f12a3ae1a6be9e",
+      "bytes": 16662672
+    },
+    "neutron/Ge74.h5": {
+      "git_blob_sha": "f6b8277c16640b029049cb74dbfaac7442561f35",
+      "bytes": 4140024
+    },
+    "neutron/Ge75.h5": {
+      "git_blob_sha": "a96044f27a23679569060c3e961ca2b7d4e1cd07",
+      "bytes": 5860800
+    },
+    "neutron/Ge76.h5": {
+      "git_blob_sha": "29b902642e348f4e6ab0fa71539539de0d8ec157",
+      "bytes": 4195304
+    },
+    "neutron/H1.h5": {
+      "git_blob_sha": "61b1542053c8fcb7ff56b497053bb67f3d12b9f2",
+      "bytes": 328056
+    },
+    "neutron/H2.h5": {
+      "git_blob_sha": "68949aa9086c4c12bc55bc8ec49214f3548e5a81",
+      "bytes": 605176
+    },
+    "neutron/H3.h5": {
+      "git_blob_sha": "7dc4b0c1079e179e490893f90b5d45ef8f60a114",
+      "bytes": 336696
+    },
+    "neutron/He3.h5": {
+      "git_blob_sha": "47e7c1141e69ae19a4771ddae1b3e230da6abc45",
+      "bytes": 480096
+    },
+    "neutron/He4.h5": {
+      "git_blob_sha": "f0204d18e1d8fe1f658a4a1c0edd5fe312203809",
+      "bytes": 295776
+    },
+    "neutron/Hf174.h5": {
+      "git_blob_sha": "ec047cf19195b7dfcb4624953a9942dfbc235837",
+      "bytes": 7778600
+    },
+    "neutron/Hf175.h5": {
+      "git_blob_sha": "f94622c7b42a65407b1522eaa9c975dfe9d8f17b",
+      "bytes": 9046784
+    },
+    "neutron/Hf176.h5": {
+      "git_blob_sha": "0c1d8de83a3bbf1cbc8cdf73114adfe5eb90ad7d",
+      "bytes": 7638824
+    },
+    "neutron/Hf177.h5": {
+      "git_blob_sha": "35f6a55531d96c73cffb49450979e8d1ead76930",
+      "bytes": 12537456
+    },
+    "neutron/Hf178.h5": {
+      "git_blob_sha": "2b37d70c8d24f0144e208bba0b55d4a5263e7517",
+      "bytes": 9765736
+    },
+    "neutron/Hf179.h5": {
+      "git_blob_sha": "2a0f73ed4b3da0915147587f64f14a340d592b73",
+      "bytes": 12984120
+    },
+    "neutron/Hf180.h5": {
+      "git_blob_sha": "c5dc1788c82190415fb4237b19f0776ba94957a5",
+      "bytes": 10160576
+    },
+    "neutron/Hf181.h5": {
+      "git_blob_sha": "c33c22d9d01bbd783f3c4baad2104fcec61e85a9",
+      "bytes": 1730880
+    },
+    "neutron/Hf182.h5": {
+      "git_blob_sha": "8a413e6c828f3d9acf6f95a5ce998b779f7c0b32",
+      "bytes": 1631888
+    },
+    "neutron/Hg196.h5": {
+      "git_blob_sha": "c8c672f9613ca23057d181520996e7172e200eec",
+      "bytes": 3273216
+    },
+    "neutron/Hg197.h5": {
+      "git_blob_sha": "4a7bc0c5a97c2b872aa9550401ebad661fa615c6",
+      "bytes": 10012632
+    },
+    "neutron/Hg197_m1.h5": {
+      "git_blob_sha": "797ac7ec330784f3c5cde25167aa3517bb3c9f1f",
+      "bytes": 9219824
+    },
+    "neutron/Hg198.h5": {
+      "git_blob_sha": "abb4527619bdfb96806b956bdef4182f70827366",
+      "bytes": 3759168
+    },
+    "neutron/Hg199.h5": {
+      "git_blob_sha": "40edea17534e35970da2de5529a228439cb46dcc",
+      "bytes": 3873392
+    },
+    "neutron/Hg200.h5": {
+      "git_blob_sha": "93b7e674b0544e8ce3243d325d0d36c4cdaa63ba",
+      "bytes": 8325368
+    },
+    "neutron/Hg201.h5": {
+      "git_blob_sha": "2e2fa0e77aafe62dd4da878f7411f7017dd8e94b",
+      "bytes": 3422304
+    },
+    "neutron/Hg202.h5": {
+      "git_blob_sha": "83d7ce0342c91c2982d55c5f78313957078a627a",
+      "bytes": 3414408
+    },
+    "neutron/Hg203.h5": {
+      "git_blob_sha": "212f9a34f88e57fd1c27af5e0362bb9b8a6c4a82",
+      "bytes": 7172312
+    },
+    "neutron/Hg204.h5": {
+      "git_blob_sha": "b1fe4956076b750536b8e611c3d86de7c3f3cf10",
+      "bytes": 2557240
+    },
+    "neutron/Ho165.h5": {
+      "git_blob_sha": "0ab64f63e337f2efbb1a374be42c490c54960108",
+      "bytes": 10681488
+    },
+    "neutron/Ho166_m1.h5": {
+      "git_blob_sha": "18f90c823a827ad60b2619bf5672bbc245f7c3ba",
+      "bytes": 4178024
+    },
+    "neutron/I127.h5": {
+      "git_blob_sha": "1add2034dbb9229f19140453be990820522763d1",
+      "bytes": 30975040
+    },
+    "neutron/I128.h5": {
+      "git_blob_sha": "465892ecae9bd771af01d66f4f530ebaf8327620",
+      "bytes": 8967544
+    },
+    "neutron/I129.h5": {
+      "git_blob_sha": "28ebf409a5d714d6fe619c5dd2ee2e3ee3561d4f",
+      "bytes": 9641552
+    },
+    "neutron/I130.h5": {
+      "git_blob_sha": "9d4c56a1799a9796a3767c7511e007928d0264eb",
+      "bytes": 7272680
+    },
+    "neutron/I131.h5": {
+      "git_blob_sha": "08e1a2faa7306240d0208cd988230140c75b8e3e",
+      "bytes": 3971064
+    },
+    "neutron/I132.h5": {
+      "git_blob_sha": "068970bba2b8a721956826c0321145f73ed7fdc8",
+      "bytes": 4046992
+    },
+    "neutron/I132_m1.h5": {
+      "git_blob_sha": "0c7e427edc2cfc51d1da02bef0a6d296c9454fb2",
+      "bytes": 4921680
+    },
+    "neutron/I133.h5": {
+      "git_blob_sha": "6da14c1ec62e5d1956036100d9950fb2617295bc",
+      "bytes": 7538008
+    },
+    "neutron/I134.h5": {
+      "git_blob_sha": "a65f80b417b6162ea0abfb71c9d3212ced47bd1d",
+      "bytes": 3706408
+    },
+    "neutron/I135.h5": {
+      "git_blob_sha": "cf67be77f3f0e0cd75080215c6cd0cf4eb07ece1",
+      "bytes": 943120
+    },
+    "neutron/In113.h5": {
+      "git_blob_sha": "12b57f18159b43405cbcbf86ff3258a457daa0d7",
+      "bytes": 8142424
+    },
+    "neutron/In114.h5": {
+      "git_blob_sha": "e2d2096743fee2525409a6b425652fd5a2272ea5",
+      "bytes": 13438264
+    },
+    "neutron/In115.h5": {
+      "git_blob_sha": "eba481d43344575ae880e10f9e3bdaefe45bc7c7",
+      "bytes": 11849296
+    },
+    "neutron/Ir191.h5": {
+      "git_blob_sha": "19012f7cd0debe118ad18fbdb471bd0bfc1168cc",
+      "bytes": 11789136
+    },
+    "neutron/Ir192.h5": {
+      "git_blob_sha": "2c67e90bd4ff074aeea1aa8ba407d3f3dd35d23b",
+      "bytes": 8937984
+    },
+    "neutron/Ir193.h5": {
+      "git_blob_sha": "104694316b76cc1e32f9129359b26b7c9213f8ea",
+      "bytes": 9423752
+    },
+    "neutron/Ir194_m1.h5": {
+      "git_blob_sha": "53088e5029df2c16da6cadde6a50db7520849103",
+      "bytes": 10584152
+    },
+    "neutron/K39.h5": {
+      "git_blob_sha": "41038340f7dbef976b9ca73d5cfc71a5bab53a41",
+      "bytes": 10407672
+    },
+    "neutron/K40.h5": {
+      "git_blob_sha": "5f566d4f753d9997d9c3b395a33ca145501521b5",
+      "bytes": 1143568
+    },
+    "neutron/K41.h5": {
+      "git_blob_sha": "c817b4c4fdbd599a7b6571649ea5268b244b8289",
+      "bytes": 10443600
+    },
+    "neutron/Kr78.h5": {
+      "git_blob_sha": "af33540040c5d5c9d28f83f823b228fc19031c3a",
+      "bytes": 4650936
+    },
+    "neutron/Kr79.h5": {
+      "git_blob_sha": "96cecae0b31050da66efb2b76ee60857cf03e339",
+      "bytes": 12312872
+    },
+    "neutron/Kr80.h5": {
+      "git_blob_sha": "98405e8c818ce8fe120c644eb712ec98618428f2",
+      "bytes": 5281584
+    },
+    "neutron/Kr81.h5": {
+      "git_blob_sha": "beebcf77803478fa6c435145d54666b53960dcd5",
+      "bytes": 6844128
+    },
+    "neutron/Kr82.h5": {
+      "git_blob_sha": "3c4d87e1743c6bc762efe7aaf5f3e1e002858cbc",
+      "bytes": 3556816
+    },
+    "neutron/Kr83.h5": {
+      "git_blob_sha": "476c6cd98192e94202cf19485b9c93bfcb9d2c3b",
+      "bytes": 2028704
+    },
+    "neutron/Kr84.h5": {
+      "git_blob_sha": "5e3eb387150682413effc71442cf2d4a92f5adb6",
+      "bytes": 6070392
+    },
+    "neutron/Kr85.h5": {
+      "git_blob_sha": "bac1e4d5b393834c86f622e141ed0ddd9348e8f1",
+      "bytes": 3912472
+    },
+    "neutron/Kr86.h5": {
+      "git_blob_sha": "d1c7a2b35be7ec2e08ad0f028a78e03fb0cac28f",
+      "bytes": 6157392
+    },
+    "neutron/La138.h5": {
+      "git_blob_sha": "ad5af0875bfada6d8ffa881f78a5b4865e96bae4",
+      "bytes": 5050440
+    },
+    "neutron/La139.h5": {
+      "git_blob_sha": "a79ba364a83f854860fdbcb8f8df65af0a4077b6",
+      "bytes": 7778000
+    },
+    "neutron/La140.h5": {
+      "git_blob_sha": "f2fd3f3c9fdabf7d1ced9a5687a7d1d90e581e9d",
+      "bytes": 8498896
+    },
+    "neutron/Li6.h5": {
+      "git_blob_sha": "1cadddd5be1b90dc59e480c40e0afb0ff1094dd2",
+      "bytes": 1386016
+    },
+    "neutron/Li7.h5": {
+      "git_blob_sha": "e91a9021fa27e53b0a0eca73ce1443b23ae56de5",
+      "bytes": 1198568
+    },
+    "neutron/Lu175.h5": {
+      "git_blob_sha": "4aeeb03dda0f140045a271897b8eedc50cff6f48",
+      "bytes": 5696592
+    },
+    "neutron/Lu176.h5": {
+      "git_blob_sha": "4aa7e0d8efce885640f69dc82b19fe841706aef6",
+      "bytes": 3158904
+    },
+    "neutron/Mg24.h5": {
+      "git_blob_sha": "913d2b3d6142daa49d62189db1b4e31f5d1eac81",
+      "bytes": 1953984
+    },
+    "neutron/Mg25.h5": {
+      "git_blob_sha": "1b00312539a153177a17608b33ce49d77a36f0bc",
+      "bytes": 2227288
+    },
+    "neutron/Mg26.h5": {
+      "git_blob_sha": "9feab223ed4356a49f26d563f58b5c130123f9cd",
+      "bytes": 1548488
+    },
+    "neutron/Mn54.h5": {
+      "git_blob_sha": "2edb1fb6fd2497544e3574514aec41a78bd1e5f4",
+      "bytes": 6590552
+    },
+    "neutron/Mn55.h5": {
+      "git_blob_sha": "7cb1a2bc6261a0886262b506dd856661b55b94df",
+      "bytes": 14109376
+    },
+    "neutron/Mo100.h5": {
+      "git_blob_sha": "76ff5575def681baeba72784539a1719abec0e9a",
+      "bytes": 7283712
+    },
+    "neutron/Mo92.h5": {
+      "git_blob_sha": "8434075ef5688dcb96d7d6fbd6694cf9b3d485dc",
+      "bytes": 7768672
+    },
+    "neutron/Mo93.h5": {
+      "git_blob_sha": "963abef51d0a156cae6235015d6315504bf5b1a0",
+      "bytes": 7899368
+    },
+    "neutron/Mo94.h5": {
+      "git_blob_sha": "154739f56c4a31e8159ec9ed578495bc08d67ddb",
+      "bytes": 8189896
+    },
+    "neutron/Mo95.h5": {
+      "git_blob_sha": "f9bf4027540e8e57716738f2cb30721daf22240f",
+      "bytes": 9401936
+    },
+    "neutron/Mo96.h5": {
+      "git_blob_sha": "09a398abe0730476fa737f5fc6260fa02d6779fb",
+      "bytes": 9016256
+    },
+    "neutron/Mo97.h5": {
+      "git_blob_sha": "49b159407e4b76b85ae27d9d9efaa7f0747becfd",
+      "bytes": 9237832
+    },
+    "neutron/Mo98.h5": {
+      "git_blob_sha": "e9fc13d951982e0e79ba5d5a6b77ca5d700e3f1b",
+      "bytes": 11061056
+    },
+    "neutron/Mo99.h5": {
+      "git_blob_sha": "fff7a8422febe3421502a1981b14e90f93f35331",
+      "bytes": 3503880
+    },
+    "neutron/N14.h5": {
+      "git_blob_sha": "d6f4afe3f203b04863a35269735a1bdf90d93bfb",
+      "bytes": 4791184
+    },
+    "neutron/N15.h5": {
+      "git_blob_sha": "2b9de51c779df050a15bb16220588fb022918c38",
+      "bytes": 1087368
+    },
+    "neutron/Na22.h5": {
+      "git_blob_sha": "44b4863cfcdc3d785a9d2e063347eb4e77089737",
+      "bytes": 1033808
+    },
+    "neutron/Na23.h5": {
+      "git_blob_sha": "d81cad021571d2747c5741b5531e1f4a551863e2",
+      "bytes": 3986728
+    },
+    "neutron/Nb93.h5": {
+      "git_blob_sha": "70f6531373378b202acde933256faf12e1155845",
+      "bytes": 10798992
+    },
+    "neutron/Nb94.h5": {
+      "git_blob_sha": "a59958aabe18c63ae98261f9883279f76eeeffe0",
+      "bytes": 5945952
+    },
+    "neutron/Nb95.h5": {
+      "git_blob_sha": "31bd69b121faa3fe02040ca549ab6f87c70f6a66",
+      "bytes": 4428000
+    },
+    "neutron/Nd142.h5": {
+      "git_blob_sha": "06afc4ee6a33c562a2ba3ba40da21e202cde1f6b",
+      "bytes": 7467288
+    },
+    "neutron/Nd143.h5": {
+      "git_blob_sha": "38030038e960f4d60edd78c4856ad0114f59f574",
+      "bytes": 13468848
+    },
+    "neutron/Nd144.h5": {
+      "git_blob_sha": "c2836957ad168a012fa15f27f223a884c890802c",
+      "bytes": 7798480
+    },
+    "neutron/Nd145.h5": {
+      "git_blob_sha": "e57cff49f92462a815dda48a8005f90b83de64c2",
+      "bytes": 15917856
+    },
+    "neutron/Nd146.h5": {
+      "git_blob_sha": "73f17466b5bc3c5d16adc75864188cc9038f50e3",
+      "bytes": 7224352
+    },
+    "neutron/Nd147.h5": {
+      "git_blob_sha": "b00565ae67d964c919696a8738bc0fc42f369830",
+      "bytes": 6784728
+    },
+    "neutron/Nd148.h5": {
+      "git_blob_sha": "9ed49f919361d726260243f1899e40776a885338",
+      "bytes": 9379992
+    },
+    "neutron/Nd149.h5": {
+      "git_blob_sha": "104827e07e07862a459ada8014c42b5741272608",
+      "bytes": 7339040
+    },
+    "neutron/Nd150.h5": {
+      "git_blob_sha": "eaab2b2ce7cb119b27a3cc5e1d9916d75771f7e9",
+      "bytes": 8776360
+    },
+    "neutron/Ne20.h5": {
+      "git_blob_sha": "d192722e90d968da22392ed95c92082d5844624b",
+      "bytes": 3867000
+    },
+    "neutron/Ne21.h5": {
+      "git_blob_sha": "89f6295a6ea49f842a80c5d479104f9ba004f9c7",
+      "bytes": 6009464
+    },
+    "neutron/Ne22.h5": {
+      "git_blob_sha": "998247e58c9bfcddb69bf6cd014ae166e8db03b9",
+      "bytes": 4497552
+    },
+    "neutron/Ni58.h5": {
+      "git_blob_sha": "cb2478ac8bab29e45a7f6de0f1448c770f9a9b21",
+      "bytes": 21306872
+    },
+    "neutron/Ni59.h5": {
+      "git_blob_sha": "c452e27b435804cb3fa274edda004ca6ceea5213",
+      "bytes": 6844608
+    },
+    "neutron/Ni60.h5": {
+      "git_blob_sha": "d82b26355e1747809c28be84862d1d56c8cc7fab",
+      "bytes": 17719584
+    },
+    "neutron/Ni61.h5": {
+      "git_blob_sha": "48810f1e9586751a716357b8cf94fb94f3bc01ae",
+      "bytes": 9341184
+    },
+    "neutron/Ni62.h5": {
+      "git_blob_sha": "ebdea4b39c1eb797eead3039efb091ec46124d26",
+      "bytes": 9166576
+    },
+    "neutron/Ni63.h5": {
+      "git_blob_sha": "34bddbcd9919b8a89be3bc4bc8810d83f1052638",
+      "bytes": 4270328
+    },
+    "neutron/Ni64.h5": {
+      "git_blob_sha": "beb561d48a760a90126f38ac3d6c1ff67215f42c",
+      "bytes": 8444704
+    },
+    "neutron/Np234.h5": {
+      "git_blob_sha": "912e37380564524a6815026e5ccebbb8897de7db",
+      "bytes": 3020472
+    },
+    "neutron/Np235.h5": {
+      "git_blob_sha": "8ae7cf7e7b4737151ad432af753e221d60bfa282",
+      "bytes": 3127288
+    },
+    "neutron/Np236.h5": {
+      "git_blob_sha": "f8d10be29968ed9ed7b043d5246d030f05b5b73d",
+      "bytes": 3766080
+    },
+    "neutron/Np236_m1.h5": {
+      "git_blob_sha": "0e8d5f6d6d5d29dc5b932e48ffdde26bb975ee8d",
+      "bytes": 3657456
+    },
+    "neutron/Np237.h5": {
+      "git_blob_sha": "173fa5343b5cb5ec83b65ec464b94905e4ccd3fc",
+      "bytes": 17704640
+    },
+    "neutron/Np238.h5": {
+      "git_blob_sha": "e977d0597e6e5aa798313b3c7217b3c5499a1250",
+      "bytes": 5876960
+    },
+    "neutron/Np239.h5": {
+      "git_blob_sha": "38956ee18bd21332dd9b80ef2bc1df0ba1a56431",
+      "bytes": 4022280
+    },
+    "neutron/O16.h5": {
+      "git_blob_sha": "6ef4356319093f61496614a2375926358e13f5de",
+      "bytes": 8650648
+    },
+    "neutron/O17.h5": {
+      "git_blob_sha": "36dbe64d225e282cc8b6822aa754dbb321909835",
+      "bytes": 741832
+    },
+    "neutron/O18.h5": {
+      "git_blob_sha": "a0cd5d9c0a355d452b4af27395fd973195e8d673",
+      "bytes": 645416
+    },
+    "neutron/Os184.h5": {
+      "git_blob_sha": "d94d9d0bf7dd7946b8f2f708fa0eba665c8296b6",
+      "bytes": 5224760
+    },
+    "neutron/Os185.h5": {
+      "git_blob_sha": "d132ab368b2489386b575b8ce3c3b43d6ef6c499",
+      "bytes": 51830392
+    },
+    "neutron/Os186.h5": {
+      "git_blob_sha": "0d1fc11983bbf6972c283df26e22b5221593e108",
+      "bytes": 15791024
+    },
+    "neutron/Os187.h5": {
+      "git_blob_sha": "a066c778bf210416ac0fc397ef4d4b000a42b134",
+      "bytes": 17397320
+    },
+    "neutron/Os188.h5": {
+      "git_blob_sha": "7ab5e4376d4c0f99369d117ff779593ddf789481",
+      "bytes": 16051928
+    },
+    "neutron/Os189.h5": {
+      "git_blob_sha": "8ebfb23f87aca14d610946b61ab7637c9d532bca",
+      "bytes": 8474544
+    },
+    "neutron/Os190.h5": {
+      "git_blob_sha": "88c88aa22e66dc58390e17e6aa55c275f2e2f72f",
+      "bytes": 8434552
+    },
+    "neutron/Os191.h5": {
+      "git_blob_sha": "25ab2da6437ccb0198f9d54f3a00c0075d8c8d13",
+      "bytes": 14406296
+    },
+    "neutron/Os192.h5": {
+      "git_blob_sha": "7ab56a998bf35576b441480d04f0939bb6543cf3",
+      "bytes": 6923528
+    },
+    "neutron/P31.h5": {
+      "git_blob_sha": "e08ac3fe1c60c04962aad1060bc890c648462f79",
+      "bytes": 995024
+    },
+    "neutron/Pa229.h5": {
+      "git_blob_sha": "90cfa1384eb85ed5d4b98f13f6a658f3b35719f9",
+      "bytes": 3179704
+    },
+    "neutron/Pa230.h5": {
+      "git_blob_sha": "b0ca597d31d3dafde93037c91ed5dc4ced1f1fd6",
+      "bytes": 3012560
+    },
+    "neutron/Pa231.h5": {
+      "git_blob_sha": "945867055c8f51f0b2076a16cc0e55a4afe46479",
+      "bytes": 20190040
+    },
+    "neutron/Pa232.h5": {
+      "git_blob_sha": "4671d4222e6e647dd6a144f114039114a70b259c",
+      "bytes": 3788864
+    },
+    "neutron/Pa233.h5": {
+      "git_blob_sha": "1e6776a2d2a7c5ca29aa5836c2046818a9c5bb11",
+      "bytes": 18703744
+    },
+    "neutron/Pb204.h5": {
+      "git_blob_sha": "5739ebfbcebde656b8e0a15b26457c501afec810",
+      "bytes": 19371760
+    },
+    "neutron/Pb205.h5": {
+      "git_blob_sha": "5db4bb5a92e4e3ac97ee623edbcad465941d2c27",
+      "bytes": 8398200
+    },
+    "neutron/Pb206.h5": {
+      "git_blob_sha": "5e8fad2e151f9bc4dae27c6deb4ba943db43fe3d",
+      "bytes": 41331200
+    },
+    "neutron/Pb207.h5": {
+      "git_blob_sha": "6e5d810d03f5a1eaa9061390ef6cbffc14c7dff9",
+      "bytes": 16359680
+    },
+    "neutron/Pb208.h5": {
+      "git_blob_sha": "f5391f01de363923c9174c306ec38c907fcc2c5f",
+      "bytes": 12180760
+    },
+    "neutron/Pd102.h5": {
+      "git_blob_sha": "773ae81c63dc33dfbe8118e5b6f843a22fb84667",
+      "bytes": 6060128
+    },
+    "neutron/Pd103.h5": {
+      "git_blob_sha": "56a81e68c5b977b4bc3672113a62d769d664e00a",
+      "bytes": 16209944
+    },
+    "neutron/Pd104.h5": {
+      "git_blob_sha": "4f5997ffa05684ff906d2eb345973fac050e2529",
+      "bytes": 26559048
+    },
+    "neutron/Pd105.h5": {
+      "git_blob_sha": "5c40938851855a7153bd48a8208e217c1b558a23",
+      "bytes": 12734344
+    },
+    "neutron/Pd106.h5": {
+      "git_blob_sha": "05854e2b0f3a6e1ded2573208c264a750ee4fc7a",
+      "bytes": 22023384
+    },
+    "neutron/Pd107.h5": {
+      "git_blob_sha": "0992d5a57167e42a2f9660d369c782cf36a27ea8",
+      "bytes": 7850560
+    },
+    "neutron/Pd108.h5": {
+      "git_blob_sha": "9c9332d8af739aecca9110963fd5c6071d9e3d0b",
+      "bytes": 21591768
+    },
+    "neutron/Pd109.h5": {
+      "git_blob_sha": "b93755f5d7dc2251c86e979ff0fb797974428222",
+      "bytes": 5797320
+    },
+    "neutron/Pd110.h5": {
+      "git_blob_sha": "928be9a35281c411a220f3d56155858d932b2c9a",
+      "bytes": 19858832
+    },
+    "neutron/Pm143.h5": {
+      "git_blob_sha": "005e8163c939255780b63bac2c7d65aceee3bb25",
+      "bytes": 7566200
+    },
+    "neutron/Pm144.h5": {
+      "git_blob_sha": "0a7738786b3d47a2e5b9f95dd0b5eaf5a2e0b9ad",
+      "bytes": 15522072
+    },
+    "neutron/Pm145.h5": {
+      "git_blob_sha": "41f1df9967d9911c3985f4e29df3e3202ae6d586",
+      "bytes": 19705760
+    },
+    "neutron/Pm146.h5": {
+      "git_blob_sha": "121fc90e09e1ea6805b031392d1b45b47c0ec7cd",
+      "bytes": 25580328
+    },
+    "neutron/Pm147.h5": {
+      "git_blob_sha": "ebc1dcfdb6b93970fcc5ee8ffc0f31d785769d82",
+      "bytes": 4444904
+    },
+    "neutron/Pm148.h5": {
+      "git_blob_sha": "1e9b4435252697f3db87de15987722185ca04da3",
+      "bytes": 2858328
+    },
+    "neutron/Pm148_m1.h5": {
+      "git_blob_sha": "7233d3b8dcf24dae55fa8915ef0d3a857a2a9f4a",
+      "bytes": 1125280
+    },
+    "neutron/Pm149.h5": {
+      "git_blob_sha": "bd2fc35a0d926dbc05eb36b58490cf6f10f3ad59",
+      "bytes": 3904528
+    },
+    "neutron/Pm150.h5": {
+      "git_blob_sha": "446e86cfca2a4372add05b5ec310e7403f40a3d8",
+      "bytes": 5000984
+    },
+    "neutron/Pm151.h5": {
+      "git_blob_sha": "8545943a825d63614d38e6ac4b1d737775887996",
+      "bytes": 5640248
+    },
+    "neutron/Po208.h5": {
+      "git_blob_sha": "3f28e77a3a87a5d593ed4daf550903ab29e40341",
+      "bytes": 8514640
+    },
+    "neutron/Po209.h5": {
+      "git_blob_sha": "c1cd0badbadcfd063b4e15695154ca1cedab4404",
+      "bytes": 14881240
+    },
+    "neutron/Po210.h5": {
+      "git_blob_sha": "92e33067dfafeff5ca24232be86ab86fb41933ff",
+      "bytes": 7617032
+    },
+    "neutron/Pr141.h5": {
+      "git_blob_sha": "5500aa61a79ebae009c454afefd03a5da585f6ed",
+      "bytes": 10839632
+    },
+    "neutron/Pr142.h5": {
+      "git_blob_sha": "17f7f5ae04846e1d6be55af45d05a26641f44f13",
+      "bytes": 14091432
+    },
+    "neutron/Pr143.h5": {
+      "git_blob_sha": "ebd75722a8807d24eed1493b37e514add8472c58",
+      "bytes": 3954464
+    },
+    "neutron/Pt190.h5": {
+      "git_blob_sha": "439ab35c0b83ae125f66667e642bd723f8024a86",
+      "bytes": 12131712
+    },
+    "neutron/Pt191.h5": {
+      "git_blob_sha": "60a1fd27eb6b98b9bd6ae31696662e77f02ec953",
+      "bytes": 11458792
+    },
+    "neutron/Pt192.h5": {
+      "git_blob_sha": "bc8215819eccd636dbc5982860e9e2c204ee85fd",
+      "bytes": 28538120
+    },
+    "neutron/Pt193.h5": {
+      "git_blob_sha": "bd884a49fb82ccf439e14b457a6410b7f7d03494",
+      "bytes": 16211680
+    },
+    "neutron/Pt194.h5": {
+      "git_blob_sha": "40b1452263da70d081e4c8929cffe00f5cf0e832",
+      "bytes": 12258544
+    },
+    "neutron/Pt195.h5": {
+      "git_blob_sha": "5d7a61c37050e44918bb294e59041285d127206d",
+      "bytes": 23330992
+    },
+    "neutron/Pt196.h5": {
+      "git_blob_sha": "290084e2310a5f02c6a219a8ffeb979dbd41612a",
+      "bytes": 12413680
+    },
+    "neutron/Pt197.h5": {
+      "git_blob_sha": "d287d440d9ceebefa0daee1235da8aaa91555ef0",
+      "bytes": 7256272
+    },
+    "neutron/Pt198.h5": {
+      "git_blob_sha": "a89b27547de92c4902ef3e8c39eb2cb4c5b09a66",
+      "bytes": 13865520
+    },
+    "neutron/Pu236.h5": {
+      "git_blob_sha": "81df2aa59db4db2a1ee9b86b960e454a86d83186",
+      "bytes": 2884720
+    },
+    "neutron/Pu237.h5": {
+      "git_blob_sha": "d517da416b2aeb08934885b15ae9174abe2de998",
+      "bytes": 4232496
+    },
+    "neutron/Pu238.h5": {
+      "git_blob_sha": "8735108ee006a90979ecc9a3d8361f30c4f90ce3",
+      "bytes": 8881456
+    },
+    "neutron/Pu239.h5": {
+      "git_blob_sha": "4af581173851c972d94a00de51ac43d52b4db061",
+      "bytes": 27684792
+    },
+    "neutron/Pu240.h5": {
+      "git_blob_sha": "8ccb7eeec84b14a67875525e7e9b20bbc73ebdb0",
+      "bytes": 31747328
+    },
+    "neutron/Pu241.h5": {
+      "git_blob_sha": "3f28f13d1bceaddae521a2241d71f372427da138",
+      "bytes": 7133392
+    },
+    "neutron/Pu242.h5": {
+      "git_blob_sha": "b18c7d34b0aa67cd0a2c96e7002d0a4ded7b007b",
+      "bytes": 8744888
+    },
+    "neutron/Pu243.h5": {
+      "git_blob_sha": "93a77c31324ea97a7c7ccf120e8cd70f83816635",
+      "bytes": 3888256
+    },
+    "neutron/Pu244.h5": {
+      "git_blob_sha": "6509a8afd42b24c0c67a3f6260ac296065ce6312",
+      "bytes": 4353248
+    },
+    "neutron/Pu245.h5": {
+      "git_blob_sha": "1ad492c9a4acaab85b1c009d571e70627cb26e25",
+      "bytes": 2206944
+    },
+    "neutron/Pu246.h5": {
+      "git_blob_sha": "231004a71f40207cb005101181367ea2a822c706",
+      "bytes": 2583376
+    },
+    "neutron/Ra223.h5": {
+      "git_blob_sha": "5056c5f189be7196f5cdd354fa275488a6035352",
+      "bytes": 1143528
+    },
+    "neutron/Ra224.h5": {
+      "git_blob_sha": "4cc969ed5d38d5c4e90e531afe842cf476bdf5d5",
+      "bytes": 934032
+    },
+    "neutron/Ra225.h5": {
+      "git_blob_sha": "2ce7dd330715441e21d8258fdca198200ddc9047",
+      "bytes": 776544
+    },
+    "neutron/Ra226.h5": {
+      "git_blob_sha": "2edaeccf5348147396e402c1a99e0bc4b3c00382",
+      "bytes": 4510824
+    },
+    "neutron/Rb85.h5": {
+      "git_blob_sha": "1920d4915664a0f86dec4098f15bae1d4bf3d71f",
+      "bytes": 8545896
+    },
+    "neutron/Rb86.h5": {
+      "git_blob_sha": "3c8159d20eeb0638b04f43ba27e67a71d8a4b011",
+      "bytes": 6255624
+    },
+    "neutron/Rb87.h5": {
+      "git_blob_sha": "8b980667aaccb3c19fac99c4d46e4af24d08919f",
+      "bytes": 3363904
+    },
+    "neutron/Re185.h5": {
+      "git_blob_sha": "7394adac872721b56b357d2ce0b0bd1991be0f5f",
+      "bytes": 24266520
+    },
+    "neutron/Re186_m1.h5": {
+      "git_blob_sha": "ba17c984ea9e23415041d1bc1740883d2c449d9e",
+      "bytes": 20409824
+    },
+    "neutron/Re187.h5": {
+      "git_blob_sha": "7075a54b0447278ef90de4bd6c606e42e7bc3d63",
+      "bytes": 23399752
+    },
+    "neutron/Rh103.h5": {
+      "git_blob_sha": "eb5f45b18b92db71cf84c031f4713609411cd7b0",
+      "bytes": 16401840
+    },
+    "neutron/Rh104.h5": {
+      "git_blob_sha": "8f6a2aaf4f7591b24034e6ea736988d1ac87596f",
+      "bytes": 10977592
+    },
+    "neutron/Rh105.h5": {
+      "git_blob_sha": "c8988e97c68cb34be471405400c8c0d602863565",
+      "bytes": 3679264
+    },
+    "neutron/Ru100.h5": {
+      "git_blob_sha": "c84c66e452e273da5edb79da43bfc8caf93422c7",
+      "bytes": 7767512
+    },
+    "neutron/Ru101.h5": {
+      "git_blob_sha": "63b2236ccf10182614b75901682bca7722a2574b",
+      "bytes": 11109608
+    },
+    "neutron/Ru102.h5": {
+      "git_blob_sha": "c7da2d762cc7091f004fbe99529c15687611d087",
+      "bytes": 7606592
+    },
+    "neutron/Ru103.h5": {
+      "git_blob_sha": "ea2e258da3e0162a6281f87a3128e4722b929311",
+      "bytes": 3197992
+    },
+    "neutron/Ru104.h5": {
+      "git_blob_sha": "8f63035c19bdc15281ade90154145c36ce1a7abe",
+      "bytes": 6656680
+    },
+    "neutron/Ru105.h5": {
+      "git_blob_sha": "ab3fcc3196a2051a65a04f3ef3c61eb3277a76e6",
+      "bytes": 1416040
+    },
+    "neutron/Ru106.h5": {
+      "git_blob_sha": "6d0a643191d6af1614f538c171b14b24159e24fe",
+      "bytes": 2044584
+    },
+    "neutron/Ru96.h5": {
+      "git_blob_sha": "dd044c4b3d1b1f6df0e826cf025c859ff3e8d8e6",
+      "bytes": 3839072
+    },
+    "neutron/Ru97.h5": {
+      "git_blob_sha": "04955d7b3e5c008ca007bb42ad86a256e91ba443",
+      "bytes": 7777104
+    },
+    "neutron/Ru98.h5": {
+      "git_blob_sha": "c6214c52249b93cb2e23a6cba63f7902c88c8790",
+      "bytes": 3850968
+    },
+    "neutron/Ru99.h5": {
+      "git_blob_sha": "400e797c4b44a71f67456ebcce7051e25f72bd9e",
+      "bytes": 6143520
+    },
+    "neutron/S32.h5": {
+      "git_blob_sha": "c54d6fc7e9a6e6c3e5a0987dc2a88883e440ef8e",
+      "bytes": 4679856
+    },
+    "neutron/S33.h5": {
+      "git_blob_sha": "edb0b3f4ed55a7f24e746ae3fb0caa94133cb159",
+      "bytes": 2110904
+    },
+    "neutron/S34.h5": {
+      "git_blob_sha": "5b66d361ea781d5bd3b62f0c8375e10ac05ceeb5",
+      "bytes": 1313096
+    },
+    "neutron/S35.h5": {
+      "git_blob_sha": "5c21dacce92dd2e2bfcf786cca4af210041e1cd0",
+      "bytes": 6236136
+    },
+    "neutron/S36.h5": {
+      "git_blob_sha": "c76dd4c7f89ed4206c8f25c08df94d0ec12239bf",
+      "bytes": 894184
+    },
+    "neutron/Sb121.h5": {
+      "git_blob_sha": "10da62934cbe38916e73d2521633655c712a1887",
+      "bytes": 10804632
+    },
+    "neutron/Sb122.h5": {
+      "git_blob_sha": "5008b0792559fbf909534697f000aafa56625935",
+      "bytes": 8696888
+    },
+    "neutron/Sb123.h5": {
+      "git_blob_sha": "48caa06cc6e16b945e38219f5707b38e229759a7",
+      "bytes": 9935536
+    },
+    "neutron/Sb124.h5": {
+      "git_blob_sha": "ac6e69b19f3d47d9a29a92dba8644e7236d164c9",
+      "bytes": 2704528
+    },
+    "neutron/Sb125.h5": {
+      "git_blob_sha": "f3f8b0dae56f5ceef0df7ad971fa3b51abe7101b",
+      "bytes": 5359056
+    },
+    "neutron/Sb126.h5": {
+      "git_blob_sha": "cdf414ab949f26fe496590b3913aac164e856947",
+      "bytes": 7137800
+    },
+    "neutron/Sc45.h5": {
+      "git_blob_sha": "f9ff788ecc72e1219f64a1aa5d2ce7335be2b2ef",
+      "bytes": 10186800
+    },
+    "neutron/Se74.h5": {
+      "git_blob_sha": "a0504562ec86dbe62b1a96b272c9d7f4c23ea652",
+      "bytes": 3510736
+    },
+    "neutron/Se75.h5": {
+      "git_blob_sha": "4f8af1d80e490206a64dce6c0e388b5b9c280369",
+      "bytes": 8029432
+    },
+    "neutron/Se76.h5": {
+      "git_blob_sha": "8837ca541dda54b94baf8a082d02d97113128f60",
+      "bytes": 6318536
+    },
+    "neutron/Se77.h5": {
+      "git_blob_sha": "fca1b2a49a83da94212bfc72d6e2b07a13ba6579",
+      "bytes": 7155984
+    },
+    "neutron/Se78.h5": {
+      "git_blob_sha": "cd9d1979f53bdd5c32cbefc8b0f46e860e366310",
+      "bytes": 4584528
+    },
+    "neutron/Se79.h5": {
+      "git_blob_sha": "749e78e8b3e7829ef78806c68ffeacc1ccf9cdc6",
+      "bytes": 5508464
+    },
+    "neutron/Se80.h5": {
+      "git_blob_sha": "59ae164905862ae4f29c5150154cc41359bdb037",
+      "bytes": 5235776
+    },
+    "neutron/Se81.h5": {
+      "git_blob_sha": "91b2252804c660f01e7f1bba54b6f367bee6f101",
+      "bytes": 4274376
+    },
+    "neutron/Se82.h5": {
+      "git_blob_sha": "615faa0e9a859eddc04ef262c665f2f8b6dd88bd",
+      "bytes": 2456920
+    },
+    "neutron/Si28.h5": {
+      "git_blob_sha": "f928ca530284fcf6d84895e1baa041f3b9547aef",
+      "bytes": 8036808
+    },
+    "neutron/Si29.h5": {
+      "git_blob_sha": "71ab8ee02fabfe711c7c3de8922abe96e6b738a8",
+      "bytes": 7794520
+    },
+    "neutron/Si30.h5": {
+      "git_blob_sha": "eedbd1ee0e0c8b8a9241c7a1855a855d396d7ed0",
+      "bytes": 4892920
+    },
+    "neutron/Si31.h5": {
+      "git_blob_sha": "3b0377489117078ac9a140d5ae715999b00c0321",
+      "bytes": 2973912
+    },
+    "neutron/Si32.h5": {
+      "git_blob_sha": "0a900e4bc0706455afc9121648142897482b4ffb",
+      "bytes": 1581344
+    },
+    "neutron/Sm144.h5": {
+      "git_blob_sha": "7c029394b3bc841fe86359b04d69f0abc4eeb9bd",
+      "bytes": 6593544
+    },
+    "neutron/Sm145.h5": {
+      "git_blob_sha": "c36b4daf5c32bc3d31a6a9ef979a913e56f5d309",
+      "bytes": 13487008
+    },
+    "neutron/Sm146.h5": {
+      "git_blob_sha": "44ba1e359e2102f0bf7d59837b95daaf96bd0be9",
+      "bytes": 10670624
+    },
+    "neutron/Sm147.h5": {
+      "git_blob_sha": "50b39e3c0a2d7905ebf474a99f1be88d57bc8acd",
+      "bytes": 18518192
+    },
+    "neutron/Sm148.h5": {
+      "git_blob_sha": "d50a3d975c2a169a556b0c60e970396f61512104",
+      "bytes": 5646216
+    },
+    "neutron/Sm149.h5": {
+      "git_blob_sha": "48a797c0fecf77bb423d9169a3e02878c14ddb19",
+      "bytes": 15941296
+    },
+    "neutron/Sm150.h5": {
+      "git_blob_sha": "f4ec17175594bb7249776367cf29cffb3b81521a",
+      "bytes": 9957008
+    },
+    "neutron/Sm151.h5": {
+      "git_blob_sha": "caf4005d91369211a20ceceae703b47e9e4a32e7",
+      "bytes": 10036504
+    },
+    "neutron/Sm152.h5": {
+      "git_blob_sha": "d51f9614d46e59ea90b4a3755237d4cef7d40241",
+      "bytes": 13966784
+    },
+    "neutron/Sm153.h5": {
+      "git_blob_sha": "4c2912f119e5682b711628e637f7d8530e5dd650",
+      "bytes": 4267536
+    },
+    "neutron/Sm154.h5": {
+      "git_blob_sha": "060fe32e605f501f5a8ddb9907d9e17e365dcd57",
+      "bytes": 7234152
+    },
+    "neutron/Sn112.h5": {
+      "git_blob_sha": "6008c5b601c51f48ec56015d2761153cfc6b6676",
+      "bytes": 5786880
+    },
+    "neutron/Sn113.h5": {
+      "git_blob_sha": "739448b5425a4ff2f790491c39333acfc5fcd4f0",
+      "bytes": 12763336
+    },
+    "neutron/Sn114.h5": {
+      "git_blob_sha": "ad57d2e61ae8dc520df77c8471a04e650488f7ce",
+      "bytes": 5980552
+    },
+    "neutron/Sn115.h5": {
+      "git_blob_sha": "08dee2e9cb51e015fcd7f4c90b47ee34eda983ec",
+      "bytes": 4335840
+    },
+    "neutron/Sn116.h5": {
+      "git_blob_sha": "d50ce9ac12ac700dd686346a30d23066900f8611",
+      "bytes": 11231968
+    },
+    "neutron/Sn117.h5": {
+      "git_blob_sha": "bac3d85f2f720a23fe84c76ca25f9c137f00219a",
+      "bytes": 6477504
+    },
+    "neutron/Sn118.h5": {
+      "git_blob_sha": "ca30d5c8fc23733741ffed655d2322848a8404a0",
+      "bytes": 3244448
+    },
+    "neutron/Sn119.h5": {
+      "git_blob_sha": "66a1ad1490e7b781a2ae9ed152b082f80ae486f0",
+      "bytes": 5689664
+    },
+    "neutron/Sn120.h5": {
+      "git_blob_sha": "ff077cb48b2111ed258cfce5c91885c2daef7f9b",
+      "bytes": 11107336
+    },
+    "neutron/Sn121_m1.h5": {
+      "git_blob_sha": "cef30f49aad3f685fe3088b285a818959a7a8bb9",
+      "bytes": 4682568
+    },
+    "neutron/Sn122.h5": {
+      "git_blob_sha": "12086d79c74226da5c745133535ce39c37cf8b48",
+      "bytes": 14555888
+    },
+    "neutron/Sn123.h5": {
+      "git_blob_sha": "fd298cab4d290172cc5467948da47eaa038f53bc",
+      "bytes": 3041200
+    },
+    "neutron/Sn124.h5": {
+      "git_blob_sha": "3edc776f28525505ba1353fa1fdb6f5e2d586ca2",
+      "bytes": 10422456
+    },
+    "neutron/Sn125.h5": {
+      "git_blob_sha": "85474033fdf4b5b09ca7b8d7866613ebfe82773d",
+      "bytes": 3644736
+    },
+    "neutron/Sn126.h5": {
+      "git_blob_sha": "9143eb695e669e4703ec49672a980ca0c764acd0",
+      "bytes": 2537496
+    },
+    "neutron/Sr84.h5": {
+      "git_blob_sha": "e2ede30b458c8ed71983eb40d5b0a87abb116288",
+      "bytes": 6023272
+    },
+    "neutron/Sr85.h5": {
+      "git_blob_sha": "cfedc9c6eaf9f1d7cad78e4c63f79adaf38414e1",
+      "bytes": 7600088
+    },
+    "neutron/Sr86.h5": {
+      "git_blob_sha": "c40f26fda592175304fc3fb055eca71486c93d4c",
+      "bytes": 4171536
+    },
+    "neutron/Sr87.h5": {
+      "git_blob_sha": "e3812895baba296e21cb6a1663d720e71680e624",
+      "bytes": 7197536
+    },
+    "neutron/Sr88.h5": {
+      "git_blob_sha": "35f03008d61b74fb6f444d0da205bcb668322d7b",
+      "bytes": 4643152
+    },
+    "neutron/Sr89.h5": {
+      "git_blob_sha": "5d3d8bec67f8137a974103c3d645bd180d362b5f",
+      "bytes": 1973448
+    },
+    "neutron/Sr90.h5": {
+      "git_blob_sha": "4d11e0d1cbafa8502a3dc2f41efaaba01a7ce42a",
+      "bytes": 2201032
+    },
+    "neutron/Ta180.h5": {
+      "git_blob_sha": "307ff35cc56b6aef3dce1a3621fb02dcb37cfe87",
+      "bytes": 8484440
+    },
+    "neutron/Ta181.h5": {
+      "git_blob_sha": "53398e6f56a22f19209314571fc2e5907ed5a412",
+      "bytes": 14336720
+    },
+    "neutron/Ta182.h5": {
+      "git_blob_sha": "15fa17ec0ce64e97c5592d2d9dc68346be8ee2a2",
+      "bytes": 1381080
+    },
+    "neutron/Tb158.h5": {
+      "git_blob_sha": "668a219846a04f985c58e3a928b7fbe70a239b4b",
+      "bytes": 44237216
+    },
+    "neutron/Tb159.h5": {
+      "git_blob_sha": "c9b37b91d137a9fa03f781a57712d5793947e102",
+      "bytes": 14043496
+    },
+    "neutron/Tb160.h5": {
+      "git_blob_sha": "4ad5f505bda4f4379930888ed60725cd9563116f",
+      "bytes": 4221520
+    },
+    "neutron/Tb161.h5": {
+      "git_blob_sha": "25f99231117b8ab65767e4394ed3001d6ce59537",
+      "bytes": 11996952
+    },
+    "neutron/Tc98.h5": {
+      "git_blob_sha": "b8d2272bf5d54ae83f10ae8e5759b52d3f36be88",
+      "bytes": 11514896
+    },
+    "neutron/Tc99.h5": {
+      "git_blob_sha": "52f198e726e123be177358759343bf47f0e4ce97",
+      "bytes": 19731272
+    },
+    "neutron/Te120.h5": {
+      "git_blob_sha": "b1989b762c08cd5b64d105a17ac93ce6ca71fdc5",
+      "bytes": 3413416
+    },
+    "neutron/Te121.h5": {
+      "git_blob_sha": "1d5f1d4d594947b7e9bb135d819542ab78f2a0f5",
+      "bytes": 8933000
+    },
+    "neutron/Te121_m1.h5": {
+      "git_blob_sha": "14235e45662a89f03f8ae91afafbdb2bdcdb7161",
+      "bytes": 8678680
+    },
+    "neutron/Te122.h5": {
+      "git_blob_sha": "cc78758fbacc0ce4c53e4198c3964a3997539226",
+      "bytes": 12660496
+    },
+    "neutron/Te123.h5": {
+      "git_blob_sha": "e704467b9cb8f2e651797f5cc23929ff32dc6910",
+      "bytes": 8297808
+    },
+    "neutron/Te124.h5": {
+      "git_blob_sha": "773112915a8afe56a9e18735d105114910b3fa9d",
+      "bytes": 10105480
+    },
+    "neutron/Te125.h5": {
+      "git_blob_sha": "01419ba42da6362ecb87ca1108492f3ce52332b4",
+      "bytes": 13523536
+    },
+    "neutron/Te126.h5": {
+      "git_blob_sha": "3750b7353ec65b4a0391b7a73a6c71fc0a80c0ef",
+      "bytes": 5979224
+    },
+    "neutron/Te127_m1.h5": {
+      "git_blob_sha": "aebb9c55f6997f7790aae48e595cdc1f1f5205cb",
+      "bytes": 4005576
+    },
+    "neutron/Te128.h5": {
+      "git_blob_sha": "1dcf07418d3dcedadc9007fcb5b703e5d6352211",
+      "bytes": 4923168
+    },
+    "neutron/Te129_m1.h5": {
+      "git_blob_sha": "36458e77848f93bd2674fe906c7f67386beacd08",
+      "bytes": 4721744
+    },
+    "neutron/Te130.h5": {
+      "git_blob_sha": "cd251e9eaf6ee4c49163ec04d721753252ad1a50",
+      "bytes": 2804344
+    },
+    "neutron/Te131.h5": {
+      "git_blob_sha": "2fe2a70a61b9253bc4d91ccf8e163b86f0b3990a",
+      "bytes": 5876104
+    },
+    "neutron/Te131_m1.h5": {
+      "git_blob_sha": "d54f07fc2fbb15c6cd3bb9cedcd2826a057899f6",
+      "bytes": 6403000
+    },
+    "neutron/Te132.h5": {
+      "git_blob_sha": "3cf1ff3e05076d2fb76c1ff732e4cc20ee7c00b3",
+      "bytes": 5722272
+    },
+    "neutron/Th227.h5": {
+      "git_blob_sha": "45331c8bc674f085cfe838326486b33c13bc8115",
+      "bytes": 4092608
+    },
+    "neutron/Th228.h5": {
+      "git_blob_sha": "5cd9ad4f3054d6bee5c501fe0916bae724904f14",
+      "bytes": 5430872
+    },
+    "neutron/Th229.h5": {
+      "git_blob_sha": "b97d7a0c0a12c1897c6c1edf51c08a2576fd617f",
+      "bytes": 5797120
+    },
+    "neutron/Th230.h5": {
+      "git_blob_sha": "1226a6b221e893562c4737026ee285475e01dc7a",
+      "bytes": 7058160
+    },
+    "neutron/Th231.h5": {
+      "git_blob_sha": "295668f837a8cbc17529140fd9857e28f8887e8b",
+      "bytes": 4373312
+    },
+    "neutron/Th232.h5": {
+      "git_blob_sha": "0ab40a45f2d9a3cda60974b0c9986d7697d38246",
+      "bytes": 42318256
+    },
+    "neutron/Th233.h5": {
+      "git_blob_sha": "ebc1deb9e35280bc900e9fbf3968dbef971ef523",
+      "bytes": 4221008
+    },
+    "neutron/Th234.h5": {
+      "git_blob_sha": "c6139bbe01a570e01afac1825df38cb12a5aa5be",
+      "bytes": 3019696
+    },
+    "neutron/Ti46.h5": {
+      "git_blob_sha": "895b44cd2653cada722bef6ebefbc8ba9bf7bcab",
+      "bytes": 6935816
+    },
+    "neutron/Ti47.h5": {
+      "git_blob_sha": "bc378b55f070ffdab9c45030fad63c370e803ef6",
+      "bytes": 4490864
+    },
+    "neutron/Ti48.h5": {
+      "git_blob_sha": "54245434492e0505651d42363fa665683ca7a77a",
+      "bytes": 6810904
+    },
+    "neutron/Ti49.h5": {
+      "git_blob_sha": "525d0142dd5c8caa733f66f8e295deb2731eb087",
+      "bytes": 4545616
+    },
+    "neutron/Ti50.h5": {
+      "git_blob_sha": "74e6a52f9697f1718672328532da8215aabf6827",
+      "bytes": 3403832
+    },
+    "neutron/Tl203.h5": {
+      "git_blob_sha": "629c1819ced109fe2b2750a086c900eab5a6a5c7",
+      "bytes": 9501760
+    },
+    "neutron/Tl204.h5": {
+      "git_blob_sha": "9e97e491d0d84b52a1f94a9ca01ce92db7c2ed4b",
+      "bytes": 10840408
+    },
+    "neutron/Tl205.h5": {
+      "git_blob_sha": "e22fb1010afd5d17b9538bfbe08a5598f28bdcb2",
+      "bytes": 7140888
+    },
+    "neutron/Tm168.h5": {
+      "git_blob_sha": "a8fc142921dc36f5a0810f5cfa429a0da81a3e25",
+      "bytes": 11349504
+    },
+    "neutron/Tm169.h5": {
+      "git_blob_sha": "0cd04a6fcbc444a36f07d2763e078b48ef20ccff",
+      "bytes": 37437968
+    },
+    "neutron/Tm170.h5": {
+      "git_blob_sha": "dba609805053352c84e653681fe7a33f86369ed7",
+      "bytes": 14377680
+    },
+    "neutron/Tm171.h5": {
+      "git_blob_sha": "3f5128f51ab51ef3f0b565c2ba34cb91087060f3",
+      "bytes": 16186768
+    },
+    "neutron/U230.h5": {
+      "git_blob_sha": "016d095e107ce368c7174c15fc0364b290ccc8f1",
+      "bytes": 3813624
+    },
+    "neutron/U231.h5": {
+      "git_blob_sha": "af847f9f3eb7a9cbb8e2a884e4bceae31a94a4f5",
+      "bytes": 3875720
+    },
+    "neutron/U232.h5": {
+      "git_blob_sha": "568b699c8d57b2087ee921208124f1f2709527d3",
+      "bytes": 7601688
+    },
+    "neutron/U233.h5": {
+      "git_blob_sha": "e6a6fb0609b404947a2d058ec2d3874a977cab7e",
+      "bytes": 14455952
+    },
+    "neutron/U234.h5": {
+      "git_blob_sha": "908641bc02c790d504b6f35395536551338494c1",
+      "bytes": 14731168
+    },
+    "neutron/U235.h5": {
+      "git_blob_sha": "2be57a719112e5b6ec963efda45f721f5e0e3979",
+      "bytes": 134
+    },
+    "neutron/U236.h5": {
+      "git_blob_sha": "724bc46fdf4494093fb04a083fdfa95eb5ba5f71",
+      "bytes": 13490984
+    },
+    "neutron/U237.h5": {
+      "git_blob_sha": "50016ec522904f9a1db49987b3ca9a710ab1d4a8",
+      "bytes": 6386432
+    },
+    "neutron/U238.h5": {
+      "git_blob_sha": "4348d08885e17c89533b829a8b7242358e744601",
+      "bytes": 134
+    },
+    "neutron/U239.h5": {
+      "git_blob_sha": "37af42162f606aaccc769d8811d6b56ee13f56b6",
+      "bytes": 6845104
+    },
+    "neutron/U240.h5": {
+      "git_blob_sha": "001f66658d71575427c474346c24e73474d0d39c",
+      "bytes": 10418208
+    },
+    "neutron/U241.h5": {
+      "git_blob_sha": "19be661b9bfbb5440d443f32685ba988a140fe0d",
+      "bytes": 6067192
+    },
+    "neutron/V49.h5": {
+      "git_blob_sha": "ff77316153e4e79dcd7ca24f4c466a88ee257f17",
+      "bytes": 7692408
+    },
+    "neutron/V50.h5": {
+      "git_blob_sha": "b6c91757dc140cb4402d01fe8e8ad45e651b4b89",
+      "bytes": 5225072
+    },
+    "neutron/V51.h5": {
+      "git_blob_sha": "53499db2d00190f8e5de97d8f137e339994e3d40",
+      "bytes": 12475864
+    },
+    "neutron/W180.h5": {
+      "git_blob_sha": "1cb1df960b6c496698164b4ca7d957e865fb85e8",
+      "bytes": 13224256
+    },
+    "neutron/W181.h5": {
+      "git_blob_sha": "d088279a232c04d7b14bd48c6ec35025534296fd",
+      "bytes": 38683824
+    },
+    "neutron/W182.h5": {
+      "git_blob_sha": "c9bd93718e1002cd6a401e9dd6aca1b823ce5ecb",
+      "bytes": 30027328
+    },
+    "neutron/W183.h5": {
+      "git_blob_sha": "2428063efa666d807cfbd04e6c0762dd94fdda61",
+      "bytes": 51768312
+    },
+    "neutron/W184.h5": {
+      "git_blob_sha": "be2b6db315334e7f105de40eca05c7ab5a8038b5",
+      "bytes": 18631224
+    },
+    "neutron/W185.h5": {
+      "git_blob_sha": "d9e4c29824f7b50f462fa68151bddec8c4ddc191",
+      "bytes": 8502512
+    },
+    "neutron/W186.h5": {
+      "git_blob_sha": "88f851bde82be56800c595aec29da80f0c0f71bc",
+      "bytes": 19449512
+    },
+    "neutron/Xe123.h5": {
+      "git_blob_sha": "200c345e1456c0d667a2c2480b3dd3a43c5f1d0e",
+      "bytes": 9333872
+    },
+    "neutron/Xe124.h5": {
+      "git_blob_sha": "cbe516bbbb7e1bd2c51bd2f4270928b70ac49f68",
+      "bytes": 4106720
+    },
+    "neutron/Xe125.h5": {
+      "git_blob_sha": "14a99d327f218fe874507a437d3a9bf93629a0a1",
+      "bytes": 10120184
+    },
+    "neutron/Xe126.h5": {
+      "git_blob_sha": "9961a9c0c1d470730612388bb9334be98e1fe800",
+      "bytes": 4099072
+    },
+    "neutron/Xe127.h5": {
+      "git_blob_sha": "b233548087f2d9de52d846675755da2ae97eb052",
+      "bytes": 9354608
+    },
+    "neutron/Xe128.h5": {
+      "git_blob_sha": "f8177521cdcc296cb7a5eafb44e7a3175285f7a7",
+      "bytes": 5413120
+    },
+    "neutron/Xe129.h5": {
+      "git_blob_sha": "8a55903827860cc584f0ab8ffea028693afa6374",
+      "bytes": 8847664
+    },
+    "neutron/Xe130.h5": {
+      "git_blob_sha": "459b6fe5c670c10cb8c700e30fffa0b9878cadfe",
+      "bytes": 2216816
+    },
+    "neutron/Xe131.h5": {
+      "git_blob_sha": "e9f4c018af6899c3c0a1b9e8c090894a11e5becd",
+      "bytes": 8258536
+    },
+    "neutron/Xe132.h5": {
+      "git_blob_sha": "b7f107e023fb2335c5cdfc880a9eaedf2bd304bd",
+      "bytes": 2207752
+    },
+    "neutron/Xe133.h5": {
+      "git_blob_sha": "9a9838b5d37bf9f0ac08301f69003c2ccd9c2578",
+      "bytes": 3590264
+    },
+    "neutron/Xe134.h5": {
+      "git_blob_sha": "99cce1bede927fc0663343cc493ee067a16fdce3",
+      "bytes": 1871360
+    },
+    "neutron/Xe135.h5": {
+      "git_blob_sha": "ca26864a52d9217e0cd8c15246d241cd091066d8",
+      "bytes": 3735984
+    },
+    "neutron/Xe136.h5": {
+      "git_blob_sha": "59c54e074c7dd5567215b763858eb440027676f4",
+      "bytes": 2623984
+    },
+    "neutron/Y89.h5": {
+      "git_blob_sha": "c3e8b16c6c76799da925a540608cc15aa1e5ed58",
+      "bytes": 8816040
+    },
+    "neutron/Y90.h5": {
+      "git_blob_sha": "d75f4f36cab09dc0dfebcaf4fd68d0e628ce90fa",
+      "bytes": 5925888
+    },
+    "neutron/Y91.h5": {
+      "git_blob_sha": "6e2363ab1f018934a8ced60e05631f0d8fa3e4bb",
+      "bytes": 4770016
+    },
+    "neutron/Yb168.h5": {
+      "git_blob_sha": "811f51e90937983dce306925f64ee19bdc3ef05a",
+      "bytes": 2574088
+    },
+    "neutron/Yb169.h5": {
+      "git_blob_sha": "14b6b78c5ad7420386a0a5eddf0fb6cecd6e0461",
+      "bytes": 22166952
+    },
+    "neutron/Yb170.h5": {
+      "git_blob_sha": "280bf5d96353863ddb6b076a67cb0365b0ae8349",
+      "bytes": 4479968
+    },
+    "neutron/Yb171.h5": {
+      "git_blob_sha": "36d9ba2e6ac38a32ad81e83072ea12680e03d86e",
+      "bytes": 13472304
+    },
+    "neutron/Yb172.h5": {
+      "git_blob_sha": "bcea1cf5ca04783ed4dab541e0f5fc0898e45194",
+      "bytes": 7048080
+    },
+    "neutron/Yb173.h5": {
+      "git_blob_sha": "b8fae97c641b332bffd25b2962900dfcd3cf33e0",
+      "bytes": 11895856
+    },
+    "neutron/Yb174.h5": {
+      "git_blob_sha": "b85e403e65c3ee355c1280ca39848a38e345fb9c",
+      "bytes": 4162656
+    },
+    "neutron/Yb175.h5": {
+      "git_blob_sha": "09612e0c798646e62868df298e1744c6289d1df9",
+      "bytes": 33439856
+    },
+    "neutron/Yb176.h5": {
+      "git_blob_sha": "551e7aefd89bdefb7bd931ca19518d3ef0483be5",
+      "bytes": 4180184
+    },
+    "neutron/Zn64.h5": {
+      "git_blob_sha": "36a1d794e570ae88c3d21207ed1cbcfeaf6b8509",
+      "bytes": 14632128
+    },
+    "neutron/Zn65.h5": {
+      "git_blob_sha": "01b6c8b9304c484f1c53d98f2c7ed8c524fc1d68",
+      "bytes": 3308928
+    },
+    "neutron/Zn66.h5": {
+      "git_blob_sha": "4d3f50a590bafe08a1dcec5e9d5eed59ee9538f0",
+      "bytes": 11203800
+    },
+    "neutron/Zn67.h5": {
+      "git_blob_sha": "03829109ef5f2ca6def803f6307ec076fa953c85",
+      "bytes": 15418312
+    },
+    "neutron/Zn68.h5": {
+      "git_blob_sha": "15d4e1031b4f0133e77cec0d1d571d41cf734d6e",
+      "bytes": 7211840
+    },
+    "neutron/Zn69.h5": {
+      "git_blob_sha": "11d699475de2a9bcb331dccc4a73fce146c09b86",
+      "bytes": 3419600
+    },
+    "neutron/Zn70.h5": {
+      "git_blob_sha": "dd44e18bab38c5d00dc9ab8471e63dc1a3523e67",
+      "bytes": 6232712
+    },
+    "neutron/Zr90.h5": {
+      "git_blob_sha": "c3021dbf48e87f6e12c7633792b833ec8a452c0e",
+      "bytes": 7163760
+    },
+    "neutron/Zr91.h5": {
+      "git_blob_sha": "8c738af5d247331c89a4eb4c18f00025f4c0d258",
+      "bytes": 16463088
+    },
+    "neutron/Zr92.h5": {
+      "git_blob_sha": "5fe69377cad043a014c5dbee019d989a687c7ec8",
+      "bytes": 8595240
+    },
+    "neutron/Zr93.h5": {
+      "git_blob_sha": "752ccc8df478176cb95753159d75635ef4dbbb50",
+      "bytes": 11557344
+    },
+    "neutron/Zr94.h5": {
+      "git_blob_sha": "8adc85180d3bcdfcddc6535541b7d63665c10687",
+      "bytes": 8936976
+    },
+    "neutron/Zr95.h5": {
+      "git_blob_sha": "e307fdf2fb1fa66fc2c67816ece2ce5b04cda477",
+      "bytes": 4767128
+    },
+    "neutron/Zr96.h5": {
+      "git_blob_sha": "aa8df380ac6816078bc43560c9a3f3c9fb1132ac",
+      "bytes": 4515080
+    },
+    "photon/Ac.h5": {
+      "git_blob_sha": "252fa5ea5dac531084701efdf3f0138551db5888",
+      "bytes": 3047904
+    },
+    "photon/Ag.h5": {
+      "git_blob_sha": "e1f006bb0d1bf66e7b988f01405f8f4ba0c834fe",
+      "bytes": 1606520
+    },
+    "photon/Al.h5": {
+      "git_blob_sha": "e4e5c137f660c98b74c53d0e67cf38f28c1c2358",
+      "bytes": 802816
+    },
+    "photon/Am.h5": {
+      "git_blob_sha": "486363287e1dbb004ccd6ad974faff3b4d485288",
+      "bytes": 3233912
+    },
+    "photon/Ar.h5": {
+      "git_blob_sha": "10bed23a4fa93d069f1e2d0dde8edcfffd6de78a",
+      "bytes": 698104
+    },
+    "photon/As.h5": {
+      "git_blob_sha": "9ebfe254ca85f50c4cbafa07952083676192ab72",
+      "bytes": 1259376
+    },
+    "photon/At.h5": {
+      "git_blob_sha": "1a194b23e32f48f60752460b9c2263d3901fab38",
+      "bytes": 2951096
+    },
+    "photon/Au.h5": {
+      "git_blob_sha": "4b980db03a3961c326f4304bdff4294711f2c713",
+      "bytes": 2556096
+    },
+    "photon/B.h5": {
+      "git_blob_sha": "4f27c9f9b5155904dbcaa12446520b9f12690fb6",
+      "bytes": 469720
+    },
+    "photon/Ba.h5": {
+      "git_blob_sha": "ad56c120207da492c8103cb7e486a34363aa1739",
+      "bytes": 1758584
+    },
+    "photon/Be.h5": {
+      "git_blob_sha": "4ebd51e11be071ef85c579b33497897adb1bd7e6",
+      "bytes": 296672
+    },
+    "photon/Bi.h5": {
+      "git_blob_sha": "a3b50d8db4edde139cc3455bf14235e5fa309a2c",
+      "bytes": 2842816
+    },
+    "photon/Bk.h5": {
+      "git_blob_sha": "93b052000ddc2a1587b9dc541d07709d9477097a",
+      "bytes": 3074000
+    },
+    "photon/Br.h5": {
+      "git_blob_sha": "22a8e28c0771dd5f99f6cb49066f35eacdbee175",
+      "bytes": 1301152
+    },
+    "photon/C.h5": {
+      "git_blob_sha": "0064a0c0a5dd1be8730135b301fd25bbe7c7238f",
+      "bytes": 476320
+    },
+    "photon/Ca.h5": {
+      "git_blob_sha": "b13ea49e71f74be3cffe09929e5dff179a5e1aa8",
+      "bytes": 786624
+    },
+    "photon/Cd.h5": {
+      "git_blob_sha": "bd5599306daee122e0599a72e0802289c07c13f5",
+      "bytes": 1671928
+    },
+    "photon/Ce.h5": {
+      "git_blob_sha": "630c80180f29fdd09645c8f4d560f1932ae06ea8",
+      "bytes": 2421472
+    },
+    "photon/Cf.h5": {
+      "git_blob_sha": "c3f4c46cc5c25dd89b8fa894a86d323d3a6c90bf",
+      "bytes": 3198064
+    },
+    "photon/Cl.h5": {
+      "git_blob_sha": "96a97c1a2662d256b57b1dfa089725800a37673f",
+      "bytes": 689712
+    },
+    "photon/Cm.h5": {
+      "git_blob_sha": "77b741795ad306726e69ef95558b68cdae908fbe",
+      "bytes": 3234352
+    },
+    "photon/Co.h5": {
+      "git_blob_sha": "99d7da39c3549dd22b3ccae65ae65ac5511d0242",
+      "bytes": 1039896
+    },
+    "photon/Cr.h5": {
+      "git_blob_sha": "421f766f132ec1677c6f5347ddc4edb3eefcbb9d",
+      "bytes": 1046944
+    },
+    "photon/Cs.h5": {
+      "git_blob_sha": "5e26a3cc70ab3203f4e5cbf5926f81cc2fdec714",
+      "bytes": 1820360
+    },
+    "photon/Cu.h5": {
+      "git_blob_sha": "3bfdbfe50bb2eaeb3b16c89a391454a07b9e9f16",
+      "bytes": 1029200
+    },
+    "photon/Dy.h5": {
+      "git_blob_sha": "72aec73d32c8d149baf8d06324c5e8367cc685cc",
+      "bytes": 2371760
+    },
+    "photon/Er.h5": {
+      "git_blob_sha": "f1aea2d84b9a0ef86569940fe2c88fdacb448325",
+      "bytes": 2271296
+    },
+    "photon/Es.h5": {
+      "git_blob_sha": "78136574c81657c6a190c879e73c6141e2554f64",
+      "bytes": 3564848
+    },
+    "photon/Eu.h5": {
+      "git_blob_sha": "dda769d09c7706b5241bf59434d579f25f7775e4",
+      "bytes": 2297864
+    },
+    "photon/F.h5": {
+      "git_blob_sha": "7c485b4f0afa4533bfd6ffe154a6ad80b3d9a584",
+      "bytes": 446840
+    },
+    "photon/Fe.h5": {
+      "git_blob_sha": "a050e3eccf64e89919910fa8e7b308d02d90ec27",
+      "bytes": 1078832
+    },
+    "photon/Fm.h5": {
+      "git_blob_sha": "a56a10545e7b87165eb3628c885a51ffbb4ec6a7",
+      "bytes": 3353536
+    },
+    "photon/Fr.h5": {
+      "git_blob_sha": "329fc8ac2647d963e9f951a8363cc2392d01d92f",
+      "bytes": 3172984
+    },
+    "photon/Ga.h5": {
+      "git_blob_sha": "deaf8f21a0da5788507e359ad8b2086cf159fff2",
+      "bytes": 1302024
+    },
+    "photon/Gd.h5": {
+      "git_blob_sha": "99627d5dab0758bf390009750b072a025b62541b",
+      "bytes": 2727384
+    },
+    "photon/Ge.h5": {
+      "git_blob_sha": "c59e0e45e3331c1cd9764fc18c8b0011cb7c05c6",
+      "bytes": 1298272
+    },
+    "photon/H.h5": {
+      "git_blob_sha": "b5687e9e7695fc83503cf3df135a8f7b75a416ce",
+      "bytes": 241264
+    },
+    "photon/He.h5": {
+      "git_blob_sha": "65d97abd2aeba1461c535df5b510ca5aba3ed53f",
+      "bytes": 238360
+    },
+    "photon/Hf.h5": {
+      "git_blob_sha": "44d47a83275897e5ae39568b7a35d0f76312b88d",
+      "bytes": 2802264
+    },
+    "photon/Hg.h5": {
+      "git_blob_sha": "9e959183055493fc055bf6e6529dac28ad19a134",
+      "bytes": 2217024
+    },
+    "photon/Ho.h5": {
+      "git_blob_sha": "b0dd96b5771e917514bcdb84730a929e5a9f3fea",
+      "bytes": 2240864
+    },
+    "photon/I.h5": {
+      "git_blob_sha": "22528eb13d7995a2db9058d33660554d6879932e",
+      "bytes": 1987360
+    },
+    "photon/In.h5": {
+      "git_blob_sha": "b95d1e833255b3c1cc18b762e1ac46b6435a9605",
+      "bytes": 2047176
+    },
+    "photon/Ir.h5": {
+      "git_blob_sha": "8bd8e7b59124d084b6df94cf42cfa1bc90050d71",
+      "bytes": 2249272
+    },
+    "photon/K.h5": {
+      "git_blob_sha": "fe3bc7c7d9489b902eea1b9600fa64cad473e697",
+      "bytes": 819160
+    },
+    "photon/Kr.h5": {
+      "git_blob_sha": "bc038d07cc0d53620be34066e8fe62b72bcede0e",
+      "bytes": 1296000
+    },
+    "photon/La.h5": {
+      "git_blob_sha": "7332d1215ba7ca079d312b25095755ca32820536",
+      "bytes": 2213264
+    },
+    "photon/Li.h5": {
+      "git_blob_sha": "003633cbda3bc3cd180324138d1fd9e8fcda285b",
+      "bytes": 303096
+    },
+    "photon/Lu.h5": {
+      "git_blob_sha": "2637a33c1d8f61b26382151f920b52d6edbcb0be",
+      "bytes": 2809264
+    },
+    "photon/Mg.h5": {
+      "git_blob_sha": "f23367166975bd87159d9433547e85f8d45a26b2",
+      "bytes": 473264
+    },
+    "photon/Mn.h5": {
+      "git_blob_sha": "fdc3146da90a203b1c50ceab8a0e94de1e663c65",
+      "bytes": 1058872
+    },
+    "photon/Mo.h5": {
+      "git_blob_sha": "ee4a766162cb4389abe50fc9d1974ff1a38f07cc",
+      "bytes": 1644376
+    },
+    "photon/N.h5": {
+      "git_blob_sha": "4880bca0799a7d4670cab2fd44f9598a6c661ec5",
+      "bytes": 471608
+    },
+    "photon/Na.h5": {
+      "git_blob_sha": "9304da6102c9849056c1b6a6350d55aadd9f462e",
+      "bytes": 533736
+    },
+    "photon/Nb.h5": {
+      "git_blob_sha": "8b9c7b276b74d3ce1f63bc7e6d9cfec4a904cc60",
+      "bytes": 1607104
+    },
+    "photon/Nd.h5": {
+      "git_blob_sha": "6da10ff90f1cb3d353fcd40b141b19d21cf95a82",
+      "bytes": 2495704
+    },
+    "photon/Ne.h5": {
+      "git_blob_sha": "d54278a5c6bc6a603050dae5de88d9369c7f4389",
+      "bytes": 431304
+    },
+    "photon/Ni.h5": {
+      "git_blob_sha": "d016a5a6debf7f0832a26eb2f9a585aeb9ae43f3",
+      "bytes": 1023416
+    },
+    "photon/Np.h5": {
+      "git_blob_sha": "d333fa755abee59bc31a6f186c4e350b3103e31b",
+      "bytes": 4065184
+    },
+    "photon/O.h5": {
+      "git_blob_sha": "a6cd90ff68ce56f9370657dfe65816e3b038c877",
+      "bytes": 450600
+    },
+    "photon/Os.h5": {
+      "git_blob_sha": "7d1f6030bf226e0d975a241e4c7a56c8f3574697",
+      "bytes": 2744184
+    },
+    "photon/P.h5": {
+      "git_blob_sha": "071ec9b615f8350946189b93152ae0f5617117cd",
+      "bytes": 697928
+    },
+    "photon/Pa.h5": {
+      "git_blob_sha": "11987794f73ddb6b2463d910de8d4ac44c3e60e1",
+      "bytes": 3489168
+    },
+    "photon/Pb.h5": {
+      "git_blob_sha": "26e72e113972cfb88aba58b972b5d30d148c9ed9",
+      "bytes": 2850816
+    },
+    "photon/Pd.h5": {
+      "git_blob_sha": "7bfbe5d3333000a1f15f74cdc366d0e6c9de07a9",
+      "bytes": 1435792
+    },
+    "photon/Pm.h5": {
+      "git_blob_sha": "7d3b449f7da38940f4488ff8b5a4c611be7cd2e2",
+      "bytes": 2447992
+    },
+    "photon/Po.h5": {
+      "git_blob_sha": "60dee9f492f5655cd36f10a7af56e3ffe1c163a7",
+      "bytes": 2925480
+    },
+    "photon/Pr.h5": {
+      "git_blob_sha": "c3d6bbe129d993e313742b92ad644b4bfee68d7b",
+      "bytes": 2208040
+    },
+    "photon/Pt.h5": {
+      "git_blob_sha": "057d6383b7180a8f8c93d8cccaff9e86a42b68b3",
+      "bytes": 2325216
+    },
+    "photon/Pu.h5": {
+      "git_blob_sha": "bb0b11672ff88448e381b9da3c8201b35050074f",
+      "bytes": 3147920
+    },
+    "photon/Ra.h5": {
+      "git_blob_sha": "18ab87b1af915662a4429897a87a8ef9fb4653fb",
+      "bytes": 3030664
+    },
+    "photon/Rb.h5": {
+      "git_blob_sha": "3e54983413d5c80f8f4d8d3955e381a439b7b971",
+      "bytes": 1445000
+    },
+    "photon/Re.h5": {
+      "git_blob_sha": "82ee15a4ad01c22289b82799400bb05c2c310970",
+      "bytes": 2553520
+    },
+    "photon/Rh.h5": {
+      "git_blob_sha": "abe1e7e54aff3b5f2cfd63e4d14e3e25c25e0dc7",
+      "bytes": 1719896
+    },
+    "photon/Rn.h5": {
+      "git_blob_sha": "d8e826eee77544ee3b6f40448f135bb1a2314bfd",
+      "bytes": 2868576
+    },
+    "photon/Ru.h5": {
+      "git_blob_sha": "5dec6a53de034329635a73dee656b556a13ab3ba",
+      "bytes": 1724488
+    },
+    "photon/S.h5": {
+      "git_blob_sha": "e0230be5b6d15aa4cc922c06e15af8b82942107c",
+      "bytes": 713704
+    },
+    "photon/Sb.h5": {
+      "git_blob_sha": "e24c459bb96b4f28d99cec2138cd54ba50dd5e8c",
+      "bytes": 2032528
+    },
+    "photon/Sc.h5": {
+      "git_blob_sha": "ab74761ae391c62c65e3f83c50b06886b9870f8d",
+      "bytes": 1075136
+    },
+    "photon/Se.h5": {
+      "git_blob_sha": "18a1d8e273c7b82002a4ef785784585aa5d3369d",
+      "bytes": 1226376
+    },
+    "photon/Si.h5": {
+      "git_blob_sha": "783156759057de482597a368061538536cc0c4a6",
+      "bytes": 782064
+    },
+    "photon/Sm.h5": {
+      "git_blob_sha": "de3df8030ef6df9f694a78ab3a9de09fda990004",
+      "bytes": 2297696
+    },
+    "photon/Sn.h5": {
+      "git_blob_sha": "7530c01fbc6e1e974789b7fb91bf8b53076ce7ad",
+      "bytes": 1844208
+    },
+    "photon/Sr.h5": {
+      "git_blob_sha": "6e115dcbb20568d9dc79f5b4b37a715782eb7091",
+      "bytes": 1373328
+    },
+    "photon/Ta.h5": {
+      "git_blob_sha": "352a4dfbe14ffcfa79e399e2aa05f0095e5bf1bc",
+      "bytes": 2458600
+    },
+    "photon/Tb.h5": {
+      "git_blob_sha": "04741dd9cf8f7143bfa4831d85bc142edddf6156",
+      "bytes": 2172984
+    },
+    "photon/Tc.h5": {
+      "git_blob_sha": "6e5282acc10ff15623701e10ccae61a9f8ef1b03",
+      "bytes": 1765880
+    },
+    "photon/Te.h5": {
+      "git_blob_sha": "f055ea02b991b20c8ee5f57cf9949d7fa364a2dd",
+      "bytes": 1914872
+    },
+    "photon/Th.h5": {
+      "git_blob_sha": "283d46283d447c2a1609c838af622d75e1fb0307",
+      "bytes": 3374688
+    },
+    "photon/Ti.h5": {
+      "git_blob_sha": "41f182d16863491b005f7e602989b5825ad96b70",
+      "bytes": 1122776
+    },
+    "photon/Tl.h5": {
+      "git_blob_sha": "cb405d21f023b651a353dea6c404a57859186668",
+      "bytes": 2787880
+    },
+    "photon/Tm.h5": {
+      "git_blob_sha": "038afb13b47484e458bd4f3d5ed7f1c905e8128e",
+      "bytes": 2439488
+    },
+    "photon/U.h5": {
+      "git_blob_sha": "38e5b11f012219372d2c37c50f18dd32e7267050",
+      "bytes": 3734384
+    },
+    "photon/V.h5": {
+      "git_blob_sha": "b4afeb28a7035ce0c7f92d140e80f3df5ba3e481",
+      "bytes": 1130064
+    },
+    "photon/W.h5": {
+      "git_blob_sha": "9d3260758a87d5963e347e238ada9ee34feaca0b",
+      "bytes": 2611792
+    },
+    "photon/Xe.h5": {
+      "git_blob_sha": "0ae91402036bcb685f61339fd93dd0b8118da84c",
+      "bytes": 1897528
+    },
+    "photon/Y.h5": {
+      "git_blob_sha": "5df0ccd1319c162f06ee036f88eb3059b04eca30",
+      "bytes": 1744848
+    },
+    "photon/Yb.h5": {
+      "git_blob_sha": "e080ba43b167c71268e4fbda19f0e253ef8d8f6e",
+      "bytes": 2349128
+    },
+    "photon/Zn.h5": {
+      "git_blob_sha": "0427746620e54365348ffca0ce669c14771c8567",
+      "bytes": 1032352
+    },
+    "photon/Zr.h5": {
+      "git_blob_sha": "6759d545d11e7beb74fbb6bf874fc7e65004590e",
+      "bytes": 1652632
+    }
+  }
+}

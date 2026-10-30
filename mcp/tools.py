@@ -15,6 +15,9 @@ from openmc_knowledge import list_sources, read as read_knowledge
 from openmc_examples import prepare_example
 from openmc_diagnostics import diagnose_job, prepare_repair, recheck_repair
 from tool_metadata import document_tools
+from official_catalog import list_official_examples, describe as get_official_example
+from example_workflows import (prepare_official_example, run_example_step, example_status,
+                               cancel_example, read_example_results)
 
 
 def schema(properties, required=()):
@@ -123,6 +126,29 @@ TOOLS += [
      "inputSchema": schema({"scan_id": TEXT, "format": {"type": "string", "enum": ['markdown', 'csv', 'pdf', 'docx', 'doc']}}, ['scan_id']),
      "outputSchema": OUTPUT, "function": export_scan, "annotations": WRITE},
 ]
+# The same example workflow functions back the user CLI and standard MCP.
+EXAMPLE_ID = {"type": "string", "minLength": 1, "description": "固定官方例题ID；先从openmc_list_official_examples返回的examples[].example_id选择，不是脚本路径。"}
+INSTANCE_ID = {"type": "string", "pattern": "^[a-f0-9]{32}$", "description": "准备官方例题返回的instance_id；关联该实例的各步骤和计算编号。"}
+TOOLS += [
+    {"name": "openmc_list_official_examples", "description": "列出固定版本的全部官方源码例题、内置模型和Notebook，含来源、步骤与实际适配状态；未适配或未实跑的条目不能算通过。",
+     "inputSchema": schema({"group": {"type": "string", "enum": ["all", "source", "api", "notebook"], "description": "按官方来源筛选；省略显示全部三处，第三方不在清单。"}}),
+     "outputSchema": OUTPUT, "function": list_official_examples},
+    {"name": "openmc_get_official_example", "description": "查指定官方例题的固定来源、步骤和可用范围。先看此说明，再提供输入并准备实例。",
+     "inputSchema": schema({"example_id": EXAMPLE_ID}, ['example_id']), "outputSchema": OUTPUT, "function": get_official_example},
+    {"name": "openmc_prepare_official_example", "description": "创建独立官方例题实例，复制固定来源并登记输入；不执行计算，不覆盖已有目录。省略参数保留官方设置。",
+     "inputSchema": schema({"example_id": EXAMPLE_ID, "case_dir": {**TEXT, "description": "工作区内新的相对算例目录，必须不存在；不接受客户端绝对路径。"}, "parameters": {"type": "object", "description": "可选的运行设置覆盖及该官方工厂的输入；用get_official_example查询逐例参数。省略保留官方设置。", "properties": {k: {"type": "integer", "minimum": 0 if k == 'inactive' else 1, "description": d} for k,d in [('particles','显式覆盖每代/每批粒子数，具体语义依运行模式。'),('batches','显式覆盖总批次。'),('inactive','显式覆盖非活跃批次，仅本征值模式可用。'),('seed','显式覆盖随机种子；保留实际值以便复核。')]} | {"factory": {"type":"object", "description":"仅该例题公开工厂支持的参数；先查例题说明。","properties":{"second_temp":{"type":"boolean","description":"随机射线pin-cell/lattice启用官方第二温度数据。"},"num_regions":{"type":"integer","minimum":1,"description":"slab_mg一维分区数，截面须含mat_1至mat_N。"},"mat_names":{"type":"array","items":{"type":"string"},"description":"slab_mg显示材料名；数量等于num_regions，截面组仍须mat_N。"}},"additionalProperties":False},"mgxs_file":{"type":"string","description":"slab_mg必需的真实多群HDF5输入，工作区内相对路径；复制快照后按2g.h5供原工厂读取。"}}, "additionalProperties": False}}, ['example_id', 'case_dir']),
+     "outputSchema": OUTPUT, "function": prepare_official_example, "annotations": WRITE},
+    {"name": "openmc_run_example_step", "description": "按实例next_step提交一个已注册步骤，返回持久作业编号。依次准备输入、核数据和计算；不允许调用方指定脚本或命令，重复调用沿用同一步记录。",
+     "inputSchema": schema({"instance_id": INSTANCE_ID, "step": {"type": "string", "description": "严格使用openmc_example_status返回的next_step.id；不能跳过前置步骤。"}, "threads": {"type": "integer", "minimum": 1, "maximum": 64, "description": "该步骤使用的本地OpenMC线程数；省略为1。"}}, ['instance_id','step']),
+     "outputSchema": OUTPUT, "function": run_example_step, "annotations": WRITE},
+    {"name": "openmc_example_status", "description": "查询官方例题各步骤的真实状态、日志尾部、job_id和下一步；失败/取消不伪装成完成，也不自动重新提交。",
+     "inputSchema": schema({"instance_id": INSTANCE_ID, "wait_seconds": {"type":"integer", "minimum":0, "maximum":30, "description":"可选有界等待秒数，默认0立即返回；运行中可用30等待本步骤变化，减少反复轮询。到时仍运行不代表失败，不要重复提交。"}}, ['instance_id']), "outputSchema": OUTPUT, "function": example_status},
+    {"name": "openmc_cancel_example", "description": "取消官方例题实例正在执行的步骤；保留原记录，继续查询以确认终态。",
+     "inputSchema": schema({"instance_id": INSTANCE_ID}, ['instance_id']), "outputSchema": OUTPUT, "function": cancel_example,
+     "annotations": {"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True}},
+    {"name": "openmc_read_example_results", "description": "按官方实例读取实际计算结果和每阶段产物位置；包含原始数据和日志，不假造不存在的计分或物理结论。",
+     "inputSchema": schema({"instance_id": INSTANCE_ID, "calculation_id": {"type":"string", "pattern":"^[0-9]{4}$", "description":"可选Notebook求解阶段编号；先省略查看阶段清单，再选择0001等实际编号读取该次求解的StatePoint。"}}, ['instance_id']), "outputSchema": OUTPUT, "function": read_example_results},
+]
 for tool in TOOLS:
     tool.setdefault("annotations", {"readOnlyHint": tool["name"] != "preview_repair", "destructiveHint": False})
 
@@ -150,5 +176,20 @@ def prepare_tools(definitions):
             tool['function'] = safe_business(tool['function'])
     return document_tools(definitions)
 
+
+# Standard MCP hints describe the business effect. Query bookkeeping/derived
+# caches do not change model inputs or start/modify calculations. Mutating tools
+# keep the conservative default and are never marked read-only by name pattern.
+READ_ONLY_TOOLS={
+    'diagnose_log','read_repair_plan','search_knowledge','list_knowledge_sources',
+    'read_knowledge','list_cases','get_case','openmc_environment',
+    'openmc_validate_inputs','openmc_job_status','openmc_read_results',
+    'openmc_diagnose_job','openmc_list_artifacts','openmc_list_parameters',
+    'openmc_scan_status','openmc_list_official_examples','openmc_get_official_example',
+    'openmc_example_status','openmc_read_example_results',
+}
+for _tool in TOOLS:
+    if _tool['name'] in READ_ONLY_TOOLS:
+        _tool['annotations']={'readOnlyHint':True,'idempotentHint':True,'openWorldHint':False}
 
 prepare_tools(TOOLS)

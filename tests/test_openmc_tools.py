@@ -105,6 +105,19 @@ class OpenMCTools(unittest.TestCase):
         self.assertEqual(jobs.status(job_id)['provenance']['execution_kind'], 'mock_process_fixture')
         with self.assertRaisesRegex(ValueError, '没有statepoint'):tools.read_results(job_id)
 
+    def test_notebook_requires_explicit_stage_instead_of_silently_using_last_result(self):
+        identifier=self.submit();self.assertEqual(self.wait(identifier)['state'],'completed')
+        jobs.update(jobs.job_directory(identifier),example_workflow={'example_id':'notebook-mg-mode-part-i','step':'execute','parameters':{}})
+        with self.assertRaisesRegex(ValueError,'不能默认取最后StatePoint'):
+            tools.read_results(identifier)
+
+    def test_nonzero_runner_preserves_exit_code_and_reaps_orphan(self):
+        self.mode('parent-exits-nonzero');identifier=self.submit();status=self.wait(identifier)
+        self.assertEqual(status['state'],'failed');self.assertEqual(status['exit_code'],7)
+        self.assertIn('非零退出',status['error']);self.assertTrue(status['process_cleanup']['verified_empty'])
+        child=int((jobs.job_directory(identifier)/'work/child.pid').read_text())
+        self.assertFalse(Path(f'/proc/{child}').exists(),'后台子进程或僵尸未回收')
+
     def test_nonzero_exit_is_failed_and_results_unavailable(self):
         self.mode('fail'); job_id = self.submit(); status = self.wait(job_id)
         self.assertEqual(status['state'], 'failed')
@@ -129,7 +142,11 @@ class OpenMCTools(unittest.TestCase):
     def test_parent_exits_while_child_holds_stdout_is_bounded(self):
         self.mode('parent-exits'); job_id = self.submit()
         status = self.wait(job_id)
-        self.assertEqual(status['state'], 'completed')
+        # An exited wrapper with live background work is not a confirmed solve.
+        self.assertEqual(status['state'], 'failed')
+        self.assertEqual(status['exit_code'], 0)
+        self.assertIn('后台子进程', status['error'])
+        self.assertTrue(status['process_cleanup']['verified_empty'])
         pid = int((jobs.job_directory(job_id) / 'work/child.pid').read_text())
         for _ in range(50):
             if jobs.identity(pid) is None:break

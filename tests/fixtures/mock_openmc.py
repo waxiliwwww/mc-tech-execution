@@ -16,10 +16,12 @@ print('MOCK PROCESS FIXTURE; no physical result', flush=True)
 if mode == 'fail':
     print('fixture intentional failure', flush=True)
     raise SystemExit(7)
-if mode in ('long', 'timeout', 'parent-exits'):
+if mode in ('long', 'timeout', 'parent-exits', 'parent-exits-nonzero'):
     child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(120)'])
     Path('child.pid').write_text(str(child.pid))
-    if mode != 'parent-exits':time.sleep(120)
+    if mode.startswith('parent-exits'):
+        if mode=='parent-exits-nonzero':raise SystemExit(7)
+    else:time.sleep(120)
 if mode == 'log-limit':
     print('x' * 5000, flush=True)
 print('MOCK COMPLETED', flush=True)

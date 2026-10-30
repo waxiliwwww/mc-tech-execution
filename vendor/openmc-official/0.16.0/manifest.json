@@ -1,0 +1,33 @@
+{
+  "repository": "openmc-dev/openmc",
+  "ref": "v0.16.0",
+  "revision": "617d35a5063c57796b43428bc401e627d2011046",
+  "license": "MIT",
+  "files": {
+    "example_models.py": "eef1df5132091c56579586cbb0eef8cf2305c2c45df1296dd8e6b2d257ffa07a",
+    "LICENSE": "5f5405845324a4d509508bc260617df26e855d8cb6a6841b8b1437eca17e4b05",
+    "examples/custom_source/build_xml.py": "12f1f7597468c9dd8aabc1aef2d4f7ad424dca3cbb727ddd6954453c79a9f7a0",
+    "examples/custom_source/CMakeLists.txt": "a826c623424667856742919acd97bdbdcc7ad9bfb758a0e6a1293d3db47a6228",
+    "examples/custom_source/show_flux.py": "065a408edbcd27a992e84895a06e0725ce4e7ce2be8047bf6f9a70251c672a56",
+    "examples/custom_source/source_ring.cpp": "808d0dae8d4a725dd7b28c012cd8beecc2c7f6c4ec651eb298cf36937c98f5cc",
+    "examples/custom_source/README.md": "0ae347df297b799c5c7ed3a63c9ac2b7677cf76de767181b3d2edc72e7aab18b",
+    "examples/pincell_depletion/chain_simple.xml": "a6f381132912104a571469da87c5c7884a6a696874ff17583d5b4d8f1019f056",
+    "examples/pincell_depletion/restart_depletion.py": "bfaee1530f2da89c4bb536eabc606b02b183796bb3543008e27ec5f3da51bff7",
+    "examples/pincell_depletion/run_depletion.py": "e3627ccc473567c7f41f5e9e1d291b0a8ef1a967dd68e769c6f8a6bc1ff568f6",
+    "examples/parameterized_custom_source/build_xml.py": "08f75f2519dcc38679269b713033831164ce9d39291b372864ca7b5be37a5d8f",
+    "examples/parameterized_custom_source/CMakeLists.txt": "dc40fbbc778b1a38ab21b0024ae974cb75364e8b0c50ed570fa4c793faebc783",
+    "examples/parameterized_custom_source/show_flux.py": "065a408edbcd27a992e84895a06e0725ce4e7ce2be8047bf6f9a70251c672a56",
+    "examples/parameterized_custom_source/README.md": "5ff1a9268939517ead27483f95b3f540c28d03232603ecdcca28d4565d12b1c6",
+    "examples/parameterized_custom_source/parameterized_source_ring.cpp": "664cb4a5433a03995a1bafcf92465445ccbddb8c43661f6543be8a00e5c17e62",
+    "examples/pincell_random_ray/build_xml.py": "8761a896c18ca42141a1d589056d69a058bb558fa019508fd204617ad372517a",
+    "examples/pincell_multigroup/build_xml.py": "92b46fe166cbe10fece5a7e34a9f8e1fb13a80e089595abfd78d46acdb550943",
+    "examples/jezebel/jezebel.py": "52c9b7dbd51e8066d2dbb3175d4081bf593833563dea7d9c64a3611763fab023",
+    "examples/pincell_pulsed/run_pulse.py": "83f348814a056d94ff4674db605c25dd9b14d6ccde05ea65156be153dca84481",
+    "examples/pincell/plot_spectrum.py": "8056d062a5d8fdb99cdd3f3cb0e7e97e3c822a310cc3b03e530a8149aa8d2818",
+    "examples/pincell/build_xml.py": "dda8af2218ee076ad2d3c38cb9c61d98d8bb12a0a6f24ebec4360566ed391335",
+    "examples/assembly/assembly.py": "4301ea63a3b2bd5d0d58f80ccb255523008fe2cc5547dec6c435704868e5dd28",
+    "examples/lattice/hexagonal/build_xml.py": "2596dea6c78cf2595b6b6db03777f3b8a821ba96bacf65fa1bde58ef19df2e61",
+    "examples/lattice/nested/build_xml.py": "5ba347c7f58b3332cfbf21291c91701c81eff54a9abba32b1daa8851fbee035e",
+    "examples/lattice/simple/build_xml.py": "88e2b76f074788275404d641bf12469470816639441130bedd2a337e9a5c2ddf"
+  }
+}

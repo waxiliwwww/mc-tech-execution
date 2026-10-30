@@ -1,0 +1,10 @@
+{
+  "name": "OpenMC official ENDF/B-VII.1 HDF5",
+  "source_page": "https://openmc.org/data/",
+  "url": "https://anl.app.box.com/public/static/9igk353zpy8fn9ttvtrqgzvw1vtejoz6.xz",
+  "archive_bytes": 1697275216,
+  "archive_sha256": "5bc4b62a602d569e3a801c3499f03378192e83623c3eb39500804178706781f9",
+  "archive_prefix": "endfb-vii.1-hdf5",
+  "directory": ".runtime/nuclear-data/official-endfb-vii.1",
+  "note": "官方多温度核数据，初次配置下载并校验；不是合成数据或专业验收参考结论。"
+}

@@ -33,7 +33,7 @@ def table(headers, rows):
 
 def generate(definitions=None):
     definitions = TOOLS if definitions is None else definitions
-    nav = [('index', '认识工具包'), ('compute', '完成一次计算'), ('inputs', '自有模型与源码'),
+    nav = [('index', '认识工具包'), ('compute', '完成一次计算'), ('official-examples', '全部官方例题'), ('inputs', '自有模型与源码'),
            ('mcp', '封装与部署 MCP'), ('reference', '查工具参数')]
     navigation = ''.join(f'<a href="{name}.html"' + (' aria-current="page"' if name == 'reference' else '')
                          + f'>{label}</a>' for name, label in nav)
