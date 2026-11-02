@@ -11,6 +11,7 @@
 - [带入自己的模型、修改源码](docs/inputs.html)：原生 Python/XML、自动改参范围、实现职责和扩展入口。
 - [把程序封装成 MCP](docs/mcp.html)：独立 Python/TypeScript 服务、同服务多个工具、参数说明与下游交接。
 - [查工具参数](docs/reference.html)：与实际 MCP Schema 同源，按需搜索，无需通读。
+- [环境与部署](docs/env.html)：当前构建串与实测版本、核数据位置、哪些能力来自编译选项而非代码、换机三步探测、跨环境比对的复现前提。
 
 源码版本 0.7.0，适配 OpenMC 0.16.0；服务端使用 Linux/WSL。首次按手册准备环境，升级已有旧环境时可用 `./quickstart.sh --openmc-prefix .runtime/openmc-official` 在本包内另建完整SDK并保留旧环境；运行数据默认保存在本包 `workspace/`，图和报告返回服务端绝对路径，当前不自动下载。
 

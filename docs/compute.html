@@ -6,7 +6,7 @@
 <div class="jump"><a href="#setup">环境</a><a href="#prepare">准备输入</a><a href="#change">发现与修改</a><a href="#run">校核与计算</a><a href="#results">读取与产物</a><a href="#maintenance">清理</a></div>
 <p>以下命令在<strong>同一个 Bash 终端、工具包根目录</strong>依次执行。工具调用格式是 <code>./mc.sh call 工具名 'JSON参数'</code>；返回 JSON 方便脚本继续使用。无需启动服务或配置大模型。</p>
 <h2 id="setup"><span class="step">01 / 环境</span><br>安装在哪台机器，就在哪里运行工具</h2>
-<p>计算服务器使用 Linux/WSL。先具备 Python 3.10+ 与 venv、Bash、curl、tar/bzip2 和包源网络；默认 Office 准备还需 apt-get/dpkg-deb。Windows 可在 WSL 运行，或连接另一台服务器的 MCP。</p>
+<p>计算服务器使用 Linux/WSL。先具备 Python 3.10+ 与 venv、Bash、curl、tar/bzip2 和包源网络；默认 Office 准备还需 apt-get/dpkg-deb。Windows 可在 WSL 运行，或连接另一台服务器的 MCP。</p><p>换机、联调或需要向甲方说明部署前置条件时，先读<a href="env.html">环境与部署必读</a>：当前构建串、核数据位置、哪些能力来自编译选项，以及跨环境比对的口径。</p>
 <pre class="command"><code>./quickstart.sh</code></pre>
 <p>脚本准备 <code>mcp/.venv</code>（调用层）、<code>.runtime/openmc</code>（OpenMC 0.16.0 / Python 3.12）和图表/报告依赖，写入本机配置 <code>config/openmc.local.json</code>；不修改 shell 配置或安装系统包。首次需下载，部署包不包含正式核数据。</p>
 <details id="config"><summary>已有 OpenMC、只需部分报告、或者想改数据位置</summary>
