@@ -5,7 +5,8 @@ from adapters import ToolExecutionError
 from business import (MCInputError, apply_repair, diagnose_log, get_case, list_cases, preview_repair,
                       read_repair_plan, search_knowledge)
 from openmc_tools import (compare_jobs, create_model, environment, export_report,
-                          preview_input, read_results, submit_job, validate_inputs)
+                          preview_input, read_results, storage_report, submit_job,
+                          validate_inputs)
 from openmc_jobs import cancel as cancel_job, status as job_status
 from openmc_scan import list_parameters, prepare_case, submit_scan, status as scan_status, cancel as cancel_scan
 from openmc_plots import plot_results, plot_scan
@@ -175,6 +176,9 @@ TOOLS += [
     {"name": "openmc_job_compare", "description": "对比两个本地作业（第一刀）：逐输入文件SHA256异同、状态/模式/线程/批数、双方Combined k及差值与合成σ（工程参考，非统计显著性判定）。tally分布对比未包含。只读。",
      "inputSchema": schema({"job_a": TEXT, "job_b": TEXT}, ["job_a", "job_b"]),
      "outputSchema": OUTPUT, "function": compare_jobs},
+    {"name": "openmc_storage_report", "description": "只读报告工作区内部记录存储：逐类计数与字节、状态分布、最大记录Top N；可选按完成天数预览可回收量（与cleanup.sh同口径，引用保护与修复关联如实列出）。不删除任何内容；删除须维护窗口cleanup.sh预览后--apply。",
+     "inputSchema": schema({"older_than_days": {"type": "number"}, "top": {"type": "integer"}}, []),
+     "outputSchema": OUTPUT, "function": storage_report},
 ]
 for tool in TOOLS:
     tool.setdefault("annotations", {"readOnlyHint": tool["name"] != "preview_repair", "destructiveHint": False})
@@ -210,7 +214,7 @@ def prepare_tools(definitions):
 READ_ONLY_TOOLS={
     'diagnose_log','read_repair_plan','search_knowledge','list_knowledge_sources',
     'read_knowledge','list_cases','get_case','openmc_environment',
-    'openmc_validate_inputs','openmc_preview_input','openmc_job_status','openmc_job_compare','openmc_read_results',
+    'openmc_validate_inputs','openmc_preview_input','openmc_job_status','openmc_job_compare','openmc_read_results','openmc_storage_report',
     'openmc_diagnose_job','openmc_list_artifacts','openmc_list_parameters',
     'openmc_scan_status','openmc_list_official_examples','openmc_get_official_example',
     'openmc_example_status','openmc_read_example_results','openmc_inspect_step',

@@ -5,6 +5,7 @@ import csv
 import hashlib
 import io
 import json
+import math
 from pathlib import Path
 import re
 import shutil
@@ -659,6 +660,80 @@ def read_results(job_id: str, max_values: int = 1000) -> dict:
                 professional_acceptance=False)
     atomic_json(directory / 'results.json', data)
     return data
+
+
+def _cleanup_module():
+    """按文件路径加载 scripts/cleanup_artifacts.py：存储口径与清理入口共用同一实现，不复制逻辑。"""
+    import importlib.util
+    path = ROOT / 'scripts/cleanup_artifacts.py'
+    spec = importlib.util.spec_from_file_location('cleanup_artifacts', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def storage_report(older_than_days=None, top: int = 10) -> dict:
+    """只读存储报告：内部记录逐类计数/字节、状态分布、最大记录榜；
+    可选按 older_than_days 预览可回收量（与 cleanup.sh 同口径）。不删除任何内容。"""
+    if type(top) is not int or isinstance(top, bool) or not 1 <= top <= 100:
+        raise Error('top须为1..100的整数')
+    if older_than_days is not None and (
+            type(older_than_days) not in (int, float) or isinstance(older_than_days, bool)
+            or not math.isfinite(older_than_days) or older_than_days < 0):
+        raise Error('older_than_days须为非负有限天数')
+    cleanup = _cleanup_module()
+    root = workspace()
+    try:
+        records = cleanup.inventory(root)
+    except cleanup.CleanupError as exc:
+        return {'workspace': str(root), 'ok': False,
+                'error': '清点内部记录失败：' + str(exc),
+                'note': '记录损坏或结构异常时不猜测；人工核对修复后再报。本工具不删除任何内容。'}
+    entries = []
+    states = {}
+    totals = {}
+    for (kind, identifier), item in records.items():
+        state = item['record'].get('state')
+        states[state] = states.get(state, 0) + 1
+        try:
+            _digest, size = cleanup.fingerprint(item['path'])
+        except cleanup.CleanupError as exc:
+            entries.append({'kind': kind, 'identifier': identifier, 'state': state,
+                            'bytes': None, 'size_error': str(exc)})
+            continue
+        group = totals.setdefault(kind, {'count': 0, 'bytes': 0})
+        group['count'] += 1
+        group['bytes'] += size
+        entries.append({'kind': kind, 'identifier': identifier, 'state': state, 'bytes': size,
+                        'finished_at': item['record'].get('finished_at')})
+    sized = [entry for entry in entries if entry['bytes'] is not None]
+    result = {'workspace': str(root), 'ok': True, 'records': len(records),
+              'totals': totals, 'all_bytes': sum(entry['bytes'] for entry in sized),
+              'states': states,
+              'largest': sorted(sized, key=lambda entry: entry['bytes'], reverse=True)[:top],
+              'professional_acceptance': False,
+              'note': '只读存储报告；内部记录含输入快照与产物副本。删除只能在维护窗口用'
+                      './cleanup.sh预览后加--apply执行，本工具不删除任何内容。'}
+    unsized = [entry for entry in entries if entry['bytes'] is None]
+    if unsized:
+        result['size_errors'] = unsized
+    if older_than_days is not None:
+        try:
+            # 预览用allow_repair_references=True：报告场景不删除，修复关联如实列出即可，
+            # 避免整个可回收量预览因存在修复计划而不可见。
+            preview = cleanup.plan(root, [], [], older_than_days, allow_repair_references=True)
+            result['reclaimable'] = {
+                'older_than_days': older_than_days,
+                'records': len(preview['entries']), 'bytes': preview['bytes'],
+                'skipped': preview['skipped'][:50],
+                'skipped_truncated': len(preview['skipped']) > 50,
+                'repair_references': preview['repair_references'],
+                'note': '预览口径与cleanup.sh一致：仅终态记录，引用保护与修复关联如实列出；'
+                        '执行删除须维护窗口cleanup.sh --apply。'}
+        except cleanup.CleanupError as exc:
+            result['reclaimable'] = {'older_than_days': older_than_days,
+                                     'error': '预览失败：' + str(exc)}
+    return result
 
 
 def compare_jobs(job_a: str, job_b: str) -> dict:
