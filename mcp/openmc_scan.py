@@ -55,6 +55,27 @@ def prepare_case(case_dir: str, target_dir: str, parameters: dict) -> dict:
     if target.exists():raise Error('目标目录已存在，不能覆盖输入')
     copy_inputs(source, target)
     result = api('update-parameters', target, {'parameters': parameters})
+    # B2：changes是应用时刻的前后值；再按参数从写入后的文件读回一次，
+    # 把“修改意图”升级为“落盘证据”。不一致如实列出，不隐瞒。
+    found = {item['name']: item.get('current')
+             for item in api('parameters', target, {}).get('parameters', [])}
+    readback = []
+    for change in result.get('changes', []):
+        expected = change.get('after')
+        actual = found.get(change.get('name'))
+        if (isinstance(expected, (int, float)) and not isinstance(expected, bool)
+                and isinstance(actual, (int, float)) and not isinstance(actual, bool)):
+            match = math.isclose(float(actual), float(expected), rel_tol=1e-12, abs_tol=1e-15)
+        else:
+            match = actual == expected
+        readback.append({'name': change.get('name'), 'expected': expected,
+                         'found': actual, 'match': bool(match)})
+    result['parameter_diff'] = {
+        'changes': result.get('changes', []), 'readback': readback,
+        'verified': all(item['match'] for item in readback),
+        'note': 'changes为应用时刻的前后值（含单位/类别）；readback为写入后重新读取文件、'
+                '按参数核对的结果。verified=true表示全部请求参数读回一致；'
+                '任何不一致如实列出，不表示专业正确性。'}
     return {'case_dir': target_dir, **result, 'provenance': provenance(target)}
 
 

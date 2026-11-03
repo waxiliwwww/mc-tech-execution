@@ -1046,9 +1046,9 @@
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_scan.py">mcp/openmc_scan.py</a>。</p></details>
 <details class="tool" id="openmc_prepare_case"><summary>openmc_prepare_case
-<span class="tool-purpose">从原模型复制一个新算例并按已发现的公开属性调整参数。保留密度单位，不累积修改或覆盖原模型，不作专业正确性保证。</span></summary>
+<span class="tool-purpose">从原模型复制一个新算例并按已发现的公开属性调整参数。返回逐参数前后差异与写入后读回核对（parameter_diff.verified），不一致如实列出。保留密度单位，不累积修改或覆盖原模型，不作专业正确性保证。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>target_dir</td><td>string</td><td>是</td><td>不可省略</td><td>新副本目录，相对服务端MC_WORKSPACE，必须尚不存在且位于原算例之外；原输入保留。后续计算使用返回的新case_dir。</td><td>&quot;cases/my-case-copy&quot;</td></tr><tr><td>parameters</td><td>object</td><td>是</td><td>不可省略</td><td>新副本的参数名到数值映射。先调用openmc_list_parameters，沿用其name/type/unit/范围；只支持已发现参数，不接受任意XML字段。</td><td>{&quot;settings.particles&quot;: 400}</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>case_dir是参数修改后的新副本；原目录未改，仍须校核并提交计算。</p>
+<h3>返回怎么看</h3><p>case_dir是参数修改后的新副本；原目录未改，仍须校核并提交计算。parameter_diff.changes为逐参数前后值（含单位/类别），readback为写入后重新读取文件的核对结果，verified=true表示全部读回一致；不一致如实列出，不表示专业正确性。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>case_dir</td><td>输入目录，相对服务端MC_WORKSPACE；生成/修改后用此目录继续校核或计算。</td></tr><tr><td>provenance</td><td>数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
@@ -1097,7 +1097,7 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;case_dir是参数修改后的新副本；原目录未改，仍须校核并提交计算。&quot;,
+  &quot;description&quot;: &quot;case_dir是参数修改后的新副本；原目录未改，仍须校核并提交计算。parameter_diff.changes为逐参数前后值（含单位/类别），readback为写入后重新读取文件的核对结果，verified=true表示全部读回一致；不一致如实列出，不表示专业正确性。&quot;,
   &quot;properties&quot;: {
     &quot;case_dir&quot;: {
       &quot;description&quot;: &quot;输入目录，相对服务端MC_WORKSPACE；生成/修改后用此目录继续校核或计算。&quot;

@@ -87,7 +87,7 @@ RESULTS = {
     'openmc_recheck_repair': 'job中包含关联重算编号，重复调用查询同次提交；校核失败、重算失败及原失败分别保留。',
     'openmc_list_artifacts': 'directory和artifacts[].server_path是服务器位置；清单含大小/哈希，不提供远程下载。',
     'openmc_list_parameters': 'parameters逐项给出name/type/current/unit及范围，供prepare_case或submit_scan使用；不包含所有OpenMC属性。',
-    'openmc_prepare_case': 'case_dir是参数修改后的新副本；原目录未改，仍须校核并提交计算。',
+    'openmc_prepare_case': 'case_dir是参数修改后的新副本；原目录未改，仍须校核并提交计算。parameter_diff.changes为逐参数前后值（含单位/类别），readback为写入后重新读取文件的核对结果，verified=true表示全部读回一致；不一致如实列出，不表示专业正确性。',
     'openmc_submit_scan': 'scan_id用于批次查询，cases是计划组合数量，不是已完成数量。',
     'openmc_scan_status': 'cases是逐组状态/参数/job_id列表，counts为各状态数；失败和缺失保留，不填0结果。',
     'openmc_cancel_scan': '请求停止当前计算和后续组合；继续查询批次及其仍活动的job_id。',

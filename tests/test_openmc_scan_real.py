@@ -86,7 +86,15 @@ class RealScanReports(unittest.TestCase):
         self.evidence('real-cartesian-scan.json', self.completed)
 
     def test_prepare_case_preserves_unmodified_xml_and_original(self):
-        self.call('openmc_prepare_case', {'case_dir': 'base', 'target_dir': 'modified', 'parameters': {self.density: .6, self.surface: -12}})
+        prepared = self.call('openmc_prepare_case', {'case_dir': 'base', 'target_dir': 'modified', 'parameters': {self.density: .6, self.surface: -12}})
+        diff = prepared['parameter_diff']
+        self.assertTrue(diff['verified'], diff)
+        by_name = {c['name']: c for c in diff['changes']}
+        self.assertEqual(by_name[self.density]['before'], 1.0)
+        self.assertEqual(by_name[self.density]['after'], .6)
+        self.assertEqual(by_name[self.surface]['before'], -10)
+        self.assertEqual(by_name[self.surface]['after'], -12)
+        self.assertTrue(all(item['match'] for item in diff['readback']))
         material = ET.parse(self.workspace / 'modified/materials.xml').getroot().find('material')
         self.assertIsNotNone(material.find('macroscopic'))
         self.assertEqual(float(material.find('density').get('value')), .6)

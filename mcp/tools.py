@@ -104,7 +104,7 @@ TOOLS += [
      "outputSchema": OUTPUT, "function": list_artifacts},
     {"name": "openmc_list_parameters", "description": "列出当前模型可调整的运行设置、CSG表面系数、材料密度/温度和源强，带对象ID、当前值、单位与范围；后续扫描请使用这些参数名。",
      "inputSchema": schema({"case_dir": TEXT}, ['case_dir']), "outputSchema": OUTPUT, "function": list_parameters},
-    {"name": "openmc_prepare_case", "description": "从原模型复制一个新算例并按已发现的公开属性调整参数。保留密度单位，不累积修改或覆盖原模型，不作专业正确性保证。",
+    {"name": "openmc_prepare_case", "description": "从原模型复制一个新算例并按已发现的公开属性调整参数。返回逐参数前后差异与写入后读回核对（parameter_diff.verified），不一致如实列出。保留密度单位，不累积修改或覆盖原模型，不作专业正确性保证。",
      "inputSchema": schema({"case_dir": TEXT, "target_dir": TEXT, "parameters": {**NUMBERS, "minProperties": 1}}, ['case_dir', 'target_dir', 'parameters']),
      "outputSchema": OUTPUT, "function": prepare_case, "annotations": WRITE},
     {"name": "openmc_submit_scan", "description": "按axes的笛卡尔组合串行计算；先检查全部参数组合，再返回scan_id。复用计算作业，可查询和取消；默认记录失败并继续，禁止把统计设置比较当物理响应验证。",
