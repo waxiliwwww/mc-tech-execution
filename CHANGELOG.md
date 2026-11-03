@@ -8,7 +8,9 @@
 - `openmc_worker` 新增 `inspect-h5m` 动作；新增离线协议测试 `tests/test_openmc_cad.py` 与实跑档 `tests/test_openmc_cad_real.py`（`MC_TEST_CAD_CONFIG` 启用），夹具 `tests/fixtures/cube.step` 为 cadquery 生成的 10 mm 立方体。
 - 新增 `openmc_preview_input`（提交前看清输入）：逐文件截断内容预览、字节数/SHA256 与结构摘要（运行设置、材料核素、几何与 tally 计数）；只读，算例内符号链接拒绝读取，防越界读工作区外文件。
 - `openmc_job_status` 返回新增结构化 `progress` 节：按 solver.log 尾部批次行解析（最新批次/代、k、熵、平均 k±σ、RESULTS 的 Combined k、batches/inactive 总数、percent、elapsed_seconds）；固定源/绘图模式或启动初期解析不到时如实说明原因，不编造百分比，不替代 `openmc_read_results` 统计量。
-- 工具注册表 37→40；`docs/reference.html` 由生成器重生成；CI 工具计数断言同步。进度表 RF002 行更新为部分实现（工程已验证）。
+- 新增 `openmc_job_compare`（两作业对比第一刀）：逐输入文件 SHA256 异同四分类、状态/模式/线程/批数对照、双方 Combined k 与差值及按独立假设合成的 σ（注明仅工程参考，不构成统计显著性判定）；tally 分布对比未包含，如实说明。
+- 安全强制规则固化为离线测试（tests/test_server_security.py，11 项）：非回环监听缺 MCP_AUTH_TOKEN 或 publicUrl 拒绝启动；publicUrl 回环/通配/路径不匹配拒绝；token 含空白或控制字符拒绝；连接配置只写 `${MCP_AUTH_TOKEN}` 占位符，不落盘 token 本身；主机名作 MCP_HOST 拒绝。无生产代码变更。
+- 工具注册表 37→41；`docs/reference.html` 由生成器重生成；CI 工具计数断言同步。进度表 RF002 行更新为部分实现（工程已验证）。
 - 仍未做：h5m→可运行模型 XML 生成（材料定义与 DAGMC 几何接线）、甲方 STEP 件验收判据（1000 粒子 lost particle=0）、复杂装配体质量参数封装。
 
 ## 0.8.0 — 2026-11-03

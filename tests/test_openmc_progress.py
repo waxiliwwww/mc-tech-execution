@@ -127,6 +127,20 @@ class JobProgress(unittest.TestCase):
         self.assertEqual(progress['percent'], 100.0)
         self.assertIsNone(progress['keff_combined'])
 
+    def test_nan_combined_keff_reported_not_parsed(self):
+        # 真实历史作业（0ea869ea）出现过的退化输出：std为-nan；不得进入JSON结果
+        log = BATCH_LINES + ("""
+ ============================>     RESULTS     <============================
+
+ Combined k-effective        = 1.66667 +/- -nan
+ Leakage Fraction            = 0.00000 +/- 0.00000
+""")
+        self.make_job('89' * 16, 'completed', log)
+        progress = jobs.status('89' * 16)['progress']
+        self.assertIsNone(progress['keff_combined'])
+        self.assertIn('不能安全解析', progress['keff_note'])
+        self.assertIn('-nan', progress['keff_note'])
+
 
 if __name__ == '__main__':
     unittest.main()

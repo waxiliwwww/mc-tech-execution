@@ -132,6 +132,7 @@ PROGRESS_BATCH_LINE = re.compile(
     r'^\s*(\d+)/(\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)(?:\s+(\d+\.\d+)\s+\+/-\s+(\d+\.\d+))?\s*$',
     re.M)
 PROGRESS_COMBINED_KEFF = re.compile(r'Combined k-effective\s*=\s*(\d+\.\d+)\s*\+/-\s*(\d+\.\d+)')
+PROGRESS_COMBINED_LOOSE = re.compile(r'Combined k-effective\s*=\s*(\S+)\s*\+/-\s*(\S+)')
 
 
 def _progress(directory: Path, value: dict) -> dict:
@@ -189,6 +190,13 @@ def _progress(directory: Path, value: dict) -> dict:
         progress['keff_combined'] = {'mean': float(combined.group(1)),
                                      'std_dev': float(combined.group(2))}
         progress['percent'] = 100.0
+    else:
+        loose = PROGRESS_COMBINED_LOOSE.search(text)
+        if loose:
+            # NaN/异常数值不能安全进入JSON结果；如实报告行的存在与原文。
+            progress['keff_note'] = ('Combined k行存在但数值不能安全解析（原文：'
+                                     + loose.group(1) + ' +/- ' + loose.group(2)
+                                     + '）；不提供keff_combined，请检查该作业是否正常收敛。')
     if value.get('state') == 'completed' and progress['percent'] is None and mode == 'eigenvalue':
         progress['percent'] = 100.0
     return progress

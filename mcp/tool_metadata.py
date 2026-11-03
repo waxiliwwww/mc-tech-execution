@@ -14,6 +14,8 @@ COMMON = {
     'case_dir': '算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。',
     'target_dir': '新副本目录，相对服务端MC_WORKSPACE，必须尚不存在且位于原算例之外；原输入保留。后续计算使用返回的新case_dir。',
     'job_id': '计算编号，直接使用openmc_submit_job或扫描子项返回的job_id；不是目录、文件名或scan_id。查询/读取不会自动提交新计算。',
+    'job_a': '对比基准方作业编号（32位十六进制），直接使用openmc_submit_job返回的job_id；结果中记为a方，difference=b-a。',
+    'job_b': '对比另一方作业编号（32位十六进制），直接使用openmc_submit_job返回的job_id；结果中记为b方，difference=b-a。',
     'scan_id': '扫描批次编号，使用openmc_submit_scan返回的scan_id；一个批次关联多个job_id，不能混用两种编号。',
     'plan_id': '修复计划编号，来自preview_repair或openmc_prepare_repair返回的plan_id/plan.plan_id。应用修改前须逐次展示差异并取得用户确认。',
     'case_id': '已注册例题ID，先调用list_cases/get_case确认准备条件。openmc-pincell-mg自带公开数据；目录中标记缺料的例题不能直接运行。',
@@ -91,6 +93,7 @@ RESULTS = {
     'openmc_plot_results': 'path/server_path为图，series_json/series_csv为所选完整数据。单一能量过滤器的x为算术中点、x_lower/x_upper为eV区间，正下界用对数轴，有零下界用线性轴；多维结果为展平索引。均值不除能宽，保留原归一化与来源。',
     'openmc_plot_scan': '图和对应数据按实际axes/fixed选择；失败/缺失是空缺，不能用连线或0掩盖。',
     'openmc_export_scan_report': '报告保留每组参数、状态与结果；成功导出不表示每组计算都成功。同一scan_id重复导出同格式会覆盖报告，留多版需另行归档。',
+    'openmc_job_compare': 'sides给出两作业状态、运行设置、Combined k与输入指纹；comparison.inputs分identical/differing/only_in_a/only_in_b四类；keff_combined.difference=b-a，combined_std_dev按独立假设合成，仅工程参考。tally分布对比未包含。',
     'openmc_preview_input': 'files逐项含present/bytes/sha256及截断content（超2MiB不返回内容，超2万字符截断并标记）；summary为运行设置、材料核素、几何与tally计数摘要；problems列缺失文件与被拒符号链接。预览不代表输入正确。',
     'openmc_inspect_step': 'solids为实体数，material_tags须按该数量提供；bounding_box按STEP原生单位给出，未换算单位、未作物理或网格质量判定。',
     'openmc_convert_cad': 'h5m与sha256为转换产物位置及指纹；engine_read.ok=True表示DAGMC版OpenMC API已读回包围盒，False保留错误文本不静默。产物未经专业校验，运行计算还需生成模型XML。',
@@ -98,6 +101,8 @@ RESULTS = {
 
 OUTPUT_FIELDS = {
     'job_id': '计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。',
+    'job_a': '作业编号（a方）；来自openmc_submit_job返回值。',
+    'job_b': '作业编号（b方）；来自openmc_submit_job返回值。',
     'scan_id': '扫描批次编号；与单个计算job_id不同。',
     'case_dir': '输入目录，相对服务端MC_WORKSPACE；生成/修改后用此目录继续校核或计算。',
     'plan_id': '修复计划编号；预览后逐次确认，不由模型自行批准。',
@@ -135,6 +140,7 @@ OUTPUT_KEYS = {
     'openmc_plot_results': ('job_id', 'path', 'server_path', 'workspace', 'provenance'),
     'openmc_plot_scan': ('scan_id', 'path', 'server_path', 'workspace', 'provenance'),
     'openmc_export_scan_report': ('scan_id', 'path', 'server_path', 'workspace', 'provenance'),
+    'openmc_job_compare': ('job_a', 'job_b', 'workspace'),
     'openmc_preview_input': ('case_dir', 'workspace', 'provenance'),
     'openmc_inspect_step': ('solids', 'workspace'),
     'openmc_convert_cad': ('case_dir', 'workspace', 'provenance'),

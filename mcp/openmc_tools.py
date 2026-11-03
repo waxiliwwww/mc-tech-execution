@@ -331,6 +331,54 @@ def read_results(job_id: str, max_values: int = 1000) -> dict:
     return data
 
 
+def compare_jobs(job_a: str, job_b: str) -> dict:
+    """两作业对比第一刀：输入指纹、状态、运行设置与Combined k；不含tally分布对比。"""
+    if job_a == job_b:
+        raise Error('请选择两个不同的作业编号')
+    sides = {}
+    for label, job_id in (('a', job_a), ('b', job_b)):
+        status = jobs.status(job_id)
+        record = jobs.read(jobs.job_directory(job_id))
+        progress = status.get('progress') or {}
+        sides[label] = {'job_id': job_id, 'state': status['state'],
+                        'mode': record.get('mode'), 'case_dir': record.get('case_dir'),
+                        'threads': record.get('threads'),
+                        'run_mode': progress.get('run_mode'),
+                        'batches_total': progress.get('batches_total'),
+                        'inactive': progress.get('inactive'),
+                        'elapsed_seconds': progress.get('elapsed_seconds'),
+                        'keff_combined': progress.get('keff_combined'),
+                        'input_files': record.get('input_files', {}),
+                        'output_count': len(record.get('output_files', {}))}
+    a, b = sides['a'], sides['b']
+    names = set(a['input_files']) | set(b['input_files'])
+    identical = sorted(n for n in names
+                       if a['input_files'].get(n) and a['input_files'].get(n) == b['input_files'].get(n))
+    differing = sorted(n for n in names
+                       if n in a['input_files'] and n in b['input_files']
+                       and a['input_files'][n] != b['input_files'][n])
+    keff_a, keff_b = a['keff_combined'], b['keff_combined']
+    keff = {'a': keff_a, 'b': keff_b}
+    if keff_a and keff_b:
+        keff.update(
+            difference=round(keff_b['mean'] - keff_a['mean'], 6),
+            combined_std_dev=round((keff_a['std_dev'] ** 2 + keff_b['std_dev'] ** 2) ** 0.5, 6),
+            note='difference=b-a；combined_std_dev按两作业独立假设合成，仅为工程参考，不构成统计显著性判定。')
+    else:
+        keff['note'] = '至少一方无Combined k（未完成、固定源、日志无RESULTS节或数值异常如NaN）；不作差值。'
+    comparison = {
+        'inputs': {'identical': identical, 'differing': differing,
+                   'only_in_a': sorted(set(a['input_files']) - set(b['input_files'])),
+                   'only_in_b': sorted(set(b['input_files']) - set(a['input_files']))},
+        'keff_combined': keff,
+        'runtime': {field: {'a': a[field], 'b': b[field], 'same': a[field] == b[field]}
+                    for field in ('state', 'mode', 'threads', 'run_mode',
+                                  'batches_total', 'inactive')}}
+    return {'job_a': job_a, 'job_b': job_b, 'sides': sides, 'comparison': comparison,
+            'workspace': str(workspace()), 'location': 'server', 'professional_acceptance': False,
+            'note': '工程对比第一刀：输入指纹、状态、运行设置与Combined k；tally分布与网格结果对比未包含，需要时另扩展。'}
+
+
 def export_report(job_id: str, format: str = 'markdown', tally_id: int | None = None,
                   score: str | None = None, nuclide: str | None = None,
                   filter_selection: list | None = None) -> dict:
