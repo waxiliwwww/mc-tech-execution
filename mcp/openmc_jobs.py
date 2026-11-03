@@ -128,6 +128,72 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
             'provenance': record['provenance'], 'next': '使用openmc_job_status查询，提交不等于计算完成。'}
 
 
+PROGRESS_BATCH_LINE = re.compile(
+    r'^\s*(\d+)/(\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)(?:\s+(\d+\.\d+)\s+\+/-\s+(\d+\.\d+))?\s*$',
+    re.M)
+PROGRESS_COMBINED_KEFF = re.compile(r'Combined k-effective\s*=\s*(\d+\.\d+)\s*\+/-\s*(\d+\.\d+)')
+
+
+def _progress(directory: Path, value: dict) -> dict:
+    """从solver.log尾部解析批次行为结构化进度；只读日志，不影响状态机与统计结论。"""
+    work = directory / 'work'
+    mode = None
+    batches_total = inactive = None
+    settings = work / ('model.xml' if (work / 'model.xml').exists() else 'settings.xml')
+    if settings.is_file():
+        try:
+            import xml.etree.ElementTree as ET
+            root = ET.parse(settings).getroot()
+            mode = root.findtext('.//run_mode')
+            raw = root.findtext('.//batches')
+            batches_total = int(raw) if raw else None
+            raw = root.findtext('.//inactive')
+            inactive = int(raw) if raw else None
+        except Exception:
+            pass   # 进度为尽力而为的展示信息；解析失败不影响状态机
+    started = value.get('started_at')
+    finished = value.get('finished_at')
+    elapsed = round((finished or time.time()) - started, 3) if started else None
+    progress = {'run_mode': mode, 'batches_total': batches_total, 'inactive': inactive,
+                'latest_batch': None, 'latest_generation': None, 'percent': None,
+                'keff_latest': None, 'entropy_latest': None, 'keff_average': None,
+                'keff_combined': None, 'elapsed_seconds': elapsed,
+                'note': '按solver.log尾部批次行解析；不替代openmc_read_results的StatePoint统计量。'}
+    log_path = directory / 'solver.log'
+    if not log_path.is_file():
+        progress['note'] = 'solver.log尚不存在；计算可能未产生输出。'
+        return progress
+    try:
+        size = log_path.stat().st_size
+        with log_path.open('rb') as log:
+            log.seek(max(0, size - 65536))
+            text = log.read().decode('utf-8', errors='replace')
+    except OSError:
+        progress['note'] = 'solver.log暂时不可读；以状态与日志尾部为准。'
+        return progress
+    matches = PROGRESS_BATCH_LINE.findall(text)
+    if matches:
+        batch, generation, keff, entropy, average_mean, average_std = matches[-1]
+        progress.update(latest_batch=int(batch), latest_generation=int(generation),
+                        keff_latest=float(keff), entropy_latest=float(entropy))
+        if average_mean:
+            progress['keff_average'] = {'mean': float(average_mean), 'std_dev': float(average_std)}
+        if batches_total:
+            progress['percent'] = round(100.0 * min(int(batch), batches_total) / batches_total, 2)
+    elif mode == 'eigenvalue':
+        progress['note'] = '暂未解析到批次行；计算可能仍在初始化或日志已截断。'
+    else:
+        progress['note'] = '该run_mode无批次k表；进度以状态与日志尾部为准，不编造百分比。'
+    combined = PROGRESS_COMBINED_KEFF.search(text)
+    if combined:
+        progress['keff_combined'] = {'mean': float(combined.group(1)),
+                                     'std_dev': float(combined.group(2))}
+        progress['percent'] = 100.0
+    if value.get('state') == 'completed' and progress['percent'] is None and mode == 'eigenvalue':
+        progress['percent'] = 100.0
+    return progress
+
+
 def status(job_id: str) -> dict:
     directory = job_directory(job_id)
     value = read(directory)
@@ -150,6 +216,7 @@ def status(job_id: str) -> dict:
     result = {key: value[key] for key in ('job_id', 'state', 'mode', 'case_dir', 'submitted_at',
               'started_at', 'finished_at', 'exit_code', 'error', 'provenance', 'log_truncated', 'process_cleanup', 'cancel_requested') if key in value}
     result['log_tail'] = tail
+    result['progress'] = _progress(directory, value)
     result['input_files'] = sorted(value.get('input_files', {}))
     result['files'] = sorted(value.get('output_files', {}))
     return result

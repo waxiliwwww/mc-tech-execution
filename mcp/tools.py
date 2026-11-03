@@ -4,8 +4,8 @@ import inspect
 from adapters import ToolExecutionError
 from business import (MCInputError, apply_repair, diagnose_log, get_case, list_cases, preview_repair,
                       read_repair_plan, search_knowledge)
-from openmc_tools import (create_model, environment, export_report, read_results,
-                          submit_job, validate_inputs)
+from openmc_tools import (create_model, environment, export_report, preview_input,
+                          read_results, submit_job, validate_inputs)
 from openmc_jobs import cancel as cancel_job, status as job_status
 from openmc_scan import list_parameters, prepare_case, submit_scan, status as scan_status, cancel as cancel_scan
 from openmc_plots import plot_results, plot_scan
@@ -59,8 +59,8 @@ TOOLS += [
                             "inactive": {"type": "integer", "minimum": 0}}, ["case_dir"]),
      "outputSchema": OUTPUT, "function": create_model,
      "annotations": {"readOnlyHint": False, "destructiveHint": False}},
-    {"name": "openmc_validate_inputs", "description": "检查输入XML结构及基础参数，可选公开API模型解析。结构/API通过不代表几何、核数据或物理正确。",
-     "inputSchema": schema({"case_dir": TEXT, "api_check": {"type": "boolean"}}, ["case_dir"]),
+    {"name": "openmc_validate_inputs", "description": "检查输入XML结构及基础参数，可选公开API模型解析与核素/S(a,b)可用性语义校验（对照生效截面索引）。结构/API/语义通过不代表几何或物理正确。",
+     "inputSchema": schema({"case_dir": TEXT, "api_check": {"type": "boolean"}, "semantic_check": {"type": "boolean"}}, ["case_dir"]),
      "outputSchema": OUTPUT, "function": validate_inputs},
     {"name": "openmc_submit_job", "description": "快照输入后提交本地OpenMC计算/绘图/几何调试，立即返回作业编号；随后查询终态与产物。Linux/WSL运行，不代表提交即完成。",
      "inputSchema": schema({"case_dir": TEXT, "mode": {"type": "string", "enum": ["run", "plot", "geometry-debug"]},
@@ -169,6 +169,9 @@ TOOLS += [
          "implicit_complement_material_tag": {"type": "string", "minLength": 1, "description": "可选：为模型外部隐式补集区域指派该材料标签（常设graveyard/真空标签以减少粒子丢失）；省略不生成补集区域。"}},
          ['step_path', 'target_dir', 'material_tags']),
      "outputSchema": OUTPUT, "function": convert_cad, "annotations": WRITE},
+    {"name": "openmc_preview_input", "description": "提交前逐文件看清输入：截断内容预览、字节数与SHA256，附结构摘要（运行设置、材料核素、几何与tally计数）。只读；算例内符号链接拒绝读取；预览不证明物理正确。",
+     "inputSchema": schema({"case_dir": TEXT}, ["case_dir"]),
+     "outputSchema": OUTPUT, "function": preview_input},
 ]
 for tool in TOOLS:
     tool.setdefault("annotations", {"readOnlyHint": tool["name"] != "preview_repair", "destructiveHint": False})
@@ -204,7 +207,7 @@ def prepare_tools(definitions):
 READ_ONLY_TOOLS={
     'diagnose_log','read_repair_plan','search_knowledge','list_knowledge_sources',
     'read_knowledge','list_cases','get_case','openmc_environment',
-    'openmc_validate_inputs','openmc_job_status','openmc_read_results',
+    'openmc_validate_inputs','openmc_preview_input','openmc_job_status','openmc_read_results',
     'openmc_diagnose_job','openmc_list_artifacts','openmc_list_parameters',
     'openmc_scan_status','openmc_list_official_examples','openmc_get_official_example',
     'openmc_example_status','openmc_read_example_results','openmc_inspect_step',

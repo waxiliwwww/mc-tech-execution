@@ -11,7 +11,7 @@ import subprocess
 import xml.etree.ElementTree as ET
 
 import openmc_jobs as jobs
-from openmc_runtime import (Error, api, atomic_json, command, config, path_in_workspace,
+from openmc_runtime import (ROOT, Error, api, atomic_json, command, config, path_in_workspace,
                             provenance, relative, workspace, file_location)
 
 
@@ -64,7 +64,178 @@ def create_model(case_dir: str, template: str = 'synthetic-mgxs', particles: int
             'fine_tuned_model_used': False}
 
 
-def validate_inputs(case_dir: str, api_check: bool = False) -> dict:
+def _semantic_index(cfg: dict):
+    """按运行时同一解析顺序定位生效的截面索引；返回(路径, 来源)或(None, 原因)。"""
+    import os
+    configured = cfg.get('cross_sections')
+    if configured:
+        path = Path(configured)
+        if path.is_file():
+            return path, 'deployment_config_cross_sections'
+        return None, '部署配置cross_sections不存在：' + str(path)
+    env_value = os.environ.get('OPENMC_CROSS_SECTIONS')
+    if env_value:
+        path = Path(env_value)
+        if path.is_file():
+            return path, 'env_OPENMC_CROSS_SECTIONS'
+        return None, '环境变量OPENMC_CROSS_SECTIONS指向的索引不存在'
+    managed = __import__('nuclear_data').managed_directory(cfg) / 'cross_sections.xml'
+    if managed.is_file():
+        return managed, 'managed_cache'
+    key = cfg.get('nuclear_data_library', 'endfb-viii.0')
+    pinned = ROOT / ('config/data-index/' + key + '.xml')
+    if pinned.is_file():
+        return pinned, 'pinned_data_index'
+    return None, '未找到截面索引；先初始化核数据或在部署配置cross_sections'
+
+
+def _semantic_summary(directory: Path, inspected: list, cfg: dict) -> dict:
+    """连续能核素/S(a,b)名对照生效截面索引；多群与宏观材料如实跳过并说明原因。"""
+    if 'materials.xml' not in inspected and 'model.xml' not in inspected:
+        return {'checked': False, 'skipped_reason': '材料输入缺失或未通过结构检查，未做语义校验'}
+    single = directory / 'model.xml'
+    try:
+        if single.exists():
+            root = ET.parse(single).getroot()
+            mode = root.findtext('.//energy_mode', 'continuous-energy')
+        else:
+            root = ET.parse(directory / 'materials.xml').getroot()
+            settings = directory / 'settings.xml'
+            mode = (ET.parse(settings).getroot().findtext('.//energy_mode', 'continuous-energy')
+                    if settings.exists() else 'continuous-energy')
+    except (ET.ParseError, OSError) as exc:
+        return {'checked': False, 'skipped_reason': '材料/设置输入无法解析：' + str(exc)[:200]}
+    if mode != 'continuous-energy':
+        return {'checked': False, 'energy_mode': mode,
+                'skipped_reason': '多群模式需匹配多群截面库；本版语义校验未覆盖'}
+    nuclides, sabs, macroscopic = [], [], []
+    for material in root.iter('material'):
+        label = material.get('name') or ('id=' + (material.get('id') or '?'))
+        for node in material.iter('nuclide'):
+            nuclides.append((label, node.get('name') or ''))
+        for node in material.iter('sab'):
+            sabs.append((label, node.get('name') or ''))
+        for node in material.iter('macroscopic'):
+            macroscopic.append(label)
+    if macroscopic:
+        return {'checked': False,
+                'skipped_reason': '存在macroscopic（多群）材料：' + '; '.join(macroscopic[:5])}
+    index, source = _semantic_index(cfg)
+    if index is None:
+        return {'checked': False, 'skipped_reason': source}
+    try:
+        catalog = ET.parse(index).getroot()
+    except (ET.ParseError, OSError) as exc:
+        return {'checked': False, 'index_source': source,
+                'skipped_reason': '截面索引无法解析：' + str(exc)[:200]}
+    neutron, thermal = set(), set()
+    for entry in catalog.iter('library'):
+        names = (entry.get('materials') or '').split()
+        if entry.get('type') == 'thermal':
+            thermal.update(names)
+        elif entry.get('type') == 'neutron':
+            neutron.update(names)
+    missing = [{'material': label, 'nuclide': name} for label, name in nuclides if name not in neutron]
+    missing_sab = [{'material': label, 'sab': name} for label, name in sabs if name not in thermal]
+    return {'checked': True, 'ok': not missing and not missing_sab,
+            'index_source': source, 'index_path': str(index),
+            'library_key': cfg.get('nuclear_data_library', 'endfb-viii.0'),
+            'nuclides_checked': len({name for _, name in nuclides}),
+            'sab_checked': len({name for _, name in sabs}),
+            'missing_nuclides': sorted({item['nuclide'] for item in missing}),
+            'missing_sab': sorted({item['sab'] for item in missing_sab}),
+            'missing_detail': (missing + missing_sab)[:50],
+            'note': '仅校验核素/S(a,b)名是否存在于生效截面索引；不校验温度、光子数据、共振自屏或物理适用性，索引与实际加载数据仍可能有差异。'}
+
+
+PREVIEW_MAX_FILE_BYTES = 2 * 1024 * 1024
+PREVIEW_CONTENT_CHARS = 20000
+
+
+def _preview_summary(roots: dict) -> dict:
+    """轻量结构摘要：只数已解析节点并提取常用设置，不重复完整校验。"""
+    model = roots.get('model.xml')
+    settings = model if model is not None else roots.get('settings.xml')
+    summary = {}
+    if model is not None:
+        summary['layout'] = 'model.xml单文件'
+    if settings is not None:
+        for tag in ('run_mode', 'energy_mode', 'particles', 'batches', 'inactive', 'seed',
+                    'photon_transport'):
+            value = settings.findtext('.//' + tag)
+            if value is not None:
+                summary[tag] = value.strip()
+    materials = model if model is not None else roots.get('materials.xml')
+    if materials is not None:
+        entries = []
+        for material in materials.iter('material'):
+            nuclides = [node.get('name') for node in material.iter('nuclide')]
+            entries.append({'id': material.get('id'), 'name': material.get('name'),
+                            'nuclides': nuclides[:20], 'nuclides_truncated': len(nuclides) > 20,
+                            'sab': [node.get('name') for node in material.iter('sab')][:10]})
+        summary['materials'] = entries[:20]
+        summary['materials_truncated'] = len(entries) > 20
+    geometry = model if model is not None else roots.get('geometry.xml')
+    if geometry is not None:
+        summary['cells'] = len(list(geometry.iter('cell')))
+        summary['surfaces'] = len(list(geometry.iter('surface')))
+    tallies = model if model is not None else roots.get('tallies.xml')
+    if tallies is not None:
+        entries = []
+        for tally in tallies.iter('tally'):
+            scores = (tally.findtext('scores') or '').split()
+            entries.append({'id': tally.get('id'), 'name': tally.get('name'), 'scores': scores[:20]})
+        if entries:
+            summary['tallies'] = entries[:20]
+    return summary
+
+
+def preview_input(case_dir: str) -> dict:
+    """提交前看清输入：逐文件截断预览、指纹与结构摘要；只读，不作物理判定。"""
+    directory = path_in_workspace(case_dir)
+    if not directory.is_dir():
+        raise Error('case_dir须为目录')
+    names = ['model.xml'] if (directory / 'model.xml').exists() else \
+            ['materials.xml', 'geometry.xml', 'settings.xml']
+    for optional in ('tallies.xml', 'plots.xml'):
+        if (directory / optional).exists():
+            names.append(optional)
+    files, problems, roots = [], [], {}
+    for name in names:
+        path = directory / name
+        if not path.is_file():
+            if name != 'plots.xml':
+                problems.append(name + '缺失')
+            files.append({'name': name, 'present': False})
+            continue
+        if path.is_symlink():
+            # 与复制作业同一口径：防经符号链接读取工作区外文件。
+            problems.append(name + '为符号链接；预览拒绝读取')
+            files.append({'name': name, 'present': True, 'symlink': True})
+            continue
+        data = path.read_bytes()
+        entry = {'name': name, 'present': True, 'bytes': len(data),
+                 'sha256': hashlib.sha256(data).hexdigest()}
+        if len(data) > PREVIEW_MAX_FILE_BYTES:
+            entry.update(content=None, truncated=True, note='超过2MiB预览上限；未返回内容')
+        else:
+            text = data.decode('utf-8', errors='replace')
+            entry.update(content=text[:PREVIEW_CONTENT_CHARS],
+                         truncated=len(text) > PREVIEW_CONTENT_CHARS)
+            if entry['truncated']:
+                entry['note'] = f'内容截断至前{PREVIEW_CONTENT_CHARS}字符；完整文件以服务端为准'
+            try:
+                roots[name] = ET.fromstring(data)
+            except ET.ParseError as exc:
+                entry['parse_error'] = str(exc)[:200]
+        files.append(entry)
+    return {'case_dir': case_dir, 'files': files, 'summary': _preview_summary(roots),
+            'problems': problems, 'provenance': provenance(directory),
+            'professional_acceptance': False, 'workspace': str(workspace()), 'location': 'server',
+            'note': '服务端文件的截断预览与结构摘要，供提交前人工核对；不代表几何、核数据或物理正确。'}
+
+
+def validate_inputs(case_dir: str, api_check: bool = False, semantic_check: bool = False) -> dict:
     directory = path_in_workspace(case_dir)
     if not directory.is_dir():
         raise Error('case_dir须为目录')
@@ -98,6 +269,8 @@ def validate_inputs(case_dir: str, api_check: bool = False) -> dict:
               'problems': problems, 'validation_level': 'xml_structure_and_basic_settings',
               'provenance': provenance(directory), 'professional_acceptance': False,
               'note': '仅XML结构及少量运行参数检查；未知业务约束、几何重叠和物理正确性未作判定。'}
+    if semantic_check:
+        result['semantic'] = _semantic_summary(directory, inspected, config())
     if api_check and not problems:
         result['openmc_api'] = api('validate', directory, {})
         result['validation_level'] = 'xml_and_openmc_model_parser'

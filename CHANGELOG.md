@@ -4,8 +4,11 @@
 
 - 新增 CAD 转换工具（RF002 工具层封装）：`openmc_inspect_step`（STEP 实体数/包围盒/单位提示）与 `openmc_convert_cad`（STEP→DAGMC `dagmc.h5m`，材料标签映射、统一缩放、网格尺寸限、隐式补集标签；产物由 DAGMC 版 OpenMC API 读回包围盒，失败保留错误文本）。转换链工程验证与版本组合见 `docs/adr/0002`（cad_to_dagmc 0.15.1 + cadquery 2.8.0 + gmsh 4.15.2，mesher 后端无需 pymoab）。
 - 转换在独立 cadenv 子进程执行：业务层仍不装 openmc/cadquery；结果经结果文件回传（Rust 网格后端可能直写 stdout，不作为 JSON 通道）。部署配置新增可选键 `cad_python_command`/`cad_library_path`/`cad_timeout_seconds`，未配置时工具给出可行动错误。
+- `openmc_validate_inputs` 新增语义校验第一刀（`semantic_check`）：连续能材料的核素/S(a,b)名对照生效截面索引（解析顺序与运行时一致：部署配置→环境变量→受管缓存→随包离线索引），返回缺失清单与索引来源；多群/宏观材料如实跳过并说明原因。仅校验名字可用性，不校验温度、光子数据或物理适用性。
 - `openmc_worker` 新增 `inspect-h5m` 动作；新增离线协议测试 `tests/test_openmc_cad.py` 与实跑档 `tests/test_openmc_cad_real.py`（`MC_TEST_CAD_CONFIG` 启用），夹具 `tests/fixtures/cube.step` 为 cadquery 生成的 10 mm 立方体。
-- 工具注册表 37→39；`docs/reference.html` 由生成器重生成；CI 工具计数断言同步。进度表 RF002 行更新为部分实现（工程已验证）。
+- 新增 `openmc_preview_input`（提交前看清输入）：逐文件截断内容预览、字节数/SHA256 与结构摘要（运行设置、材料核素、几何与 tally 计数）；只读，算例内符号链接拒绝读取，防越界读工作区外文件。
+- `openmc_job_status` 返回新增结构化 `progress` 节：按 solver.log 尾部批次行解析（最新批次/代、k、熵、平均 k±σ、RESULTS 的 Combined k、batches/inactive 总数、percent、elapsed_seconds）；固定源/绘图模式或启动初期解析不到时如实说明原因，不编造百分比，不替代 `openmc_read_results` 统计量。
+- 工具注册表 37→40；`docs/reference.html` 由生成器重生成；CI 工具计数断言同步。进度表 RF002 行更新为部分实现（工程已验证）。
 - 仍未做：h5m→可运行模型 XML 生成（材料定义与 DAGMC 几何接线）、甲方 STEP 件验收判据（1000 粒子 lost particle=0）、复杂装配体质量参数封装。
 
 ## 0.8.0 — 2026-11-03
