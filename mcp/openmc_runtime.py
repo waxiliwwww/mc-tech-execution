@@ -75,6 +75,8 @@ def config() -> dict:
         raise Error('cad_timeout_seconds须为正整数')
     if 'cad_library_path' in value and (not isinstance(value['cad_library_path'], str) or '\0' in value['cad_library_path']):
         raise Error('cad_library_path须为字符串')
+    if 'geometry_check_timeout_seconds' in value and (type(value['geometry_check_timeout_seconds']) is not int or value['geometry_check_timeout_seconds'] <= 0):
+        raise Error('geometry_check_timeout_seconds须为正整数')
     for key in ('max_scan_cases', 'max_plot_points', 'max_report_rows', 'report_timeout_seconds'):
         if key in value and (type(value[key]) is not int or value[key] <= 0):
             raise Error(key + '须为正整数')

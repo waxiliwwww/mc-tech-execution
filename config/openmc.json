@@ -16,6 +16,7 @@
   "max_report_rows": 1000,
   "report_timeout_seconds": 120,
   "cad_timeout_seconds": 900,
+  "geometry_check_timeout_seconds": 120,
   "office_command": [
     "soffice"
   ],

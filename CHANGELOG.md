@@ -11,6 +11,7 @@
 - 新增 `openmc_job_compare`（两作业对比第一刀）：逐输入文件 SHA256 异同四分类、状态/模式/线程/批数对照、双方 Combined k 与差值及按独立假设合成的 σ（注明仅工程参考，不构成统计显著性判定）；tally 分布对比未包含，如实说明。
 - 安全强制规则固化为离线测试（tests/test_server_security.py，11 项）：非回环监听缺 MCP_AUTH_TOKEN 或 publicUrl 拒绝启动；publicUrl 回环/通配/路径不匹配拒绝；token 含空白或控制字符拒绝；连接配置只写 `${MCP_AUTH_TOKEN}` 占位符，不落盘 token 本身；主机名作 MCP_HOST 拒绝。无生产代码变更。
 - 语义校验第二刀：`semantic_check` 结果重构为统一 `semantic.problems` 定位清单（kind/severity/location/detail），新增静态检查——材料密度正定与单位合法（引擎 0.16.0 实测拒绝负密度："Need to specify a positive density"）、温度正定、tally filter 类型对照安装版注册表（`_FILTER_TYPES` 33 类源码内省固化）与 bins 规则（整数 id/严格递增/mu∈[-1,1]/polar∈[0,π]）、tally <filters> 整数 id 引用完整性，以及常见误置检测（tally 内单数 <filter> 子元素会被引擎忽略——按安装版 0.16.0 源码 get_elem_list(elem,"filters",int) 实证），`complete` 字段如实标注哪些检查未执行。验收原文 5 类缺陷中，XML 语法错、核素缺失、负密度、filter 非法现已静态报出且定位；几何重叠归几何检查。合法值集合全部取自安装版 0.16.0 源码内省，非凭记忆。
+- 几何重叠检查并入 `validate_inputs` 可选档：`geometry_check=true` 在临时副本上以削减批次（≤2 批、inactive 归零、单线程、超时默认 120 秒可配 `geometry_check_timeout_seconds`）运行 `openmc -g`，结构化返回重叠单元明细（cells/universe）、逐单元重叠检查次数汇总、settings 削减记录与日志尾部；概率性结论如实标注（通过不能证明无重叠），引擎缺失/结构未过/超时/非零退出无明细分别如实报告；原算例文件不动，符号链接拒绝。`validation_level` 增加 `+static_semantics`/`+openmc_geometry_debug` 层。离线 stub 引擎测试 + 真实引擎门控测试（重叠算例报 cells 2,1 on universe 0，rc 255；干净算例返回逐单元检查次数）。
 - 工具注册表 37→41；`docs/reference.html` 由生成器重生成；CI 工具计数断言同步。进度表 RF002 行更新为部分实现（工程已验证）。
 - 仍未做：h5m→可运行模型 XML 生成（材料定义与 DAGMC 几何接线）、甲方 STEP 件验收判据（1000 粒子 lost particle=0）、复杂装配体质量参数封装。
 

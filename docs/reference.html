@@ -353,9 +353,9 @@
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_tools.py">mcp/openmc_tools.py</a>。</p></details>
 <details class="tool" id="openmc_validate_inputs"><summary>openmc_validate_inputs
-<span class="tool-purpose">检查输入XML结构及基础参数，可选公开API模型解析与核素/S(a,b)可用性语义校验（对照生效截面索引）。结构/API/语义通过不代表几何或物理正确。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>api_check</td><td>boolean</td><td>否</td><td>false</td><td>是否额外使用已配置OpenMC Python API解析模型。省略时仅做XML结构/基础参数检查；两种检查均不证明物理正确。</td><td>—</td></tr><tr><td>semantic_check</td><td>boolean</td><td>否</td><td>false</td><td>是否额外做静态语义校验：材料密度正定与单位合法、温度正定、连续能核素/S(a,b)名对照生效截面索引（部署配置→环境变量→受管缓存→随包离线索引）、tally filter定义（类型/bins规则/缺id告警）、&lt;filters&gt;整数id引用完整性与常见误置（tally内单数&lt;filter&gt;会被引擎忽略）。问题统一列入semantic.problems（kind/severity/location/detail定位）；complete=false表示部分检查未执行并给出原因。深层语义以api_check为准。省略为false。</td><td>—</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>structure_valid/problems描述结构检查。仅请求api_check且结构通过时返回openmc_api解析结果；未请求或结构失败时该字段缺席，API解析失败作为工具错误返回。请求semantic_check时返回semantic节：ok（无error级问题）、complete（是否全部检查已执行）、problems统一定位清单（kind/severity/location/detail）、missing_nuclides/nuclide_availability/material_section/tally_section分节状态；跳过时checked=false并给skipped_reason。静态检查不表示物理正确。</p>
+<span class="tool-purpose">检查输入XML结构及基础参数，可选公开API模型解析、静态语义校验（密度/温度/核素/tally filter）与几何重叠检查（openmc -g在临时副本上削减批次运行，概率性结论如实标注）。各层通过不代表物理正确。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>api_check</td><td>boolean</td><td>否</td><td>false</td><td>是否额外使用已配置OpenMC Python API解析模型。省略时仅做XML结构/基础参数检查；两种检查均不证明物理正确。</td><td>—</td></tr><tr><td>semantic_check</td><td>boolean</td><td>否</td><td>false</td><td>是否额外做静态语义校验：材料密度正定与单位合法、温度正定、连续能核素/S(a,b)名对照生效截面索引（部署配置→环境变量→受管缓存→随包离线索引）、tally filter定义（类型/bins规则/缺id告警）、&lt;filters&gt;整数id引用完整性与常见误置（tally内单数&lt;filter&gt;会被引擎忽略）。问题统一列入semantic.problems（kind/severity/location/detail定位）；complete=false表示部分检查未执行并给出原因。深层语义以api_check为准。省略为false。</td><td>—</td></tr><tr><td>geometry_check</td><td>boolean</td><td>否</td><td>false</td><td>是否额外做几何重叠检查：在临时副本上以削减批次（≤2批、inactive归零、单线程，超时默认120秒、可配geometry_check_timeout_seconds）运行openmc -g，结构化返回重叠单元明细（cells/universe）与逐单元重叠检查次数汇总。概率性检查——通过不能证明无重叠；引擎缺失、结构未过或超时均如实报告不猜测。原算例文件不动。省略为false。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>structure_valid/problems描述结构检查。仅请求api_check且结构通过时返回openmc_api解析结果；未请求或结构失败时该字段缺席，API解析失败作为工具错误返回。请求semantic_check时返回semantic节：ok（无error级问题）、complete（是否全部检查已执行）、problems统一定位清单（kind/severity/location/detail）、missing_nuclides/nuclide_availability/material_section/tally_section分节状态；跳过时checked=false并给skipped_reason。静态检查不表示物理正确。请求geometry_check时返回geometry节：ok（本次抽样未发现重叠且零退出）、overlapping_cells明细、overlap_check_summary逐单元检查次数、settings_adjusted削减记录、elapsed_seconds与log_tail；引擎缺失/结构未过/超时分别以skipped_reason或completed=false如实报告。概率性检查——通过不能证明无重叠。validation_level相应追加+static_semantics/+openmc_geometry_debug层。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
@@ -377,6 +377,11 @@
       &quot;type&quot;: &quot;boolean&quot;,
       &quot;description&quot;: &quot;是否额外做静态语义校验：材料密度正定与单位合法、温度正定、连续能核素/S(a,b)名对照生效截面索引（部署配置→环境变量→受管缓存→随包离线索引）、tally filter定义（类型/bins规则/缺id告警）、&lt;filters&gt;整数id引用完整性与常见误置（tally内单数&lt;filter&gt;会被引擎忽略）。问题统一列入semantic.problems（kind/severity/location/detail定位）；complete=false表示部分检查未执行并给出原因。深层语义以api_check为准。省略为false。&quot;,
       &quot;default&quot;: false
+    },
+    &quot;geometry_check&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;,
+      &quot;description&quot;: &quot;是否额外做几何重叠检查：在临时副本上以削减批次（≤2批、inactive归零、单线程，超时默认120秒、可配geometry_check_timeout_seconds）运行openmc -g，结构化返回重叠单元明细（cells/universe）与逐单元重叠检查次数汇总。概率性检查——通过不能证明无重叠；引擎缺失、结构未过或超时均如实报告不猜测。原算例文件不动。省略为false。&quot;,
+      &quot;default&quot;: false
     }
   },
   &quot;required&quot;: [
@@ -388,7 +393,7 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;structure_valid/problems描述结构检查。仅请求api_check且结构通过时返回openmc_api解析结果；未请求或结构失败时该字段缺席，API解析失败作为工具错误返回。请求semantic_check时返回semantic节：ok（无error级问题）、complete（是否全部检查已执行）、problems统一定位清单（kind/severity/location/detail）、missing_nuclides/nuclide_availability/material_section/tally_section分节状态；跳过时checked=false并给skipped_reason。静态检查不表示物理正确。&quot;
+  &quot;description&quot;: &quot;structure_valid/problems描述结构检查。仅请求api_check且结构通过时返回openmc_api解析结果；未请求或结构失败时该字段缺席，API解析失败作为工具错误返回。请求semantic_check时返回semantic节：ok（无error级问题）、complete（是否全部检查已执行）、problems统一定位清单（kind/severity/location/detail）、missing_nuclides/nuclide_availability/material_section/tally_section分节状态；跳过时checked=false并给skipped_reason。静态检查不表示物理正确。请求geometry_check时返回geometry节：ok（本次抽样未发现重叠且零退出）、overlapping_cells明细、overlap_check_summary逐单元检查次数、settings_adjusted削减记录、elapsed_seconds与log_tail；引擎缺失/结构未过/超时分别以skipped_reason或completed=false如实报告。概率性检查——通过不能证明无重叠。validation_level相应追加+static_semantics/+openmc_geometry_debug层。&quot;
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_tools.py">mcp/openmc_tools.py</a>。</p></details>

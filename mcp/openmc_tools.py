@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import xml.etree.ElementTree as ET
@@ -442,7 +443,116 @@ def preview_input(case_dir: str) -> dict:
             'note': '服务端文件的截断预览与结构摘要，供提交前人工核对；不代表几何、核数据或物理正确。'}
 
 
-def validate_inputs(case_dir: str, api_check: bool = False, semantic_check: bool = False) -> dict:
+GEOMETRY_CHECK_MAX_BATCHES = 2
+GEOMETRY_OVERLAP_ERROR = re.compile(r'Overlapping cells detected:\s*([\d,\s]+?)\s*on universe\s+(\d+)')
+GEOMETRY_LOW_CHECKS = re.compile(r'There were (\d+) cells with less than (\d+) overlap checks')
+GEOMETRY_SUMMARY_ROW = re.compile(r'^\s*(\d+)\s+(\d+)\s*$')
+
+
+def _geometry_check(directory: Path, cfg: dict) -> dict:
+    """在临时副本上以削减批次运行 openmc -g 做概率性重叠检查。
+    引擎0.16.0实测：-g 开启cell overlap checking并完整输运，重叠时报
+    "Overlapping cells detected: <cells> on universe <n>"（rc 255），
+    结束时输出 CELL OVERLAP CHECK SUMMARY 逐单元检查次数。
+    概率性检查：通过不能证明无重叠，仅表示给定抽样下未发现。"""
+    import tempfile
+    import time
+    from nuclear_data import runtime_env
+    try:
+        probe = subprocess.run(command(cfg, directory, arguments=['--version']),
+                               capture_output=True, text=True, timeout=30)
+        if probe.returncode != 0 or cfg['expected_version'] not in (probe.stdout + probe.stderr):
+            return {'checked': False,
+                    'skipped_reason': 'OpenMC可执行程序不可用或版本不符；先运行openmc_environment并按部署文档修正'}
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {'checked': False, 'skipped_reason': 'OpenMC可执行程序探测失败：' + type(exc).__name__}
+    names = (['model.xml'] if (directory / 'model.xml').exists()
+             else ['materials.xml', 'geometry.xml', 'settings.xml'])
+    if (directory / 'tallies.xml').exists():
+        names.append('tallies.xml')
+    for name in names:
+        if (directory / name).is_symlink():
+            return {'checked': False, 'skipped_reason': f'{name}是符号链接，几何检查拒绝执行'}
+    tmp = Path(tempfile.mkdtemp(prefix='mc-geomcheck-', dir=str(directory.parent)))
+    try:
+        for name in names:
+            shutil.copy2(directory / name, tmp / name)
+        settings_name = 'model.xml' if 'model.xml' in names else 'settings.xml'
+        tree = ET.parse(tmp / settings_name)
+        root = tree.getroot()
+        mode = root.findtext('.//run_mode', 'eigenvalue')
+        if mode not in ('eigenvalue', 'fixed source'):
+            return {'checked': False,
+                    'skipped_reason': f'run_mode={mode}不适用几何检查（重叠检查随输运运行进行）'}
+        adjusted = {}
+        batches = root.find('.//batches')
+        if batches is not None:
+            try:
+                original = int((batches.text or '').strip())
+            except ValueError:
+                original = None
+            if original is None or original > GEOMETRY_CHECK_MAX_BATCHES:
+                adjusted['batches'] = f'{batches.text!r}→{GEOMETRY_CHECK_MAX_BATCHES}'
+                batches.text = str(GEOMETRY_CHECK_MAX_BATCHES)
+        inactive = root.find('.//inactive')
+        if inactive is not None and (inactive.text or '').strip() != '0':
+            adjusted['inactive'] = f'{inactive.text!r}→0'
+            inactive.text = '0'
+        if adjusted:
+            tree.write(tmp / settings_name, encoding='unicode', xml_declaration=True)
+        arguments = ['--threads', '1', '-g']
+        if settings_name == 'model.xml':
+            arguments.append('model.xml')
+        timeout = cfg.get('geometry_check_timeout_seconds', 120)
+        started = time.monotonic()
+        try:
+            completed = subprocess.run(command(cfg, tmp, arguments=arguments), cwd=str(tmp),
+                                       env=runtime_env(cfg), capture_output=True, text=True,
+                                       timeout=timeout)
+        except subprocess.TimeoutExpired as exc:
+            tail = ((exc.stdout or '') if isinstance(exc.stdout, str) else '') + \
+                   ((exc.stderr or '') if isinstance(exc.stderr, str) else '')
+            return {'checked': True, 'completed': False, 'ok': None,
+                    'reason': f'几何检查超时（>{timeout}秒）；大算例请改用geometry-debug作业模式提交',
+                    'elapsed_seconds': round(time.monotonic() - started, 3),
+                    'log_tail': tail[-2000:],
+                    'note': '超时不代表几何有问题，仅表示本次检查未完成。'}
+        elapsed = round(time.monotonic() - started, 3)
+        stdout = completed.stdout or ''
+        stderr = completed.stderr or ''
+        overlaps = []
+        for match in GEOMETRY_OVERLAP_ERROR.finditer(stderr + '\n' + stdout):
+            cells = [int(token) for token in re.findall(r'\d+', match.group(1))]
+            overlaps.append({'cells': cells, 'universe': int(match.group(2))})
+        summary = None
+        if 'CELL OVERLAP CHECK SUMMARY' in stdout:
+            rows = []
+            low = None
+            for line in stdout.split('CELL OVERLAP CHECK SUMMARY', 1)[1].splitlines():
+                row = GEOMETRY_SUMMARY_ROW.match(line)
+                if row:
+                    rows.append({'cell': int(row.group(1)), 'checks': int(row.group(2))})
+                low_match = GEOMETRY_LOW_CHECKS.search(line)
+                if low_match:
+                    low = {'cells': int(low_match.group(1)), 'min_checks': int(low_match.group(2))}
+            summary = {'cells': rows[:200], 'low_check': low}
+        ok = completed.returncode == 0 and not overlaps
+        result = {'checked': True, 'completed': True, 'ok': ok,
+                  'returncode': completed.returncode,
+                  'overlapping_cells': overlaps, 'overlap_check_summary': summary,
+                  'settings_adjusted': adjusted or None, 'elapsed_seconds': elapsed,
+                  'log_tail': (stdout + stderr)[-2000:],
+                  'note': 'openmc -g概率性重叠检查（临时副本、批次削减至≤2、inactive归零、单线程）；'
+                          '通过不能证明无重叠，仅表示给定抽样下未发现。'}
+        if completed.returncode != 0 and not overlaps:
+            result['reason'] = '几何检查非零退出但未解析出重叠明细；见log_tail（可能是其他输入错误）'
+        return result
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def validate_inputs(case_dir: str, api_check: bool = False, semantic_check: bool = False,
+                    geometry_check: bool = False) -> dict:
     directory = path_in_workspace(case_dir)
     if not directory.is_dir():
         raise Error('case_dir须为目录')
@@ -475,12 +585,25 @@ def validate_inputs(case_dir: str, api_check: bool = False, semantic_check: bool
     result = {'case_dir': case_dir, 'structure_valid': not problems, 'inspected': inspected,
               'problems': problems, 'validation_level': 'xml_structure_and_basic_settings',
               'provenance': provenance(directory), 'professional_acceptance': False,
-              'note': '仅XML结构及少量运行参数检查；未知业务约束、几何重叠和物理正确性未作判定。'}
+              'note': '仅XML结构及少量运行参数检查；未知业务约束和物理正确性未作判定；'
+                      '几何重叠仅在请求geometry_check时做概率性检查。'}
+    level = result['validation_level']
     if semantic_check:
         result['semantic'] = _semantic_summary(directory, inspected, config())
+        if result['semantic'].get('checked'):
+            level += '+static_semantics'
     if api_check and not problems:
         result['openmc_api'] = api('validate', directory, {})
-        result['validation_level'] = 'xml_and_openmc_model_parser'
+        level = ('xml_and_openmc_model_parser'
+                 + ('+static_semantics' if '+static_semantics' in level else ''))
+    if geometry_check:
+        if problems:
+            result['geometry'] = {'checked': False, 'skipped_reason': '结构检查未通过，未做几何检查'}
+        else:
+            result['geometry'] = _geometry_check(directory, config())
+            if result['geometry'].get('completed'):
+                level += '+openmc_geometry_debug'
+    result['validation_level'] = level
     return result
 
 
