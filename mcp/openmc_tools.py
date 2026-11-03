@@ -89,8 +89,135 @@ def _semantic_index(cfg: dict):
     return None, '未找到截面索引；先初始化核数据或在部署配置cross_sections'
 
 
+# 以下合法值集合取自安装版 OpenMC 0.16.0 源码内省（.runtime/openmc），非凭记忆：
+# filter 类型 = openmc/filter.py _FILTER_TYPES；密度单位 = openmc/material.py DENSITY_UNITS。
+KNOWN_FILTER_TYPES = (
+    'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
+    'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell',
+    'delayedgroup', 'energyfunction', 'cellfrom', 'materialfrom', 'legendre',
+    'spatiallegendre', 'sphericalharmonics', 'zernike', 'zernikeradial',
+    'particle', 'particleproduction', 'cellinstance', 'collision', 'time',
+    'parentnuclide', 'weight', 'meshborn', 'meshsurface', 'meshmaterial',
+    'reaction')
+DENSITY_UNITS = ('g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum', 'macro')
+ID_FILTER_TYPES = frozenset(('cell', 'cellborn', 'cellfrom', 'surface', 'material',
+                             'materialfrom', 'universe', 'distribcell', 'mesh',
+                             'meshborn', 'meshmaterial', 'meshsurface', 'delayedgroup'))
+INCREASING_FILTER_TYPES = frozenset(('energy', 'energyout', 'time', 'azimuthal', 'musurface'))
+BOUNDED_FILTER_TYPES = {'mu': (-1.0, 1.0), 'polar': (0.0, 3.141592653589793)}
+NO_BINS_FILTER_TYPES = frozenset(('energyfunction',))
+
+
+def _check_filter(tally_label: str, element, problems: list) -> None:
+    """单个 tally filter 的静态规则：类型注册表、bins 存在性与数值规则。"""
+    ftype = (element.get('type') or '').strip()
+    location = f'{tally_label} type={ftype or "(缺失)"}'
+    if not ftype:
+        problems.append({'kind': 'filter_type', 'severity': 'error', 'location': location,
+                         'detail': 'filter缺type属性'})
+        return
+    if ftype not in KNOWN_FILTER_TYPES:
+        problems.append({'kind': 'filter_type', 'severity': 'error', 'location': location,
+                         'detail': '未知filter类型；对照安装版OpenMC 0.16.0注册表，权威判定用api_check引擎解析'})
+        return
+    if ftype in NO_BINS_FILTER_TYPES:
+        return
+    bins_text = element.findtext('bins')
+    if bins_text is None or not bins_text.split():
+        problems.append({'kind': 'filter_bins', 'severity': 'error', 'location': location,
+                         'detail': 'bins缺失或为空'})
+        return
+    tokens = bins_text.split()
+    if ftype in ID_FILTER_TYPES:
+        for token in tokens:
+            try:
+                int(token)
+            except ValueError:
+                problems.append({'kind': 'filter_bins_values', 'severity': 'error',
+                                 'location': location,
+                                 'detail': f'bins应为整数id，出现{token!r}'})
+                return
+    elif ftype in INCREASING_FILTER_TYPES or ftype in BOUNDED_FILTER_TYPES:
+        values = []
+        for token in tokens:
+            try:
+                values.append(float(token))
+            except ValueError:
+                problems.append({'kind': 'filter_bins_values', 'severity': 'error',
+                                 'location': location,
+                                 'detail': f'bins应为数值，出现{token!r}'})
+                return
+        if any(v != v or v in (float('inf'), float('-inf')) for v in values):
+            problems.append({'kind': 'filter_bins_values', 'severity': 'error',
+                             'location': location, 'detail': 'bins含NaN/inf等非有限值'})
+            return
+        if any(b <= a for a, b in zip(values, values[1:])):
+            problems.append({'kind': 'filter_bins_values', 'severity': 'error',
+                             'location': location, 'detail': 'bins须严格单调递增'})
+            return
+        bounds = BOUNDED_FILTER_TYPES.get(ftype)
+        if bounds and (values[0] < bounds[0] or values[-1] > bounds[1]):
+            problems.append({'kind': 'filter_bins_values', 'severity': 'error',
+                             'location': location,
+                             'detail': f'bins超出[{bounds[0]}, {bounds[1]}]范围'})
+    # 其余类型（particle/reaction/collision等）仅要求bins非空；深层语义以api_check为准
+
+
+def _check_materials(root, problems: list) -> int:
+    """连续能材料静态规则：密度正定与单位合法、温度正定。返回检查的材料数。"""
+    count = 0
+    for material in root.iter('material'):
+        count += 1
+        label = material.get('name') or ('id=' + (material.get('id') or '?'))
+        temperature = material.get('temperature')
+        if temperature is not None:
+            try:
+                if not float(temperature) > 0:
+                    raise ValueError
+            except ValueError:
+                problems.append({'kind': 'temperature', 'severity': 'error',
+                                 'location': f'material {label}',
+                                 'detail': f'temperature属性{temperature!r}应为正的开尔文值'})
+        if material.find('macroscopic') is not None:
+            continue
+        densities = material.findall('density')
+        if not densities:
+            problems.append({'kind': 'density_value', 'severity': 'error',
+                             'location': f'material {label}',
+                             'detail': '未给出density；引擎装载将拒绝'})
+            continue
+        density = densities[0]
+        units = (density.get('units') or '').strip()
+        raw = density.get('value')
+        if units not in DENSITY_UNITS:
+            problems.append({'kind': 'density_units', 'severity': 'error',
+                             'location': f'material {label} density',
+                             'detail': f'units{units!r}不在0.16.0合法集{"/".join(DENSITY_UNITS)}'})
+            continue
+        if units == 'sum':
+            if raw is not None:
+                problems.append({'kind': 'density_value', 'severity': 'warning',
+                                 'location': f'material {label} density',
+                                 'detail': 'units=sum时value被引擎忽略（与引擎告警行为一致）'})
+            continue
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            problems.append({'kind': 'density_value', 'severity': 'error',
+                             'location': f'material {label} density',
+                             'detail': f'value{raw!r}缺失或不能解析为数值'})
+            continue
+        if not value > 0:
+            problems.append({'kind': 'density_value', 'severity': 'error',
+                             'location': f'material {label} density',
+                             'detail': '密度须为正；引擎0.16.0实测装载即拒绝非正值'
+                                       '（Need to specify a positive density）'})
+    return count
+
+
 def _semantic_summary(directory: Path, inspected: list, cfg: dict) -> dict:
-    """连续能核素/S(a,b)名对照生效截面索引；多群与宏观材料如实跳过并说明原因。"""
+    """静态语义检查v2：材料密度/温度、核素/S(a,b)可用性、tally filter规则。
+    统一problems定位清单；complete=false如实标注未执行的检查；引擎解析仍是权威判定。"""
     if 'materials.xml' not in inspected and 'model.xml' not in inspected:
         return {'checked': False, 'skipped_reason': '材料输入缺失或未通过结构检查，未做语义校验'}
     single = directory / 'model.xml'
@@ -105,47 +232,127 @@ def _semantic_summary(directory: Path, inspected: list, cfg: dict) -> dict:
                     if settings.exists() else 'continuous-energy')
     except (ET.ParseError, OSError) as exc:
         return {'checked': False, 'skipped_reason': '材料/设置输入无法解析：' + str(exc)[:200]}
-    if mode != 'continuous-energy':
-        return {'checked': False, 'energy_mode': mode,
-                'skipped_reason': '多群模式需匹配多群截面库；本版语义校验未覆盖'}
-    nuclides, sabs, macroscopic = [], [], []
-    for material in root.iter('material'):
-        label = material.get('name') or ('id=' + (material.get('id') or '?'))
-        for node in material.iter('nuclide'):
-            nuclides.append((label, node.get('name') or ''))
-        for node in material.iter('sab'):
-            sabs.append((label, node.get('name') or ''))
-        for node in material.iter('macroscopic'):
-            macroscopic.append(label)
-    if macroscopic:
-        return {'checked': False,
-                'skipped_reason': '存在macroscopic（多群）材料：' + '; '.join(macroscopic[:5])}
-    index, source = _semantic_index(cfg)
-    if index is None:
-        return {'checked': False, 'skipped_reason': source}
-    try:
-        catalog = ET.parse(index).getroot()
-    except (ET.ParseError, OSError) as exc:
-        return {'checked': False, 'index_source': source,
-                'skipped_reason': '截面索引无法解析：' + str(exc)[:200]}
-    neutron, thermal = set(), set()
-    for entry in catalog.iter('library'):
-        names = (entry.get('materials') or '').split()
-        if entry.get('type') == 'thermal':
-            thermal.update(names)
-        elif entry.get('type') == 'neutron':
-            neutron.update(names)
-    missing = [{'material': label, 'nuclide': name} for label, name in nuclides if name not in neutron]
-    missing_sab = [{'material': label, 'sab': name} for label, name in sabs if name not in thermal]
-    return {'checked': True, 'ok': not missing and not missing_sab,
-            'index_source': source, 'index_path': str(index),
-            'library_key': cfg.get('nuclear_data_library', 'endfb-viii.0'),
-            'nuclides_checked': len({name for _, name in nuclides}),
-            'sab_checked': len({name for _, name in sabs}),
-            'missing_nuclides': sorted({item['nuclide'] for item in missing}),
-            'missing_sab': sorted({item['sab'] for item in missing_sab}),
-            'missing_detail': (missing + missing_sab)[:50],
-            'note': '仅校验核素/S(a,b)名是否存在于生效截面索引；不校验温度、光子数据、共振自屏或物理适用性，索引与实际加载数据仍可能有差异。'}
+    problems = []
+    multi_group = mode != 'continuous-energy'
+    macroscopic = next(root.iter('macroscopic'), None) is not None
+    material_section = {'performed': not (multi_group or macroscopic)}
+    materials_count = 0
+    if material_section['performed']:
+        materials_count = _check_materials(root, problems)
+    else:
+        material_section['skipped_reason'] = ('多群模式材料体系不同，材料级检查未覆盖'
+                                              if multi_group else '存在macroscopic（多群）材料')
+    tallies_root = root if single.exists() else None
+    tally_count = definition_count = reference_count = 0
+    if tallies_root is None and 'tallies.xml' in inspected and (directory / 'tallies.xml').is_file():
+        try:
+            tallies_root = ET.parse(directory / 'tallies.xml').getroot()
+        except (ET.ParseError, OSError):
+            tallies_root = None   # 结构检查已单独报告
+    if tallies_root is not None:
+        # 引擎 0.16.0 真实解析（tallies.py Tally.from_xml_element）：
+        # 顶层 <filter id type> 为定义；tally 内 <filters>id…</filters>（复数）为整数 id 引用；
+        # tally 内单数 <filter> 子元素会被引擎忽略——常见笔误，按缺陷报出。
+        defined = set()
+        for element in tallies_root.findall('filter'):
+            definition_count += 1
+            fid = (element.get('id') or '').strip()
+            if fid:
+                defined.add(fid)
+            else:
+                problems.append({'kind': 'filter_id', 'severity': 'warning',
+                                 'location': f'filter type={element.get("type") or "?"}',
+                                 'detail': 'filter定义缺id，无法被tally引用'})
+            _check_filter(f'filter id={fid or "?"}', element, problems)
+        for tally in tallies_root.iter('tally'):
+            tally_count += 1
+            label = tally.get('name') or ('id=' + (tally.get('id') or '?'))
+            for stray in tally.findall('filter'):
+                problems.append({'kind': 'filter_placement', 'severity': 'error',
+                                 'location': f'tally {label}',
+                                 'detail': 'tally内单数<filter>子元素会被引擎忽略；'
+                                           '定义应放tallies顶层并用<filters>（复数）引用'})
+            for ref in tally.findall('filters'):
+                for token in (ref.text or '').split():
+                    reference_count += 1
+                    try:
+                        int(token)
+                    except ValueError:
+                        problems.append({'kind': 'filter_reference', 'severity': 'error',
+                                         'location': f'tally {label}',
+                                         'detail': f'<filters>引用应为整数id，出现{token!r}'})
+                        continue
+                    if token not in defined:
+                        problems.append({'kind': 'filter_reference', 'severity': 'error',
+                                         'location': f'tally {label}',
+                                         'detail': f'引用的filter id={token}未在tallies顶层定义'})
+    tally_section = {'performed': tallies_root is not None, 'tallies': tally_count,
+                     'filter_definitions': definition_count, 'filter_references': reference_count}
+    nuclide_section = {'checked': False}
+    missing_nuclides = missing_sab = []
+    index_source = None
+    if not material_section['performed']:
+        nuclide_section['skipped_reason'] = material_section.get('skipped_reason', '')
+    else:
+        nuclides, sabs = [], []
+        for material in root.iter('material'):
+            label = material.get('name') or ('id=' + (material.get('id') or '?'))
+            for node in material.iter('nuclide'):
+                nuclides.append((label, node.get('name') or ''))
+            for node in material.iter('sab'):
+                sabs.append((label, node.get('name') or ''))
+        index, source = _semantic_index(cfg)
+        if index is None:
+            nuclide_section['skipped_reason'] = source
+        else:
+            try:
+                catalog = ET.parse(index).getroot()
+            except (ET.ParseError, OSError) as exc:
+                nuclide_section['skipped_reason'] = '截面索引无法解析：' + str(exc)[:200]
+            else:
+                index_source = source
+                neutron, thermal = set(), set()
+                for entry in catalog.iter('library'):
+                    names = (entry.get('materials') or '').split()
+                    if entry.get('type') == 'thermal':
+                        thermal.update(names)
+                    elif entry.get('type') == 'neutron':
+                        neutron.update(names)
+                missing = [{'material': label, 'nuclide': name}
+                           for label, name in nuclides if name not in neutron]
+                missing_sab_entries = [{'material': label, 'sab': name}
+                                       for label, name in sabs if name not in thermal]
+                for item in missing:
+                    problems.append({'kind': 'missing_nuclide', 'severity': 'error',
+                                     'location': f"material {item['material']}",
+                                     'detail': f"核素{item['nuclide']}不在生效截面索引"})
+                for item in missing_sab_entries:
+                    problems.append({'kind': 'missing_sab', 'severity': 'error',
+                                     'location': f"material {item['material']}",
+                                     'detail': f"S(a,b){item['sab']}不在生效截面索引"})
+                missing_nuclides = sorted({i['nuclide'] for i in missing})
+                missing_sab = sorted({i['sab'] for i in missing_sab_entries})
+                nuclide_section.update(checked=True, index_source=source, index_path=str(index),
+                                       nuclides_checked=len({n for _, n in nuclides}),
+                                       sab_checked=len({n for _, n in sabs}))
+    errors = [p for p in problems if p['severity'] == 'error']
+    complete = bool(material_section['performed'] and nuclide_section.get('checked')
+                    and (tallies_root is not None or 'tallies.xml' not in inspected))
+    result = {'checked': True, 'ok': not errors, 'complete': complete,
+              'problems': problems[:100], 'problems_truncated': len(problems) > 100,
+              'error_count': len(errors), 'warning_count': len(problems) - len(errors),
+              'materials_checked': materials_count, 'material_section': material_section,
+              'tally_section': tally_section, 'nuclide_availability': nuclide_section,
+              'library_key': cfg.get('nuclear_data_library', 'endfb-viii.0'),
+              'note': '静态语义检查：材料密度/温度、核素/S(a,b)可用性、tally filter类型与bins规则，'
+                      '统一problems定位清单；complete=false表示部分检查未执行（原因见相应skipped_reason）。'
+                      '温度-数据范围对照、filter深层语义以api_check为准；几何重叠属几何检查；通过不代表物理正确。'}
+    if nuclide_section.get('checked'):
+        result['missing_nuclides'] = missing_nuclides
+        result['missing_sab'] = missing_sab
+    if index_source:
+        result['index_source'] = index_source
+    return result
 
 
 PREVIEW_MAX_FILE_BYTES = 2 * 1024 * 1024
