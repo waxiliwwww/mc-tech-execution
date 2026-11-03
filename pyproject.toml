@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mc-agent-tools"
+dynamic = ["version", "dependencies"]
+description = "OpenMC 输入检查、参数副本、本地计算、扫描、结果与报告；同时提供标准 MCP 服务与只读资源"
+readme = "README.md"
+requires-python = ">=3.10"
+
+
+[project.scripts]
+mc-agent-tools = "mc_agent_tools.launcher:main"
+mc-agent-tools-serve = "mc_agent_tools.launcher:serve"
+
+[tool.setuptools]
+package-dir = { "mc_agent_tools" = "mcp" }
+packages = ["mc_agent_tools"]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = { file = "VERSION" }
+# 依赖只认一处：与直接运行用的 mcp/requirements.txt 同源，避免两份清单漂移
+dependencies = { file = ["mcp/requirements.txt"] }
+
+[tool.setuptools.package-data]
+mc_agent_tools = ["service.config.json", "requirements.txt", "UPSTREAM.json", "README.md"]

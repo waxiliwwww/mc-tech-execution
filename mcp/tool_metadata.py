@@ -90,6 +90,8 @@ RESULTS = {
     'openmc_plot_results': 'path/server_path为图，series_json/series_csv为所选完整数据。单一能量过滤器的x为算术中点、x_lower/x_upper为eV区间，正下界用对数轴，有零下界用线性轴；多维结果为展平索引。均值不除能宽，保留原归一化与来源。',
     'openmc_plot_scan': '图和对应数据按实际axes/fixed选择；失败/缺失是空缺，不能用连线或0掩盖。',
     'openmc_export_scan_report': '报告保留每组参数、状态与结果；成功导出不表示每组计算都成功。同一scan_id重复导出同格式会覆盖报告，留多版需另行归档。',
+    'openmc_inspect_step': 'solids为实体数，material_tags须按该数量提供；bounding_box按STEP原生单位给出，未换算单位、未作物理或网格质量判定。',
+    'openmc_convert_cad': 'h5m与sha256为转换产物位置及指纹；engine_read.ok=True表示DAGMC版OpenMC API已读回包围盒，False保留错误文本不静默。产物未经专业校验，运行计算还需生成模型XML。',
 }
 
 OUTPUT_FIELDS = {
@@ -105,6 +107,7 @@ OUTPUT_FIELDS = {
     'warnings': '统计量等不确定性提示，不能因工具调用成功而忽略。',
     'keff': '本征值mean和std_dev；不可用时保留null，不能解释为零误差。',
     'parameters': '可调整参数清单；按其实际name/type/unit/范围选择，不能猜测未列字段。',
+    'solids': 'STEP实体数量；material_tags须按实体逐一提供标签。',
 }
 
 OUTPUT_KEYS = {
@@ -130,6 +133,8 @@ OUTPUT_KEYS = {
     'openmc_plot_results': ('job_id', 'path', 'server_path', 'workspace', 'provenance'),
     'openmc_plot_scan': ('scan_id', 'path', 'server_path', 'workspace', 'provenance'),
     'openmc_export_scan_report': ('scan_id', 'path', 'server_path', 'workspace', 'provenance'),
+    'openmc_inspect_step': ('solids', 'workspace'),
+    'openmc_convert_cad': ('case_dir', 'workspace', 'provenance'),
 }
 
 

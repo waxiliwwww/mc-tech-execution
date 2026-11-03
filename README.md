@@ -15,6 +15,8 @@
 
 源码版本 0.7.0，适配 OpenMC 0.16.0；服务端使用 Linux/WSL。首次按手册准备环境，升级已有旧环境时可用 `./quickstart.sh --openmc-prefix .runtime/openmc-official` 在本包内另建完整SDK并保留旧环境；运行数据默认保存在本包 `workspace/`，图和报告返回服务端绝对路径，当前不自动下载。
 
+工具包也可安装使用：`pip install .` 后得到 `mc-agent-tools`（工具直调，等同 `./mc.sh`）与 `mc-agent-tools-serve`（启动 MCP 服务）；依赖只认 `mcp/requirements.txt` 一处。服务端另提供 3 个只读资源：参数规格、官方例题清单、最近工具调用记录。源码运行与安装运行走同一套实现，测试见 `tests/`，CI 在 `.github/workflows/verify.yml`。
+
 本包管理调用与产物；专业模型、核数据和结果判断需要业务依据。当前工程实现和未完成项见 [开发计划](docs/验收导向开发计划.md)，公开例题及接口自测不代表合同专业验收。
 
 `./verify.sh --tools-only` 独立检查工具包，`./verify.sh` 还包含可选Harness检查，`./package.sh` 生成 `dist/` 源码部署包，`./cleanup.sh` 默认仅预览产物记录。具体条件和操作见手册，验证与打包用途不同。

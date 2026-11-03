@@ -80,6 +80,21 @@ class ProjectIntegration(unittest.IsolatedAsyncioTestCase):
     async def plan(self):
         return self.data(await self.call("preview_repair", {"path": "input.txt", "old_text": "-1", "new_text": "100"}))["plan_id"]
 
+    async def test_resources_are_advertised_and_readable(self):
+        async with streamablehttp_client(self.url) as (read, write, _):
+            async with ClientSession(read, write) as session:
+                init = await session.initialize()
+                self.assertIn("resources", init.capabilities.model_dump(exclude_none=True))
+                listed = await session.list_resources()
+                uris = [str(item.uri) for item in listed.resources]
+                self.assertEqual(uris, ["mc://parameters/settings", "mc://examples/catalog", "mc://logs/tool-calls"])
+                read_back = await session.read_resource("mc://examples/catalog")
+                data = json.loads(read_back.contents[0].text)
+                self.assertEqual(data["total"], 50)
+        with urllib.request.urlopen(self.url.replace("/mcp", "/info")) as response:
+            info = json.load(response)
+        self.assertEqual([item["uri"] for item in info["resources"]], uris)
+
     async def test_discovery_matches_info_and_queries_do_not_fabricate_results(self):
         async with streamablehttp_client(self.url) as (read, write, _):
             async with ClientSession(read, write) as session:

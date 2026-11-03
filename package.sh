@@ -7,7 +7,7 @@ from pathlib import Path
 import hashlib,json,sys,tarfile
 root=Path(sys.argv[1]); out=root/'dist'; out.mkdir(exist_ok=True)
 excluded={'node_modules','.venv','__pycache__','dist','logs','artifacts','.git','.mc-plans','.mc-backups'}
-allowed={'README.md','.gitignore','.gitattributes','CHANGELOG.md','VERSION','mc.sh','quickstart.sh','cleanup.sh','create-mcp.sh','package.sh','verify.sh','setup-example-sources.sh','scripts','mcp','harness','docs','config','knowledge','workspace','vendor','tests','examples'}
+allowed={'README.md','.gitignore','.gitattributes','CHANGELOG.md','VERSION','pyproject.toml','.github','mc.sh','quickstart.sh','cleanup.sh','create-mcp.sh','package.sh','verify.sh','setup-example-sources.sh','scripts','mcp','harness','docs','config','knowledge','workspace','vendor','tests','examples'}
 files=[]
 for path in sorted(root.rglob('*')):
     rel=path.relative_to(root)

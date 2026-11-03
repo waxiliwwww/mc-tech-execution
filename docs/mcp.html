@@ -80,7 +80,7 @@ TOOLS = [{
 <h3 id="meaning">让调用方知道怎么填参数</h3>
 <p>工具说明写“做什么、何时用、有何副作用”；每个参数写“含义、来源、单位、范围、省略行为”。动态编号和参数名应从前一步结果取得，不让智能体猜。复杂对象的子字段也需要描述。</p>
 <p>这些说明要进入实际 <code>tools/list</code>，只写在网页里不够。本包已有 OpenMC 工具的<a href="reference.html">参考页</a>从同一 Schema 生成。Schema 的 default 只是注解，运行默认必须由业务实现；可省略不代表可填 null。annotations 是提示，不代替权限或人工确认。</p>
-<h2 id="handoff">部署后，交给调用方哪些东西？</h2>
+<h2 id="resources">服务端还提供只读资源</h2><p>除工具外，服务端暴露 3 个资源，供宿主在调用前直接读取上下文：<code>mc://parameters/settings</code>（运行设置与面类型的可调字段、下界、单位）、<code>mc://examples/catalog</code>（官方例题分组、工作流与暂缓条目）、<code>mc://logs/tool-calls</code>（最近 50 条调用与失败事件）。</p><p>资源只重组仓库内已有事实：参数取自 <code>openmc_parameters</code>，例题取自 <code>config/official-examples.json</code>，调用记录取自 <code>mcp/logs/*.jsonl</code>；调用记录只给参数名，不给参数值。资源是只读的，改动一律走对应工具。</p><p>按模型读出多少条参数仍以 <code>openmc_list_parameters</code> 为准，资源给的是可用范围而不是某一模型的实测清单。</p><h2 id="handoff">部署后，交给调用方哪些东西？</h2>
 <div class="table-wrap"><table><thead><tr><th>必须交接</th><th>怎么用</th></tr></thead><tbody><tr><td>实际 MCP URL</td><td>例如同机 <code>http://127.0.0.1:8770/mcp</code>；远端使用可达的真实地址。不要交 <code>0.0.0.0</code> 或另一台机器的 localhost。</td></tr><tr><td>传输与鉴权</td><td>Streamable HTTP；如有 Bearer，告诉对方认证头配置方式，真实令牌另行提供。</td></tr><tr><td>服务别名与工具说明</td><td>别名由客户端区分服务；连接后 <code>tools/list</code> 自动获取工具名和参数，不用手抄所有函数。</td></tr><tr><td>数据和产物约定</td><td>OpenMC 的 case_dir 相对服务端工作区，文件保存在服务器；通用工具的文件输入输出需由其业务接口明确。</td></tr></tbody></table></div>
 <p>启动成功后生成的 <code>connection.json</code> 和受鉴权保护的 <code>/info</code> 是交接辅助。连接文件停服后仍存在；<code>/health</code> 只探活。它们不是所有平台统一的配置文件，按客户端要求填写 URL/认证头即可。Codex/DSH 等<a href="MCP平台接入.md">宿主示例</a>是可选扩展。</p>
 <details id="remote"><summary>远程监听、鉴权和打包</summary>

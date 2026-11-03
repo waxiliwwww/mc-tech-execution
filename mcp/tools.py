@@ -13,6 +13,7 @@ from openmc_reports import export_scan
 from openmc_artifacts import list_artifacts
 from openmc_knowledge import list_sources, read as read_knowledge
 from openmc_examples import prepare_example
+from openmc_cad import convert_cad, inspect_step as inspect_cad_step
 from openmc_diagnostics import diagnose_job, prepare_repair, recheck_repair
 from tool_metadata import document_tools
 from official_catalog import list_official_examples, describe as get_official_example
@@ -149,6 +150,26 @@ TOOLS += [
     {"name": "openmc_read_example_results", "description": "按官方实例读取实际计算结果和每阶段产物位置；包含原始数据和日志，不假造不存在的计分或物理结论。",
      "inputSchema": schema({"instance_id": INSTANCE_ID, "calculation_id": {"type":"string", "pattern":"^[0-9]{4}$", "description":"可选Notebook求解阶段编号；先省略查看阶段清单，再选择0001等实际编号读取该次求解的StatePoint。"}}, ['instance_id']), "outputSchema": OUTPUT, "function": read_example_results},
 ]
+# CAD→DAGMC转换（RF002工具层封装）：转换在独立cadenv子进程执行，业务层仍不装openmc/cadquery。
+TOOLS += [
+    {"name": "openmc_inspect_step", "description": "读取工作区内STEP文件，返回实体数、包围盒与单位提示，用于确定转换所需material_tags数量。仅解析CAD结构，不作单位换算或物理判定；需部署配置cad_python_command。",
+     "inputSchema": schema({"step_path": {**TEXT, "description": "工作区内STEP文件相对路径（.step/.stp）；须先置于MC_WORKSPACE，不接受客户端绝对路径。"}}, ['step_path']),
+     "outputSchema": OUTPUT, "function": inspect_cad_step},
+    {"name": "openmc_convert_cad", "description": "把工作区内STEP转换为DAGMC几何（dagmc.h5m）放入新算例目录，并由DAGMC版OpenMC API读回包围盒。产物未经专业校验：材料标签映射、缩放单位（STEP常为毫米、OpenMC为厘米）与网格质量需人工确认；运行计算还需生成模型XML。不覆盖已有目录。",
+     "inputSchema": schema({
+         "step_path": {**TEXT, "description": "工作区内STEP文件相对路径（.step/.stp）；不接受客户端绝对路径。"},
+         "target_dir": {**TEXT, "description": "存放dagmc.h5m与溯源记录的新算例目录，相对MC_WORKSPACE，必须尚不存在。"},
+         "material_tags": {"anyOf": [
+             {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+             {"type": "string", "enum": ["assembly_materials", "assembly_names"]}],
+             "description": "材料标签：通常为列表，每个实体一个非空标签（实体数先用openmc_inspect_step查询）；STEP自带装配元数据时可用assembly_materials或assembly_names。标签写入h5m，须与后续材料定义一致。"},
+         "scale_factor": {"type": "number", "exclusiveMinimum": 0, "description": "统一缩放系数：坐标乘以该系数后写入h5m。毫米→厘米用0.1；默认1.0不缩放，单位正确性需业务确认。"},
+         "min_mesh_size": {"type": "number", "exclusiveMinimum": 0, "description": "表面网格三角形边长下限（缩放后模型单位）；省略用网格器默认。越小网格越密、转换越慢。"},
+         "max_mesh_size": {"type": "number", "exclusiveMinimum": 0, "description": "表面网格三角形边长上限（缩放后模型单位）；省略用网格器默认。"},
+         "implicit_complement_material_tag": {"type": "string", "minLength": 1, "description": "可选：为模型外部隐式补集区域指派该材料标签（常设graveyard/真空标签以减少粒子丢失）；省略不生成补集区域。"}},
+         ['step_path', 'target_dir', 'material_tags']),
+     "outputSchema": OUTPUT, "function": convert_cad, "annotations": WRITE},
+]
 for tool in TOOLS:
     tool.setdefault("annotations", {"readOnlyHint": tool["name"] != "preview_repair", "destructiveHint": False})
 
@@ -186,7 +207,7 @@ READ_ONLY_TOOLS={
     'openmc_validate_inputs','openmc_job_status','openmc_read_results',
     'openmc_diagnose_job','openmc_list_artifacts','openmc_list_parameters',
     'openmc_scan_status','openmc_list_official_examples','openmc_get_official_example',
-    'openmc_example_status','openmc_read_example_results',
+    'openmc_example_status','openmc_read_example_results','openmc_inspect_step',
 }
 for _tool in TOOLS:
     if _tool['name'] in READ_ONLY_TOOLS:

@@ -158,6 +158,13 @@ def execute(action: str, params: dict) -> dict:
                     'particles': point.n_particles, 'realizations': point.n_realizations,
                     'keff': None if keff is None else {'mean': keff_values[0], 'std_dev': keff_values[1]},
                     'tallies': tallies, 'warnings': warnings}
+    if action == 'inspect-h5m':
+        universe = openmc.DAGMCUniverse(params['filename'])
+        box = universe.bounding_box
+        return {'readable': True,
+                'bounding_box': {'lower_left': [float(v) for v in box.lower_left],
+                                 'upper_right': [float(v) for v in box.upper_right]},
+                'note': 'DAGMC版OpenMC API能读取该h5m并给出包围盒；未作输运计算或几何质量判定。'}
     raise ValueError('Unsupported OpenMC API action')
 
 

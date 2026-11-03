@@ -21,13 +21,14 @@ from urllib.parse import urlsplit
 from mcp.server.lowlevel import Server
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from mcp.server.transport_security import TransportSecuritySettings, TransportSecurityMiddleware
-from mcp.types import CallToolResult, ImageContent, TextContent, Tool
+from mcp.types import CallToolResult, ImageContent, Resource, TextContent, Tool
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 import uvicorn
 
 from adapters import ToolExecutionError, execute_tool, public_tool, validate_registry
+import resources
 from tools import TOOLS
 
 ROOT = Path(__file__).resolve().parent
@@ -235,6 +236,14 @@ def create_app(config, log, tools=None):
             message = str(error) if isinstance(error, ToolExecutionError) else "Business function failed; inspect the business implementation."
             return CallToolResult(isError=True, content=[TextContent(type="text", text=message)])
 
+    @server.list_resources()
+    async def list_resources():
+        return [Resource(**item) for item in resources.RESOURCES]
+
+    @server.read_resource()
+    async def read_resource(uri):
+        return resources.read(str(uri))
+
     security = security_settings(config)
     checker = TransportSecurityMiddleware(security)
     manager = StreamableHTTPSessionManager(server, stateless=True, json_response=True, security_settings=security)
@@ -247,7 +256,7 @@ def create_app(config, log, tools=None):
     life = Starlette(lifespan=lifespan)
     info = {"schemaVersion": 1, "service": {"name": config.name, "version": config.version},
             "transport": "streamable-http", "url": config.url, "authentication": config.authentication,
-            "connection": config.connection, "tools": [public_tool(tool) for tool in definitions]}
+            "connection": config.connection, "tools": [public_tool(tool) for tool in definitions], "resources": list(resources.RESOURCES)}
 
     async def app(scope, receive, send):
         if scope["type"] != "http":

@@ -22,3 +22,6 @@ harness/model.local.json
 /.runtime/
 /.openmc-env/
 /.cache/
+build/
+*.egg-info/
+*.whl

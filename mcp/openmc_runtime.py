@@ -67,6 +67,14 @@ def config() -> dict:
     for key in ('api_timeout_seconds', 'job_timeout_seconds', 'max_log_bytes'):
         if type(value.get(key)) is not int or value[key] <= 0:
             raise Error(key + "须为正整数")
+    if 'cad_python_command' in value:
+        cad_command = value['cad_python_command']
+        if not isinstance(cad_command, list) or not cad_command or any(not isinstance(v, str) or not v or '\0' in v for v in cad_command):
+            raise Error('cad_python_command须为管理员配置的非空参数数组')
+    if 'cad_timeout_seconds' in value and (type(value['cad_timeout_seconds']) is not int or value['cad_timeout_seconds'] <= 0):
+        raise Error('cad_timeout_seconds须为正整数')
+    if 'cad_library_path' in value and (not isinstance(value['cad_library_path'], str) or '\0' in value['cad_library_path']):
+        raise Error('cad_library_path须为字符串')
     for key in ('max_scan_cases', 'max_plot_points', 'max_report_rows', 'report_timeout_seconds'):
         if key in value and (type(value[key]) is not int or value[key] <= 0):
             raise Error(key + '须为正整数')

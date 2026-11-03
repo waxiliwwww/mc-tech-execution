@@ -1,0 +1,23 @@
+name: verify
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 安装依赖
+        run: python -m pip install --disable-pip-version-check -r mcp/requirements.txt
+      - name: 业务与 MCP 测试
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: 可安装包与命令行入口
+        run: |
+          python -m pip install --disable-pip-version-check --no-deps .
+          mc-agent-tools list > /tmp/tools.json
+          python -c "import json;d=json.load(open('/tmp/tools.json'));assert len(d['tools'])==39,d;print('tools', len(d['tools']))"

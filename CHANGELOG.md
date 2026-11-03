@@ -1,5 +1,22 @@
 # 变更记录
 
+## 0.9.0 — 2026-11-03
+
+- 新增 CAD 转换工具（RF002 工具层封装）：`openmc_inspect_step`（STEP 实体数/包围盒/单位提示）与 `openmc_convert_cad`（STEP→DAGMC `dagmc.h5m`，材料标签映射、统一缩放、网格尺寸限、隐式补集标签；产物由 DAGMC 版 OpenMC API 读回包围盒，失败保留错误文本）。转换链工程验证与版本组合见 `docs/adr/0002`（cad_to_dagmc 0.15.1 + cadquery 2.8.0 + gmsh 4.15.2，mesher 后端无需 pymoab）。
+- 转换在独立 cadenv 子进程执行：业务层仍不装 openmc/cadquery；结果经结果文件回传（Rust 网格后端可能直写 stdout，不作为 JSON 通道）。部署配置新增可选键 `cad_python_command`/`cad_library_path`/`cad_timeout_seconds`，未配置时工具给出可行动错误。
+- `openmc_worker` 新增 `inspect-h5m` 动作；新增离线协议测试 `tests/test_openmc_cad.py` 与实跑档 `tests/test_openmc_cad_real.py`（`MC_TEST_CAD_CONFIG` 启用），夹具 `tests/fixtures/cube.step` 为 cadquery 生成的 10 mm 立方体。
+- 工具注册表 37→39；`docs/reference.html` 由生成器重生成；CI 工具计数断言同步。进度表 RF002 行更新为部分实现（工程已验证）。
+- 仍未做：h5m→可运行模型 XML 生成（材料定义与 DAGMC 几何接线）、甲方 STEP 件验收判据（1000 粒子 lost particle=0）、复杂装配体质量参数封装。
+
+## 0.8.0 — 2026-11-03
+
+- 新增 3 个只读 MCP 资源：可调整参数、官方例题清单、最近工具调用记录；内容取自现有模块与日志，调用记录只给参数名。
+- 工具包可安装：`pip install .` 提供 `mc-agent-tools`（直调）与 `mc-agent-tools-serve`（服务），依赖只认 `mcp/requirements.txt`；模块布局不变，入口在 `mcp/launcher.py`。
+- 新增 GitHub Actions 校验（`.github/workflows/verify.yml`），跑同一套 Python 测试并检查安装后的工具清单。
+- source-pincell 首次从 MCP 通道走完准备、核数据、计算、后处理四步（keff 1.162620±0.003084，作业 164ef008）。
+- 测试增至 153 项（新增资源契约与 MCP 资源用例），`./verify.sh --tools-only` 通过。
+- 仍未做：许可证与正式发布形态、Helix 联调、其余例题的 MCP 覆盖。
+
 ## 0.7.0 — 2026-10-30
 
 - 新增固定官方例题目录和统一CLI／标准MCP工作流：13个主仓工作流、9个公开工厂、28份Notebook；其中两份依赖已移除共振重构能力的Notebook按用户决定暂缓，本轮范围48个入口。
