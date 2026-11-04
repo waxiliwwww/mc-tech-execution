@@ -1,0 +1,12 @@
+ Calculation Rate (inactive)       = 1.28901e+06 particles/second
+ Calculation Rate (active)         = 292162 particles/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     = 0.05251 +/- 0.00827
+ k-effective (Track-length)  = 0.05302 +/- 0.00676
+ k-effective (Absorption)    = 0.05380 +/- 0.01659
+ Leakage Fraction            = 0.97900 +/- 0.00300
+
+ WARNING: After particle 74 crossed surface 3 it could not be located in any
+          cell and it did not leak.
