@@ -32,6 +32,52 @@ def plot_results(job_id: str, tally_id: int | None = None, score: str | None = N
             'provenance': record['provenance'], 'professional_acceptance': False}
 
 
+def plot_mesh(job_id: str, tally_id: int | None = None, score: str | None = None,
+              energy_bin: int | None = None, level: int | None = None, format: str = 'png',
+              title: str | None = None, x_label: str | None = None, y_label: str | None = None,
+              colorbar_label: str | None = None) -> dict:
+    from openmc_tools import verified_result
+    options('line', format, title)
+    for name, value in (('energy_bin', energy_bin), ('level', level)):
+        if value is not None and (type(value) is not int or value < 0):
+            raise Error(name + '须为非负整数或省略')
+    for name, value in (('x_label', x_label), ('y_label', y_label), ('colorbar_label', colorbar_label)):
+        if value is not None and (not isinstance(value, str) or len(value) > 200):
+            raise Error(name + '须为不超过200字的文本或省略')
+    target, record, point = verified_result(job_id)
+    filename = 'mesh-' + uuid.uuid4().hex[:12] + '.' + format
+    params = {'statepoint': 'work/' + point.name, 'tallies_xml': 'work/tallies.xml', 'filename': filename,
+              'tally_id': tally_id, 'score': score, 'energy_bin': energy_bin, 'level': level,
+              'provenance': record['provenance'], 'title': title, 'x_label': x_label, 'y_label': y_label,
+              'colorbar_label': colorbar_label, '_font_path': record['runtime'].get('font_path')}
+    value = api('plot-mesh', target, params, record['runtime'])
+    return {'job_id': job_id, **value, **file_location(target / filename),
+            'values_json': relative(target / value['values_json']),
+            'values_csv': relative(target / value['values_csv']),
+            'provenance': record['provenance'], 'professional_acceptance': False}
+
+
+def plot_convergence(job_id: str, format: str = 'png', title: str | None = None,
+                     show_band: bool = True, x_label: str | None = None, y_label: str | None = None) -> dict:
+    from openmc_tools import verified_result
+    options('line', format, title)
+    if not isinstance(show_band, bool):
+        raise Error('show_band须为true/false')
+    for name, value in (('x_label', x_label), ('y_label', y_label)):
+        if value is not None and (not isinstance(value, str) or len(value) > 200):
+            raise Error(name + '须为不超过200字的文本或省略')
+    target, record, point = verified_result(job_id)
+    filename = 'convergence-' + uuid.uuid4().hex[:12] + '.' + format
+    params = {'statepoint': 'work/' + point.name, 'filename': filename, 'title': title,
+              'show_band': show_band, 'x_label': x_label, 'y_label': y_label,
+              'provenance': record['provenance'], '_font_path': record['runtime'].get('font_path')}
+    value = api('plot-convergence', target, params, record['runtime'])
+    return {'job_id': job_id, **value, **file_location(target / filename),
+            'series_json': relative(target / value['series_json']),
+            'series_csv': relative(target / value['series_csv']),
+            'provenance': record['provenance'], 'professional_acceptance': False}
+
+
 def plot_scan(scan_id: str, x_parameter: str, metric: str = 'keff', fixed: dict | None = None,
               tally_id: int | None = None, score: str | None = None, nuclide: str | None = None,
               filter_selection: list | None = None, bin_index: int = 0, format: str = 'png', title: str | None = None) -> dict:

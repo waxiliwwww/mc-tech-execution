@@ -105,6 +105,266 @@ def draw(series, path: Path, params):
             'points': len(series['x']), 'missing': sum(v is None for v in series['mean'])}
 
 
+def _read_meshes(path: Path):
+    from lxml import etree
+    tree = etree.parse(str(path))
+    meshes = {}
+    for node in tree.getroot().iter('mesh'):
+        dimension = [int(v) for v in (node.findtext('dimension') or '').split()]
+        lower = [float(v) for v in (node.findtext('lower_left') or '').split()]
+        upper = [float(v) for v in (node.findtext('upper_right') or '').split()]
+        meshes[int(node.get('id'))] = {'dimension': dimension, 'lower_left': lower, 'upper_right': upper}
+    return meshes
+
+
+def plot_mesh(params):
+    """规则网格分布的二维热图；3D网格须显式给层号，不静默投影。"""
+    import numpy as np
+    import openmc
+    tallies_path = Path(params['tallies_xml'])
+    if not tallies_path.is_file():
+        raise ValueError('缺少tallies.xml，不能还原网格坐标；请用openmc_define_tally生成带网格过滤的tally后重新计算')
+    meshes = _read_meshes(tallies_path)
+    with openmc.StatePoint(params['statepoint'], autolink=False) as point:
+        available = list(point.tallies.values())
+        if not available:
+            raise ValueError('计算产物没有tally，不能生成结果图')
+        candidates = [t for t in available if any(type(f).__name__ == 'MeshFilter' for f in t.filters)]
+        if not candidates:
+            raise ValueError('该计算产物没有网格tally；先用openmc_define_tally定义网格过滤并重新提交计算')
+        identifier = params.get('tally_id')
+        if identifier is not None:
+            tally = next((t for t in candidates if int(t.id) == int(identifier)), None)
+            if tally is None:
+                raise ValueError('tally_id不存在或不是网格tally')
+        else:
+            tally = candidates[0]
+        kinds = [type(f).__name__ for f in tally.filters]
+        extra = [k for k in kinds if k not in ('MeshFilter', 'EnergyFilter')]
+        if extra:
+            raise ValueError('网格分布图当前只支持网格过滤（可叠加能量过滤）；该tally还含：' + '、'.join(extra))
+        mesh_filter = next(f for f in tally.filters if type(f).__name__ == 'MeshFilter')
+        # MeshFilter.bins 是 (i,j,k) 网格单元坐标（1起），网格编号在 filter.mesh.id。
+        mesh_id = int(mesh_filter.mesh.id)
+        if mesh_id not in meshes:
+            raise ValueError('tallies.xml中找不到网格定义：' + str(mesh_id))
+        mesh = meshes[mesh_id]
+        dimension = list(mesh['dimension'])
+        while len(dimension) < 3:
+            dimension.append(1)
+        nx, ny, nz = dimension
+        cells = nx * ny * nz
+        mean = np.asarray(tally.mean, dtype=float)
+        std = np.asarray(tally.std_dev, dtype=float)
+        if mean.ndim < 1 or mean.shape[0] != cells:
+            raise ValueError('网格分箱数与网格维度不一致，不能还原坐标')
+        scores = [str(item) for item in tally.scores]
+        if len(scores) > 1:
+            raise ValueError('该tally有多个score，网格图请用单一score的网格tally（如flux）：' + '、'.join(scores))
+        score = scores[0]
+        if params.get('score') is not None and params['score'] != score:
+            raise ValueError('score与该网格tally的计分不一致：' + score)
+        rest_mean = mean.reshape(cells, -1)
+        rest_std = std.reshape(cells, -1)
+        energy_label = None
+        if len(tally.filters) > 1:
+            energy_filter = next((f for f in tally.filters if type(f).__name__ == 'EnergyFilter'), None)
+            if energy_filter is None:
+                raise ValueError('不支持的过滤组合，网格图只支持网格过滤或网格+能量过滤')
+            bounds = np.asarray(energy_filter.values, dtype=float)
+            bins_count = len(bounds) - 1
+            column = params.get('energy_bin')
+            if column is None:
+                raise ValueError('该tally带能量过滤，须用energy_bin指定第几个能量箱（0起）')
+            if column >= bins_count:
+                raise ValueError('energy_bin超出能量箱数：' + str(bins_count))
+            if rest_mean.shape[1] != bins_count:
+                raise ValueError('能量过滤与网格过滤的组合形状无法判定')
+            values = rest_mean[:, column]
+            errors = rest_std[:, column]
+            energy_label = f'{bounds[column]:.6g}-{bounds[column + 1]:.6g} eV'
+        else:
+            if rest_mean.shape[1] != 1:
+                raise ValueError('网格tally含额外维度，不能作为二维分布绘制')
+            values = rest_mean[:, 0]
+            errors = rest_std[:, 0]
+        if nz > 1:
+            level = params.get('level')
+            if level is None:
+                raise ValueError('三维网格须用level指定第几层（0起），不静默投影')
+            if type(level) is not int or not 0 <= level < nz:
+                raise ValueError('level须在0到nz-1之间')
+            start = level * nx * ny
+            values = np.asarray(values)[start:start + nx * ny]
+            errors = np.asarray(errors)[start:start + nx * ny]
+        else:
+            level = None
+        grid = np.full((ny, nx), np.nan)
+        error_grid = np.full((ny, nx), np.nan)
+        for j in range(ny):
+            for i in range(nx):
+                grid[j, i] = values[i + nx * j]
+                error_grid[j, i] = errors[i + nx * j]
+        x_edges = np.linspace(mesh['lower_left'][0], mesh['upper_right'][0], nx + 1)
+        y_edges = np.linspace(mesh['lower_left'][1], mesh['upper_right'][1], ny + 1)
+        if not np.isfinite(grid).any():
+            raise ValueError('网格值全为非有限值，不能绘图；失败或缺失数据不能补0')
+        series = {'values': grid, 'errors': error_grid, 'x_edges': x_edges, 'y_edges': y_edges,
+                  'x_label': params.get('x_label') or 'x (model units)',
+                  'y_label': params.get('y_label') or 'y (model units)',
+                  'title': params.get('title') or f'Mesh tally {tally.id} / {score}',
+                  'mesh_id': mesh_id, 'dimension': [nx, ny, nz], 'level': level,
+                  'score': score, 'energy_label': energy_label,
+                  'colorbar_label': params.get('colorbar_label') or
+                                     (str(score) + ' (OpenMC raw score; no power normalization)'),
+                  'tally_id': int(tally.id)}
+        return draw_mesh(series, Path(params['filename']), params)
+
+
+def draw_mesh(series, path: Path, params):
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import numpy as np
+    _set_font(params)
+    figure, axes = plt.subplots(figsize=(7.2, 5.6), constrained_layout=True)
+    try:
+        image = axes.pcolormesh(series['x_edges'], series['y_edges'], series['values'], shading='flat',
+                                cmap='viridis')
+        bar = figure.colorbar(image, ax=axes)
+        bar.set_label(series['colorbar_label'])
+        axes.set_aspect('equal')
+        axes.set_xlabel(series['x_label'])
+        axes.set_ylabel(series['y_label'])
+        axes.set_title(series['title'])
+        note = f'mesh {series["mesh_id"]} | dimension {series["dimension"]}'
+        if series.get('level') is not None:
+            note += f' | layer k={series["level"]}'
+        if series.get('energy_label'):
+            note += ' | energy bin ' + series['energy_label']
+        kind = params['provenance']['data_kind']
+        figure.suptitle(note + ' | ' + kind + ' | engineering output; professional acceptance: not performed',
+                        fontsize=8, color='#804000')
+        figure.savefig(path, dpi=150)
+    finally:
+        plt.close(figure)
+    values_path = path.with_suffix('.json')
+    values_path.write_text(json.dumps({'mesh_id': series['mesh_id'], 'dimension': series['dimension'],
+                                       'level': series.get('level'), 'score': series['score'],
+                                       'energy_label': series.get('energy_label'),
+                                       'x_edges': [float(v) for v in series['x_edges']],
+                                       'y_edges': [float(v) for v in series['y_edges']],
+                                       'values': [[None if not np.isfinite(v) else float(v) for v in row]
+                                                  for row in series['values']],
+                                       'errors': [[None if not np.isfinite(v) else float(v) for v in row]
+                                                  for row in series['errors']],
+                                       'normalization': 'OpenMC原始计分归一化；未换算功率或实际源强。',
+                                       'provenance': params['provenance'], 'professional_acceptance': False},
+                                      ensure_ascii=False, indent=2), encoding='utf-8')
+    csv_path = path.with_suffix('.csv')
+    with csv_path.open('w', newline='', encoding='utf-8') as output:
+        writer = csv.writer(output)
+        writer.writerow(['i', 'j', 'x_center', 'y_center', 'value', 'std_dev', 'mesh_id', 'level', 'score'])
+        nx, ny = series['dimension'][0], series['dimension'][1]
+        for j in range(ny):
+            for i in range(nx):
+                value = series['values'][j, i]
+                error = series['errors'][j, i]
+                writer.writerow([i, j,
+                                 0.5 * (series['x_edges'][i] + series['x_edges'][i + 1]),
+                                 0.5 * (series['y_edges'][j] + series['y_edges'][j + 1]),
+                                 '' if not np.isfinite(value) else format(float(value), '.9g'),
+                                 '' if not np.isfinite(error) else format(float(error), '.9g'),
+                                 series['mesh_id'], series.get('level'), series['score']])
+    return {'image': path.name, 'values_json': values_path.name, 'values_csv': csv_path.name,
+            'cells': int(series['dimension'][0] * series['dimension'][1]),
+            'mesh': {'id': series['mesh_id'], 'dimension': series['dimension'], 'level': series.get('level')}}
+
+
+def plot_convergence(params):
+    """逐批k的累计均值±标准误收敛带；数据来自statepoint的k_generation（单批k）。"""
+    import h5py
+    import numpy as np
+    with h5py.File(params['statepoint'], 'r') as handle:
+        if 'k_generation' not in handle:
+            raise ValueError('statepoint缺少k_generation，不能生成收敛带')
+        generations = np.asarray(handle['k_generation'][()], dtype=float).flatten()
+        n_batches = int(handle['n_batches'][()]) if 'n_batches' in handle else len(generations)
+        n_inactive = int(handle['n_inactive'][()]) if 'n_inactive' in handle else 0
+        combined = np.asarray(handle['k_combined'][()], dtype=float) if 'k_combined' in handle else None
+    active = generations[n_inactive:]
+    if active.size == 0:
+        raise ValueError('没有活跃批次的逐批k可绘制')
+    counts = np.arange(1, active.size + 1)
+    cumulative = np.cumsum(active) / counts
+    stderr = np.array([np.std(active[:i], ddof=1) / np.sqrt(i) if i > 1 else np.nan for i in counts])
+    series = {'x': [int(n_inactive + i) for i in counts], 'mean': [float(v) for v in cumulative],
+              'stderr': [None if not np.isfinite(v) else float(v) for v in stderr],
+              'x_label': params.get('x_label') or 'Batch index (active batches)',
+              'y_label': params.get('y_label') or 'k-eff (cumulative mean)',
+              'title': params.get('title') or 'k-effective convergence',
+              'combined': None if combined is None else {'mean': float(combined[0]), 'std_dev': float(combined[1])},
+              'n_inactive': n_inactive, 'n_batches': n_batches}
+    return draw_convergence(series, Path(params['filename']), params)
+
+
+def _set_font(params):
+    import matplotlib.pyplot as plt
+    font = params.get('_font_path')
+    if font and Path(font).is_file():
+        from matplotlib.font_manager import FontProperties, fontManager
+        fontManager.addfont(font)
+        plt.rcParams['font.family'] = FontProperties(fname=font).get_name()
+
+
+def draw_convergence(series, path: Path, params):
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import numpy as np
+    _set_font(params)
+    mean = np.asarray(series['mean'], dtype=float)
+    stderr = np.asarray([np.nan if v is None else float(v) for v in series['stderr']], dtype=float)
+    x = np.asarray(series['x'], dtype=float)
+    figure, axes = plt.subplots(figsize=(8, 4.6), constrained_layout=True)
+    try:
+        axes.plot(x, mean, marker='o', linewidth=1.3, label='cumulative mean')
+        if params.get('show_band', True) and np.isfinite(stderr).any():
+            axes.fill_between(x, mean - stderr, mean + stderr, alpha=.25,
+                              label='±1 standard error (statepoint k_generation)')
+        if series.get('combined'):
+            value = series['combined']['mean']
+            axes.axhline(value, linestyle='--', linewidth=1.0, color='black', alpha=.7,
+                         label=f'combined k = {value:.5f} ± {series["combined"]["std_dev"]:.5f}')
+        axes.set_xlabel(series['x_label'])
+        axes.set_ylabel(series['y_label'])
+        axes.set_title(series['title'])
+        axes.grid(alpha=.25)
+        axes.legend(fontsize=8)
+        kind = params['provenance']['data_kind']
+        figure.suptitle('per-batch k from statepoint k_generation; cumulative mean over active batches | '
+                        + kind + ' | engineering output; professional acceptance: not performed',
+                        fontsize=8, color='#804000')
+        figure.savefig(path, dpi=150)
+    finally:
+        plt.close(figure)
+    data_path = path.with_suffix('.json')
+    data_path.write_text(json.dumps({**series, 'provenance': params['provenance'],
+                                     'professional_acceptance': False}, ensure_ascii=False, indent=2),
+                         encoding='utf-8')
+    csv_path = path.with_suffix('.csv')
+    with csv_path.open('w', newline='', encoding='utf-8') as output:
+        writer = csv.writer(output)
+        writer.writerow(['batch', 'cumulative_mean_k', 'standard_error', 'combined_k', 'combined_std_dev'])
+        for index, batch in enumerate(series['x']):
+            writer.writerow([batch, format(mean[index], '.9g'),
+                             '' if series['stderr'][index] is None else format(series['stderr'][index], '.9g'),
+                             '' if not series.get('combined') else format(series['combined']['mean'], '.9g'),
+                             '' if not series.get('combined') else format(series['combined']['std_dev'], '.9g')])
+    return {'image': path.name, 'series_json': data_path.name, 'series_csv': csv_path.name,
+            'batches': int(len(series['x'])), 'combined': series.get('combined')}
+
+
 def plot_result(params):
     import openmc
     with openmc.StatePoint(params['statepoint'], autolink=False) as point:

@@ -9,7 +9,7 @@ from openmc_tools import (compare_jobs, create_model, environment, export_report
                           validate_inputs)
 from openmc_jobs import cancel as cancel_job, status as job_status
 from openmc_scan import list_parameters, prepare_case, submit_scan, status as scan_status, cancel as cancel_scan
-from openmc_plots import plot_results, plot_scan
+from openmc_plots import plot_convergence, plot_mesh, plot_results, plot_scan
 from openmc_reports import export_scan
 from openmc_artifacts import list_artifacts
 from openmc_knowledge import list_sources, read as read_knowledge
@@ -122,6 +122,21 @@ TOOLS += [
     {"name": "openmc_plot_results", "description": "从完整StatePoint选择tally/score/nuclide/filter，生成PNG/SVG与完整JSON/CSV。单一能量过滤器用eV区间中点，保留上下界；多过滤器用明确的展平分箱索引，不冒充物理坐标。默认首个tally/score，不用截断预览，不做功率或能宽归一化。",
      "inputSchema": schema({"job_id": TEXT, **PLOT_FIELDS, "style": {"type": "string", "enum": ['line', 'bar']}}, ['job_id']),
      "outputSchema": OUTPUT, "function": plot_results, "annotations": WRITE},
+    {"name": "openmc_plot_mesh", "description": "把规则网格tally画成二维分布热图：从StatePoint取网格分箱值，坐标取自算例tallies.xml的网格定义（不猜几何）；3D网格须用level指定层，带能量过滤须用energy_bin指定箱。缺数据不补0，非有限值留空。输出PNG与完整JSON/CSV。",
+     "inputSchema": schema({"job_id": TEXT, "tally_id": {"type": "integer", "minimum": 1},
+                            "score": {"type": "string"}, "energy_bin": {"type": "integer", "minimum": 0},
+                            "level": {"type": "integer", "minimum": 0},
+                            "format": {"type": "string", "enum": ["png", "svg"]}, "title": {"type": "string", "maxLength": 200},
+                            "x_label": {"type": "string", "maxLength": 200}, "y_label": {"type": "string", "maxLength": 200},
+                            "colorbar_label": {"type": "string", "maxLength": 200}},
+                           ["job_id"]),
+     "outputSchema": OUTPUT, "function": plot_mesh, "annotations": WRITE},
+    {"name": "openmc_plot_convergence", "description": "k有效增殖因子逐批收敛图：statepoint的k_generation按活跃批累计均值±标准误画带，并标最终合并k；不伪造逐代数据、不平滑、不删跳点。输出PNG与完整JSON/CSV。",
+     "inputSchema": schema({"job_id": TEXT, "format": {"type": "string", "enum": ["png", "svg"]},
+                            "title": {"type": "string", "maxLength": 200}, "show_band": {"type": "boolean"},
+                            "x_label": {"type": "string", "maxLength": 200}, "y_label": {"type": "string", "maxLength": 200}},
+                           ["job_id"]),
+     "outputSchema": OUTPUT, "function": plot_convergence, "annotations": WRITE},
     {"name": "openmc_plot_scan", "description": "按x_parameter绘制扫描曲线，metric选keff或tally。多维扫描须用fixed固定其它维度；tally可选计分与bin_index。失败/缺失保留空缺，不填0或连过缺口。",
      "inputSchema": schema({"scan_id": TEXT, "x_parameter": TEXT, "metric": {"type": "string", "enum": ['keff', 'tally']},
                             "fixed": NUMBERS, "bin_index": {"type": "integer", "minimum": 0}, **PLOT_FIELDS}, ['scan_id', 'x_parameter']),

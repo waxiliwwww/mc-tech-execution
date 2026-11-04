@@ -23,8 +23,10 @@ def execute(action: str, params: dict) -> dict:
 
     if action == 'probe':
         return {'python_api': True, 'api_version': openmc.__version__}
-    if action in ('plot-result', 'plot-series', 'render-report', 'select-series'):
-        from openmc_visuals import draw, plot_result, render_docx, selected_series
+    if action in ('plot-result', 'plot-series', 'plot-mesh', 'plot-convergence', 'render-report', 'select-series'):
+        from openmc_visuals import draw, plot_convergence, plot_mesh, plot_result, render_docx, selected_series
+        if action == 'plot-mesh':return plot_mesh(params)
+        if action == 'plot-convergence':return plot_convergence(params)
         if action == 'plot-result':return plot_result(params)
         if action == 'plot-series':return draw(params['series'], Path(params['filename']), params)
         if action == 'render-report':return render_docx(params)
