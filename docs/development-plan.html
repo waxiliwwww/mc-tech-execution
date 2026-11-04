@@ -1,5 +1,5 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>近期交付总览 · MC工具包</title><link rel="stylesheet" href="assets/overview.css"></head><body><main>
-<nav><a href="index.html">工具包手册</a><a href="domain-workflows.html">怎么使用</a><a href="dsh.html">Windows DSH接入</a><a href="development-details.html">开发与验证明细</a></nav>
+<nav><a href="index.html">工具包手册</a><a href="domain-workflows.html">怎么使用</a><a href="cad.html">CAD流程</a><a href="dsh.html">Windows DSH接入</a><a href="development-details.html">开发与验证明细</a></nav>
 <p class="eyebrow">两周内的调试交付 · 2026-11-04</p><h1>交付一套能在DSH中使用的蒙卡MCP工具</h1>
 <p class="lead">用户既能带入已有OpenMC模型，也能通过自然语言调用建模工具，完成计算、查看结果。先让甲方拿到可调试的工具包，再据复杂业务反馈深化。</p>
 <div class="flow" aria-label="用户任务交给DSH理解，MCP工具负责建模和作业，OpenMC求解，返回数据图和报告"><span>用户任务</span><b>→</b><span>Windows DSH</span><b>→</b><span>MCP工具</span><b>→</b><span>OpenMC计算</span><b>→</b><span>数据、图和报告</span></div>
@@ -8,7 +8,7 @@
 <tr><td>把计算工具做好</td><td>模型接入、受控建模、改参校核、命名提交、结果与报告。</td><td>基础链路已实现；部件参数、HPC与微调生成继续补。</td></tr>
 <tr><td>接到DSH</td><td>Windows可用的连接配置、地址和鉴权说明。</td><td>实际DSH已连接并请求55个工具定义；本轮不调用模型，自然语言任务待验证。</td></tr>
 <tr><td>跑一个代表任务</td><td>简化全堆计算，查看64格通量、图和报告，并能追溯输入。</td><td>真实计算与数据核对已通过；DSH自然语言串联后续验证。</td></tr>
-<tr><td>让下游会用</td><td>环境准备、可运行示例、参数与产物说明、部署包。</td><td>已有手册、源码包与DSH说明；新增用户/开发者总览。</td></tr>
+<tr><td>让下游会用</td><td>环境准备、可运行示例、参数与产物说明、部署包。</td><td>已有手册、源码包、架构图与DSH说明；增加CAD初配和完整计算示例。</td></tr>
 <tr><td>控制资源占用</td><td>提交前检查磁盘余量，测试后清理临时内容，旧结果按规则清理。</td><td>已有低空间提交保护、占用报告及清理预览；运行期仍需监测。</td></tr>
 </tbody></table></div>
 <div class="note"><strong>待验证：</strong>由DSH用代表任务走完整操作。按当前决定，本轮不调用模型；自然语言实跑另行安排。</div>

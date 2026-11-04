@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "python_minimum": [
+    3,
+    12
+  ],
+  "native_packages": [
+    "libglu1-mesa",
+    "libxft2",
+    "libopengl0"
+  ],
+  "probe_step": "config/cad-probe.step",
+  "probe_sha256": "a73a24fd138d6dd78f7b18af349c0d80d1de8aa60d4db1eaf4fdc66efb13ab7f",
+  "probe_note": "One 10 mm cube, converted with scale_factor=0.1 to 1 cm; deployment test only, no physical calculation."
+}

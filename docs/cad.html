@@ -1,0 +1,45 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CAD接入与计算</title><link rel="stylesheet" href="assets/overview.css"></head><body><main>
+<nav><a href="index.html">使用手册</a><a href="toolkit.html">架构与流程</a><a href="domain-workflows.html">其他模型入口</a><a href="dsh.html">DSH接入</a><a href="reference.html">工具参数</a></nav>
+<p class="eyebrow">OpenMC 0.16.0 · CAD / DAGMC</p><h1>CAD接入与计算</h1>
+<p class="lead">把同一个STEP文件转换为DAGMC几何，再明确材料、源、计分和运行设置，使用OpenMC计算并整理结果。STEP提供几何，不自动提供物理条件；接口可处理自己的CAD，下面的立方体只是可复现的工程示例。</p>
+<h2 id="setup">1．准备环境和输入</h2>
+<p>服务端使用Linux/WSL x86_64。首次在完整源码包根目录运行：</p><pre><code>./quickstart.sh</code></pre>
+<p>默认准备接口、OpenMC/核数据、CAD转换和报告环境。CAD独立环境固定Python依赖版本，原生库在项目内解包；安装器会实际读取STEP、转换H5M并检查尺寸与指纹，通过后才发布CAD配置，不执行系统安装或修改shell配置。</p>
+<p>已有基础环境，只补CAD时运行：</p><pre><code>./quickstart.sh --cad-only --openmc-prefix .runtime/openmc
+# 旧CAD环境与固定依赖不匹配时，保留它，另选新目录：
+./quickstart.sh --cad-only --openmc-prefix .runtime/openmc \
+  --cad-prefix .runtime/cadenv-new</code></pre>
+<p><code>--cad-only</code>不重复下载核数据或准备Office。完整安装可用 <code>--skip-cad</code>跳过CAD；这样已有OpenMC流程仍可用，CAD转换须另行配置。固定CAD环境约2GB，实际占用随平台与软件包变化；初配需软件源网络、APT元数据及 <code>curl</code>/<code>dpkg-deb</code>，原生库自动准备面向Debian/Ubuntu。它不是已经做过断网安装演练的离线包。</p>
+<p>默认探针与示例STEP随源码包提供。示例输入位于服务端 <code>workspace/examples/cad/cube.step</code>；使用自定义 <code>MC_WORKSPACE</code>时，先把输入复制到该工作区。远程MCP不会自动上传客户端的STEP文件。</p>
+<h2 id="demo">2．跑一遍同一STEP的完整流程</h2>
+<pre><code>mcp/.venv/bin/python examples/cad_case_demo.py
+# 走标准MCP时，先在服务端启动 ./mcp/start.sh，再运行：
+mcp/.venv/bin/python examples/cad_case_demo.py \
+  --mcp-url http://127.0.0.1:8770/mcp</code></pre>
+<p>脚本默认打印中文进度、输入来源、计算编号和图/报告的服务端绝对位置；<code>--json</code>返回完整结构，<code>--help</code>查看全部选项。每次默认新建目录，不覆盖已有模型。脚本不调用大模型。</p>
+<div class="table-wrap"><table><thead><tr><th>默认输入或选项</th><th>含义与预期</th></tr></thead><tbody>
+<tr><td>10mm立方体、scale_factor=0.1</td><td>原几何每轴为−5到5mm，H5M中换算为−0.5到0.5cm。尺寸必须结合STEP单位与业务意图确认。</td></tr>
+<tr><td>纯U235、18.95g/cm³</td><td>明确提供的工程测试材料，标签为fuel；不从CAD文件推断，不是实际业务模型的推荐组成。</td></tr>
+<tr><td>原点源、真空包围</td><td>示例源位于立方体中心；模型用官方API生成真空包围，使离开计算区域的粒子有明确边界处理。</td></tr>
+<tr><td>--particles 1000<br>--batches 12<br>--inactive 2</td><td>小统计调试设置；调整这些选项改变采样量和耗时，不改变CAD尺寸，不保证某次物理结果更准确。</td></tr>
+<tr><td>4×4×1网格flux计分</td><td>观察立方体内16格的原始空间计分。热图坐标用cm，配套CSV/JSON保留各格均值和标准差。</td></tr>
+<tr><td>--report-format markdown</td><td>默认生成Markdown；可选csv/docx/pdf/doc，PDF/DOC需Office。Markdown与配套图片放在同一目录，不能只搬走md后要求外链图仍可见。</td></tr>
+<tr><td>--step-path、--case-dir、--timeout</td><td>分别指定服务端STEP、新算例目录、等待计算的秒数。此演示只接原点中心10mm单实体立方体；自己的几何用下方接口路线明确材料/源/网格，不能直接套示例物理条件。</td></tr>
+</tbody></table></div>
+<h2 id="tools">3．中间调用了什么</h2>
+<div class="table-wrap"><table><thead><tr><th>中文操作与代码名</th><th>输入 → 输出</th><th>核对重点</th></tr></thead><tbody>
+<tr><td>检查STEP<br><code>openmc_inspect_step</code></td><td>STEP相对路径 → 实体数、包围盒、版本。</td><td>确认拿到的几何、实体数量与单位。</td></tr>
+<tr><td>转换网格<br><code>openmc_convert_cad</code></td><td>STEP、材料标签、缩放与新目录 → H5M、源和产物指纹。</td><td>同一STEP来源，mm→cm后尺寸正确；转换成功不代替网格质量判断。</td></tr>
+<tr><td>组装计算模型<br><code>openmc_build_dagmc_model</code></td><td>转换目录、材料与设置 → 单文件model.xml、真空包围及API读回。</td><td>材料名称与几何标签对应，核素/密度/源明确，H5M相对引用保留。</td></tr>
+<tr><td>定义计分<br><code>openmc_define_tally</code></td><td>scores、网格或其他过滤 → tally_id。</td><td>单文件输入更新model.xml中的计分，保留几何、材料和设置。</td></tr>
+<tr><td>预览和校核<br><code>openmc_preview_input</code><br><code>openmc_validate_inputs</code></td><td>case_dir → 文件、指纹、设置及问题。</td><td>用户先看实际输入；结构和API解析通过不代表物理正确。</td></tr>
+<tr><td>提交、查询<br><code>openmc_submit_job</code><br><code>openmc_job_status</code></td><td>case_dir/任务名 → job_id → 真实终态。</td><td>提交副本中的H5M和XML指纹对应本次输入；失败留日志，不把queued当完成。</td></tr>
+<tr><td>读结果、图和报告<br><code>openmc_read_results</code><br><code>openmc_plot_mesh</code><br><code>openmc_export_report</code></td><td>同一job_id与tally选择 → 原始结果、热图、完整数据、报告。</td><td>StatePoint原始均值/误差、网格坐标、所选报告数据逐项对应。</td></tr>
+<tr><td>列产物<br><code>openmc_list_artifacts</code></td><td>kind=job、identifier=job_id → 清单、位置、大小和哈希。</td><td>确认文件确实存在、属于该作业，按返回位置打开。</td></tr>
+</tbody></table></div>
+<h2 id="results">4．怎样看结果和产物</h2>
+<p>示例会打印 <code>workspace/.mc-jobs/&lt;job_id&gt;/</code> 的实际绝对位置。查看PNG热图了解空间分布；用完整CSV/JSON核对16格数据和不确定度；报告元数据应能读回同一模型的运行设置、随机种子和来源。报告配套曲线使用同一16格的展平分箱序号，不冒充空间坐标；二维空间关系看热图。</p>
+<p>Windows同机可用WSL共享路径打开服务端文件，远程则按部署约定取回；当前不自动远程下载。<a href="dsh.html#artifacts">文件与清理说明</a>列出实际入口。示例算例和原始结果可保留复查，清理先预览，不删除核数据库或运行时。</p>
+<p>这条流程验证转换、模型交接、实际执行和结果管理；简单立方体、小统计运行不代表复杂工程CAD或合同专业指标通过。自己的模型仍需确认几何质量、材料映射、源与专业判据。</p>
+<footer><a href="reference.html#openmc_convert_cad">完整工具参数</a> · <a href="env.html">环境说明</a> · 实跑测试：<code>MC_TEST_CAD_CONFIG</code>启用CAD链，详见<a href="domain-workflows.html#validation">测试入口</a>。</footer>
+</main></body></html>

@@ -123,7 +123,7 @@ def plot_mesh(params):
     import openmc
     tallies_path = Path(params['tallies_xml'])
     if not tallies_path.is_file():
-        raise ValueError('缺少tallies.xml，不能还原网格坐标；请用openmc_define_tally生成带网格过滤的tally后重新计算')
+        raise ValueError('缺少model.xml或tallies.xml，不能还原网格坐标；请用openmc_define_tally生成带网格过滤的tally后重新计算')
     meshes = _read_meshes(tallies_path)
     with openmc.StatePoint(params['statepoint'], autolink=False) as point:
         available = list(point.tallies.values())
@@ -147,7 +147,7 @@ def plot_mesh(params):
         # MeshFilter.bins 是 (i,j,k) 网格单元坐标（1起），网格编号在 filter.mesh.id。
         mesh_id = int(mesh_filter.mesh.id)
         if mesh_id not in meshes:
-            raise ValueError('tallies.xml中找不到网格定义：' + str(mesh_id))
+            raise ValueError(tallies_path.name + '中找不到网格定义：' + str(mesh_id))
         mesh = meshes[mesh_id]
         dimension = list(mesh['dimension'])
         while len(dimension) < 3:

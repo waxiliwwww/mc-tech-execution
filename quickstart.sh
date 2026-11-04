@@ -5,21 +5,38 @@ mc_quick_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$mc_quick_root"
 mc_quick_prefix="$mc_quick_root/.runtime/openmc"
 mc_quick_office=1
+mc_quick_cad=1
+mc_quick_cad_only=0
+mc_quick_cad_prefix="$mc_quick_root/.runtime/cadenv"
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --openmc-prefix) mc_quick_prefix="$(realpath "$2")"; shift 2 ;;
+    --openmc-prefix)
+      [[ $# -gt 1 && -n "$2" && "$2" != --* ]] || { printf -- '--openmc-prefix需要目录参数。\n' >&2; exit 2; }
+      mc_quick_prefix="$(realpath -m -- "$2")"; shift 2 ;;
     --skip-office) mc_quick_office=0; shift ;;
-    -h|--help) printf '用法：./quickstart.sh [--openmc-prefix 已有OpenMC环境] [--skip-office]\n默认准备CLI/MCP、OpenMC、图表及Word/PDF转换；只写项目目录。\n'; exit 0 ;;
+    --skip-cad) mc_quick_cad=0; shift ;;
+    --cad-only) mc_quick_cad_only=1; shift ;;
+    --cad-prefix)
+      [[ $# -gt 1 && -n "$2" && "$2" != --* ]] || { printf -- '--cad-prefix需要目录参数。\n' >&2; exit 2; }
+      mc_quick_cad_prefix="$(realpath -m -- "$2")"; shift 2 ;;
+    -h|--help) printf '用法：./quickstart.sh [--openmc-prefix 已有OpenMC环境] [--cad-prefix CAD环境目录] [--skip-cad] [--skip-office]\n补装CAD：./quickstart.sh --cad-only [--openmc-prefix 已有环境] [--cad-prefix 新CAD目录]\n默认准备CLI/MCP、OpenMC、图表、独立CAD转换环境及Word/PDF转换；只写项目目录。--cad-only不重复准备OpenMC、核数据或Office，不可与--skip-cad同时使用。\n'; exit 0 ;;
     *) printf '未知选项：%s\n' "$1" >&2; exit 2 ;;
   esac
 done
+[[ "$mc_quick_cad_only" == 0 || "$mc_quick_cad" == 1 ]] || { printf -- '--cad-only与--skip-cad不能同时使用。\n' >&2; exit 2; }
 [[ "$(uname -s)" == Linux ]] || { printf '服务端请使用Linux/WSL；其他系统可作为MCP客户端。\n' >&2; exit 1; }
+if [[ "$mc_quick_cad_only" == 1 ]]; then
+  [[ -x "$mc_quick_prefix/bin/python" ]] || { printf '补装CAD需要已有OpenMC Python；先完成基础初配，或指定--openmc-prefix。\n' >&2; exit 1; }
+  printf '[1/1] 仅准备CAD环境并实测STEP到H5M；保留其他运行配置...\n'
+  "$mc_quick_prefix/bin/python" scripts/install_cad.py --python "$mc_quick_prefix/bin/python" --prefix "$mc_quick_cad_prefix"
+  exit 0
+fi
 command -v g++ > /dev/null || { printf '初配需要C++编译器（gcc/g++与make）；请在系统环境准备后重试。\n' >&2; exit 1; }
 command -v make > /dev/null || { printf '初配需要make；请先准备系统构建工具。\n' >&2; exit 1; }
-printf '[1/4] 准备独立CLI与MCP环境...\n'
+printf '[1/5] 准备独立CLI与MCP环境...\n'
 ./mcp/setup.sh
 if [[ ! -x "$mc_quick_prefix/bin/openmc" || ! -x "$mc_quick_prefix/bin/python" ]]; then
-  printf '[2/4] 准备项目内OpenMC 0.16.0（首次需网络）...\n'
+  printf '[2/5] 准备项目内OpenMC 0.16.0（首次需网络）...\n'
   mc_quick_mamba="$mc_quick_root/.runtime/install/bin/micromamba"
   if [[ ! -x "$mc_quick_mamba" ]]; then
     command -v curl > /dev/null
@@ -34,10 +51,10 @@ if [[ ! -x "$mc_quick_prefix/bin/openmc" || ! -x "$mc_quick_prefix/bin/python" ]
     "$mc_quick_mamba" --no-rc -r "$mc_quick_root/.runtime/mamba-root" create -y -p "$mc_quick_prefix" --override-channels -c conda-forge 'python=3.12' 'openmc=0.16.0' 'openmc=*=*dagmc_nompi*' 'eigen=3.4' njoy2016
   fi
 else
-  printf '[2/4] 检查已有OpenMC环境...\n'
+  printf '[2/5] 检查已有OpenMC环境...\n'
 fi
 python3 mcp/configure_openmc.py --prefix "$mc_quick_prefix"
-printf '[3/4] 准备图表/报告Python依赖...\n'
+printf '[3/5] 准备图表/报告Python依赖...\n'
 "$mc_quick_prefix/bin/python" -m pip install --disable-pip-version-check -r config/report-requirements.txt
 "$mc_quick_prefix/bin/python" -m pip install --disable-pip-version-check -r config/example-requirements.txt
 "$mc_quick_prefix/bin/python" -m pip check
@@ -52,8 +69,14 @@ p=Path('config/openmc.local.json');v=json.loads(p.read_text());v['nuclear_data_l
 v['cmake_command']=[str(Path(sys.argv[1])/'bin/cmake')]
 p.write_text(json.dumps(v,ensure_ascii=False,indent=2)+'\n')
 PY
+if [[ "$mc_quick_cad" == 1 ]]; then
+  printf '[4/5] 准备CAD转换环境并实测STEP到H5M...\n'
+  "$mc_quick_prefix/bin/python" scripts/install_cad.py --python "$mc_quick_prefix/bin/python" --prefix "$mc_quick_cad_prefix"
+else
+  printf '[4/5] 按选项跳过CAD环境；转换功能须另行配置cad_python_command。\n'
+fi
 if [[ "$mc_quick_office" == 1 ]]; then
-  printf '[4/4] 准备Word/PDF转换及字体...\n'
+  printf '[5/5] 准备Word/PDF转换及字体...\n'
   if command -v soffice > /dev/null; then
     mc_quick_office_command="$(command -v soffice)"
   else
@@ -71,7 +94,7 @@ for base in [Path('.runtime/office/usr/share/fonts'), Path('/usr/share/fonts')]:
 p.write_text(json.dumps(config,ensure_ascii=False,indent=2)+'\n');os.chmod(p,0o600)
 PY
 else
-  printf '[4/4] 按选项跳过Office准备；PDF/DOC须另行配置，DOCX无需转换组件。\n'
+  printf '[5/5] 按选项跳过Office准备；PDF/DOC须另行配置，DOCX无需转换组件。\n'
 fi
 ./mc.sh call openmc_environment
 printf '\n环境准备完成。请用浏览器打开：\n  %s/docs/index.html\n逐步计算：docs/compute.html（输入、改参目的、校核、计算与产物）\n快速例题：\n  mcp/.venv/bin/python examples/public_case_demo.py\n例题参数及预期见 docs/index.html#demo-options；首次准备需软件源网络。\n' "$mc_quick_root"

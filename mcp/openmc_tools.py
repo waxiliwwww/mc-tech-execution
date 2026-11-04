@@ -924,13 +924,13 @@ def _tally_filters(value):
 
 def define_tally(case_dir: str, scores: list, filters: list | None = None,
                  name: str | None = None, tally_id: int | None = None) -> dict:
-    """向已有算例追加自定义tally（能量/材料/粒子/网格过滤+score），写tallies.xml；不改其它XML。"""
+    """向分离XML或model.xml算例追加tally，保留已有几何、材料和运行设置。"""
     cfg = config()
     directory = path_in_workspace(case_dir)
     if not directory.is_dir():
         raise Error('case_dir须为已存在的算例目录')
-    if not (directory / 'geometry.xml').is_file():
-        raise Error('算例缺少geometry.xml，不能确认是OpenMC输入目录')
+    if not any((directory / name).is_file() for name in ('geometry.xml', 'model.xml')):
+        raise Error('算例缺少geometry.xml或model.xml，不能确认是OpenMC输入目录')
     if (not isinstance(scores, list) or not scores
             or any(not isinstance(item, str) or not item.strip() for item in scores)):
         raise Error('scores须为非空字符串列表，如["flux"]')
@@ -943,7 +943,8 @@ def define_tally(case_dir: str, scores: list, filters: list | None = None,
                 {'scores': scores, 'filters': normalised, 'name': name, 'tally_id': tally_id}, cfg)
     return {'case_dir': case_dir, **value, 'workspace': str(workspace()), 'location': 'server',
             'provenance': provenance(directory, cfg), 'professional_acceptance': False,
-            'note': '已写入tallies.xml；需重新提交计算后结果才含该tally；计分口径为OpenMC原始归一化。'}
+            'note': '已写入' + value.get('input_file', 'tallies.xml') +
+                    '；需重新提交计算后结果才含该tally；计分口径为OpenMC原始归一化。'}
 
 
 DEPLETION_UNITS = ('s', 'min', 'h', 'd')
@@ -1062,17 +1063,24 @@ def _report_metadata(directory: Path) -> dict:
     provenance_info = record.get('provenance') or {}
     runtime = record.get('runtime') or {}
     marker = {}
-    case_path = directory / 'mc-case.json'
+    case_path = directory / 'work/mc-case.json'
+    if not case_path.is_file():
+        case_path = directory / 'mc-case.json'  # Older records used the job root.
     if case_path.is_file():
         try:
             marker = json.loads(case_path.read_text(encoding='utf-8'))
         except (OSError, ValueError):
             marker = {}
     parameters = {}
-    settings_path = directory / 'work/settings.xml'
+    settings_path = directory / 'work/model.xml'
+    combined_model = settings_path.is_file()
+    if not combined_model:
+        settings_path = directory / 'work/settings.xml'
     if settings_path.is_file():
         try:
             root = ET.parse(settings_path).getroot()
+            if combined_model:
+                root = root.find('settings')
         except ET.ParseError:
             root = None
         if root is not None:
@@ -1096,8 +1104,9 @@ def _report_metadata(directory: Path) -> dict:
                         'duration_seconds': round(finished - started, 3) if started and finished else None},
             'seed': parameters.get('seed'),
             'nuclear_data_library': runtime.get('nuclear_data_library'),
-            'source_files': {'job': 'job.json', 'settings': 'work/settings.xml',
-                             'case': 'mc-case.json' if case_path.is_file() else None}}
+            'source_files': {'job': 'job.json',
+                             'settings': str(settings_path.relative_to(directory)) if settings_path.is_file() else None,
+                             'case': str(case_path.relative_to(directory)) if case_path.is_file() else None}}
 
 
 def export_report(job_id: str, format: str = 'markdown', tally_id: int | None = None,

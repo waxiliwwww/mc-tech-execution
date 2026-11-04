@@ -1,8 +1,8 @@
 # ADR-0002 CAD→DAGMC 转换半链验证记录（RF002）
 
-日期：2026-11-03；2026-11-04复核更正　状态：转换半链有产物证据，尚无同一自转换STEP完成输运的完整记录。
+日期：2026-11-03；2026-11-04补记　状态：前文保留原半链证据；0.11.0新增同一STEP完整计算验证，见末节。
 
-## 验证结论
+## 验证结论（原半链阶段）
 
 STEP → .h5m的转换产物及DAGMC几何读回有记录；另有官方DAGMC例题作业b9ef8754使用现成H5M完成输运。这是不同输入的两段证据，不能合称同一自转换STEP的端到端验证。`openmc_build_dagmc_model`已有模型组装实现，具备接口不等于同链实跑完成。
 
@@ -45,3 +45,14 @@ c.export_dagmc_h5m_file("dagmc.h5m")                   # 默认走 cad-to-dagmc-
 ## 补记（2026-11-03 当日）
 
 工具层封装已落地（0.9.0）：`openmc_inspect_step` / `openmc_convert_cad` 两工具，转换经独立 cadenv 子进程桥（结果文件回传，因 Rust 网格后端可能直写 stdout）；`cad_python_command`/`cad_library_path`/`cad_timeout_seconds` 入部署配置，LD_LIBRARY_PATH 固化在配置项而非人工环境。本 ADR"下一步"第 1 条完成；第2、3条仍需按本页复核后的范围处理。快速安装未自动安装CAD环境，当前部署需单独准备cadenv及原生库配置。
+
+
+## 0.11.0 同一STEP完整计算验证（2026-11-04）
+
+本次使用同一个随包10mm立方体STEP，经新安装CAD环境转换（scale_factor=0.1），组装纯U235工程测试材料、原点源和真空包围，追加4×4×1网格flux计分，完成真实OpenMC输运。原始错误“No boundary conditions were applied to any surfaces!”保留；增加官方API真空包围后复测，不换现成H5M规避转换。
+
+此次还修正单文件model.xml交接：仅替换tallies节，保持原几何、材料、设置及DAGMC相对路径；网格坐标和报告设置/来源也从单文件输入读取。真实测试逐项核对STEP/H5M/输入快照指纹、尺寸、材料映射、StatePoint keff与全部16格均值/标准差、图表坐标及完整报告数据，不只看产物存在。
+
+CAD准备进入quickstart默认流程；50个Python依赖固定版本，原生包按目标系统APT元数据核验并记录，不冒称跨发行版完全固定。支持--cad-only/--cad-prefix，保留旧环境及非CAD配置；真实转换探针通过后才发布CAD字段。新机完整断网部署和复杂装配体专业质量尚未据此验证。
+
+可复现入口见[CAD接入与计算](../cad.html)与tests/test_openmc_cad_real.py（MC_TEST_CAD_CONFIG启用）。本文前文是历史半链记录；本节说明此次新增证据，不把工程设置升级为合同验收阈值。

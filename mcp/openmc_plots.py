@@ -46,7 +46,8 @@ def plot_mesh(job_id: str, tally_id: int | None = None, score: str | None = None
             raise Error(name + '须为不超过200字的文本或省略')
     target, record, point = verified_result(job_id)
     filename = 'mesh-' + uuid.uuid4().hex[:12] + '.' + format
-    params = {'statepoint': 'work/' + point.name, 'tallies_xml': 'work/tallies.xml', 'filename': filename,
+    tally_input = 'work/model.xml' if (target / 'work/model.xml').is_file() else 'work/tallies.xml'
+    params = {'statepoint': 'work/' + point.name, 'tallies_xml': tally_input, 'filename': filename,
               'tally_id': tally_id, 'score': score, 'energy_bin': energy_bin, 'level': level,
               'provenance': record['provenance'], 'title': title, 'x_label': x_label, 'y_label': y_label,
               'colorbar_label': colorbar_label, '_font_path': record['runtime'].get('font_path')}

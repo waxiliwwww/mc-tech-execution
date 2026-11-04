@@ -243,7 +243,10 @@ def build_dagmc_model(case_dir: str, materials, particles: int = 200, batches: i
                 {'materials': materials, 'particles': particles, 'batches': batches,
                  'inactive': inactive, 'source_point': source_point, 'seed': seed}, cfg)
     marker['model_built'] = {'materials': value['materials'], 'settings': value['settings'],
-                             'xml_files': value['files'], 'professional_acceptance': False}
+                             'xml_files': value['files'], 'source_point': value['source_point'],
+                             'boundary': value.get('boundary'), 'professional_acceptance': False}
+    marker['note'] = ('CAD几何已转换并组装模型XML；材料指派、单位换算、网格质量和源位置'
+                      '仍需业务确认，未作专业验收。')
     atomic_json(marker_path, marker)
     return {'case_dir': case_dir, **value, 'workspace': str(workspace()),
             'location': 'server', 'provenance': provenance(directory, cfg),

@@ -325,7 +325,13 @@ def execute(action: str, params: dict) -> dict:
             if not spec.get('nuclides'):
                 warnings.append('材料' + spec['name'] + '未给核素组成；OpenMC输运前须补全。')
             materials.append(material)
-        geometry = openmc.Geometry(root=universe)
+        box = universe.bounding_box
+        extent = np.asarray(box.upper_right) - np.asarray(box.lower_left)
+        if not np.isfinite(extent).all() or not (extent > 0).all():
+            raise ValueError('DAGMC几何包围盒须为有限且各方向具有正尺寸，无法生成真空边界')
+        padding = float(max(extent) * 0.1)
+        geometry = openmc.Geometry(root=universe.bounded_universe(
+            boundary_type='vacuum', padding_distance=padding))
         settings = openmc.Settings()
         settings.run_mode = 'eigenvalue'
         settings.particles = params['particles']
@@ -347,6 +353,9 @@ def execute(action: str, params: dict) -> dict:
                 'settings': {'particles': params['particles'], 'batches': params['batches'],
                              'inactive': params['inactive']},
                 'source_point': list(point),
+                'boundary': {'type': 'vacuum', 'shape': 'box', 'padding_cm': padding,
+                             'geometry_lower_left_cm': [float(v) for v in box.lower_left],
+                             'geometry_upper_right_cm': [float(v) for v in box.upper_right]},
                 'engine_parse': {'ok': True, 'materials': len(reparsed.materials)},
                 'warnings': warnings,
                 'note': '模型XML由公开API组装并回读验证；DAGMC材料指派、网格质量与源位置是否在模型内需业务确认。'}
@@ -467,7 +476,10 @@ def execute(action: str, params: dict) -> dict:
     if action == 'add-tally':
         from pathlib import Path as _Path
         tallies_path = _Path('tallies.xml')
-        tallies = openmc.Tallies.from_xml(str(tallies_path)) if tallies_path.is_file() else openmc.Tallies()
+        model_path = _Path('model.xml')
+        model = openmc.Model.from_model_xml(str(model_path)) if model_path.is_file() else None
+        tallies = (model.tallies if model is not None else
+                   openmc.Tallies.from_xml(str(tallies_path)) if tallies_path.is_file() else openmc.Tallies())
         used = {int(tally.id) for tally in tallies}
         identifier = params.get('tally_id')
         if identifier is None:
@@ -494,11 +506,40 @@ def execute(action: str, params: dict) -> dict:
         tally = openmc.Tally(tally_id=identifier, name=params.get('name') or '',
                              scores=list(params['scores']), filters=filters)
         tallies.append(tally)
-        tallies.export_to_xml(str(tallies_path))
+        if model is None:
+            tallies.export_to_xml(str(tallies_path))
+            input_file = 'tallies.xml'
+        else:
+            import xml.etree.ElementTree as ET
+            original = ET.parse(model_path)
+            model.tallies = tallies
+            fd, pending = tempfile.mkstemp(prefix='.model-tally-', suffix='.xml', dir='.')
+            os.close(fd)
+            try:
+                model.export_to_model_xml(pending)
+                # The OpenMC reader resolves relative DAGMC/data paths in memory.
+                # Replace only the tally section, so adding statistics cannot
+                # bind the job to the original input directory or alter physics.
+                replacement = ET.parse(pending).getroot().find('tallies')
+                root = original.getroot()
+                existing = root.find('tallies')
+                if existing is None:
+                    root.append(replacement)
+                else:
+                    index = list(root).index(existing)
+                    root.remove(existing)
+                    root.insert(index, replacement)
+                original.write(pending, encoding='utf-8', xml_declaration=True)
+                openmc.Model.from_model_xml(pending)
+                os.replace(pending, model_path)
+            finally:
+                if os.path.exists(pending):
+                    os.unlink(pending)
+            input_file = 'model.xml'
         return {'tally_id': identifier, 'name': tally.name, 'scores': list(tally.scores),
                 'filters': [{'type': type(f).__name__, 'description': str(f)[:2000]} for f in filters],
-                'tally_count': len(tallies),
-                'note': '已写入tallies.xml；计分口径为OpenMC原始归一化，未换算功率或实际源强。'}
+                'tally_count': len(tallies), 'input_file': input_file,
+                'note': '已写入' + input_file + '；计分口径为OpenMC原始归一化，未换算功率或实际源强。'}
     raise ValueError('Unsupported OpenMC API action')
 
 
