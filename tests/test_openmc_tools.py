@@ -186,6 +186,43 @@ class OpenMCTools(unittest.TestCase):
         self.assertIsNotNone(report['metadata']['runtime']['duration_seconds'])
         self.assertIn('报告头元数据', text)
 
+    def test_concurrency_limits_by_cpu_threads_and_optional_job_count(self):
+        cfg = {**self.cfg, 'threads': 1}
+        (self.root / 'workspace/.mc-jobs').mkdir(parents=True, exist_ok=True)
+        busy = self.root / ('workspace/.mc-jobs/' + 'a' * 32)
+        busy.mkdir()
+        (busy / 'job.json').write_text(json.dumps({'job_id': 'a' * 32, 'state': 'running',
+                                                   'threads': 4}), encoding='utf-8')
+        usage = jobs.running_usage()
+        self.assertEqual(usage, {'running_jobs': 1, 'used_threads': 4})
+        capacity = jobs.check_capacity({**cfg, 'cpu_count': 8}, 4)
+        self.assertEqual(capacity['cores'], 8)
+        self.assertEqual(capacity['used_threads'], 4)
+        with self.assertRaises(business.MCInputError) as caught:
+            jobs.check_capacity({**cfg, 'cpu_count': 8}, 5)
+        self.assertIn('超核', str(caught.exception))
+        with self.assertRaises(business.MCInputError) as caught:
+            jobs.check_capacity({**cfg, 'max_concurrent_jobs': 1}, 1)
+        self.assertIn('并发作业已达上限', str(caught.exception))
+        finished = json.loads((busy / 'job.json').read_text())
+        finished['state'] = 'completed'
+        (busy / 'job.json').write_text(json.dumps(finished), encoding='utf-8')
+        self.assertEqual(jobs.running_usage()['running_jobs'], 0)
+
+    def test_limits_come_from_configuration(self):
+        cfg = json.loads((ROOT / 'config/openmc.json').read_text())
+        self.assertGreaterEqual(cfg['max_log_bytes'], 50 * 1024 * 1024)
+        self.assertEqual(cfg['max_input_bytes'], 10 * 1024 * 1024)
+        case = self.root / 'workspace/big'
+        (case).mkdir(parents=True)
+        (case / 'geometry.xml').write_text('<geometry/>', encoding='utf-8')
+        (case / 'materials.xml').write_text('<materials/>', encoding='utf-8')
+        (case / 'settings.xml').write_text('<settings><particles>10</particles><batches>2</batches>'
+                                          '<inactive>0</inactive></settings>', encoding='utf-8')
+        with patch.object(tools, 'config', lambda: {**cfg, 'max_input_bytes': 8}):
+            value = tools.validate_inputs('big')
+        self.assertTrue(any('MiB结构检查上限' in item for item in value['problems']), value)
+
     def test_create_model_accepts_public_benchmark_templates_only(self):
         calls = []
 

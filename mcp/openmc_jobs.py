@@ -87,6 +87,41 @@ def spawn_worker(directory: Path, script: str, identifier: str) -> None:
         raise Error('计算监控进程启动失败') from exc
 
 
+def running_usage() -> dict:
+    """统计未结束作业占用的线程数（含queued），用于按核数限并发。"""
+    jobs = path_in_workspace('.mc-jobs', exists=False, internal=True)
+    used = 0
+    count = 0
+    if jobs.is_dir():
+        for directory in jobs.iterdir():
+            marker = directory / 'job.json'
+            if not marker.is_file():
+                continue
+            try:
+                record = read(directory)
+            except Error:
+                continue
+            if record.get('state') in ('running', 'queued'):
+                used += int(record.get('threads') or 1)
+                count += 1
+    return {'running_jobs': count, 'used_threads': used}
+
+
+def check_capacity(cfg: dict, threads: int) -> dict:
+    """按CPU核数与可选max_concurrent_jobs限并发；超限直接拒绝并说明如何腾出。"""
+    cores = int(cfg.get('cpu_count') or os.cpu_count() or 1)
+    maximum = int(cfg.get('max_concurrent_jobs') or 0)
+    usage = running_usage()
+    if maximum and usage['running_jobs'] >= maximum:
+        raise Error('并发作业已达上限' + str(maximum) + '个（当前' + str(usage['running_jobs']) +
+                    '个）；等一个作业结束或先取消后再提交')
+    if usage['used_threads'] + threads > cores:
+        raise Error('按CPU核数限并发：已用' + str(usage['used_threads']) + '线程，本机' + str(cores) +
+                    '核，再提交' + str(threads) + '线程会超核；请调小threads、等作业结束或先取消')
+    return {**usage, 'cores': cores, 'requested_threads': threads,
+            'limit_jobs': maximum or None}
+
+
 def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | None = None,
            _internal: bool = False, _job_id: str | None = None, _expected_inputs: dict | None = None,
            _example_workflow: dict | None = None, _preserve_outputs: bool = False) -> dict:
@@ -98,6 +133,7 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
     if not source.is_dir() or source == workspace():
         raise Error('case_dir须为工作区内的具体算例子目录')
     cfg = _runtime or config()
+    capacity = check_capacity(cfg, threads)
     job_id = _job_id or uuid.uuid4().hex
     if not re.fullmatch('[a-f0-9]{32}', job_id):raise Error('无效预留作业编号')
     jobs = path_in_workspace('.mc-jobs', exists=False, internal=True)
@@ -118,7 +154,7 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
         raise Error('输入在校核与快照之间发生变化，未启动计算；保留未完成目录供核对')
     record = {'job_id': job_id, 'state': 'queued', 'submitted_at': time.time(),
               'case_dir': case_dir, 'mode': mode, 'threads': threads,
-              'provenance': provenance(source, cfg), 'runtime': cfg,
+              'provenance': provenance(source, cfg), 'runtime': cfg, 'concurrency': capacity,
               'work_dir': relative(copied), 'input_files': input_files}
     if _example_workflow is not None:
         record['example_workflow'] = _example_workflow

@@ -77,6 +77,10 @@ def config() -> dict:
         raise Error('cad_library_path须为字符串')
     if 'geometry_check_timeout_seconds' in value and (type(value['geometry_check_timeout_seconds']) is not int or value['geometry_check_timeout_seconds'] <= 0):
         raise Error('geometry_check_timeout_seconds须为正整数')
+    if 'max_concurrent_jobs' in value and (type(value['max_concurrent_jobs']) is not int or value['max_concurrent_jobs'] < 0):
+        raise Error('max_concurrent_jobs须为非负整数')
+    if 'max_input_bytes' in value and (type(value['max_input_bytes']) is not int or value['max_input_bytes'] <= 0):
+        raise Error('max_input_bytes须为正整数')
     for key in ('max_scan_cases', 'max_plot_points', 'max_report_rows', 'report_timeout_seconds'):
         if key in value and (type(value[key]) is not int or value[key] <= 0):
             raise Error(key + '须为正整数')

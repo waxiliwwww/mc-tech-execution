@@ -569,8 +569,9 @@ def validate_inputs(case_dir: str, api_check: bool = False, semantic_check: bool
         path = path_in_workspace(str(Path(case_dir) / name)) if (directory / name).exists() else directory / name
         if not path.is_file():
             problems.append(name + '缺失'); continue
-        if path.stat().st_size > 10 * 1024 * 1024:
-            problems.append(name + '超过本工具10MiB结构检查上限'); continue
+        input_limit = config().get('max_input_bytes') or 10 * 1024 * 1024
+        if path.stat().st_size > input_limit:
+            problems.append(name + f'超过本工具{input_limit // 1024 // 1024}MiB结构检查上限'); continue
         try:
             data = path.read_bytes()
             if b'<!DOCTYPE' in data.upper() or b'<!ENTITY' in data.upper():
