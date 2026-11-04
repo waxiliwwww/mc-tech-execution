@@ -2337,6 +2337,73 @@
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_cad.py">mcp/openmc_cad.py</a>。</p></details>
+<details class="tool" id="openmc_list_fault_samples"><summary>openmc_list_fault_samples
+<span class="tool-purpose">列出故障样本库：16条样本（输入缺陷与真实引擎报错摘录）、预期检测类别与依据；只读。样本用于自检诊断覆盖面，不代表甲方故障清单。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>无参数</td><td>object</td><td>—</td><td>空对象</td><td>不接受额外参数</td><td>{}</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>count为样本数；samples每项含id/kind/expected/evidence；库路径见library。</p>
+<div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>count</td><td>样本数或条目数。</td></tr><tr><td>samples</td><td>样本条目列表：id、kind、expected（预期检测类别）、evidence（依据）、目录或日志路径。</td></tr></tbody></table></div>
+<p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {},
+  &quot;required&quot;: [],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;count为样本数；samples每项含id/kind/expected/evidence；库路径见library。&quot;,
+  &quot;properties&quot;: {
+    &quot;count&quot;: {
+      &quot;description&quot;: &quot;样本数或条目数。&quot;
+    },
+    &quot;samples&quot;: {
+      &quot;description&quot;: &quot;样本条目列表：id、kind、expected（预期检测类别）、evidence（依据）、目录或日志路径。&quot;
+    }
+  }
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/openmc_faults.py">mcp/openmc_faults.py</a>。</p></details>
+<details class="tool" id="openmc_check_fault_sample"><summary>openmc_check_fault_sample
+<span class="tool-purpose">自检故障样本：给sample_id只查一条，省略则查全部并汇总通过数；输入样本按validate_inputs定位到文件与问题，日志样本按error-rules定位到行号。通过不代表专业结论。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>sample_id</td><td>string</td><td>否</td><td>省略时见说明</td><td>故障样本编号（如s01-settings-syntax）；省略则检查全部。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>total/passed/failed为自检汇总；results每项含expected与found（文件、问题或日志行号）。</p>
+<div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>total</td><td>自检样本总数。</td></tr><tr><td>passed</td><td>自检通过数；通过只表示诊断能定位该构造缺陷。</td></tr><tr><td>failed</td><td>自检未通过的样本编号列表（空列表表示全部定位到）。</td></tr></tbody></table></div>
+<p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;sample_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;故障样本编号（如s01-settings-syntax）；省略则检查全部。&quot;
+    }
+  },
+  &quot;required&quot;: [],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;total/passed/failed为自检汇总；results每项含expected与found（文件、问题或日志行号）。&quot;,
+  &quot;properties&quot;: {
+    &quot;total&quot;: {
+      &quot;description&quot;: &quot;自检样本总数。&quot;
+    },
+    &quot;passed&quot;: {
+      &quot;description&quot;: &quot;自检通过数；通过只表示诊断能定位该构造缺陷。&quot;
+    },
+    &quot;failed&quot;: {
+      &quot;description&quot;: &quot;自检未通过的样本编号列表（空列表表示全部定位到）。&quot;
+    }
+  }
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/openmc_faults.py">mcp/openmc_faults.py</a>。</p></details>
 <details class="tool" id="openmc_view_geometry"><summary>openmc_view_geometry
 <span class="tool-purpose">按算例输入出2D几何切片图（xy/xz/yz、原点/宽度cm、像素可调，按材料或栅元着色），写入算例views目录并返回图片路径；只画输入几何，不代表几何已通过重叠检查，也不含计算结果。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>basis</td><td>string</td><td>否</td><td>&quot;xy&quot;</td><td>切片方位：xy（横切）、xz或yz（纵切）；与OpenMC引擎一致。</td><td>—</td></tr><tr><td>origin</td><td>array</td><td>否</td><td>省略时见说明</td><td>切片原点3个数，单位cm；省略用引擎默认。</td><td>—</td></tr><tr><td>width</td><td>array</td><td>否</td><td>省略时见说明</td><td>切片显示宽度一个或两个正数，单位cm；省略用几何包围盒。</td><td>—</td></tr><tr><td>pixels</td><td>integer</td><td>否</td><td>400</td><td>图像像素边长，50..1200；越大越慢。</td><td>—</td></tr><tr><td>color_by</td><td>string</td><td>否</td><td>&quot;material&quot;</td><td>按材料(material)或栅元(cell)着色。</td><td>—</td></tr><tr><td>title</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选图标题，最多200字符；省略时使用默认标题，不改变计分数据、单位或归一化。不要传null。</td><td>—</td></tr></tbody></table></div>

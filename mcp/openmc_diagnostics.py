@@ -52,10 +52,16 @@ def diagnose_job(job_id: str):
     if log.exists():
         with log.open(encoding='utf-8', errors='replace') as stream:
             for total_lines, line in enumerate(stream, 1):tail.append((total_lines, line[:4000]))
-        for number, line in tail:
+        tail_list = list(tail)
+        for position, (number, line) in enumerate(tail_list):
+            # 引擎会把一条消息折成多行（如 lost particle 的 "could not be located in any" + "cell"），
+            # 逐行匹配会漏；这里把当前行与下一行拼起来再匹配，行号仍报首个命中行。
+            window = line
+            if position + 1 < len(tail_list):
+                window = line.rstrip('\n') + ' ' + tail_list[position + 1][1].strip()
             for rule in rules:
-                if re.search(rule['pattern'], line, re.IGNORECASE):
-                    findings.append({'source': 'solver.log', 'line': number, 'excerpt': line.strip()[:1000],
+                if re.search(rule['pattern'], line, re.IGNORECASE) or re.search(rule['pattern'], window, re.IGNORECASE):
+                    findings.append({'source': 'solver.log', 'line': number, 'excerpt': window.strip()[:1000],
                                      'category': rule['category'], 'suggestion': rule['suggestion'],
                                      'rule_status': rule['status'], 'reference': rule.get('reference')})
     proposals = []

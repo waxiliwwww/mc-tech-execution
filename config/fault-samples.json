@@ -1,0 +1,163 @@
+[
+  {
+    "id": "s01-settings-syntax",
+    "kind": "input",
+    "directory": "s01-settings-syntax",
+    "expected": {
+      "source": "validate_inputs",
+      "contains": "mismatched tag"
+    },
+    "evidence": "构造输入：由 validate_inputs 结构/语义检查定位（含文件名与具体问题）"
+  },
+  {
+    "id": "s02-materials-dtd",
+    "kind": "input",
+    "directory": "s02-materials-dtd",
+    "expected": {
+      "source": "validate_inputs",
+      "contains": "不接受DTD或实体声明"
+    },
+    "evidence": "构造输入：由 validate_inputs 结构/语义检查定位（含文件名与具体问题）"
+  },
+  {
+    "id": "s03-geometry-root",
+    "kind": "input",
+    "directory": "s03-geometry-root",
+    "expected": {
+      "source": "validate_inputs",
+      "contains": "根元素应为geometry"
+    },
+    "evidence": "构造输入：由 validate_inputs 结构/语义检查定位（含文件名与具体问题）"
+  },
+  {
+    "id": "s04-particles-range",
+    "kind": "input",
+    "directory": "s04-particles-range",
+    "expected": {
+      "source": "validate_inputs",
+      "contains": "particles范围无效"
+    },
+    "evidence": "构造输入：由 validate_inputs 结构/语义检查定位（含文件名与具体问题）"
+  },
+  {
+    "id": "s05-inactive-range",
+    "kind": "input",
+    "directory": "s05-inactive-range",
+    "expected": {
+      "source": "validate_inputs",
+      "contains": "inactive范围无效"
+    },
+    "evidence": "构造输入：由 validate_inputs 结构/语义检查定位（含文件名与具体问题）"
+  },
+  {
+    "id": "s06-missing-geometry",
+    "kind": "input",
+    "directory": "s06-missing-geometry",
+    "expected": {
+      "source": "validate_inputs",
+      "contains": "geometry.xml缺失"
+    },
+    "evidence": "构造输入：由 validate_inputs 结构/语义检查定位（含文件名与具体问题）"
+  },
+  {
+    "id": "s07-density-missing",
+    "kind": "input",
+    "directory": "s07-density-missing",
+    "expected": {
+      "source": "validate_inputs",
+      "contains": "density_value"
+    },
+    "evidence": "构造输入：由 validate_inputs 结构/语义检查定位（含文件名与具体问题）"
+  },
+  {
+    "id": "s08-density-negative",
+    "kind": "input",
+    "directory": "s08-density-negative",
+    "expected": {
+      "source": "validate_inputs",
+      "contains": "density_value"
+    },
+    "evidence": "构造输入：由 validate_inputs 结构/语义检查定位（含文件名与具体问题）"
+  },
+  {
+    "id": "s09-missing-nuclide",
+    "kind": "input",
+    "directory": "s09-missing-nuclide",
+    "expected": {
+      "source": "validate_inputs",
+      "contains": "missing_nuclide"
+    },
+    "evidence": "构造输入：由 validate_inputs 结构/语义检查定位（含文件名与具体问题）",
+    "requires": "nuclear_data"
+  },
+  {
+    "id": "s10-temperature-negative",
+    "kind": "input",
+    "directory": "s10-temperature-negative",
+    "expected": {
+      "source": "validate_inputs",
+      "contains": "temperature"
+    },
+    "evidence": "构造输入：由 validate_inputs 结构/语义检查定位（含文件名与具体问题）"
+  },
+  {
+    "id": "s11-tallies-syntax",
+    "kind": "input",
+    "directory": "s11-tallies-syntax",
+    "expected": {
+      "source": "validate_inputs",
+      "contains": "tallies.xml"
+    },
+    "evidence": "构造输入：由 validate_inputs 结构/语义检查定位（含文件名与具体问题）"
+  },
+  {
+    "id": "s12-log-xml-syntax",
+    "kind": "log",
+    "log": "logs/s12-log-xml-syntax.log",
+    "expected": {
+      "source": "error-rules",
+      "category": "syntax"
+    },
+    "evidence": "真实 OpenMC 0.16.0 引擎报错摘录（2026-11-04 本机采集），由 config/error-rules.json 规则定位行号"
+  },
+  {
+    "id": "s13-log-invalid-run-mode",
+    "kind": "log",
+    "log": "logs/s13-log-invalid-run-mode.log",
+    "expected": {
+      "source": "error-rules",
+      "category": "invalid_run_mode"
+    },
+    "evidence": "真实 OpenMC 0.16.0 引擎报错摘录（2026-11-04 本机采集），由 config/error-rules.json 规则定位行号"
+  },
+  {
+    "id": "s14-log-missing-nuclide",
+    "kind": "log",
+    "log": "logs/s14-log-missing-nuclide.log",
+    "expected": {
+      "source": "error-rules",
+      "category": "missing_nuclide"
+    },
+    "evidence": "真实 OpenMC 0.16.0 引擎报错摘录（2026-11-04 本机采集），由 config/error-rules.json 规则定位行号"
+  },
+  {
+    "id": "s15-log-missing-cross-sections",
+    "kind": "log",
+    "log": "logs/s15-log-missing-cross-sections.log",
+    "expected": {
+      "source": "error-rules",
+      "category": "missing_input_data"
+    },
+    "evidence": "真实 OpenMC 0.16.0 引擎报错摘录（2026-11-04 本机采集），由 config/error-rules.json 规则定位行号"
+  },
+  {
+    "id": "s16-log-lost-particle",
+    "kind": "log",
+    "log": "logs/s16-log-lost-particle.log",
+    "expected": {
+      "source": "error-rules",
+      "category": "lost_particle"
+    },
+    "evidence": "真实 OpenMC 0.16.0 引擎报错摘录（2026-11-04 本机采集），由 config/error-rules.json 规则定位行号"
+  }
+]

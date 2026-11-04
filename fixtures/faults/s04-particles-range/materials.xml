@@ -1,0 +1,1 @@
+<materials><material id="1" name="fuel" temperature="600"><density value="10.0" units="g/cm3"/><nuclide name="U235" wo="1.0"/></material></materials>

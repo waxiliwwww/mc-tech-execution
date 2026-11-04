@@ -186,6 +186,21 @@ class OpenMCTools(unittest.TestCase):
         self.assertIsNotNone(report['metadata']['runtime']['duration_seconds'])
         self.assertIn('报告头元数据', text)
 
+    def test_fault_sample_library_lists_and_self_checks(self):
+        import openmc_faults
+        listing = openmc_faults.list_samples()
+        self.assertEqual(listing['count'], 16)
+        self.assertEqual({item['kind'] for item in listing['samples']}, {'input', 'log'})
+        result = openmc_faults.check_sample()
+        self.assertEqual(result['total'], 16)
+        self.assertEqual(result['failed'], [], result.get('results'))
+        self.assertEqual(result['passed'] + len(result['skipped']), 16)
+        single = openmc_faults.check_sample('s01-settings-syntax')
+        self.assertEqual(single['total'], 1)
+        self.assertTrue(single['results'][0]['passed'])
+        with self.assertRaises(ValueError):
+            openmc_faults.check_sample('no-such-sample')
+
     def test_view_geometry_validates_arguments_and_writes_png(self):
         case = self.root / 'workspace/look'
         case.mkdir(parents=True)

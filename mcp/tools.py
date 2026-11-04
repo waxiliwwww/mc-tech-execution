@@ -15,6 +15,7 @@ from openmc_artifacts import list_artifacts
 from openmc_knowledge import list_sources, read as read_knowledge
 from openmc_examples import prepare_example
 from openmc_cad import build_dagmc_model, convert_cad, inspect_step as inspect_cad_step
+from openmc_faults import check_sample, list_samples
 from openmc_tools import configure_depletion, define_tally, read_depletion, view_geometry
 from openmc_diagnostics import diagnose_job, prepare_repair, recheck_repair
 from tool_metadata import document_tools
@@ -209,6 +210,12 @@ TOOLS += [
                             "seed": {"type": "integer", "minimum": 1}},
                            ["case_dir", "materials"]),
      "outputSchema": OUTPUT, "function": build_dagmc_model, "annotations": WRITE},
+    {"name": "openmc_list_fault_samples", "description": "列出故障样本库：16条样本（输入缺陷与真实引擎报错摘录）、预期检测类别与依据；只读。样本用于自检诊断覆盖面，不代表甲方故障清单。",
+     "inputSchema": schema({}), "outputSchema": OUTPUT, "function": list_samples,
+     "annotations": {"readOnlyHint": True}},
+    {"name": "openmc_check_fault_sample", "description": "自检故障样本：给sample_id只查一条，省略则查全部并汇总通过数；输入样本按validate_inputs定位到文件与问题，日志样本按error-rules定位到行号。通过不代表专业结论。",
+     "inputSchema": schema({"sample_id": TEXT}, []), "outputSchema": OUTPUT,
+     "function": check_sample, "annotations": {"readOnlyHint": True}},
     {"name": "openmc_view_geometry", "description": "按算例输入出2D几何切片图（xy/xz/yz、原点/宽度cm、像素可调，按材料或栅元着色），写入算例views目录并返回图片路径；只画输入几何，不代表几何已通过重叠检查，也不含计算结果。",
      "inputSchema": schema({"case_dir": TEXT,
                             "basis": {"type": "string", "enum": ["xy", "xz", "yz"]},
