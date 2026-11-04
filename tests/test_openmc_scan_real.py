@@ -102,6 +102,21 @@ class RealScanReports(unittest.TestCase):
         self.assertEqual(ET.parse(self.workspace / 'base/geometry.xml').getroot().find("surface[@id='1']").get('coeffs'), '-10')
         self.assertIn('不能覆盖', self.call('openmc_prepare_case', {'case_dir': 'base', 'target_dir': 'modified', 'parameters': {self.density: 1}}, False))
 
+    def test_job_compare_tally_alignment_real(self):
+        pair = [r['job_id'] for r in self.completed['cases'] if r['parameters'][self.density] == .8]
+        value = self.call('openmc_job_compare', {'job_a': pair[0], 'job_b': pair[1], 'compare_tallies': True})
+        section = value['comparison']['tallies']
+        self.assertTrue(section['performed'], section)
+        self.assertEqual(section['only_in_a'], [])
+        self.assertEqual(section['only_in_b'], [])
+        entry = section['by_id'][0]
+        self.assertTrue(entry['aligned'], entry)
+        self.assertEqual(entry['within_2sigma'] + entry['outside_2sigma'], entry['bins_compared'])
+        self.assertEqual(section['summary']['non_finite_bins'], 0)
+        self.assertGreaterEqual(entry['bins_compared'], 3)  # flux/fission/absorption 三个score
+        self.assertIn('工程参考', section['note'])
+        self.evidence('real-job-compare-tally.json', value)
+
     def test_invalid_combinations_rejected_before_submission(self):
         before = set((self.workspace / '.mc-scans').iterdir())
         for axes in ({'not.a.public.field': [1]}, {'settings.batches': [2, 10]}, {self.density: [1, 1.0]}, {'settings.seed': list(range(101))}):

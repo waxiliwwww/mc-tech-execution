@@ -736,8 +736,83 @@ def storage_report(older_than_days=None, top: int = 10) -> dict:
     return result
 
 
-def compare_jobs(job_a: str, job_b: str) -> dict:
-    """两作业对比第一刀：输入指纹、状态、运行设置与Combined k；不含tally分布对比。"""
+def _tally_comparison(job_a, job_b, max_values):
+    """D2 第二刀：经 read_results 读两作业 StatePoint，按 tally id 对齐逐 bin 对比。
+    两倍σ判据按两作业独立假设合成，为工程参考，不构成统计显著性判定。"""
+    try:
+        data_a = read_results(job_a, max_values=max_values)
+        data_b = read_results(job_b, max_values=max_values)
+    except Error as exc:
+        return {'performed': False,
+                'reason': '至少一方无法读取StatePoint结果：' + str(exc),
+                'note': '两作业都完成且有有效StatePoint才能对比；如实报告，不猜测。'}
+    tallies_a = {tally['id']: tally for tally in data_a.get('tallies', [])}
+    tallies_b = {tally['id']: tally for tally in data_b.get('tallies', [])}
+    entries = []
+    for tally_id in sorted(set(tallies_a) & set(tallies_b)):
+        one, two = tallies_a[tally_id], tallies_b[tally_id]
+        mismatch = [field for field in ('shape', 'scores', 'nuclides', 'estimator')
+                    if one.get(field) != two.get(field)]
+        if ([item['type'] for item in one.get('filters', [])]
+                != [item['type'] for item in two.get('filters', [])]):
+            mismatch.append('filters')
+        entry = {'id': tally_id, 'name': {'a': one.get('name'), 'b': two.get('name')},
+                 'aligned': not mismatch, 'structure_mismatch': mismatch,
+                 'truncated': bool(one.get('values_truncated') or two.get('values_truncated'))}
+        if mismatch:
+            entry['shape'] = {'a': one.get('shape'), 'b': two.get('shape')}
+            entry['note'] = '结构不一致，未做逐bin对比；如实报告。'
+            entries.append(entry)
+            continue
+        problem_bins = []
+        compared = within = outside = non_finite = 0
+        max_abs_diff = None
+        for index, (mean_a, std_a, mean_b, std_b) in enumerate(
+                zip(one['mean'], one['std_dev'], two['mean'], two['std_dev'])):
+            if None in (mean_a, std_a, mean_b, std_b):
+                non_finite += 1
+                if len(problem_bins) < 50:
+                    problem_bins.append({'index': index, 'mean_a': mean_a, 'mean_b': mean_b,
+                                         'std_dev_a': std_a, 'std_dev_b': std_b,
+                                         'non_finite': True})
+                continue
+            compared += 1
+            diff = mean_b - mean_a
+            sigma = (std_a ** 2 + std_b ** 2) ** 0.5
+            ok = abs(diff) <= 2 * sigma if sigma > 0 else diff == 0
+            within += int(ok)
+            outside += int(not ok)
+            if max_abs_diff is None or abs(diff) > max_abs_diff:
+                max_abs_diff = abs(diff)
+            if not ok and len(problem_bins) < 50:
+                problem_bins.append({'index': index, 'mean_a': mean_a, 'mean_b': mean_b,
+                                     'std_dev_a': std_a, 'std_dev_b': std_b,
+                                     'difference': diff, 'combined_std_dev': sigma,
+                                     'within_2sigma': False})
+        entry.update(bins_compared=compared, within_2sigma=within, outside_2sigma=outside,
+                     non_finite_bins=non_finite, max_abs_diff=max_abs_diff,
+                     problem_bins=problem_bins,
+                     problem_bins_truncated=(outside + non_finite) > len(problem_bins))
+        entries.append(entry)
+    return {'performed': True, 'max_values': max_values, 'by_id': entries,
+            'only_in_a': sorted(set(tallies_a) - set(tallies_b)),
+            'only_in_b': sorted(set(tallies_b) - set(tallies_a)),
+            'summary': {
+                'tallies': len(entries),
+                'aligned': sum(1 for entry in entries if entry['aligned']),
+                'bins_compared': sum(entry.get('bins_compared', 0) for entry in entries),
+                'within_2sigma': sum(entry.get('within_2sigma', 0) for entry in entries),
+                'outside_2sigma': sum(entry.get('outside_2sigma', 0) for entry in entries),
+                'non_finite_bins': sum(entry.get('non_finite_bins', 0) for entry in entries)},
+            'warnings': sorted(set(data_a.get('warnings', [])) | set(data_b.get('warnings', []))),
+            'note': '两倍σ判据按两作业独立假设合成（|差值|≤2σ_合成），为工程参考，不构成统计显著性判定；'
+                    '截断时仅对比前max_values个bin并如实标记；非有限bin不替换为0；问题bin至多列50条。'
+                    '完整数据在各作业results.json。'}
+
+
+def compare_jobs(job_a: str, job_b: str, compare_tallies: bool = False,
+                 max_values: int = 1000) -> dict:
+    """两作业对比：输入指纹、状态、运行设置与Combined k；compare_tallies=true加tally逐bin对比。"""
     if job_a == job_b:
         raise Error('请选择两个不同的作业编号')
     sides = {}
@@ -779,9 +854,13 @@ def compare_jobs(job_a: str, job_b: str) -> dict:
         'runtime': {field: {'a': a[field], 'b': b[field], 'same': a[field] == b[field]}
                     for field in ('state', 'mode', 'threads', 'run_mode',
                                   'batches_total', 'inactive')}}
+    if compare_tallies:
+        comparison['tallies'] = _tally_comparison(job_a, job_b, max_values)
     return {'job_a': job_a, 'job_b': job_b, 'sides': sides, 'comparison': comparison,
             'workspace': str(workspace()), 'location': 'server', 'professional_acceptance': False,
-            'note': '工程对比第一刀：输入指纹、状态、运行设置与Combined k；tally分布与网格结果对比未包含，需要时另扩展。'}
+            'note': '工程对比：输入指纹、状态、运行设置与Combined k'
+                    + ('；tally逐bin对比见comparison.tallies。' if compare_tallies
+                       else '；tally逐bin对比未请求，compare_tallies=true可开启。')}
 
 
 def export_report(job_id: str, format: str = 'markdown', tally_id: int | None = None,

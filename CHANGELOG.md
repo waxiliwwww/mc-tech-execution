@@ -14,6 +14,7 @@
 - 几何重叠检查并入 `validate_inputs` 可选档：`geometry_check=true` 在临时副本上以削减批次（≤2 批、inactive 归零、单线程、超时默认 120 秒可配 `geometry_check_timeout_seconds`）运行 `openmc -g`，结构化返回重叠单元明细（cells/universe）、逐单元重叠检查次数汇总、settings 削减记录与日志尾部；概率性结论如实标注（通过不能证明无重叠），引擎缺失/结构未过/超时/非零退出无明细分别如实报告；原算例文件不动，符号链接拒绝。`validation_level` 增加 `+static_semantics`/`+openmc_geometry_debug` 层。离线 stub 引擎测试 + 真实引擎门控测试（重叠算例报 cells 2,1 on universe 0，rc 255；干净算例返回逐单元检查次数）。
 - prepare_case 逐参数差异（B2）：返回新增 `parameter_diff`——`changes`（应用时刻前后值，含单位/类别）加 `readback`（写入后再次调用 OpenMC API 重新读取文件、按参数核对 expected/found/match），`verified=true` 表示全部请求参数读回一致；不一致或缺读回项如实列出。把“修改意图”升级为“落盘证据”；顶层 `changes` 字段保留，兼容不变。
 - 工作区存储只读报告（H2 第一刀）：新工具 `openmc_storage_report`——内部记录（作业/扫描/例题）逐类计数与字节、状态分布、最大记录 Top N；请求 `older_than_days` 时按与 `cleanup.sh` 完全一致的口径预览可回收量（仅终态记录、引用保护与修复关联如实列出）。实现按文件路径加载并复用 `scripts/cleanup_artifacts.py` 的 inventory/fingerprint/plan，口径单一来源；本工具不删除任何内容，删除仍须维护窗口 `cleanup.sh` 预览后 `--apply`。
+- 作业对比第二刀（D2）：`openmc_job_compare` 增加可选 `compare_tallies` 档——经 `read_results` 读取两作业 StatePoint，按 tally id 对齐（shape/scores/nuclides/estimator/filters 类型不一致时如实不对比并列结构差异），逐 bin 给出差值、独立假设合成 σ 与是否在两倍 σ 内（工程判据，不构成统计显著性判定）；非有限 bin 不替换为 0，截断如实标记仅对比前 `max_values` 个 bin，问题 bin 至多列 50 条，`summary` 给全量计数，双方 warnings 合并返回。进度表工程辅助段补 `openmc_preview_input`（B1 文档欠账）与 `openmc_job_compare` 两行。
 - 工具注册表 37→42；`docs/reference.html` 由生成器重生成；CI 工具计数断言同步。进度表 RF002 行更新为部分实现（工程已验证）。
 - 仍未做：h5m→可运行模型 XML 生成（材料定义与 DAGMC 几何接线）、甲方 STEP 件验收判据（1000 粒子 lost particle=0）、复杂装配体质量参数封装。
 

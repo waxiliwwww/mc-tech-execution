@@ -2071,9 +2071,9 @@
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_tools.py">mcp/openmc_tools.py</a>。</p></details>
 <details class="tool" id="openmc_job_compare"><summary>openmc_job_compare
-<span class="tool-purpose">对比两个本地作业（第一刀）：逐输入文件SHA256异同、状态/模式/线程/批数、双方Combined k及差值与合成σ（工程参考，非统计显著性判定）。tally分布对比未包含。只读。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>job_a</td><td>string</td><td>是</td><td>不可省略</td><td>对比基准方作业编号（32位十六进制），直接使用openmc_submit_job返回的job_id；结果中记为a方，difference=b-a。</td><td>—</td></tr><tr><td>job_b</td><td>string</td><td>是</td><td>不可省略</td><td>对比另一方作业编号（32位十六进制），直接使用openmc_submit_job返回的job_id；结果中记为b方，difference=b-a。</td><td>—</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>sides给出两作业状态、运行设置、Combined k与输入指纹；comparison.inputs分identical/differing/only_in_a/only_in_b四类；keff_combined.difference=b-a，combined_std_dev按独立假设合成，仅工程参考。tally分布对比未包含。</p>
+<span class="tool-purpose">对比两个本地作业：逐输入文件SHA256异同、状态/模式/线程/批数、双方Combined k及差值与合成σ（工程参考，非统计显著性判定）。compare_tallies=true时读取两作业StatePoint，按tally id对齐逐bin对比（两倍σ工程判据；结构不齐/截断/非有限值如实报告）。只读。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>job_a</td><td>string</td><td>是</td><td>不可省略</td><td>对比基准方作业编号（32位十六进制），直接使用openmc_submit_job返回的job_id；结果中记为a方，difference=b-a。</td><td>—</td></tr><tr><td>job_b</td><td>string</td><td>是</td><td>不可省略</td><td>对比另一方作业编号（32位十六进制），直接使用openmc_submit_job返回的job_id；结果中记为b方，difference=b-a。</td><td>—</td></tr><tr><td>compare_tallies</td><td>boolean</td><td>否</td><td>false</td><td>是否额外做tally逐bin对比：读取两作业StatePoint，按tally id对齐（shape/scores/nuclides/estimator/filters类型不一致则如实不对比并列结构差异），逐bin给出差值、独立假设合成σ与是否在两倍σ内（工程判据，非统计显著性判定）；非有限bin不替换为0，截断时仅对比前max_values个bin并如实标记。省略为false。</td><td>—</td></tr><tr><td>max_values</td><td>integer</td><td>否</td><td>1000</td><td>每个计分结果返回的预览值数量上限。截断会标记；不改变原StatePoint，绘图按选择读取完整数据。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>sides给出两作业状态、运行设置、Combined k与输入指纹；comparison.inputs分identical/differing/only_in_a/only_in_b四类；keff_combined.difference=b-a，combined_std_dev按独立假设合成，仅工程参考。compare_tallies=true时comparison.tallies给出：summary总数（bins_compared/within_2sigma/outside_2sigma/non_finite_bins）、by_id逐tally结构对齐与问题bin（至多50条，含index/difference/combined_std_dev）、only_in_a/only_in_b、双方warnings合并；两倍σ判据为工程参考，非统计显著性判定。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>job_a</td><td>作业编号（a方）；来自openmc_submit_job返回值。</td></tr><tr><td>job_b</td><td>作业编号（b方）；来自openmc_submit_job返回值。</td></tr><tr><td>workspace</td><td>服务端绝对数据根；工作区相对路径以它为基准。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
@@ -2089,6 +2089,18 @@
       &quot;type&quot;: &quot;string&quot;,
       &quot;minLength&quot;: 1,
       &quot;description&quot;: &quot;对比另一方作业编号（32位十六进制），直接使用openmc_submit_job返回的job_id；结果中记为b方，difference=b-a。&quot;
+    },
+    &quot;compare_tallies&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;,
+      &quot;description&quot;: &quot;是否额外做tally逐bin对比：读取两作业StatePoint，按tally id对齐（shape/scores/nuclides/estimator/filters类型不一致则如实不对比并列结构差异），逐bin给出差值、独立假设合成σ与是否在两倍σ内（工程判据，非统计显著性判定）；非有限bin不替换为0，截断时仅对比前max_values个bin并如实标记。省略为false。&quot;,
+      &quot;default&quot;: false
+    },
+    &quot;max_values&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 1,
+      &quot;maximum&quot;: 10000,
+      &quot;description&quot;: &quot;每个计分结果返回的预览值数量上限。截断会标记；不改变原StatePoint，绘图按选择读取完整数据。&quot;,
+      &quot;default&quot;: 1000
     }
   },
   &quot;required&quot;: [
@@ -2101,7 +2113,7 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;sides给出两作业状态、运行设置、Combined k与输入指纹；comparison.inputs分identical/differing/only_in_a/only_in_b四类；keff_combined.difference=b-a，combined_std_dev按独立假设合成，仅工程参考。tally分布对比未包含。&quot;,
+  &quot;description&quot;: &quot;sides给出两作业状态、运行设置、Combined k与输入指纹；comparison.inputs分identical/differing/only_in_a/only_in_b四类；keff_combined.difference=b-a，combined_std_dev按独立假设合成，仅工程参考。compare_tallies=true时comparison.tallies给出：summary总数（bins_compared/within_2sigma/outside_2sigma/non_finite_bins）、by_id逐tally结构对齐与问题bin（至多50条，含index/difference/combined_std_dev）、only_in_a/only_in_b、双方warnings合并；两倍σ判据为工程参考，非统计显著性判定。&quot;,
   &quot;properties&quot;: {
     &quot;job_a&quot;: {
       &quot;description&quot;: &quot;作业编号（a方）；来自openmc_submit_job返回值。&quot;

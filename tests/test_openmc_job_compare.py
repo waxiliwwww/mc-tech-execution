@@ -127,6 +127,127 @@ class JobCompare(unittest.TestCase):
         self.assertIsNone(value['comparison']['keff_combined']['b'])
         self.assertFalse(value['comparison']['runtime']['state']['same'])
 
+    # ---- D2 第二刀：tally 逐 bin 对比（patch read_results，不依赖引擎） ----
+
+    def results_payload(self, job_id, tallies, warnings=()):
+        return {'job_id': job_id, 'openmc_version': [0, 16, 0], 'run_mode': 'eigenvalue',
+                'particles': 100, 'realizations': 15, 'keff': {'mean': 1.16, 'std_dev': 0.003},
+                'tallies': tallies, 'warnings': list(warnings),
+                'provenance': {'data_kind': 'mock_process_fixture',
+                               'execution_kind': 'mock_process_fixture'},
+                'statepoint': 'statepoint.20.h5', 'statepoint_sha256': 'x',
+                'professional_acceptance': False}
+
+    def tally(self, tally_id, mean, std, scores=('flux',), nuclides=('total',),
+              estimator='analog', filters=(), shape=None, truncated=False):
+        return {'id': tally_id, 'name': f'tally-{tally_id}', 'scores': list(scores),
+                'nuclides': list(nuclides), 'estimator': estimator,
+                'filters': [{'type': kind, 'description': ''} for kind in filters],
+                'shape': shape or [len(mean)], 'mean': mean, 'std_dev': std,
+                'values_truncated': truncated, 'normalization': ''}
+
+    def compare_with_tallies(self, tally_lists, warnings=((), ()), **kwargs):
+        a = self.make_job('aa' * 16)
+        b = self.make_job('bb' * 16)
+        store = {a: self.results_payload(a, tally_lists[0], warnings[0]),
+                 b: self.results_payload(b, tally_lists[1], warnings[1])}
+        with patch.object(tools, 'read_results',
+                          lambda job_id, max_values=1000: store[job_id]):
+            return tools.compare_jobs(a, b, compare_tallies=True, **kwargs)['comparison']['tallies']
+
+    def test_tally_off_by_default(self):
+        a = self.make_job('aa' * 16, log=BATCH)
+        b = self.make_job('bb' * 16, log=BATCH)
+        self.assertNotIn('tallies', tools.compare_jobs(a, b)['comparison'])
+        self.assertIn('compare_tallies=true可开启', tools.compare_jobs(a, b)['note'])
+
+    def test_tally_within_and_outside_two_sigma(self):
+        one = self.tally(1, [1.0, 2.0], [0.01, 0.01])
+        two = self.tally(1, [1.005, 2.5], [0.01, 0.01])
+        section = self.compare_with_tallies(([one], [two]))
+        self.assertTrue(section['performed'])
+        entry = section['by_id'][0]
+        self.assertTrue(entry['aligned'])
+        self.assertEqual(entry['bins_compared'], 2)
+        self.assertEqual(entry['within_2sigma'], 1)
+        self.assertEqual(entry['outside_2sigma'], 1)
+        self.assertEqual(entry['problem_bins'][0]['index'], 1)
+        self.assertAlmostEqual(entry['max_abs_diff'], 0.5)
+        self.assertEqual(section['summary']['outside_2sigma'], 1)
+
+    def test_tally_identical_values_all_within(self):
+        one = self.tally(1, [1.0], [0.01])
+        two = self.tally(1, [1.0], [0.01])
+        entry = self.compare_with_tallies(([one], [two]))['by_id'][0]
+        self.assertEqual(entry['bins_compared'], 1)
+        self.assertEqual(entry['within_2sigma'], 1)
+        self.assertEqual(entry['outside_2sigma'], 0)
+        self.assertEqual(entry['problem_bins'], [])
+        self.assertEqual(entry['max_abs_diff'], 0.0)
+
+    def test_tally_zero_sigma_different_means_outside(self):
+        one = self.tally(1, [1.0], [0.0])
+        two = self.tally(1, [1.1], [0.0])
+        entry = self.compare_with_tallies(([one], [two]))['by_id'][0]
+        self.assertEqual(entry['outside_2sigma'], 1)
+        self.assertEqual(entry['problem_bins'][0]['combined_std_dev'], 0.0)
+
+    def test_tally_non_finite_not_zeroed(self):
+        one = self.tally(1, [1.0, 2.0], [0.01, 0.01])
+        two = self.tally(1, [1.0, None], [0.01, None])
+        section = self.compare_with_tallies(
+            ([one], [two]), warnings=((), ('统计量包含非有限值；保留为空，未替换为0；需检查统计条件。',)))
+        entry = section['by_id'][0]
+        self.assertEqual(entry['non_finite_bins'], 1)
+        self.assertEqual(entry['bins_compared'], 1)
+        self.assertTrue(entry['problem_bins'][0]['non_finite'])
+        self.assertTrue(section['warnings'])
+        self.assertIn('未替换为0', section['warnings'][0])
+
+    def test_tally_structure_mismatch_not_compared(self):
+        one = self.tally(1, [1.0, 2.0], [0.01, 0.01])
+        two = self.tally(1, [1.0], [0.01])
+        entry = self.compare_with_tallies(([one], [two]))['by_id'][0]
+        self.assertFalse(entry['aligned'])
+        self.assertEqual(entry['structure_mismatch'], ['shape'])
+        self.assertNotIn('bins_compared', entry)
+        self.assertIn('如实报告', entry['note'])
+
+    def test_tally_scores_mismatch_listed(self):
+        one = self.tally(1, [1.0], [0.01])
+        two = self.tally(1, [1.0], [0.01], scores=('fission',))
+        entry = self.compare_with_tallies(([one], [two]))['by_id'][0]
+        self.assertFalse(entry['aligned'])
+        self.assertEqual(entry['structure_mismatch'], ['scores'])
+
+    def test_tally_only_in_one_side(self):
+        section = self.compare_with_tallies(
+            ([self.tally(1, [1.0], [0.01]), self.tally(2, [2.0], [0.01])],
+             [self.tally(1, [1.0], [0.01]), self.tally(3, [3.0], [0.01])]))
+        self.assertEqual(section['only_in_a'], [2])
+        self.assertEqual(section['only_in_b'], [3])
+        self.assertEqual([entry['id'] for entry in section['by_id']], [1])
+        self.assertEqual(section['summary']['tallies'], 1)
+
+    def test_tally_truncation_flagged(self):
+        entry = self.compare_with_tallies(
+            ([self.tally(1, [1.0], [0.01], truncated=True)],
+             [self.tally(1, [1.0], [0.01])]))['by_id'][0]
+        self.assertTrue(entry['truncated'])
+
+    def test_tally_performed_false_when_statepoint_unreadable(self):
+        a = self.make_job('aa' * 16)
+        b = self.make_job('bb' * 16)
+
+        def broken(job_id, max_values=1000):
+            raise Error('作业没有可读取的StatePoint')
+
+        with patch.object(tools, 'read_results', broken):
+            section = tools.compare_jobs(a, b, compare_tallies=True)['comparison']['tallies']
+        self.assertFalse(section['performed'])
+        self.assertIn('StatePoint', section['reason'])
+        self.assertIn('不猜测', section['note'])
+
 
 if __name__ == '__main__':
     unittest.main()
