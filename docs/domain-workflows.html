@@ -1,7 +1,7 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>模型接入与建模 · MC工具包</title><link rel="stylesheet" href="assets/manual.css"><script src="assets/manual.js" defer></script></head><body><a class="sr-only" href="#content">跳到正文</a><aside class="sidebar"><a class="brand" href="index.html">MC 工具包<br>使用与开发手册</a><p class="edition">已有模型 / 新模型</p><nav><a href="index.html">认识工具包</a><a href="domain-workflows.html" aria-current="page">模型接入与建模</a><a href="development-plan.html">两周开发计划</a><a href="env.html">环境部署</a><a href="mcp.html">MCP接入</a><a href="reference.html">完整接口参数</a></nav></aside><main id="content">
 <p class="eyebrow">从用户输入到可追踪结果</p><h1>使用自己的模型，或组合生成新模型</h1>
 <p class="lead">已有OpenMC模型可以原样导入；需要新模型时，按公开Schema描述材料、几何、源与计分，由官方Python API生成XML。两条路径共用计算、扫描、图表和报告，输入不要求在官方例题清单中。</p>
-<div class="jump"><a href="#prepare">先准备环境</a><a href="#existing">已有模型</a><a href="#build">新建模型</a><a href="#parameters">改参重算</a><a href="#agent">自然语言调用</a><a href="#results">产物与结论</a><a href="#validation">测试与边界</a></div>
+<p><a href="development-plan.html">先看近期交付总览</a> · <a href="dsh.html">Windows DSH接入</a>；本页用于操作和查细节。</p><div class="jump"><a href="#prepare">先准备环境</a><a href="#existing">已有模型</a><a href="#build">新建模型</a><a href="#parameters">改参重算</a><a href="#agent">自然语言调用</a><a href="#results">产物与结论</a><a href="#validation">测试与边界</a></div>
 <h2 id="prepare">先准备环境：接口、引擎和核数据分别就绪</h2>
 <p>在工具包根目录执行 <code>./quickstart.sh</code>，具体下载、版本和核数据准备见<a href="env.html">环境说明</a>；已有环境先检查 <code>./mc.sh call openmc_environment '{}'</code>。不能只安装接口层Python包。以下组合模型用真实连续能核数据，不会自动退到合成数据或假计算。</p>
 <p>完整源码交付建议直接运行或 <code>pip install -e .</code>。独立wheel仅含接口代码；使用基础建模/计算时要显式给出 <code>MC_OPENMC_CONFIG</code>、<code>MC_WORKSPACE</code> 和实际核数据路径，官方资产仍随完整源码包准备。</p><p>所有 <code>case_dir/source_dir/target_dir</code> 是<strong>服务端 <code>MC_WORKSPACE</code> 内的相对目录</strong>，默认工具包的 <code>workspace/</code>。客户端本机路径不会自动上传。返回的 <code>server_path</code> 是服务端绝对位置，配置和依赖探测仍以实际服务器为准。</p>
@@ -53,7 +53,7 @@ PY
 <h2 id="results">产物怎么看，结论怎样得出</h2>
 <p>默认输入在 <code>workspace/cases/…</code>；每次实际求解快照、日志和StatePoint在 <code>workspace/.mc-jobs/&lt;job_id&gt;/</code>。优先使用返回的绝对路径，别从客户端当前目录拼路径。图旁的CSV/JSON是完整所选数据，报告正文可能只预览前若干点。</p>
 <p>先核对任务名/ID、实际输入、计分定义和坐标；再看均值与标准差、有效批次及警告，最后比较变更前后结果。原始flux计分未自动转成功率或物理工况通量，须按源强、体积或功率等专业依据归一化。缺少依据时只呈现原始统计结果。</p>
-<h2 id="validation">测试入口与当前边界</h2>
+<p>空间不足时，提交在复制输入、创建作业记录前拒绝，并给出清理预览命令。<code>min_free_disk_bytes</code> 默认保留1GiB，是可调工程配置，不是验收指标；不保证求解期间新增HDF5、并发及其他写入不会耗尽空间。清理与容量查看见<a href="dsh.html">DSH交接说明</a>。</p><h2 id="validation">测试入口与当前边界</h2>
 <pre class="command"><code>./verify.sh --tools-only
 # 使用你实际部署配置启用真实引擎（替换路径）
 MC_TEST_OPENMC_CONFIG=/absolute/path/openmc.local.json \

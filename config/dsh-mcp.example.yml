@@ -1,0 +1,13 @@
+# Add this entry to your existing DeepSeek Harness plugin list.
+# Run the Windows connectivity check in docs/dsh.html before using the URL.
+- id: mc-tools
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: mc
+    transport: streamable-http
+    url: !!js process.env.MC_MCP_URL || 'http://127.0.0.1:8770/mcp'
+    failOnStartupError: true
+    # For an authenticated remote service, uncomment these lines. Set the token
+    # in the DSH process environment; never paste it into this file.
+    # headers:
+    #   Authorization: !!js '`Bearer ${process.env.MCP_AUTH_TOKEN}`'

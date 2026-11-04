@@ -70,6 +70,11 @@ class StorageReport(unittest.TestCase):
         self.assertEqual(value['states'], {'completed': 1, 'failed': 1})
         self.assertEqual(value['largest'][0]['identifier'], 'b' * 32)
         self.assertIn('不删除', value['note'])
+        disk = value['disk_usage']
+        self.assertGreater(disk['total_bytes'], 0)
+        self.assertGreaterEqual(disk['free_bytes'], 0)
+        self.assertGreaterEqual(disk['total_bytes'], disk['used_bytes'] + disk['free_bytes'])
+        self.assertEqual(disk['min_free_disk_bytes'], self.cfg['min_free_disk_bytes'])
 
     def test_top_limits_largest_list(self):
         for index in range(5):
@@ -77,6 +82,16 @@ class StorageReport(unittest.TestCase):
         value = tools.storage_report(top=2)
         self.assertEqual(len(value['largest']), 2)
         self.assertEqual(value['largest'][0]['identifier'], f'{4:032x}')
+
+    def test_disk_report_includes_explicit_additional_volumes(self):
+        self.cfg['disk_space_check_paths']=[str(self.root/'host-volume')]
+        self.config.write_text(json.dumps(self.cfg))
+        with patch('shutil.disk_usage',side_effect=[(10000,1000,9000),(20000,19000,1000)]):
+            value=tools.storage_report()
+        self.assertEqual(value['disk_usage']['free_bytes'],9000)
+        additional=value['disk_usage']['additional_volumes']
+        self.assertEqual(additional,[{'path':str(self.root/'host-volume'),'total_bytes':20000,
+                                     'used_bytes':19000,'free_bytes':1000}])
 
     def test_reclaimable_preview_by_age(self):
         self.make_job('c' * 32, size=500, age_days=10)

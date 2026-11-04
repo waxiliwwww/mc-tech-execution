@@ -55,10 +55,17 @@ try {
   assert.match(await page.locator('main').innerText(),/model-spec.json/);
   await shot('05b-composable-model');
   await page.locator('nav a[href="development-plan.html"]').click();
-  await page.locator('.jump a[href="#interfaces"]').click();
+  assert.equal(await page.locator('table tbody tr').count(),5);
+  assert.match(await page.locator('main').innerText(),/Windows DSH/);
+  assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).colorScheme),'dark');
+  await page.locator('nav a[href="development-details.html"]').click();
   assert.match(await page.locator('main').innerText(),/openmc_import_model/);
   assert.match(await page.locator('main').innerText(),/微调/);
-  await shot('05c-two-week-plan');
+  await shot('05c-development-details');
+  await page.goto(url('development-plan.html'));await shot('05d-delivery-overview');
+  await page.locator('nav a[href="dsh.html"]').click();
+  assert.match(await page.locator('main').innerText(),/PowerShell/);
+  await shot('05e-windows-dsh');
   await page.goto(url('inputs.html'));
   await page.locator('nav a[href="mcp.html"]').click();
   await page.locator('.jump a[href="#register"]').click();
@@ -91,12 +98,12 @@ try {
   assert.match(await page.locator('#openmc_read_example_results').innerText(),/calculation_id/);
   await shot('08c-stage-selection');
   await page.setViewportSize({width:390,height:844});
-  for(const name of ['index.html','compute.html','inputs.html','mcp.html','reference.html','official-examples.html','domain-workflows.html','development-plan.html']) {
+  for(const name of ['index.html','compute.html','inputs.html','mcp.html','reference.html','official-examples.html','domain-workflows.html','development-plan.html','development-details.html','dsh.html']) {
     await page.goto(url(name));
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal page overflow: '+name);
   }
   await page.goto(url('index.html'));await shot('09-mobile');
   assert.deepEqual(problems,[]);assert.deepEqual(remoteRequests,[]);
-  await fs.writeFile(path.join(out,'receipt.json'),JSON.stringify({passed:true,pages:8,problems,remoteRequests,screenshots,entry:url('index.html'),checks:['offline file navigation','demo explanation disclosure','exact command copy/selection fallback','source/model layers','composable model instructions','two-week interface plan','own program disclosure','search/no-match','deep-link reveals schema','mobile no page overflow']},null,2));
+  await fs.writeFile(path.join(out,'receipt.json'),JSON.stringify({passed:true,pages:10,problems,remoteRequests,screenshots,entry:url('index.html'),checks:['offline file navigation','demo explanation disclosure','exact command copy/selection fallback','source/model layers','composable model instructions','two-week interface plan','own program disclosure','search/no-match','deep-link reveals schema','mobile no page overflow']},null,2));
   process.stdout.write('HTML browser checks passed; screenshots: '+out+'\n');
 } finally {await browser.close();}

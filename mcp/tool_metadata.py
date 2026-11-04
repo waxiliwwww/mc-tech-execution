@@ -138,7 +138,7 @@ RESULTS = {
     'openmc_configure_depletion': 'case_dir/power_watts/timesteps回显；chain_sha256为链文件摘要；steps为步数；已写配置不代表已算完。',
     'openmc_read_depletion': 'steps为逐时间步（含t=0起点）：time_days、keff均值/标准差、可选burnup_mwd_kg估算；heavy_metal_total_g为初始重金属质量；nuclide_mass_g为关键核素质量（g）。',
     'openmc_define_tally': 'tally_id为追加的编号（省略时为现有最大+1）；name/scores/filters回显，tally_count为写入后tally总数；已写盘但不代表可算，需重新提交计算。',
-    'openmc_storage_report': '只读存储报告：records/totals（job/scan/example逐类计数与字节）、all_bytes、states分布、largest最大记录榜（含state与finished_at）；请求older_than_days时返回reclaimable预览（records/bytes/skipped/repair_references，与cleanup.sh同口径）。清点失败时ok=false并如实给出原因；本工具不删除任何内容。',
+    'openmc_storage_report': 'disk_usage含工作区磁盘总量/已用/可用/min_free_disk_bytes及管理员配置的additional_volumes；低空间门禁不是运行期配额。只读存储报告：records/totals（job/scan/example逐类计数与字节）、all_bytes、states分布、largest最大记录榜（含state与finished_at）；请求older_than_days时返回reclaimable预览（records/bytes/skipped/repair_references，与cleanup.sh同口径）。清点失败时ok=false并如实给出原因；本工具不删除任何内容。',
     'openmc_preview_input': 'files逐项含present/bytes/sha256及截断content（超2MiB不返回内容，超2万字符截断并标记）；summary为运行设置、材料核素、几何与tally计数摘要；problems列缺失文件与被拒符号链接。预览不代表输入正确。',
     'openmc_inspect_step': 'solids为实体数，material_tags须按该数量提供；bounding_box按STEP原生单位给出，未换算单位、未作物理或网格质量判定。',
     'openmc_convert_cad': 'h5m与sha256为转换产物位置及指纹；engine_read.ok=True表示DAGMC版OpenMC API已读回包围盒，False保留错误文本不静默。产物未经专业校验，运行计算还需生成模型XML。',

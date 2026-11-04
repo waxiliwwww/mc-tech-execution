@@ -687,10 +687,12 @@ def storage_report(older_than_days=None, top: int = 10) -> dict:
         raise Error('older_than_days须为非负有限天数')
     cleanup = _cleanup_module()
     root = workspace()
+    from openmc_storage import disk_usage
+    disk = disk_usage(config(), root)
     try:
         records = cleanup.inventory(root)
     except cleanup.CleanupError as exc:
-        return {'workspace': str(root), 'ok': False,
+        return {'workspace': str(root), 'ok': False, 'disk_usage': disk,
                 'error': '清点内部记录失败：' + str(exc),
                 'note': '记录损坏或结构异常时不猜测；人工核对修复后再报。本工具不删除任何内容。'}
     entries = []
@@ -711,7 +713,7 @@ def storage_report(older_than_days=None, top: int = 10) -> dict:
         entries.append({'kind': kind, 'identifier': identifier, 'state': state, 'bytes': size,
                         'finished_at': item['record'].get('finished_at')})
     sized = [entry for entry in entries if entry['bytes'] is not None]
-    result = {'workspace': str(root), 'ok': True, 'records': len(records),
+    result = {'workspace': str(root), 'ok': True, 'records': len(records), 'disk_usage': disk,
               'totals': totals, 'all_bytes': sum(entry['bytes'] for entry in sized),
               'states': states,
               'largest': sorted(sized, key=lambda entry: entry['bytes'], reverse=True)[:top],

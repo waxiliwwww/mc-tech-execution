@@ -2848,7 +2848,7 @@
 <details class="tool" id="openmc_storage_report"><summary>openmc_storage_report
 <span class="tool-purpose">只读报告工作区内部记录存储：逐类计数与字节、状态分布、最大记录Top N；可选按完成天数预览可回收量（与cleanup.sh同口径，引用保护与修复关联如实列出）。不删除任何内容；删除须维护窗口cleanup.sh预览后--apply。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>older_than_days</td><td>number</td><td>否</td><td>省略时见说明</td><td>可选：按“完成时间早于N天”口径预览可回收存储（与cleanup.sh --older-than-days同口径，含引用保护与修复关联）；须为非负有限天数。省略不预览。</td><td>—</td></tr><tr><td>top</td><td>integer</td><td>否</td><td>10</td><td>可选：最大记录榜单条数，1..100整数，默认10。</td><td>—</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>只读存储报告：records/totals（job/scan/example逐类计数与字节）、all_bytes、states分布、largest最大记录榜（含state与finished_at）；请求older_than_days时返回reclaimable预览（records/bytes/skipped/repair_references，与cleanup.sh同口径）。清点失败时ok=false并如实给出原因；本工具不删除任何内容。</p>
+<h3>返回怎么看</h3><p>disk_usage含工作区磁盘总量/已用/可用/min_free_disk_bytes及管理员配置的additional_volumes；低空间门禁不是运行期配额。只读存储报告：records/totals（job/scan/example逐类计数与字节）、all_bytes、states分布、largest最大记录榜（含state与finished_at）；请求older_than_days时返回reclaimable预览（records/bytes/skipped/repair_references，与cleanup.sh同口径）。清点失败时ok=false并如实给出原因；本工具不删除任何内容。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>workspace</td><td>服务端绝对数据根；工作区相对路径以它为基准。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
@@ -2872,7 +2872,7 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;只读存储报告：records/totals（job/scan/example逐类计数与字节）、all_bytes、states分布、largest最大记录榜（含state与finished_at）；请求older_than_days时返回reclaimable预览（records/bytes/skipped/repair_references，与cleanup.sh同口径）。清点失败时ok=false并如实给出原因；本工具不删除任何内容。&quot;,
+  &quot;description&quot;: &quot;disk_usage含工作区磁盘总量/已用/可用/min_free_disk_bytes及管理员配置的additional_volumes；低空间门禁不是运行期配额。只读存储报告：records/totals（job/scan/example逐类计数与字节）、all_bytes、states分布、largest最大记录榜（含state与finished_at）；请求older_than_days时返回reclaimable预览（records/bytes/skipped/repair_references，与cleanup.sh同口径）。清点失败时ok=false并如实给出原因；本工具不删除任何内容。&quot;,
   &quot;properties&quot;: {
     &quot;workspace&quot;: {
       &quot;description&quot;: &quot;服务端绝对数据根；工作区相对路径以它为基准。&quot;

@@ -191,6 +191,8 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
         if not (source / 'materials.xml').is_file() and not (source / 'model.xml').is_file():
             raise Error('燃耗算例缺少materials.xml或model.xml')
     capacity = check_capacity(cfg, threads)
+    from openmc_storage import check_submission_space
+    disk_admission = check_submission_space(source, workspace(), cfg, _preserve_outputs, is_old_output)
     job_id = _job_id or uuid.uuid4().hex
     if not re.fullmatch('[a-f0-9]{32}', job_id):raise Error('无效预留作业编号')
     jobs = path_in_workspace('.mc-jobs', exists=False, internal=True)
@@ -212,7 +214,7 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
     record = {'job_id': job_id, 'name': name, 'state': 'queued', 'submitted_at': time.time(),
               'case_dir': case_dir, 'mode': mode, 'threads': threads,
               'provenance': provenance(source, cfg), 'runtime': cfg, 'concurrency': capacity,
-              'work_dir': relative(copied), 'input_files': input_files}
+              'work_dir': relative(copied), 'input_files': input_files, 'disk_admission': disk_admission}
     if _example_workflow is not None:
         record['example_workflow'] = _example_workflow
     atomic_json(directory / 'job.json', record)

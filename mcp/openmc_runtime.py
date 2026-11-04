@@ -81,6 +81,9 @@ def config() -> dict:
         raise Error('max_concurrent_jobs须为非负整数')
     if 'max_input_bytes' in value and (type(value['max_input_bytes']) is not int or value['max_input_bytes'] <= 0):
         raise Error('max_input_bytes须为正整数')
+    from openmc_storage import reserve_bytes, check_paths
+    value['min_free_disk_bytes'] = reserve_bytes(value)
+    value['disk_space_check_paths'] = check_paths(value)
     for key in ('max_scan_cases', 'max_plot_points', 'max_report_rows', 'report_timeout_seconds'):
         if key in value and (type(value[key]) is not int or value[key] <= 0):
             raise Error(key + '须为正整数')

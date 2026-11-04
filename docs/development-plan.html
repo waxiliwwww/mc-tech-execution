@@ -1,50 +1,17 @@
-<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>两周开发计划 · MC工具包</title><link rel="stylesheet" href="assets/manual.css"><script src="assets/manual.js" defer></script></head>
-<body><a class="sr-only" href="#content">跳到正文</a><aside class="sidebar"><a class="brand" href="index.html">MC 工具包<br>使用与开发手册</a><p class="edition">近期开发 · 内部安排</p><nav><a href="index.html">认识工具包</a><a href="development-plan.html" aria-current="page">两周开发计划</a><a href="domain-workflows.html">模型接入与建模</a><a href="project-progress.html">合同功能进展</a><a href="reference.html">接口参数</a></nav></aside><main id="content">
-<p class="eyebrow">2026-11-04确认方向 · 滚动计划</p><h1>交付能接模型、能建模的MCP调试包</h1>
-<p class="lead">不到两周内供甲方接入调试：既能使用已有OpenMC模型，也能让宿主模型通过标准MCP组合建模、校核和计算。公开例题跑通只是基础条件；可运行范围、可修改范围和可生成范围分别说明。</p>
-<div class="note">这是内部开发安排，不增加或替代合同指标。以下“完成检查”用于工程交接；正式验收仍按原规格书表4-1、表4-2及确认的测试计划执行。确切交付日期尚未给出，按实际日期压缩排期，保留末段联调修复时间。</div>
-<div class="jump"><a href="#scope">交付范围</a><a href="#interfaces">具体接口</a><a href="#schedule">推进顺序</a><a href="#tests">如何验证</a><a href="#inputs">协作条件</a><a href="#status">本轮状态</a></div>
-<h2 id="scope">两个入口，共用一条计算链</h2>
-<div class="flow"><span>已有XML / Python先导出XML</span><span>导入、检查、参数副本</span><span>命名提交、状态与取消</span><span>结果、图、报告与文件清单</span></div>
-<div class="flow"><span>自然语言交给宿主模型</span><span>发现能力、组织结构化模型</span><span>Python API生成XML、预览校核</span><span>同一条作业与结果链</span></div>
-<p>既有模型不经过受限生成器重建；保留其原生几何、材料、源、计分及其他合法输入。新建模型先开放明确的材料、CSG曲面与栅元、宇宙、矩形格架、源和计分组合；不能表达的字段应拒绝并说明原生Python/XML接入办法，不能静默忽略。工具不执行调用方任意Python或shell代码。</p>
-<p>自然语言理解由宿主承接，工具包独立提供可发现的参数和执行能力；这一工程路径不替代RF004“基于微调后的大模型”的合同要求。微调模型、数据、运行条件和效果证据仍需落实提供方及负责人。</p>
-<h2 id="interfaces">具体补哪些接口</h2>
-<div class="table-wrap"><table><thead><tr><th>合同关联 / 接口</th><th>输入与输出</th><th>本期工作与完成检查</th></tr></thead><tbody>
-<tr><td>RF001/004/005<br><code>openmc_model_capabilities</code></td><td>空对象 → 当前建模Schema、单位、枚举、组合规则、明确限制；完整示例随包</td><td>Schema与执行校验同源；宿主可从工具发现获得完整嵌套字段；不依赖固定例题ID。</td></tr>
-<tr><td>RF001/004/005<br><code>openmc_build_model</code></td><td>新目录、结构化模型 → XML、模型描述、可重跑Python构建源码、指纹与API读回</td><td>通过官方Python API生成；支持组合而非只选择模板；错误引用、循环、重复ID及不支持字段拒绝；验证成功后发布新目录，不覆盖原模型。</td></tr>
-<tr><td>RF005/006/009<br><code>openmc_import_model</code></td><td>工作区内源目录、新目标目录 → 原生输入副本、校验、文件及依赖说明</td><td>接入不在例题清单中的分XML/综合model.xml；保留陌生合法内容和原文件；引用缺失、越界及符号链接有定位；不执行自带脚本。</td></tr>
-<tr><td>RF006<br><code>openmc_submit_job</code> 增加 <code>name</code><br><code>openmc_list_jobs</code></td><td>模型、用户任务名、线程 → job_id；按名字/状态查询 → 匹配列表</td><td>名称持久化，状态可读；重名保留不同ID不暗选；历史无名称记录兼容，查询不触发重算。</td></tr>
-<tr><td>RF001/008<br>复用 <code>openmc_list_parameters</code> / <code>openmc_prepare_case</code> / 扫描接口</td><td>当前模型 → 可调字段、单位与值；参数修改 → 独立副本及读回差异</td><td>本轮先验证新组合模型接入现有改参链。后续按组件/控制棒等实际语义补材料成分、格架节距与关联几何；不把底层曲面系数自动称为完整部件级参数化。</td></tr>
-<tr><td>RF005/006<br>复用预览、校核、状态和取消</td><td>模型/任务 → 实际输入内容、分层校核、日志、进度和终态</td><td>核对预览与提交快照指纹；结构、语义、抽样几何检查分层报告；50MiB日志上限和截断标记保留。</td></tr>
-<tr><td>RF009/010/011<br>复用结果提取、对比、网格图和报告</td><td>实际任务、计分与筛选 → keff/通量/反应率统计、图、完整数据、报告</td><td>原生StatePoint对照均值/标准差/网格坐标，图表报告同源；说明原始计分归一化，不凭空称功率或物理准确率达标。</td></tr>
-<tr><td>RF004<br><code>openmc_generate_inputs</code>（拟定，未实现）</td><td>需求描述、已确认专业参数、管理员模型profile → 结构化模型、缺失项、来源及输入预览</td><td>沿本轮结构化生成与校核接入微调模型，参数不足则返回待补信息、不猜物理值。先用受控响应测输入约束与失败，真实模型/质量验证另记；不以宿主编排替代本项。</td></tr><tr><td>RF007<br><code>openmc_submit_hpc_job</code><br><code>openmc_hpc_job_status</code><br><code>openmc_cancel_hpc_job</code><br><code>openmc_collect_hpc_artifacts</code><br>（拟定，未实现）</td><td>管理员集群profile、算例、资源 → 调度ID、真实状态、日志与结果位置</td><td>选一种实际调度器后封装，先做命令构造、状态映射、重复提交/未知结果处理的模拟测试。只用profile引用凭据；真实集群通过后才标真实联调完成。</td></tr>
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>近期交付总览 · MC工具包</title><link rel="stylesheet" href="assets/overview.css"></head><body><main>
+<nav><a href="index.html">工具包手册</a><a href="domain-workflows.html">怎么使用</a><a href="dsh.html">Windows DSH接入</a><a href="development-details.html">开发与验证明细</a></nav>
+<p class="eyebrow">两周内的调试交付 · 2026-11-04</p><h1>交付一套能在DSH中使用的蒙卡MCP工具</h1>
+<p class="lead">用户既能带入已有OpenMC模型，也能通过自然语言调用建模工具，完成计算、查看结果。先让甲方拿到可调试的工具包，再据复杂业务反馈深化。</p>
+<div class="flow" aria-label="用户任务交给DSH理解，MCP工具负责建模和作业，OpenMC求解，返回数据图和报告"><span>用户任务</span><b>→</b><span>Windows DSH</span><b>→</b><span>MCP工具</span><b>→</b><span>OpenMC计算</span><b>→</b><span>数据、图和报告</span></div>
+<p class="minor">DSH负责理解与编排，工具负责可检查的操作，OpenMC负责求解。工具包可独立使用，也可接其他标准MCP宿主。</p>
+<h2 id="interfaces">近期主要做五件事</h2><div class="table-wrap"><table><thead><tr><th>要做的事</th><th>交到用户手里的东西</th><th>目前状态</th></tr></thead><tbody>
+<tr><td>把计算工具做好</td><td>模型接入、受控建模、改参校核、命名提交、结果与报告。</td><td>基础链路已实现；部件参数、HPC与微调生成继续补。</td></tr>
+<tr><td>接到DSH</td><td>Windows可用的连接配置、地址和鉴权说明。</td><td>Windows到WSL握手和工具发现已通过；DSH实际启用、自然语言另验。</td></tr>
+<tr><td>跑一个代表任务</td><td>简化全堆计算，查看64格通量、图和报告，并能追溯输入。</td><td>真实计算与数据核对已通过；DSH自然语言串联后续验证。</td></tr>
+<tr><td>让下游会用</td><td>环境准备、可运行示例、参数与产物说明、部署包。</td><td>已有使用说明与源码包，本轮补DSH操作入口。</td></tr>
+<tr><td>控制资源占用</td><td>提交前检查磁盘余量，测试后清理临时内容，旧结果按规则清理。</td><td>已有清理脚本，本轮补低空间提交保护与占用报告。</td></tr>
 </tbody></table></div>
-<h2 id="schedule">不到两周内怎样推进</h2>
-<ol><li><strong>先完成接口与真实短流程。</strong>结构化建模、原生模型导入、任务名称与检索、CLI/MCP注册及示例同步落地。用非预置组合和矩形格架运行，不等甲方样例。</li>
-<li><strong>随后补堆相关使用深度。</strong>实际运行已有公开17×17组件与简化全堆，记录资源、统计设置、失败和结果；全堆模板生成不算计算完成。按操作反馈补部件参数表达、空间计分和对比说明。</li>
-<li><strong>并行落实HPC与生成模型条件。</strong>完成调度器/profile设计及可独立测试的适配，条件到位立即联调；模型提供方未定时先做生成接口与约束验证，不称微调已完成。</li>
-<li><strong>最后几天冻结新功能，交给下游调试。</strong>独立解压/安装验证、标准MCP接入、正常与失败恢复、产物交接和问题回执。真实自然语言测试在明确宿主、模型和预算后执行，未执行就明确列缺口。</li></ol>
-<p>不把44条内部改进全部压入本期。LHS、交互式图、向量库、MCP prompts/elicitation、常驻worker及全面XML重构暂缓；CAD复杂件与燃耗专项按既有能力保留，除非甲方明确近期优先。CLEAR-S、RF004微调生成、原准确率与两宿主/多模型/72小时等要求继续保留在合同进展表，不因暂缓增强项而降低。</p>
-<h2 id="tests">怎么证明可交给下游调试</h2>
-<div class="table-wrap"><table><thead><tr><th>测试层次</th><th>具体行为与证据</th><th>不能据此声称什么</th></tr></thead><tbody>
-<tr><td>离线契约/异常</td><td>Schema非法字段、单位/尺寸/引用错误、循环、NaN、路径越界、符号链接、重名查询、旧记录、失败不覆盖有效输入。</td><td>不证明真实求解、领域正确性。</td></tr>
-<tr><td>真实OpenMC</td><td>自建CSG/格架模型→Python生成XML→原生API读回→校核→真实计算；独立目录重跑生成源码；已有非目录模型导入、改参和重算。原输入不变，实际输入、结果和产物可关联。</td><td>短运行和内部统计比较不等于收敛或合同≥90%物理指标。</td></tr>
-<tr><td>结果内容</td><td>StatePoint独立读取，对比keff、tally均值/标准差/坐标和完整CSV，检查图与报告选择一致；保留不可用值和统计警告。</td><td>报告生成成功不等于数据或专业结论正确。</td></tr>
-<tr><td>标准MCP</td><td>实际启动隔离服务，发现完整参数、调用建模/导入/命名计算/查询/结果接口；错误响应可定位。CLI与协议调用共用实现。</td><td>无模型的MCP客户端不算自然语言宿主端到端通过，也不算第二宿主。</td></tr>
-<tr><td>自然语言与目标部署</td><td>明确预算后在实际宿主中提出不照抄固定demo的任务；观察模型生成的参数、实际工具回执、终态和结果。目标环境安装与甲方样例另留记录。</td><td>未拿到预算、环境或样例的项目记待验证，不能用模拟或本机证据填成通过。</td></tr>
-</tbody></table></div>
-<p>沿用 <code>./verify.sh --tools-only</code>，真实引擎用 <code>MC_TEST_OPENMC_CONFIG</code> 显式启用；具体命令与证据见<a href="domain-workflows.html#validation">模型工作流说明</a>。当前测试默认跳过的真实门控不计为通过。源码包不含凭据、核数据和运行环境；首次环境准备后自包含使用的约束保持不变。</p>
-<h2 id="inputs">需要甲方配合什么，哪些我们自己做</h2>
-<div class="table-wrap"><table><thead><tr><th>条件</th><th>需要配合 / 项目内落实</th><th>未取得时继续做什么</th></tr></thead><tbody>
-<tr><td>近期领域任务</td><td>一个代表性堆/组件模型或参数说明、要修改的量、要查看的输出；确认联系人。不是要求先提供完整业务包。</td><td>按合同组件/控制棒方向和公开模型开发，明确候选范围；不宣称它就是甲方业务模型。</td></tr>
-<tr><td>HPC和部署</td><td>调度器、网络/操作系统、账号授权、认证方式、分区/资源、OpenMC/MPI/核数据路径及产物交接方式。</td><td>先做profile和模拟调度；凭据留在服务器受控配置/代理，不能作为MCP参数或写日志。非交互密码/MFA策略按环境确认。</td></tr>
-<tr><td>微调模型</td><td>项目明确模型、数据、运行资源、接入方式和提供方；不能直接把全部责任默认转给甲方。</td><td>完成结构化约束、模型生成/校核接口和受控错误反馈，宿主调用工程测试单独举证。</td></tr>
-<tr><td>专业验收</td><td>CLEAR-S等指定基准、17×17相关测试集、参考值、专业容差、95%/90%统计口径及测试计划确认。</td><td>建立并复用公开自测与比对机制；内部判据不升级为合同条款。</td></tr>
-</tbody></table></div>
-<h2 id="status">本轮状态与下一步</h2>
-<p id="implementation-status">第一批已实现：组合建模与能力发现、原生模型导入、作业/扫描命名、按名查询、声明式改参后源码/XML一致性、失败保全，以及调用示例和手册。非预置格架、真实MCP流程和简化全堆短计算已留工程记录；最终检查数量与版本见本轮回执。HPC、微调生成、部件级语义深化与目标环境联调继续按上文推进；真实自然语言模型联调按用户决定本轮暂不执行。</p>
-<p>产物本期继续保存在服务端，返回绝对路径和清单；MCP不自动上传输入，也不自动下载输出。下游需先将模型放入服务器工作区，按部署约定取回产物，远程下载功能仍按先前决定暂缓。</p>
-<footer><a href="project-progress.html">全部15项合同进展</a> · <a href="验收导向开发计划.md">既有计划与历史实施记录</a> · <a href="domain-workflows.html">实际使用与测试命令</a></footer>
+<div class="note"><strong>下一步：</strong>DSH配置与工具发现 → 用代表任务走完整操作。按当前决定，本轮不调用模型；DSH自然语言实跑另行安排。</div>
+<p>公开例题跑通是基础条件。甲方的具体模型、HPC条件、专业参考值仍需配合确认；本次调试交付不等于最终合同验收，也不增加原合同指标。</p>
+<footer><a href="development-details.html">实现、接口、测试与配合项明细</a> · <a href="project-progress.html">合同功能进展</a> · <a href="domain-workflows.html">实际使用流程</a></footer>
 </main></body></html>
