@@ -41,5 +41,13 @@ mcp/.venv/bin/python examples/cad_case_demo.py \
 <p>示例会打印 <code>workspace/.mc-jobs/&lt;job_id&gt;/</code> 的实际绝对位置。查看PNG热图了解空间分布；用完整CSV/JSON核对16格数据和不确定度；报告元数据应能读回同一模型的运行设置、随机种子和来源。报告配套曲线使用同一16格的展平分箱序号，不冒充空间坐标；二维空间关系看热图。</p>
 <p>Windows同机可用WSL共享路径打开服务端文件，远程则按部署约定取回；当前不自动远程下载。<a href="dsh.html#artifacts">文件与清理说明</a>列出实际入口。示例算例和原始结果可保留复查，清理先预览，不删除核数据库或运行时。</p>
 <p>这条流程验证转换、模型交接、实际执行和结果管理；简单立方体、小统计运行不代表复杂工程CAD或合同专业指标通过。自己的模型仍需确认几何质量、材料映射、源与专业判据。</p>
+<h2 id="validation">5．怎样复验</h2>
+<p><code>./verify.sh --tools-only</code>检查接口与默认工程用例，未配置真实环境的项目会明确跳过。完整CAD检查用本机已完成初配的配置，实际计算并核对原生结果、输入和产物：</p>
+<pre><code>MC_TEST_CAD_CONFIG="$PWD/config/openmc.local.json" \
+  mcp/.venv/bin/python -m unittest discover -s tests -p test_openmc_cad_real.py -v
+# 重导已有完成作业，核对报告头、全部所选数据和嵌图；不重新计算：
+MC_TEST_REPORT_JOB="$PWD/workspace/.mc-jobs/实际job_id" \
+  mcp/.venv/bin/python -m unittest discover -s tests -p test_report_metadata_replay_real.py -v</code></pre>
+<p>报告复验需要OpenMC、Office和测试读取依赖；按<a href="domain-workflows.html#validation">测试入口说明</a>准备。验收专业模型仍需独立参考值与判据，不以这些工程用例数量计算合同完成率。</p>
 <footer><a href="reference.html#openmc_convert_cad">完整工具参数</a> · <a href="env.html">环境说明</a> · 实跑测试：<code>MC_TEST_CAD_CONFIG</code>启用CAD链，详见<a href="domain-workflows.html#validation">测试入口</a>。</footer>
 </main></body></html>

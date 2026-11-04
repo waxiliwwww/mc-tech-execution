@@ -93,7 +93,10 @@ def export_selected_job(job_id: str, format: str, selection: dict):
     series = json.loads(image.with_suffix('.json').read_text())
     data = read_results(job_id, max_values=1)
     data.pop('tallies')  # The unselected job preview is not the requested report data.
-    data.update(selected_series=series, series_json=image.with_suffix('.json').name,
+    # Every format uses the same metadata from the submitted input snapshot.
+    # In particular, binary reports must not lose the header at this branch.
+    metadata = _report_metadata(target)
+    data.update(metadata=metadata, selected_series=series, series_json=image.with_suffix('.json').name,
                 series_csv=image.with_suffix('.csv').name)
     if any(v is None for v in series['mean'] + series['std_dev']):
         data['warnings'].append('所选统计量含不可用值；保留为空，不替换为0。')
@@ -106,7 +109,6 @@ def export_selected_job(job_id: str, format: str, selection: dict):
             content = image.with_suffix('.csv').read_bytes()
             name = 'report.csv'
         else:
-            metadata = _report_metadata(target)
             parameters = '；'.join(f"{key}={value if value is not None else '未记录'}"
                                    for key, value in metadata['parameters'].items()) or '未记录'
             runtime_info = metadata['runtime']

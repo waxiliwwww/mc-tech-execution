@@ -5,7 +5,7 @@ main{max-width:1160px}.jump{display:flex;gap:8px 22px;flex-wrap:wrap;margin:22px
 .diagram-title{margin:24px 0 8px;font-size:18px;color:var(--accent)}
 </style></head><body><main>
 <nav><a href="index.html">使用手册</a><a href="domain-workflows.html">操作与示例</a><a href="dsh.html">Windows DSH接入</a><a href="project-progress.html">合同功能进展</a><a href="reference.html">工具参数</a></nav>
-<p class="eyebrow">当前实现 · 0.11.0 · 2026-11-04</p><h1>MC工具包架构说明</h1>
+<p class="eyebrow">当前实现 · 0.11.1 · 2026-11-04</p><h1>MC工具包架构说明</h1>
 <p class="lead">这个包把模型准备、输入校核、计算作业和结果整理做成可重复调用的操作。OpenMC负责物理求解，DSH等宿主负责理解自然语言与编排；本包连接两者，保留每次输入、计算记录和产物。用户也可以直接用CLI，不依赖宿主或模型。</p>
 <p>甲方技术指引中的OpenMC、DAGMC、CAD转换、Python生成XML和结果解析路线已有对应实现，但并未全部完成。<strong>DAGMC用于CAD几何分支；此前演示的公开全堆模型采用CSG几何，所以没有经过它。</strong>下文先讲清结构与一条任务，再对照指引说明取舍和缺口。</p>
 <div class="jump"><a href="#architecture">分层架构</a><a href="#inputs">输入与CAD路线</a><a href="#user">调用时序</a><a href="#results">结果与文件</a><a href="#guide">技术指引对照</a><a href="#developer">源码与扩展</a></div>

@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>认识工具包 · MC 工具包</title><link rel="stylesheet" href="assets/manual.css"><script src="assets/manual.js" defer></script></head>
 <body><a class="sr-only" href="#content">跳到正文</a><aside class="sidebar"><a class="brand" href="index.html">MC 工具包<br>使用与开发手册</a><p class="edition">OpenMC · 独立 MCP</p><nav aria-label="文档导航"><a href="index.html" aria-current="page">认识工具包</a><a href="compute.html">完成一次计算</a><a href="official-examples.html">全部官方例题</a><a href="inputs.html">自有模型与源码</a><a href="mcp.html">封装与部署 MCP</a><a href="reference.html">查工具参数</a></nav><p class="minor">先沿一个实际任务操作。<br>参数全集随用随查。<br>本手册可离线打开。</p></aside><main id="content">
-<p class="eyebrow">开始使用 · 0.11.0</p><h1>把计算输入，变成可追踪的结果</h1>
+<p class="eyebrow">开始使用 · 0.11.1</p><h1>把计算输入，变成可追踪的结果</h1>
 <p class="minor">项目进展评审：<a href="project-progress.html">合同功能、中文操作与代码工具对照</a>（内部执行材料，含两批范围、输入输出、demo与缺口）。</p>
 <p class="minor"><a href="toolkit.html">架构、流程与技术指引</a> · <a href="domain-workflows.html">已有模型接入 / 结构化组合建模</a> · <a href="cad.html">CAD接入与计算</a> · <a href="dsh.html">Windows DSH接入</a> · <a href="development-plan.html">两周开发计划</a></p><p class="lead">你提供 OpenMC 模型，这个工具包负责检查输入、启动本地计算、保存每次记录，再把结果整理成图和报告。也可以把这些操作作为 MCP 工具，交给平台或智能体调用。</p>
 <div class="routes"><section class="route"><h2>我要用 OpenMC 做计算</h2><p>还没有模型：用随包公开例题学习一次完整操作。已有模型：直接接入自己的 XML，不必重新套用例题。</p><a class="button" href="compute.html">从环境到图和报告</a></section><section class="route"><h2>我要封装自己的工具</h2><p>已有函数、命令行程序或 HTTP 接口：创建一个独立 MCP 服务，在同一服务里注册多个工具。</p><a class="button" href="mcp.html#own-service">从程序到 MCP 服务</a></section></div>

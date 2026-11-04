@@ -19,7 +19,7 @@
 - [查工具参数](docs/reference.html)：与实际 MCP Schema 同源，按需搜索，无需通读。
 - [环境与部署](docs/env.html)：当前构建串与实测版本、核数据位置、哪些能力来自编译选项而非代码、换机三步探测、跨环境比对的复现前提。
 
-源码版本 0.11.0，适配 OpenMC 0.16.0；服务端使用 Linux/WSL。首次按手册准备环境，升级已有旧环境时可用 `./quickstart.sh --openmc-prefix .runtime/openmc-official` 在本包内另建完整SDK并保留旧环境；运行数据默认保存在本包 `workspace/`，图和报告返回服务端绝对路径，当前不自动下载。
+源码版本 0.11.1，适配 OpenMC 0.16.0；服务端使用 Linux/WSL。首次按手册准备环境，升级已有旧环境时可用 `./quickstart.sh --openmc-prefix .runtime/openmc-official` 在本包内另建完整SDK并保留旧环境；运行数据默认保存在本包 `workspace/`，图和报告返回服务端绝对路径，当前不自动下载。
 
 工具包也可安装使用：在完整源码目录执行 `pip install -e .` 后得到 `mc-agent-tools`（工具直调，等同 `./mc.sh`）与 `mc-agent-tools-serve`（启动 MCP 服务）；依赖只认 `mcp/requirements.txt` 一处。独立wheel只包含接口代码，基础建模/计算需显式设置运行配置和工作区；官方例题、知识库和部署资产仍使用完整源码包，不能以wheel工具发现成功代替完整部署验证。服务端另提供 3 个只读资源：参数规格、官方例题清单、最近工具调用记录。源码运行与安装运行走同一套实现，测试见 `tests/`，CI 在 `.github/workflows/verify.yml`。
 
