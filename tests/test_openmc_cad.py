@@ -125,6 +125,107 @@ class CadConversion(unittest.TestCase):
         self.assertIn('CAD转换失败', str(caught.exception))
         self.assertIn('crash detail', str(caught.exception))
 
+    # ---- A5 后续：build_dagmc_model（patch api，不依赖引擎） ----
+
+    def make_converted(self, name='converted', tags=('steel',), implicit=None):
+        directory = business.WORKSPACE / name
+        directory.mkdir()
+        (directory / 'dagmc.h5m').write_bytes(b'h5m')
+        marker = {'data_kind': 'cad_conversion_unverified', 'generator': 'cad_to_dagmc',
+                  'source_step': {'path': 'model.step', 'sha256': '1' * 64},
+                  'material_tags': list(tags), 'scale_factor': 0.1,
+                  'implicit_complement_material_tag': implicit,
+                  'professional_acceptance': False}
+        (directory / 'mc-case.json').write_text(json.dumps(marker))
+        return name
+
+    def fake_build(self):
+        def fake(action, directory, payload, cfg=None):
+            self.assertEqual(action, 'build-dagmc-model')
+            warnings = (['材料' + payload['materials'][0]['name'] + '未给核素组成；OpenMC输运前须补全。']
+                        if not payload['materials'][0].get('nuclides') else [])
+            return {'files': ['model.xml'], 'dagmc_filename': 'dagmc.h5m',
+                    'materials': [item['name'] for item in payload['materials']],
+                    'settings': {'particles': payload['particles'],
+                                 'batches': payload['batches'], 'inactive': payload['inactive']},
+                    'source_point': payload['source_point'] or [0.0, 0.0, 0.0],
+                    'engine_parse': {'ok': True, 'materials': len(payload['materials'])},
+                    'warnings': warnings, 'note': 'stub'}
+        return fake
+
+    def test_build_dagmc_model_writes_marker_and_warns(self):
+        case = self.make_converted()
+        with patch.object(cad, 'api', self.fake_build()):
+            value = cad.build_dagmc_model(case, [{'name': 'steel', 'density': 7.8, 'units': 'g/cm3'}])
+        self.assertEqual(value['files'], ['model.xml'])
+        self.assertEqual(value['dagmc_filename'], 'dagmc.h5m')
+        self.assertTrue(value['warnings'])
+        self.assertIn('输运前须补全', value['warnings'][0])
+        marker = json.loads((business.WORKSPACE / case / 'mc-case.json').read_text())
+        self.assertIn('model_built', marker)
+        self.assertFalse(marker['model_built']['professional_acceptance'])
+        self.assertFalse(value['professional_acceptance'])
+
+    def test_build_dagmc_model_material_validation(self):
+        case = self.make_converted()
+        with patch.object(cad, 'api', self.fake_build()):
+            for materials in (
+                [{'name': 'steel', 'density': 7.8, 'units': 'sum'}],
+                [{'name': 'steel', 'density': 0, 'units': 'g/cm3'}],
+                [{'name': 'steel', 'density': -1, 'units': 'g/cm3'}],
+                [{'name': 'steel', 'density': True, 'units': 'g/cm3'}],
+                [{'name': 'aluminum', 'density': 7.8, 'units': 'g/cm3'}],
+                [{'name': 'steel', 'density': 7.8, 'units': 'g/cm3'},
+                 {'name': 'steel', 'density': 2.0, 'units': 'g/cm3'}],
+                [],
+            ):
+                with self.assertRaises(business.MCInputError):
+                    cad.build_dagmc_model(case, materials)
+            with self.assertRaises(business.MCInputError):
+                cad.build_dagmc_model(case, [{'name': 'steel', 'density': 7.8, 'units': 'g/cm3',
+                                              'nuclides': [{'name': 'Fe56', 'fraction': 0}]}])
+
+    def test_build_dagmc_model_requires_all_tags_including_complement(self):
+        case = self.make_converted(tags=('steel', 'water'), implicit='graveyard')
+        with patch.object(cad, 'api', self.fake_build()):
+            with self.assertRaises(business.MCInputError) as caught:
+                cad.build_dagmc_model(case, [{'name': 'steel', 'density': 7.8, 'units': 'g/cm3'}])
+            self.assertIn('water', str(caught.exception))
+            value = cad.build_dagmc_model(case, [
+                {'name': 'steel', 'density': 7.8, 'units': 'g/cm3'},
+                {'name': 'water', 'density': 1.0, 'units': 'g/cm3'},
+                {'name': 'graveyard', 'density': 0.001, 'units': 'atom/b-cm'}])
+        self.assertEqual(len(value['materials']), 3)
+
+    def test_build_dagmc_model_settings_validation(self):
+        case = self.make_converted()
+        with patch.object(cad, 'api', self.fake_build()):
+            for kwargs in ({'particles': 0}, {'batches': 1}, {'inactive': 10},
+                           {'source_point': [0, 0]}, {'source_point': [0, 0, 'x']},
+                           {'seed': 0}):
+                with self.assertRaises(business.MCInputError):
+                    cad.build_dagmc_model(
+                        case, [{'name': 'steel', 'density': 7.8, 'units': 'g/cm3'}], **kwargs)
+            value = cad.build_dagmc_model(
+                case, [{'name': 'steel', 'density': 7.8, 'units': 'g/cm3'}],
+                source_point=[0.5, 0.0, 0.0], seed=7)
+        self.assertEqual(value['source_point'], [0.5, 0.0, 0.0])
+
+    def test_build_dagmc_model_refuses_missing_products_and_overwrite(self):
+        with patch.object(cad, 'api', self.fake_build()):
+            with self.assertRaises(business.MCInputError):
+                cad.build_dagmc_model('nope', [{'name': 'steel', 'density': 7.8, 'units': 'g/cm3'}])
+            bare = business.WORKSPACE / 'bare'
+            bare.mkdir()
+            with self.assertRaises(business.MCInputError):
+                cad.build_dagmc_model('bare', [{'name': 'steel', 'density': 7.8, 'units': 'g/cm3'}])
+        case = self.make_converted()
+        (business.WORKSPACE / case / 'model.xml').write_text('<model/>')
+        with patch.object(cad, 'api', self.fake_build()):
+            with self.assertRaises(business.MCInputError) as caught:
+                cad.build_dagmc_model(case, [{'name': 'steel', 'density': 7.8, 'units': 'g/cm3'}])
+        self.assertIn('不覆盖', str(caught.exception))
+
 
 if __name__ == '__main__':
     unittest.main()

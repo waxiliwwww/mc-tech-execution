@@ -4,6 +4,7 @@
 （DAGMC版OpenMC环境）的配置文件，例如仓库的 config/openmc.local.json。
 夹具 tests/fixtures/cube.step 为 cadquery 生成的 10 mm 立方体（来源与指纹见 docs/adr/0002）。
 """
+import json
 import os
 from pathlib import Path
 import shutil
@@ -56,6 +57,23 @@ class CadRealConversion(unittest.TestCase):
             self.assertAlmostEqual(box['upper_right'][axis], 0.5, places=6)
         self.assertEqual(value['provenance']['data_kind'], 'cad_conversion_unverified')
         self.assertFalse(value['professional_acceptance'])
+        # A5 后续：由h5m组装可运行model.xml，引擎回读验证，DAGMC文件名相对。
+        built = cad.build_dagmc_model(
+            'cube-dagmc', [{'name': 'steel', 'density': 7.8, 'units': 'g/cm3',
+                            'nuclides': [{'name': 'Fe56', 'fraction': 1.0}]}],
+            particles=50, batches=6, inactive=2)
+        self.assertEqual(built['files'], ['model.xml'])
+        self.assertEqual(built['dagmc_filename'], 'dagmc.h5m')
+        self.assertTrue(built['engine_parse']['ok'], built['engine_parse'])
+        text = (business.WORKSPACE / 'cube-dagmc/model.xml').read_text()
+        self.assertIn('dagmc_universe', text)
+        self.assertIn('filename="dagmc.h5m"', text)
+        marker = json.loads((business.WORKSPACE / 'cube-dagmc/mc-case.json').read_text())
+        self.assertIn('model_built', marker)
+        self.assertFalse(marker['model_built']['professional_acceptance'])
+        # 不覆盖：再组装一次必须拒绝并说明。
+        with self.assertRaises(business.MCInputError):
+            cad.build_dagmc_model('cube-dagmc', [{'name': 'steel', 'density': 7.8, 'units': 'g/cm3'}])
 
 
 if __name__ == '__main__':

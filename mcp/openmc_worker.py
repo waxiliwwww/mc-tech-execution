@@ -165,6 +165,45 @@ def execute(action: str, params: dict) -> dict:
                 'bounding_box': {'lower_left': [float(v) for v in box.lower_left],
                                  'upper_right': [float(v) for v in box.upper_right]},
                 'note': 'DAGMC版OpenMC API能读取该h5m并给出包围盒；未作输运计算或几何质量判定。'}
+    if action == 'build-dagmc-model':
+        import xml.etree.ElementTree as ET
+        universe = openmc.DAGMCUniverse('dagmc.h5m', universe_id=1, auto_geom_ids=True)
+        materials = openmc.Materials()
+        warnings = []
+        for index, spec in enumerate(params['materials'], start=1):
+            material = openmc.Material(material_id=1000 + index, name=spec['name'])
+            material.set_density(spec['units'], spec['density'])
+            for item in spec.get('nuclides') or []:
+                material.add_nuclide(item['name'], item['fraction'],
+                                     percent_type=item.get('percent_type', 'wo'))
+            if not spec.get('nuclides'):
+                warnings.append('材料' + spec['name'] + '未给核素组成；OpenMC输运前须补全。')
+            materials.append(material)
+        geometry = openmc.Geometry(root=universe)
+        settings = openmc.Settings()
+        settings.run_mode = 'eigenvalue'
+        settings.particles = params['particles']
+        settings.batches = params['batches']
+        settings.inactive = params['inactive']
+        settings.seed = 1 if params.get('seed') is None else params['seed']
+        point = tuple(params.get('source_point') or [0.0, 0.0, 0.0])
+        settings.source = openmc.IndependentSource(space=openmc.stats.Point(point))
+        model = openmc.Model(geometry, materials, settings)
+        model.export_to_model_xml()
+        # 模型要随算例搬移：把DAGMC绝对路径改为相对文件名（与create_model改cross_sections同款）。
+        tree = ET.parse('model.xml')
+        for node in tree.getroot().iter('dagmc_universe'):
+            node.set('filename', 'dagmc.h5m')
+        tree.write('model.xml', encoding='unicode', xml_declaration=True)
+        reparsed = openmc.Model.from_model_xml('model.xml')
+        return {'files': ['model.xml'], 'dagmc_filename': 'dagmc.h5m',
+                'materials': [spec['name'] for spec in params['materials']],
+                'settings': {'particles': params['particles'], 'batches': params['batches'],
+                             'inactive': params['inactive']},
+                'source_point': list(point),
+                'engine_parse': {'ok': True, 'materials': len(reparsed.materials)},
+                'warnings': warnings,
+                'note': '模型XML由公开API组装并回读验证；DAGMC材料指派、网格质量与源位置是否在模型内需业务确认。'}
     raise ValueError('Unsupported OpenMC API action')
 
 

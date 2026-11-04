@@ -14,7 +14,7 @@ from openmc_reports import export_scan
 from openmc_artifacts import list_artifacts
 from openmc_knowledge import list_sources, read as read_knowledge
 from openmc_examples import prepare_example
-from openmc_cad import convert_cad, inspect_step as inspect_cad_step
+from openmc_cad import build_dagmc_model, convert_cad, inspect_step as inspect_cad_step
 from openmc_diagnostics import diagnose_job, prepare_repair, recheck_repair
 from tool_metadata import document_tools
 from official_catalog import list_official_examples, describe as get_official_example
@@ -170,6 +170,27 @@ TOOLS += [
          "implicit_complement_material_tag": {"type": "string", "minLength": 1, "description": "可选：为模型外部隐式补集区域指派该材料标签（常设graveyard/真空标签以减少粒子丢失）；省略不生成补集区域。"}},
          ['step_path', 'target_dir', 'material_tags']),
      "outputSchema": OUTPUT, "function": convert_cad, "annotations": WRITE},
+    {"name": "openmc_build_dagmc_model", "description": "为已转换的DAGMC算例组装可运行模型XML（材料/设置/源），DAGMC文件名写相对路径便于随算例搬移；材料标签须与转换时一致，密度/组成/源位置与网格质量需业务确认。不覆盖已有XML，不重做转换。",
+     "inputSchema": schema({"case_dir": TEXT,
+                            "materials": {"type": "array", "minItems": 1, "items": {"type": "object",
+                                "required": ["name", "density", "units"],
+                                "properties": {
+                                    "name": {"type": "string", "minLength": 1},
+                                    "density": {"type": "number", "exclusiveMinimum": 0},
+                                    "units": {"type": "string", "enum": ["g/cm3", "g/cc", "atom/b-cm", "atom/cm3"]},
+                                    "nuclides": {"type": "array", "items": {"type": "object",
+                                        "required": ["name", "fraction"],
+                                        "properties": {"name": {"type": "string", "minLength": 1},
+                                                       "fraction": {"type": "number", "exclusiveMinimum": 0},
+                                                       "percent_type": {"type": "string", "enum": ["wo", "ao"]}}}}}}},
+                            "particles": {"type": "integer", "minimum": 1},
+                            "batches": {"type": "integer", "minimum": 2},
+                            "inactive": {"type": "integer", "minimum": 0},
+                            "source_point": {"type": "array", "items": {"type": "number"},
+                                             "minItems": 3, "maxItems": 3},
+                            "seed": {"type": "integer", "minimum": 1}},
+                           ["case_dir", "materials"]),
+     "outputSchema": OUTPUT, "function": build_dagmc_model, "annotations": WRITE},
     {"name": "openmc_preview_input", "description": "提交前逐文件看清输入：截断内容预览、字节数与SHA256，附结构摘要（运行设置、材料核素、几何与tally计数）。只读；算例内符号链接拒绝读取；预览不证明物理正确。",
      "inputSchema": schema({"case_dir": TEXT}, ["case_dir"]),
      "outputSchema": OUTPUT, "function": preview_input},

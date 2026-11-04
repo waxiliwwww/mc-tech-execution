@@ -15,7 +15,8 @@
 - prepare_case 逐参数差异（B2）：返回新增 `parameter_diff`——`changes`（应用时刻前后值，含单位/类别）加 `readback`（写入后再次调用 OpenMC API 重新读取文件、按参数核对 expected/found/match），`verified=true` 表示全部请求参数读回一致；不一致或缺读回项如实列出。把“修改意图”升级为“落盘证据”；顶层 `changes` 字段保留，兼容不变。
 - 工作区存储只读报告（H2 第一刀）：新工具 `openmc_storage_report`——内部记录（作业/扫描/例题）逐类计数与字节、状态分布、最大记录 Top N；请求 `older_than_days` 时按与 `cleanup.sh` 完全一致的口径预览可回收量（仅终态记录、引用保护与修复关联如实列出）。实现按文件路径加载并复用 `scripts/cleanup_artifacts.py` 的 inventory/fingerprint/plan，口径单一来源；本工具不删除任何内容，删除仍须维护窗口 `cleanup.sh` 预览后 `--apply`。
 - 作业对比第二刀（D2）：`openmc_job_compare` 增加可选 `compare_tallies` 档——经 `read_results` 读取两作业 StatePoint，按 tally id 对齐（shape/scores/nuclides/estimator/filters 类型不一致时如实不对比并列结构差异），逐 bin 给出差值、独立假设合成 σ 与是否在两倍 σ 内（工程判据，不构成统计显著性判定）；非有限 bin 不替换为 0，截断如实标记仅对比前 `max_values` 个 bin，问题 bin 至多列 50 条，`summary` 给全量计数，双方 warnings 合并返回。进度表工程辅助段补 `openmc_preview_input`（B1 文档欠账）与 `openmc_job_compare` 两行。
-- 工具注册表 37→42；`docs/reference.html` 由生成器重生成；CI 工具计数断言同步。进度表 RF002 行更新为部分实现（工程已验证）。
+- A5 后续（CAD 链补最后一步）：新工具 `openmc_build_dagmc_model`——为 `openmc_convert_cad` 产出的 h5m 组装可运行 `model.xml`（材料/设置/源，公开 API 组装后引擎回读验证）；DAGMC 文件名改写为相对 `dagmc.h5m`（与 create_model 改 cross_sections 同款，保证算例可搬移）；材料标签须与转换时 `material_tags` 逐一一致（含隐式补集标签），密度正定、单位限 g/cm3|g/cc|atom/b-cm|atom/cm3，核素组成可缺省但如实告警"输运前须补全"；不覆盖已有 XML、不重做转换。实测：cube.step→h5m→model.xml 全链通过（引擎回读 ok，material_tags=steel）。甲方 STEP 验收（lost particle=0）仍待料。
+- 工具注册表 37→43；`docs/reference.html` 由生成器重生成；CI 工具计数断言同步。进度表 RF002 行更新为部分实现（工程已验证）。
 - 仍未做：h5m→可运行模型 XML 生成（材料定义与 DAGMC 几何接线）、甲方 STEP 件验收判据（1000 粒子 lost particle=0）、复杂装配体质量参数封装。
 
 ## 0.8.0 — 2026-11-03

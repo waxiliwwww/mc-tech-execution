@@ -2027,6 +2027,141 @@
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_cad.py">mcp/openmc_cad.py</a>。</p></details>
+<details class="tool" id="openmc_build_dagmc_model"><summary>openmc_build_dagmc_model
+<span class="tool-purpose">为已转换的DAGMC算例组装可运行模型XML（材料/设置/源），DAGMC文件名写相对路径便于随算例搬移；材料标签须与转换时一致，密度/组成/源位置与网格质量需业务确认。不覆盖已有XML，不重做转换。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>materials</td><td>array</td><td>是</td><td>不可省略</td><td>DAGMC材料列表：每项{name, density, units[, nuclides]}；name须与转换时material_tags逐一一致（含隐式补集标签），密度正定，units限g/cm3|g/cc|atom/b-cm|atom/cm3。nuclides省略时如实告警“输运前须补全组成”，不冒充可用。</td><td>—</td></tr><tr><td>particles</td><td>integer</td><td>否</td><td>200</td><td>每代历史粒子数，正整数。仅控制示例计算设置，不代表达到专业收敛或准确率要求；每批代数由模型设置决定。</td><td>—</td></tr><tr><td>batches</td><td>integer</td><td>否</td><td>10</td><td>示例总批次数，须与inactive共同满足batches-inactive至少为2；这是当前工程例题约束。</td><td>—</td></tr><tr><td>inactive</td><td>integer</td><td>否</td><td>2</td><td>示例非活跃批次数，非负整数，且须留出至少两个活跃批次。</td><td>—</td></tr><tr><td>source_point</td><td>array</td><td>否</td><td>省略时见说明</td><td>可选源点坐标三元组[x,y,z]（模型单位）；省略取原点。源是否落在DAGMC模型内需业务确认。</td><td>—</td></tr><tr><td>seed</td><td>integer</td><td>否</td><td>省略时见说明</td><td>可选随机数种子，正整数；省略用1。仅固定复现，不代表物理精度。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>case_dir为已转换目录；files=[&quot;model.xml&quot;]，dagmc_filename恒为相对名dagmc.h5m（可随算例搬移）；materials/settings/source_point回显，engine_parse为引擎回读结果（ok/materials）；warnings列出未给组成的材料；provenance.data_kind为cad_conversion_unverified，professional_acceptance=false。</p>
+<div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>case_dir</td><td>输入目录，相对服务端MC_WORKSPACE；生成/修改后用此目录继续校核或计算。</td></tr><tr><td>dagmc_filename</td><td>模型XML中DAGMC几何的相对文件名；随算例搬移，不是服务器绝对路径。</td></tr><tr><td>engine_parse</td><td>引擎回读结果（ok与可解析材料数）；回读成功不代表材料指派或网格质量正确。</td></tr></tbody></table></div>
+<p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;case_dir&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。&quot;,
+      &quot;examples&quot;: [
+        &quot;cases/my-case&quot;
+      ]
+    },
+    &quot;materials&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;minItems&quot;: 1,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;required&quot;: [
+          &quot;name&quot;,
+          &quot;density&quot;,
+          &quot;units&quot;
+        ],
+        &quot;properties&quot;: {
+          &quot;name&quot;: {
+            &quot;type&quot;: &quot;string&quot;,
+            &quot;minLength&quot;: 1
+          },
+          &quot;density&quot;: {
+            &quot;type&quot;: &quot;number&quot;,
+            &quot;exclusiveMinimum&quot;: 0
+          },
+          &quot;units&quot;: {
+            &quot;type&quot;: &quot;string&quot;,
+            &quot;enum&quot;: [
+              &quot;g/cm3&quot;,
+              &quot;g/cc&quot;,
+              &quot;atom/b-cm&quot;,
+              &quot;atom/cm3&quot;
+            ]
+          },
+          &quot;nuclides&quot;: {
+            &quot;type&quot;: &quot;array&quot;,
+            &quot;items&quot;: {
+              &quot;type&quot;: &quot;object&quot;,
+              &quot;required&quot;: [
+                &quot;name&quot;,
+                &quot;fraction&quot;
+              ],
+              &quot;properties&quot;: {
+                &quot;name&quot;: {
+                  &quot;type&quot;: &quot;string&quot;,
+                  &quot;minLength&quot;: 1
+                },
+                &quot;fraction&quot;: {
+                  &quot;type&quot;: &quot;number&quot;,
+                  &quot;exclusiveMinimum&quot;: 0
+                },
+                &quot;percent_type&quot;: {
+                  &quot;type&quot;: &quot;string&quot;,
+                  &quot;enum&quot;: [
+                    &quot;wo&quot;,
+                    &quot;ao&quot;
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      &quot;description&quot;: &quot;DAGMC材料列表：每项{name, density, units[, nuclides]}；name须与转换时material_tags逐一一致（含隐式补集标签），密度正定，units限g/cm3|g/cc|atom/b-cm|atom/cm3。nuclides省略时如实告警“输运前须补全组成”，不冒充可用。&quot;
+    },
+    &quot;particles&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 1,
+      &quot;description&quot;: &quot;每代历史粒子数，正整数。仅控制示例计算设置，不代表达到专业收敛或准确率要求；每批代数由模型设置决定。&quot;,
+      &quot;default&quot;: 200
+    },
+    &quot;batches&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 2,
+      &quot;description&quot;: &quot;示例总批次数，须与inactive共同满足batches-inactive至少为2；这是当前工程例题约束。&quot;,
+      &quot;default&quot;: 10
+    },
+    &quot;inactive&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 0,
+      &quot;description&quot;: &quot;示例非活跃批次数，非负整数，且须留出至少两个活跃批次。&quot;,
+      &quot;default&quot;: 2
+    },
+    &quot;source_point&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;number&quot;
+      },
+      &quot;minItems&quot;: 3,
+      &quot;maxItems&quot;: 3,
+      &quot;description&quot;: &quot;可选源点坐标三元组[x,y,z]（模型单位）；省略取原点。源是否落在DAGMC模型内需业务确认。&quot;
+    },
+    &quot;seed&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 1,
+      &quot;description&quot;: &quot;可选随机数种子，正整数；省略用1。仅固定复现，不代表物理精度。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;case_dir&quot;,
+    &quot;materials&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;case_dir为已转换目录；files=[\&quot;model.xml\&quot;]，dagmc_filename恒为相对名dagmc.h5m（可随算例搬移）；materials/settings/source_point回显，engine_parse为引擎回读结果（ok/materials）；warnings列出未给组成的材料；provenance.data_kind为cad_conversion_unverified，professional_acceptance=false。&quot;,
+  &quot;properties&quot;: {
+    &quot;case_dir&quot;: {
+      &quot;description&quot;: &quot;输入目录，相对服务端MC_WORKSPACE；生成/修改后用此目录继续校核或计算。&quot;
+    },
+    &quot;dagmc_filename&quot;: {
+      &quot;description&quot;: &quot;模型XML中DAGMC几何的相对文件名；随算例搬移，不是服务器绝对路径。&quot;
+    },
+    &quot;engine_parse&quot;: {
+      &quot;description&quot;: &quot;引擎回读结果（ok与可解析材料数）；回读成功不代表材料指派或网格质量正确。&quot;
+    }
+  }
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/openmc_cad.py">mcp/openmc_cad.py</a>。</p></details>
 <details class="tool" id="openmc_preview_input"><summary>openmc_preview_input
 <span class="tool-purpose">提交前逐文件看清输入：截断内容预览、字节数与SHA256，附结构摘要（运行设置、材料核素、几何与tally计数）。只读；算例内符号链接拒绝读取；预览不证明物理正确。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr></tbody></table></div>

@@ -154,4 +154,99 @@ def convert_cad(step_path: str, target_dir: str, material_tags, scale_factor: fl
             'versions': conversion.get('versions'), 'units_note': UNITS_NOTE,
             'workspace': str(workspace()), 'location': 'server',
             'provenance': provenance(directory, cfg), 'professional_acceptance': False,
-            'note': marker['note']}
+             'note': marker['note']}
+
+
+# DAGMC由标签指派材料；这里只收可直接set_density的口径（sum需组成求和，另议）。
+DAGMC_DENSITY_UNITS = ('g/cm3', 'g/cc', 'atom/b-cm', 'atom/cm3')
+
+
+def _materials_spec(value, required: list):
+    """校验materials：名称须与转换时material_tags完全一致，密度正定、单位合法、核素可缺省如实告警。"""
+    if not isinstance(value, list) or not value:
+        raise Error('materials须为非空列表，每项含name/density/units（可选nuclides）')
+    names = []
+    for item in value:
+        if not isinstance(item, dict):
+            raise Error('materials每项须为对象：name/density/units[/nuclides]')
+        name = item.get('name')
+        if not isinstance(name, str) or not name.strip():
+            raise Error('materials.name须为非空字符串')
+        if name in names:
+            raise Error('materials.name不能重复：' + name)
+        names.append(name)
+        density = item.get('density')
+        if type(density) not in (int, float) or isinstance(density, bool) or not density > 0:
+            raise Error('materials.density须为正数：' + name)
+        if item.get('units') not in DAGMC_DENSITY_UNITS:
+            raise Error('materials.units须为' + '/'.join(DAGMC_DENSITY_UNITS) + '之一：' + name)
+        nuclides = item.get('nuclides')
+        if nuclides is not None:
+            if not isinstance(nuclides, list):
+                raise Error('materials.nuclides须为列表：' + name)
+            for entry in nuclides:
+                if not isinstance(entry, dict):
+                    raise Error('nuclides每项须为对象name/fraction[/percent_type]：' + name)
+                if not isinstance(entry.get('name'), str) or not entry['name'].strip():
+                    raise Error('nuclides.name须为非空字符串：' + name)
+                fraction = entry.get('fraction')
+                if type(fraction) not in (int, float) or isinstance(fraction, bool) or not fraction > 0:
+                    raise Error('nuclides.fraction须为正数：' + name)
+                if entry.get('percent_type', 'wo') not in ('wo', 'ao'):
+                    raise Error('nuclides.percent_type只能是wo或ao：' + name)
+    missing = [tag for tag in required if tag not in names]
+    extra = [name for name in names if name not in required]
+    if missing:
+        raise Error('materials缺少转换时的材料标签：' + '、'.join(missing))
+    if extra:
+        raise Error('materials含转换时未指派的标签：' + '、'.join(extra))
+
+
+def build_dagmc_model(case_dir: str, materials, particles: int = 200, batches: int = 10,
+                      inactive: int = 2, source_point=None, seed=None) -> dict:
+    """为已转换的DAGMC算例组装model.xml（材料/设置/源）；不覆盖已有XML，不重做转换。"""
+    cfg = config()
+    directory = path_in_workspace(case_dir)
+    if not directory.is_dir():
+        raise Error('case_dir须为已存在的转换目录')
+    if not (directory / 'dagmc.h5m').is_file():
+        raise Error('目录内没有dagmc.h5m；请先用openmc_convert_cad完成转换')
+    if any((directory / name).exists() for name in ('model.xml', 'geometry.xml', 'materials.xml')):
+        raise Error('目录已有模型XML；本工具不覆盖，请换新目录组装或先移走旧文件')
+    marker_path = directory / 'mc-case.json'
+    if not marker_path.is_file():
+        raise Error('目录缺少mc-case.json溯源记录，不能确认材料标签')
+    try:
+        marker = json.loads(marker_path.read_text(encoding='utf-8'))
+    except (OSError, ValueError) as exc:
+        raise Error('mc-case.json损坏，不能确认材料标签') from exc
+    if marker.get('generator') != 'cad_to_dagmc':
+        raise Error('mc-case.json不是CAD转换产物，拒绝组装')
+    required = list(marker.get('material_tags') or [])
+    implicit = marker.get('implicit_complement_material_tag')
+    if implicit:
+        required.append(implicit)
+    if not required:
+        raise Error('mc-case.json未记录材料标签，不能组装模型')
+    _materials_spec(materials, required)
+    if (any(type(value) is not int for value in (particles, batches, inactive))
+            or particles <= 0 or not 0 <= inactive < batches or batches - inactive < 2):
+        raise Error('particles须为正整数，batches-inactive至少为2，inactive非负')
+    if source_point is not None:
+        if (not isinstance(source_point, list) or len(source_point) != 3
+                or any(type(item) not in (int, float) or isinstance(item, bool)
+                       for item in source_point)):
+            raise Error('source_point须为三个数值的列表')
+    if seed is not None and (type(seed) is not int or isinstance(seed, bool) or seed < 1):
+        raise Error('seed须为正整数或省略')
+    value = api('build-dagmc-model', directory,
+                {'materials': materials, 'particles': particles, 'batches': batches,
+                 'inactive': inactive, 'source_point': source_point, 'seed': seed}, cfg)
+    marker['model_built'] = {'materials': value['materials'], 'settings': value['settings'],
+                             'xml_files': value['files'], 'professional_acceptance': False}
+    atomic_json(marker_path, marker)
+    return {'case_dir': case_dir, **value, 'workspace': str(workspace()),
+            'location': 'server', 'provenance': provenance(directory, cfg),
+            'professional_acceptance': False,
+            'note': '模型XML由公开API组装并回读验证；DAGMC材料指派、网格质量、单位换算与'
+                    '源位置是否在模型内均需业务确认；未作专业验收。'}
