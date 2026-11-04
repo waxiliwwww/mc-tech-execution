@@ -70,6 +70,21 @@ try {
   await page.locator('a[href="toolkit.html"]').click();
   assert.match(await page.locator('#user').innerText(),/用户视角/);
   assert.match(await page.locator('#developer').innerText(),/开发者视角/);
+  assert.equal(await page.locator('.diagram img').count(),3,
+    'Architecture instructions need visible architecture, input-flow and sequence diagrams.');
+  for (const [index, section] of ['architecture','inputs','user'].entries()) {
+    await page.locator('.jump a[href="#'+section+'"]').click();
+    const diagram = page.locator('.diagram').nth(index);
+    await diagram.scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => [...document.querySelectorAll('.diagram img')]
+      .every(img => img.complete && img.naturalWidth > 0));
+    const name = '05f'+index+'-architecture-'+section+'.png';
+    await diagram.screenshot({path:path.join(out,name)});screenshots.push(name);
+  }
+  await page.locator('.diagram a').first().click();
+  assert.equal(await page.evaluate(()=>document.documentElement.localName),'svg');
+  assert.match(await page.locator('svg > title').textContent(),/分层架构/);
+  await page.goBack();
   await page.locator('a[href="reference.html"]').first().click();
   assert.equal(await page.locator('#tool-search').isVisible(),true);
   await page.goto(url('toolkit.html'));await shot('05f-toolkit-overview');
@@ -111,6 +126,6 @@ try {
   }
   await page.goto(url('index.html'));await shot('09-mobile');
   assert.deepEqual(problems,[]);assert.deepEqual(remoteRequests,[]);
-  await fs.writeFile(path.join(out,'receipt.json'),JSON.stringify({passed:true,pages:11,problems,remoteRequests,screenshots,entry:url('index.html'),checks:['offline file navigation','demo explanation disclosure','exact command copy/selection fallback','source/model layers','composable model instructions','two-week interface plan','user/developer overview navigation','own program disclosure','search/no-match','deep-link reveals schema','mobile no page overflow']},null,2));
+  await fs.writeFile(path.join(out,'receipt.json'),JSON.stringify({passed:true,pages:11,problems,remoteRequests,screenshots,entry:url('index.html'),checks:['offline file navigation','demo explanation disclosure','exact command copy/selection fallback','source/model layers','composable model instructions','two-week interface plan','user/developer overview navigation','three offline architecture diagrams and original SVG navigation','own program disclosure','search/no-match','deep-link reveals schema','mobile no page overflow']},null,2));
   process.stdout.write('HTML browser checks passed; screenshots: '+out+'\n');
 } finally {await browser.close();}

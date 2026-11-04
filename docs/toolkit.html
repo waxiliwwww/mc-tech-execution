@@ -1,28 +1,59 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MC工具包说明</title><link rel="stylesheet" href="assets/overview.css"></head><body><main>
-<nav><a href="index.html">使用手册</a><a href="development-plan.html">交付总览</a><a href="dsh.html">Windows DSH接入</a><a href="reference.html">完整工具参数</a></nav>
-<p class="eyebrow">实现基线 0.10.1 · 2026-11-04</p><h1>MC工具包说明</h1>
-<p class="lead">本包把OpenMC的建模、计算和结果处理接成一套可检查、可追踪的操作。用户可以直接用CLI，也可以让DSH等宿主通过MCP调用；OpenMC是现有的蒙特卡罗粒子输运引擎，负责求解；模型理解与对话由宿主完成。</p>
-<div class="flow" aria-label="两种输入汇合为同一条计算与结果链"><span>已有模型 / 结构化新模型</span><b>→</b><span>预览与校核</span><b>→</b><span>命名作业与输入快照</span><b>→</b><span>OpenMC</span><b>→</b><span>数据、图和报告</span></div>
-<h2 id="user">用户视角：一次任务怎样完成</h2>
-<ol><li><strong>准备环境。</strong>拿到完整源码包，按<a href="env.html">环境说明</a>配置接口、OpenMC和核数据。直接运行<code>./mc.sh</code>，或启动MCP服务后在DSH中连接；DSH模型配置不属于本包。</li>
-<li><strong>选输入来源。</strong>已有Python程序先导出XML，再把输入及依赖放入服务端工作区，用导入模型（<code>openmc_import_model</code>）创建副本。没有现成模型时，先发现建模能力（<code>openmc_model_capabilities</code>），再把有依据的材料、几何、源与计分交给组合建模（<code>openmc_build_model</code>）。自然语言由宿主组织成这些参数。组合模型的长度用cm、能量用eV、温度用K，材料份额明确原子或质量口径。</li>
-<li><strong>看清再算。</strong>预览输入（<code>openmc_preview_input</code>）、分层校核（<code>openmc_validate_inputs</code>）。改参先发现可调项，再建新副本，原输入保留；并非所有OpenMC属性都能自动修改。</li>
-<li><strong>命名提交。</strong>提交作业（<code>openmc_submit_job</code>）取得job_id，查询同一编号到终态，也可取消。任务名便于查找，重名仍靠ID区分；提交成功不等于计算完成。</li>
-<li><strong>读结果和产物。</strong>读取结果（<code>openmc_read_results</code>）后，按实际计分选择图与报告。输入、日志、StatePoint、CSV/JSON和报告留在服务端，返回绝对路径；远程调用不会自动上传输入或下载输出。</li></ol>
-<p><a href="domain-workflows.html">完整操作与改参示例</a>说明每一步的参数和命令；<a href="dsh.html">DSH接入说明</a>说明Windows连接方式。</p>
-<h2 id="example">同一个例子：简化全堆空间通量</h2>
-<p>输入来自随包适配的公开全堆模型，复用OpenMC的<code>pwr_core()</code>；空间统计由用户明确加入8×8×1网格flux计分。创建模型、定义计分、预览校核、提交查询后，工具从真实StatePoint提取keff和64格均值/标准差，再生成热图、完整数据和报告。</p>
-<p><strong>这条链的价值是把输入、作业和结果对应起来。</strong>实际输入有快照与指纹，图表沿用所选统计数据，失败有编号和日志。已有工程记录核对了原生数值、图和报告的一致性；小统计运行不证明收敛。keff无量纲；本包保留flux原始计分，不追加体积、源强或功率归一化，不能直接称为实际功率或工况通量。</p>
-<h2 id="developer">开发者视角：这些能力怎样实现</h2>
-<div class="table-wrap"><table><thead><tr><th>职责</th><th>实现与扩展入口</th><th>保留的行为</th></tr></thead><tbody>
-<tr><td>公共接口</td><td><a href="../mcp/tools.py">tools.py</a>注册函数和Schema；<a href="../mcp/cli.py">cli.py</a>、<a href="../mcp/server.py">server.py</a>共用适配层。</td><td>CLI与MCP调用同一业务实现，嵌套参数带含义、单位和约束。</td></tr>
-<tr><td>模型与改参</td><td><a href="../mcp/openmc_model_spec.py">openmc_model_spec.py</a>经官方Python API生成XML；<a href="../mcp/openmc_import.py">openmc_import.py</a>保留原生输入；参数适配在<a href="../mcp/openmc_parameters.py">openmc_parameters.py</a>。</td><td>组合建模受Schema约束，不执行任意用户代码；声明式改参同步描述、Python源码与XML，发现漂移就拒绝覆盖。</td></tr>
-<tr><td>作业与扫描</td><td><a href="../mcp/openmc_jobs.py">openmc_jobs.py</a>的<code>submit()</code>/<code>run_worker()</code>管理作业进程和持久状态；<a href="../mcp/openmc_scan.py">openmc_scan.py</a>复用作业执行参数组合。</td><td>快照、日志、失败及取消可追踪；接口进程与计算进程分开，提交后用后续调用查询长计算。</td></tr>
-<tr><td>结果与报告</td><td><a href="../mcp/openmc_worker.py">openmc_worker.py</a>的<code>execute()</code>在OpenMC环境读原生结果；图表和文档由<a href="../mcp/openmc_visuals.py">openmc_visuals.py</a>、<a href="../mcp/openmc_reports.py">openmc_reports.py</a>处理。</td><td>保留计分维度、来源和不确定度；所选图、完整数据与报告同源。</td></tr>
-<tr><td>其他适配</td><td>官方例题工作流、燃耗、CAD转换、几何查看、资料检索及有限诊断/确认修复，见<a href="reference.html">接口参考</a>。</td><td>各有适用范围；固定例题不是唯一输入入口，通用计算管理可接非目录模型。</td></tr>
-<tr><td>资源与维护</td><td><a href="../mcp/openmc_storage.py">openmc_storage.py</a>检查提交空间；<a href="../scripts/cleanup_artifacts.py">cleanup_artifacts.py</a>提供离线维护清理。</td><td>低空间拒绝新提交，清理先预览并保护关联记录；不自动删除核数据或旧证据，不承诺运行期硬配额。</td></tr>
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MC工具包架构说明</title><link rel="stylesheet" href="assets/architecture.css"></head><body><main>
+<nav><a href="index.html">使用手册</a><a href="domain-workflows.html">操作与示例</a><a href="dsh.html">Windows DSH接入</a><a href="project-progress.html">合同功能进展</a><a href="reference.html">工具参数</a></nav>
+<p class="eyebrow">当前实现 · 0.10.1 · 2026-11-04</p><h1>MC工具包架构说明</h1>
+<p class="lead">这个包把模型准备、输入校核、计算作业和结果整理做成可重复调用的操作。OpenMC负责物理求解，DSH等宿主负责理解自然语言与编排；本包连接两者，保留每次输入、计算记录和产物。用户也可以直接用CLI，不依赖宿主或模型。</p>
+<p>甲方技术指引中的OpenMC、DAGMC、CAD转换、Python生成XML和结果解析路线已有对应实现，但并未全部完成。<strong>DAGMC用于CAD几何分支；此前演示的公开全堆模型采用CSG几何，所以没有经过它。</strong>下文先讲清结构与一条任务，再对照指引说明取舍和缺口。</p>
+<div class="jump"><a href="#architecture">分层架构</a><a href="#inputs">输入与CAD路线</a><a href="#user">调用时序</a><a href="#results">结果与文件</a><a href="#guide">技术指引对照</a><a href="#developer">源码与扩展</a></div>
+<h2 id="architecture">1．哪些工作由谁负责</h2>
+<p>OpenMC的一次计算至少需要明确四件事。核数据库另行提供粒子与材料相互作用的数据；几何图或自然语言描述本身不能替代这些物理输入。</p>
+<div class="concepts"><section><h3>几何</h3><p>材料放在哪里，例如燃料、包壳、冷却剂与组件布局。</p></section><section><h3>材料</h3><p>各区域有哪些核素、密度与温度，需有业务依据。</p></section><section><h3>源与运行设置</h3><p>粒子从哪里开始，采用何种计算模式与统计设置。</p></section><section><h3>计分 tally</h3><p>要求求解器统计什么，以及按空间、能量等怎样分箱。</p></section></div>
+<figure><div class="diagram"><a href="assets/toolkit-architecture.svg" title="打开架构原图"><img src="assets/toolkit-architecture.svg" alt="宿主或CLI进入统一契约，业务模块通过不同计算进程调用OpenMC及可选CAD和Office，文件统一保存在服务端工作区。"></a></div><figcaption>图1 · 实现架构。业务模块共享下方运行方式，不是一对一：模型输入会调用CAD转换，结果处理按需调用Office。箭头表示调用与文件交接，不表示每个工具都启动所有运行时。图可点击打开原图；窄屏可横向查看。</figcaption></figure>
+<p class="verdict"><strong>统一的是接口与作业记录，分开的是运行环境和职责。</strong>接口环境不安装OpenMC；需要它时，<code>api()</code>以JSON启动专用Python进程。长计算则由独立作业进程管理OpenMC可执行程序，MCP服务无需一直占着一次请求等待计算结束。</p>
+<p>CAD转换和Office转换使用各自的可选环境，避免复杂依赖都装入接口环境。部署仍需初始化这些运行时与核数据；“独立工具包”指不依赖Helix等其他工程源码，不表示一个没有环境依赖的可执行文件。</p>
+<h2 id="inputs">2．模型怎样进来，DAGMC在其中做什么</h2>
+<figure><div class="diagram"><a href="assets/toolkit-inputs.svg" title="打开输入流程原图"><img src="assets/toolkit-inputs.svg" alt="已有XML导入、新模型经Python API生成、STEP经CAD转换及DAGMC模型组装，汇入同一校核和命名提交流程。"></a></div><figcaption>图2 · 三种输入来源。XML是OpenMC的计算输入；组合建模通过官方Python API生成XML，用户不必手写。导入路径保留已有合法原生结构。</figcaption></figure>
+<p><strong>CSG</strong>用平面、圆柱、球面及布尔关系描述区域，适合目前的组合建模与公开组件/全堆示例。<strong>DAGMC</strong>让OpenMC使用CAD导出的网格几何进行粒子跟踪；它负责几何相关操作，物理输运和计分仍由OpenMC完成。<a href="https://svalinn.github.io/DAGMC/">DAGMC官方说明</a>。</p>
+<p>本包的CAD路径实际调用 <code>CadQuery</code> 读STEP实体，调用 <code>cad_to_dagmc</code>（其网格链使用Gmsh等组件）生成 <code>.h5m</code>，再用 <code>openmc.DAGMCUniverse</code> 加上材料、源和运行设置导出 <code>model.xml</code>。H5M是几何输入，后面的StatePoint HDF5是计算结果，两者不是同一种产物。<a href="https://github.com/fusion-energy/cad_to_dagmc">转换库项目说明</a>。</p>
+<div class="note"><strong>CAD当前验证与部署范围：</strong>代码和既有立方体转换产物证明转换库已使用；另外，官方CAD例题使用现成H5M完成过输运。两段不是同一个输入，不能合称自转换STEP已全链路完成计算。当前快速安装会准备带DAGMC/MOAB的OpenMC，但不安装CAD转换环境；新机使用转换功能前还需单独准备并配置 <code>cad_python_command</code>。复杂工程件的网格质量、单位与材料映射需单独验证。</div>
+<p>新模型的组合能力由 <code>openmc_model_capabilities</code> 明确返回：当前支持受控CSG、宇宙、二维矩形格架及部分源/计分类型；它不是OpenMC全部API的等价封装。已有模型可走原生导入路径，自动改参范围则以 <code>openmc_list_parameters</code> 返回为准。服务不执行任意上传Python脚本，也不自动猜专业参数。</p>
+<h2 id="user">3．用户视角：一次任务怎样跨过这些层</h2>
+<p>输入准备好后，用户先看输入和校核结果，再提交一个有名称的作业。名称用于查找，真正关联后续结果的是 <code>job_id</code>。下面是通用机制，不限于某个固定demo。</p>
+<figure><div class="diagram"><a href="assets/toolkit-sequence.svg" title="打开调用时序原图"><img src="assets/toolkit-sequence.svg" alt="先预览校核，提交时保存快照并启动独立工作进程，立即返回作业编号；OpenMC完成后按编号查询，再读取StatePoint并生成图报告。"></a></div><figcaption>图3 · 调用时序。实线是操作，虚线是返回；长计算发生在作业进程中。用户核对是交互流程，当前提交接口没有“必须先预览”的强制凭证。</figcaption></figure>
+<p><strong>提交成功只表示作业已创建。</strong>调用方继续用同一ID查询 <code>openmc_job_status</code>，到 <code>completed</code> 后再读结果；失败时查看退出码和日志，取消请求也要查询到终态。服务重启不会抹掉已有作业记录；独立作业能否继续，要看其进程实际状态，不能靠重新提交猜测。</p>
+<p>批量扫描在这条链外再包一层：<code>scan_id → 参数组合 → job_id</code>，每个组合先创建参数副本，再使用同一作业管理。当前组合串行执行，不是Slurm集群调度。诊断、资料检索是旁路辅助：工具提供规则匹配或原文，模型负责进一步组织解释；确认修复后仍需校核与重算。</p>
+<h2 id="results">4．结果是谁算的，图和报告怎样对应输入</h2>
+<p>例如此前的“DSH预备全堆用例”：公开 <code>pwr_core()</code> 几何加8×8×1网格flux计分，经真实OpenMC计算生成StatePoint。<code>openmc_read_results</code>读取keff与计分维度；<code>openmc_plot_mesh</code>提取64格均值、标准差和坐标；<code>openmc_export_report</code>沿用明确选中的计分和筛选，生成报告与完整数据。数据由求解器产生，模型不负责编造数值。</p>
+<pre><code>workspace/
+├─ 自己的算例目录/               原输入、依赖、来源标记
+│  └─ model-spec.json / build_model.py   组合建模时额外保留
+├─ .mc-jobs/&lt;job_id&gt;/
+│  ├─ job.json / runtime.json     名称、状态、输入指纹、运行配置
+│  ├─ work/                      提交输入副本及OpenMC原始输出
+│  ├─ solver.log / worker.log    计算与工作进程日志
+│  └─ 图、完整CSV/JSON、报告      后处理产物
+└─ .mc-scans/&lt;scan_id&gt;/          扫描记录、参数组合和子作业关联</code></pre>
+<p>状态记录与输入指纹帮助复查“算的是哪一份”；原始StatePoint帮助核对“数值从哪里来”；图的坐标、计分选择和配套完整数据帮助解释“图画了什么”。默认报告只预览部分数据，完整数据在CSV/JSON。热图展示原始计分分布，不自动做体积、源强或功率归一化；低统计例题不证明专业精度。</p>
+<p>返回的 <code>server_path</code> 是服务端绝对位置，同机Windows可通过WSL共享路径打开；MCP不会自动传输模型和大文件。<a href="dsh.html#artifacts">文件打开和维护</a>使用已有存储报告与清理预览；提交前磁盘检查不等于运行期硬配额。</p>
+<h2 id="guide">5．技术指引采用了什么，哪些没有完成</h2>
+<p>依据甲方《OpenMC_MCP_表4-1技术落点对照与开发指引》三页内容：第1页提供参考路线与主要依赖，第2页讨论Python导出XML和分层，第3页讨论开发与文档安排。它不是15项功能逐行的完成清单；合同五类功能的逐项输入、输出与期限仍见<a href="project-progress.html">合同功能进展表</a>。</p>
+<div class="table-wrap"><table><thead><tr><th>指引路线</th><th>当前采用的方式</th><th>取舍和实现边界</th></tr></thead><tbody>
+<tr><td>OpenMC及确定性校验</td><td>复用官方API与求解器；CLI/MCP共用Schema和业务校核。</td><td>参考PromptMC校验思路，未依赖其软件包；专业校核仍有适用范围。</td></tr>
+<tr><td>DAGMC与CAD转换</td><td>STEP检查、cad_to_dagmc转换、DAGMCUniverse组装与通用作业。</td><td>真实调用已存在；自转换件到输运的同输入证据和CAD新机安装未闭环。</td></tr>
+<tr><td>Python生成XML、分层运行</td><td>可信Python API在专用环境生成/读回XML，接口环境无OpenMC。</td><td>采用运行时API桥，不限于开发期预生成模板；整个部署仍需要OpenMC和核数据。</td></tr>
+<tr><td>HDF5与文本结果解析</td><td>主要经官方StatePoint读取结构化结果；日志用于状态与诊断。</td><td>优先结构化结果，未把summary.h5、source.h5所有独立操作都封装成工具。</td></tr>
+<tr><td>Slurm / HPC</td><td>目前是本地作业、状态、取消与串行扫描。</td><td class="status">尚无产品级sbatch/squeue/scancel适配，本地流程不能代替HPC交付。</td></tr>
+<tr><td>模型驱动与智能助手</td><td>提供宿主可调用的建模参数、官方原文检索和有限诊断/修复接口。</td><td>DSH已发现工具，完整自然语言任务未验证；微调生成、指定基准与专业验收仍未完成。</td></tr>
 </tbody></table></div>
-<p>扩展一个操作时，在业务模块实现，再注册Schema、补参数说明和真实边界测试，最后重生成接口参考。修改建模能力还须同步发现、预检、执行与源码重建；只加工具名称不算完成。</p>
-<div class="note"><strong>当前边界：</strong>可运行、可自动改参、可组合生成是三个不同范围。DSH注册与自然语言任务按实际回执判断，不能从标准MCP测试推定通过。HPC、微调模型生成、指定CLEAR-S及专业验收未完成；宿主编排不替代这些合同要求。</div>
-<footer><a href="project-progress.html">合同功能与代码进展</a> · <a href="development-details.html">开发与验证明细</a> · <a href="domain-workflows.html#validation">测试入口</a></footer>
+<p>这里记录工程实现与取舍，不把参考依赖、测试粒子数或“lost particle=0”改成新增合同验收承诺。</p>
+<h2 id="developer">6．开发者视角：从哪里修改，怎样验证</h2>
+<div class="table-wrap"><table><thead><tr><th>修改对象</th><th>主要入口</th><th>应一起保留或验证的行为</th></tr></thead><tbody>
+<tr><td>增加或调整公共操作</td><td><a href="../mcp/tools.py">tools.py</a>、<a href="../mcp/adapters.py">adapters.py</a>；入口为<a href="../mcp/cli.py">cli.py</a>与<a href="../mcp/server.py">server.py</a>。</td><td>参数含义、类型与输出一致，CLI/MCP共用实现；接口参考从注册表生成。</td></tr>
+<tr><td>模型与参数</td><td><a href="../mcp/openmc_model_tools.py">openmc_model_tools.py</a>、<a href="../mcp/openmc_model_spec.py">openmc_model_spec.py</a>、<a href="../mcp/openmc_import.py">openmc_import.py</a>。</td><td>发现、生成、读回与改参同步；保留原模型、源码和依赖，不静默缩减已有输入。</td></tr>
+<tr><td>CAD适配</td><td><a href="../mcp/openmc_cad.py">openmc_cad.py</a>、<a href="../mcp/cad_worker.py">cad_worker.py</a>、<a href="../mcp/openmc_worker.py">openmc_worker.py</a>。</td><td>单位、实体与材料映射、转换输出和OpenMC读入分开检查；真正求解还需完整物理输入。</td></tr>
+<tr><td>作业与扫描</td><td><a href="../mcp/openmc_jobs.py">openmc_jobs.py</a>、<a href="../mcp/openmc_scan.py">openmc_scan.py</a>、<a href="../mcp/owned_processes.py">owned_processes.py</a>。</td><td>持久状态、输入快照、失败及取消、只控制自己的进程；当前不含远程调度器。</td></tr>
+<tr><td>计算桥与结果</td><td><a href="../mcp/openmc_runtime.py">openmc_runtime.py</a>、<a href="../mcp/openmc_visuals.py">openmc_visuals.py</a>、<a href="../mcp/openmc_reports.py">openmc_reports.py</a>。</td><td>环境与版本、所选计分/筛选、原始不确定度、坐标、图和报告必须对应。</td></tr>
+<tr><td>资料与资源管理</td><td><a href="../mcp/openmc_knowledge.py">knowledge.py</a>、<a href="../mcp/openmc_storage.py">openmc_storage.py</a>、<a href="../scripts/cleanup_artifacts.py">cleanup_artifacts.py</a>。</td><td>检索返回可追溯原文；清理离线预览并保护关联记录，不自动删除核数据或必要证据。</td></tr>
+</tbody></table></div>
+<p>例题工作流另在 <code>example_workflows.py</code> 接入固定官方目录，复用作业与产物管理；它是检验与学习入口，不是自有模型的唯一入口。扩展测试从实际输入、运行结果或必要失败出发，不能只检查函数存在或文件生成。</p>
+<footer><a href="domain-workflows.html#validation">测试入口与条件</a> · <a href="env.html">环境与部署</a> · <a href="reference.html">按需查完整工具参数</a><br>指引核对：2026-11-04，PDF SHA256 8525027a…fb180df；旧架构与ADR保留历史背景，当前关系以本页及源码为准。</footer>
 </main></body></html>
