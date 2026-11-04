@@ -186,15 +186,36 @@ class OpenMCTools(unittest.TestCase):
         self.assertIsNotNone(report['metadata']['runtime']['duration_seconds'])
         self.assertIn('报告头元数据', text)
 
+    def test_view_geometry_reports_unbounded_geometry_clearly(self):
+        import openmc_tools
+        from openmc_runtime import Error
+        directory = self.root / 'workspace/unbounded'
+        directory.mkdir(parents=True)
+        for name, content in {
+                'materials.xml': '<materials><material id="1"><density value="1.0" units="g/cm3"/>'
+                                 '<nuclide name="U235" wo="1.0"/></material></materials>',
+                'geometry.xml': '<geometry><cell id="1" material="1" region="-1"/></geometry>',
+                'settings.xml': '<settings><run_mode>eigenvalue</run_mode><particles>10</particles>'
+                                '<batches>2</batches></settings>',
+        }.items():
+            (directory / name).write_text(content, encoding='utf-8')
+        with patch.object(openmc_tools, 'api',
+                               side_effect=Error('OpenMC API失败：ValueError: The geometry does not '
+                                                 'appear to be bounded in the xy plane')):
+            with self.assertRaises(ValueError) as caught:
+                openmc_tools.view_geometry('unbounded')
+        self.assertIn('无界', str(caught.exception))
+        self.assertIn('origin/width', str(caught.exception))
+
     def test_fault_sample_library_lists_and_self_checks(self):
         import openmc_faults
         listing = openmc_faults.list_samples()
-        self.assertEqual(listing['count'], 16)
+        self.assertEqual(listing['count'], 17)
         self.assertEqual({item['kind'] for item in listing['samples']}, {'input', 'log'})
         result = openmc_faults.check_sample()
-        self.assertEqual(result['total'], 16)
+        self.assertEqual(result['total'], 17)
         self.assertEqual(result['failed'], [], result.get('results'))
-        self.assertEqual(result['passed'] + len(result['skipped']), 16)
+        self.assertEqual(result['passed'] + len(result['skipped']), 17)
         single = openmc_faults.check_sample('s01-settings-syntax')
         self.assertEqual(single['total'], 1)
         self.assertTrue(single['results'][0]['passed'])
@@ -219,7 +240,9 @@ class OpenMCTools(unittest.TestCase):
         self.assertEqual(captured['payload']['basis'], 'xz')
         self.assertEqual(captured['payload']['width'], [4.0, 8.0])
         self.assertEqual(captured['payload']['origin'], [1.0, 2.0, 3.0])
-        self.assertTrue(value['path']['path'].endswith('.png'), value)
+        self.assertIsInstance(value['path'], str, value)
+        self.assertTrue(value['path'].endswith('.png'), value)
+        self.assertNotIn('image', value, '统一返回结构：不重复给image键')
         for bad in ({'basis': 'ab'}, {'pixels': 10}, {'pixels': 5000}, {'color_by': 'zone'},
                     {'origin': [1, 2]}, {'width': [0]}, {'width': [1, 2, 3]}):
             arguments = {'basis': 'xy', 'pixels': 300, 'color_by': 'material', **bad}

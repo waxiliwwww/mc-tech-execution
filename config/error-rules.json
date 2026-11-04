@@ -46,5 +46,13 @@
     "status": "rule_hint_pending_domain_review",
     "reference": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/troubleshoot.rst",
     "updated_at": "2026-11-04"
+  },
+  {
+    "pattern": "exceeded maximum number of source rejections",
+    "category": "source_rejection",
+    "suggestion": "引擎在源抽样阶段被拒：常见原因是单元几何重叠或源落在未定义/未填充区域；本规则只报症状，不定位重叠单元，需用几何检查与人工核对。",
+    "status": "seed_rule_pending_domain_review",
+    "reference": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/troubleshoot.rst",
+    "updated_at": "2026-11-04"
   }
 ]

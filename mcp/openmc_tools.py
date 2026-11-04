@@ -983,11 +983,17 @@ def view_geometry(case_dir: str, basis: str = 'xy', origin: list | None = None,
         params['origin'] = [float(v) for v in origin]
     if width is not None:
         params['width'] = [float(v) for v in (width if isinstance(width, (list, tuple)) else [width])]
-    value = api('view-geometry', directory, params)
-    return {'case_dir': case_dir, **value, 'path': file_location(target / filename),
-            'server_path': str(target / filename), 'workspace': str(workspace()),
-            'location': 'server', 'provenance': provenance(directory, config()),
-            'professional_acceptance': False,
+    try:
+        value = api('view-geometry', directory, params)
+    except Error as error:
+        message = str(error)
+        if 'does not appear to be bounded' in message or 'not bounded' in message:
+            raise Error('该几何在' + basis + '切片平面上无界（如六角棱柱外边界），引擎无法出切片图；'
+                        '可改用矩形/圆柱外边界，或先用origin/width给出有界范围') from None
+        raise
+    value.pop('image', None)
+    return {'case_dir': case_dir, **value, **file_location(target / filename),
+            'provenance': provenance(directory, config()), 'professional_acceptance': False,
             'note': '几何切片图仅供查看，不代表输入已通过结构/语义/几何检查，也不含任何计算结果。'}
 
 

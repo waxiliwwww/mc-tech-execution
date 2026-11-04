@@ -159,5 +159,15 @@
       "category": "lost_particle"
     },
     "evidence": "真实 OpenMC 0.16.0 引擎报错摘录（2026-11-04 本机采集），由 config/error-rules.json 规则定位行号"
+  },
+  {
+    "id": "s17-geometry-overlap",
+    "kind": "log",
+    "log": "engine-logs/s17-geometry-overlap.log.txt",
+    "expected": {
+      "source": "error-rules",
+      "category": "source_rejection"
+    },
+    "evidence": "真实 OpenMC 0.16.0 报错摘录（2026-11-04 本机采集）：两个燃料单元区域重叠，引擎在源抽样阶段报 \"Exceeded maximum number of source rejections\"，不给重叠单元清单，故只做症状级识别，不做重叠定位。"
   }
 ]

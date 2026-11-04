@@ -18,10 +18,10 @@ class FaultLibraryReal(unittest.TestCase):
     def test_all_sixteen_samples_are_located(self):
         import openmc_faults
         value = openmc_faults.check_sample()
-        self.assertEqual(value['total'], 16)
+        self.assertEqual(value['total'], 17)
         self.assertEqual(value['failed'], [], value.get('results'))
         self.assertEqual(value['skipped'], [], '核数据就绪时不应跳过任何样本')
-        self.assertEqual(value['passed'], 16)
+        self.assertEqual(value['passed'], 17)
         for result in value['results']:
             self.assertTrue(result['found'], result['id'])
 

@@ -97,6 +97,16 @@ printf &#x27;本次计算编号：%s\n&#x27; &quot;$mc_job_id&quot;
 <details id="repair"><summary>诊断与确认修复：先看差异，再决定</summary>
 <p><code>openmc_diagnose_job</code> 读取指定计算的日志，提供有证据的提示；受支持问题可在新副本生成修复计划。只有用户看过差异并明确确认后才应用，再校核或关联重算。</p>
 <p>现成练习用 <code>mcp/.venv/bin/python examples/repair_demo.py</code>。它故意制造运行模式拼写错误，并保留第一次失败。当前自动修复仅限普通 run 中唯一的 <code>run_mode</code> 近似拼写；不自动修物理参数。CLI 需要交互终端确认，MCP 需要可信宿主逐次取得批准。</p></details>
+<details id="depletion"><summary>燃耗：先给材料体积，再配置时间步</summary>
+<p>燃耗比普通计算多两步：<code>openmc_configure_depletion</code> 写入功率（W）与时间步长，再用 <code>openmc_submit_job</code> 以 <code>mode=deplete</code> 提交。引擎要求可燃耗材料<strong>显式给出体积</strong>，否则提交时报 <code>Volume not specified for depletable material</code>；同一材料也不能混用原子分数与质量分数（报 <code>Cannot mix atom and weight percents</code>）。</p>
+<pre class="command"><code>./mc.sh call openmc_create_model &#x27;{&quot;case_dir&quot;:&quot;cases/burnup&quot;,&quot;template&quot;:&quot;pincell-depletion&quot;}&#x27;
+./mc.sh call openmc_configure_depletion &#x27;{&quot;case_dir&quot;:&quot;cases/burnup&quot;,&quot;power_watts&quot;:100000.0,&quot;timesteps&quot;:[0.05,0.05],&quot;timestep_unit&quot;:&quot;d&quot;}&#x27;
+./mc.sh call openmc_submit_job &#x27;{&quot;case_dir&quot;:&quot;cases/burnup&quot;,&quot;mode&quot;:&quot;deplete&quot;,&quot;threads&quot;:4}&#x27;</code></pre>
+<p>完成后用 <code>openmc_read_depletion</code> 读取逐时间步的 k-eff、关键核素质量与初始重金属质量。燃耗值按&quot;功率×时间/初始重金属质量&quot;估算（MWd/kgHM），不是裂变能积分得来的实测值；核素只报少数关键项。</p>
+<p>链文件（<code>chain_casl_thermal.xml</code>，约 1MB）不在 OpenMC 安装里，也不在核数据安装脚本范围内：由部署配置 <code>depletion_chain</code> 指定，未配置时在核数据目录下找同名文件。缺文件时提交会在链解析阶段失败，报错会给出期望路径。</p></details>
+<details id="view"><summary>看几何：切片图只画输入，不等于几何检查通过</summary>
+<p><code>openmc_view_geometry</code> 按已有算例输入出 2D 切片图（xy/xz/yz），可给 <code>origin</code>/<code>width</code>（cm）与像素数，PNG 写在算例的 <code>views/</code> 下。它只渲染输入几何，不做重叠判定；几何是否合法仍要用 <code>openmc_validate_inputs</code> 的 <code>geometry_check</code> 或几何调试作业确认。</p>
+<p>实测限制：以六角棱柱为外边界的模型会报&quot;切片平面上无界&quot;，工具把引擎原话改写成可操作提示（改用矩形/圆柱外边界，或先用 <code>origin</code>/<code>width</code> 限定范围）；矩形、圆柱与组件模板正常。</p></details>
 <h2 id="maintenance">产物清理：预览，确认，再删除</h2>
 <p>在计算服务器与相同 PID 命名空间执行。先预览本次记录：</p>
 <pre class="command"><code>./cleanup.sh --job-id &quot;$mc_job_id&quot;</code></pre>
