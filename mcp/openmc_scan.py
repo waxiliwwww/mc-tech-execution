@@ -49,37 +49,51 @@ def copy_inputs(source: Path, target: Path):
 
 
 def prepare_case(case_dir: str, target_dir: str, parameters: dict) -> dict:
+    import tempfile
+    from openmc_import import publish_directory
+    if not isinstance(parameters, dict) or not parameters:
+        raise Error('parameters须为非空参数对象；先调用openmc_list_parameters')
     source = path_in_workspace(case_dir)
-    api('check-parameters', source, {'combinations': [parameters]})
     target = path_in_workspace(target_dir, exists=False)
     if target.exists():raise Error('目标目录已存在，不能覆盖输入')
-    copy_inputs(source, target)
-    result = api('update-parameters', target, {'parameters': parameters})
-    # B2：changes是应用时刻的前后值；再按参数从写入后的文件读回一次，
-    # 把“修改意图”升级为“落盘证据”。不一致如实列出，不隐瞒。
-    found = {item['name']: item.get('current')
-             for item in api('parameters', target, {}).get('parameters', [])}
-    readback = []
-    for change in result.get('changes', []):
-        expected = change.get('after')
-        actual = found.get(change.get('name'))
-        if (isinstance(expected, (int, float)) and not isinstance(expected, bool)
-                and isinstance(actual, (int, float)) and not isinstance(actual, bool)):
-            match = math.isclose(float(actual), float(expected), rel_tol=1e-12, abs_tol=1e-15)
-        else:
-            match = actual == expected
-        readback.append({'name': change.get('name'), 'expected': expected,
-                         'found': actual, 'match': bool(match)})
-    result['parameter_diff'] = {
-        'changes': result.get('changes', []), 'readback': readback,
-        'verified': all(item['match'] for item in readback),
-        'note': 'changes为应用时刻的前后值（含单位/类别）；readback为写入后重新读取文件、'
-                '按参数核对的结果。verified=true表示全部请求参数读回一致；'
-                '任何不一致如实列出，不表示专业正确性。'}
-    return {'case_dir': target_dir, **result, 'provenance': provenance(target)}
+    if source == workspace() or target.is_relative_to(source) or source.is_relative_to(target):
+        raise Error('目标须在原算例目录之外且不能是其父目录')
+    api('check-parameters', source, {'combinations': [parameters]})
+    target.parent.mkdir(parents=True, exist_ok=True)
+    holder = Path(tempfile.mkdtemp(prefix='.prepare-', dir=target.parent))
+    temporary = holder / 'model'
+    try:
+        copy_inputs(source, temporary)
+        result = api('update-parameters', temporary, {'parameters': parameters})
+        found = {item['name']: item.get('current')
+                 for item in api('parameters', temporary, {}).get('parameters', [])}
+        changes = result.get('changes', [])
+        readback = []
+        for name, expected in parameters.items():
+            actual = found.get(name)
+            if (isinstance(expected, (int, float)) and not isinstance(expected, bool)
+                    and isinstance(actual, (int, float)) and not isinstance(actual, bool)):
+                match = math.isclose(float(actual), float(expected), rel_tol=1e-12, abs_tol=1e-15)
+            else:
+                match = actual == expected
+            readback.append({'name': name, 'expected': expected, 'found': actual, 'match': bool(match)})
+        verified = all(item['match'] for item in readback)
+        if not verified:
+            raise Error('修改后读回不一致，未发布目标副本：' + json.dumps(readback, ensure_ascii=False))
+        result['parameter_diff'] = {
+            'changes': changes, 'readback': readback, 'verified': True,
+            'note': 'changes为应用时刻前后值；readback逐项核对请求值与重新读取的落盘值。'
+                    '不一致或读取失败时不发布目标副本；通过不表示专业正确性。'}
+        source_info = provenance(temporary)
+        publish_directory(temporary, target)
+        return {'case_dir': target_dir, **result, 'provenance': source_info}
+    finally:
+        if holder.exists():shutil.rmtree(holder)
 
 
-def submit_scan(case_dir: str, axes: dict, threads: int = 1, stop_on_error: bool = False) -> dict:
+def submit_scan(case_dir: str, axes: dict, threads: int = 1, stop_on_error: bool = False,
+                name: str | None = None) -> dict:
+    task_name = jobs.checked_name(name)
     from openmc_tools import environment, validate_inputs
     if type(threads) is not int or not 1 <= threads <= 64:raise Error('threads须为1..64')
     if type(stop_on_error) is not bool:raise Error('stop_on_error须为布尔值')
@@ -103,13 +117,13 @@ def submit_scan(case_dir: str, axes: dict, threads: int = 1, stop_on_error: bool
     root = path_in_workspace('.mc-scans', exists=False, internal=True); root.mkdir(exist_ok=True)
     target = root / scan_id; target.mkdir()
     copy_inputs(source, target / 'baseline')
-    record = {'scan_id': scan_id, 'state': 'queued', 'submitted_at': time.time(), 'case_dir': case_dir,
+    record = {'scan_id': scan_id, 'name': task_name, 'state': 'queued', 'submitted_at': time.time(), 'case_dir': case_dir,
               'axes': axes, 'parameter_specs': specs, 'threads': threads, 'stop_on_error': stop_on_error,
               'runtime': cfg, 'provenance': provenance(source, cfg),
               'cases': [{'index': i, 'parameters': p, 'state': 'planned'} for i, p in enumerate(combinations)]}
     atomic_json(target / 'job.json', record)
     jobs.spawn_worker(target, 'openmc_scan.py', scan_id)
-    return {'scan_id': scan_id, 'state': 'queued', 'cases': count, 'provenance': record['provenance'],
+    return {'scan_id': scan_id, 'name': task_name, 'state': 'queued', 'cases': count, 'provenance': record['provenance'],
             'next': '查询openmc_scan_status；这是计算参数批次编号，不是智能体任务。'}
 
 
@@ -121,7 +135,7 @@ def status(scan_id: str) -> dict:
             if record['state'] not in TERMINAL:
                 record.update(state='interrupted', error='扫描监控进程丢失；未自动重新提交。可查询/取消已记录的计算作业。')
                 atomic_json(target / 'job.json', record)
-    result = {key: record[key] for key in ('scan_id', 'state', 'case_dir', 'axes', 'cases', 'active_job_id', 'provenance', 'submitted_at', 'finished_at', 'error') if key in record}
+    result = {key: record[key] for key in ('scan_id', 'name', 'state', 'case_dir', 'axes', 'cases', 'active_job_id', 'provenance', 'submitted_at', 'finished_at', 'error') if key in record}
     result['counts'] = {state: sum(item['state'] == state for item in record['cases']) for state in ('planned', 'preparing', 'running', 'completed', 'failed', 'cancelled', 'interrupted', 'not_run')}
     return result
 
@@ -144,6 +158,7 @@ def cancel(scan_id: str) -> dict:
 def save_summary(target: Path):
     record = jobs.read(target)
     data = {key: record[key] for key in ('scan_id', 'state', 'axes', 'cases', 'provenance')}
+    data['name'] = record.get('name')
     atomic_json(target / 'summary.json', data)
     with (target / 'summary.csv').open('w', newline='', encoding='utf-8') as output:
         writer = csv.writer(output)
@@ -179,7 +194,8 @@ def run(scan_id):
                     latest['cases'][index].update(state='preparing', job_id=child_id)
                     latest['active_job_id'] = child_id
                     atomic_json(target / 'job.json', latest)
-                    child = jobs.submit(relative(case), threads=record['threads'], _runtime=record['runtime'], _internal=True, _job_id=child_id)
+                    child = jobs.submit(relative(case), threads=record['threads'], _runtime=record['runtime'], _internal=True, _job_id=child_id,
+                                        name=(record['name'][:105] + '[' + str(index) + ']') if record.get('name') else None)
                     latest['cases'][index]['state'] = 'running'
                     atomic_json(target / 'job.json', latest)
                 while True:

@@ -49,6 +49,17 @@ try {
   await shot('05-model-layers');
   await page.locator('#native > summary').click();
   assert.match(await page.locator('#native').innerText(),/pincell_multigroup|官方多群例题源码/);
+  await page.goto(url('domain-workflows.html'));
+  await page.locator('.jump a[href="#build"]').click();
+  assert.match(await page.locator('main').innerText(),/openmc_build_model/);
+  assert.match(await page.locator('main').innerText(),/model-spec.json/);
+  await shot('05b-composable-model');
+  await page.locator('nav a[href="development-plan.html"]').click();
+  await page.locator('.jump a[href="#interfaces"]').click();
+  assert.match(await page.locator('main').innerText(),/openmc_import_model/);
+  assert.match(await page.locator('main').innerText(),/微调/);
+  await shot('05c-two-week-plan');
+  await page.goto(url('inputs.html'));
   await page.locator('nav a[href="mcp.html"]').click();
   await page.locator('.jump a[href="#register"]').click();
   await page.waitForFunction(()=>Math.abs(document.getElementById('register').getBoundingClientRect().top-28)<4);
@@ -80,12 +91,12 @@ try {
   assert.match(await page.locator('#openmc_read_example_results').innerText(),/calculation_id/);
   await shot('08c-stage-selection');
   await page.setViewportSize({width:390,height:844});
-  for(const name of ['index.html','compute.html','inputs.html','mcp.html','reference.html','official-examples.html']) {
+  for(const name of ['index.html','compute.html','inputs.html','mcp.html','reference.html','official-examples.html','domain-workflows.html','development-plan.html']) {
     await page.goto(url(name));
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal page overflow: '+name);
   }
   await page.goto(url('index.html'));await shot('09-mobile');
   assert.deepEqual(problems,[]);assert.deepEqual(remoteRequests,[]);
-  await fs.writeFile(path.join(out,'receipt.json'),JSON.stringify({passed:true,pages:6,problems,remoteRequests,screenshots,entry:url('index.html'),checks:['offline file navigation','demo explanation disclosure','exact command copy/selection fallback','source/model layers','own program disclosure','search/no-match','deep-link reveals schema','mobile no page overflow']},null,2));
+  await fs.writeFile(path.join(out,'receipt.json'),JSON.stringify({passed:true,pages:8,problems,remoteRequests,screenshots,entry:url('index.html'),checks:['offline file navigation','demo explanation disclosure','exact command copy/selection fallback','source/model layers','composable model instructions','two-week interface plan','own program disclosure','search/no-match','deep-link reveals schema','mobile no page overflow']},null,2));
   process.stdout.write('HTML browser checks passed; screenshots: '+out+'\n');
 } finally {await browser.close();}

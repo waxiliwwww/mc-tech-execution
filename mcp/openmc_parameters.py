@@ -99,6 +99,12 @@ def write_parameters(model, parameters):
     """
     from pathlib import Path
     from lxml import etree as ET
+    import json
+    marker=Path('mc-case.json')
+    if marker.is_file() and json.loads(marker.read_text()).get('generation_method')=='declarative_public_python_api':
+        from openmc_model_spec import rebuild_parameters
+        rebuild_parameters(parameters)
+        return
     integrated = Path('model.xml').exists()
     trees = {}
     def section(name):

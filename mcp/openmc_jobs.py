@@ -76,7 +76,7 @@ def update(directory: Path, **fields) -> dict:
 def spawn_worker(directory: Path, script: str, identifier: str) -> None:
     try:
         with (directory / 'worker.log').open('ab') as log:
-            process = subprocess.Popen([sys.executable, str(ROOT / 'mcp' / script), identifier],
+            process = subprocess.Popen([sys.executable, str(Path(__file__).resolve().parent / script), identifier],
                                        stdin=subprocess.DEVNULL, stdout=log, stderr=log,
                                        start_new_session=True,
                                        env={**os.environ, 'MC_WORKSPACE': str(workspace())})
@@ -122,9 +122,59 @@ def check_capacity(cfg: dict, threads: int) -> dict:
             'limit_jobs': maximum or None}
 
 
+def checked_name(name: str | None) -> str | None:
+    if name is None:
+        return None
+    import unicodedata
+    if (not isinstance(name, str) or not name.strip() or len(name) > 120
+            or any(unicodedata.category(c).startswith('C') for c in name)):
+        raise Error('name须为1..120字符的非空任务名称，不接受控制字符')
+    return name
+
+
+def list_jobs(name: str | None = None, state: str | None = None, limit: int = 50) -> dict:
+    """List durable records, preserving duplicate display names and old unnamed jobs."""
+    name = checked_name(name)
+    if state is not None and state not in TERMINAL | {'queued', 'running'}:
+        raise Error('state须为queued/running/completed/failed/cancelled/interrupted')
+    if type(limit) is not int or not 1 <= limit <= 200:
+        raise Error('limit须为1..200')
+    directory = path_in_workspace('.mc-jobs', exists=False, internal=True)
+    items, unreadable = [], []
+    if directory.exists():
+        for child in directory.iterdir():
+            if not re.fullmatch('[a-f0-9]{32}', child.name):
+                continue
+            if child.is_symlink() or (child / 'job.json').is_symlink():
+                unreadable.append(child.name)
+                continue
+            try:
+                record = read(child)
+                if record.get('job_id') != child.name:
+                    raise Error('记录编号不一致')
+                if name is not None and record.get('name') != name:
+                    continue
+                # Refresh recoverable interrupted state exactly as status() does.
+                current = status(child.name)
+            except (Error, OSError, ValueError, KeyError):
+                unreadable.append(child.name)
+                continue
+            if state is not None and current['state'] != state:
+                continue
+            items.append({k: current.get(k) for k in
+                          ('job_id', 'name', 'state', 'case_dir', 'mode', 'submitted_at',
+                           'started_at', 'finished_at', 'exit_code', 'error')})
+    items.sort(key=lambda v: (v.get('submitted_at') or 0, v['job_id']), reverse=True)
+    return {'jobs': items[:limit], 'total_matches': len(items), 'truncated': len(items) > limit,
+            'unreadable_job_ids': unreadable, 'workspace': str(workspace()),
+            'note': '名称为精确匹配，可重名；后续状态/取消/结果调用使用job_id。旧记录名称为null。'}
+
+
 def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | None = None,
            _internal: bool = False, _job_id: str | None = None, _expected_inputs: dict | None = None,
-           _example_workflow: dict | None = None, _preserve_outputs: bool = False) -> dict:
+           _example_workflow: dict | None = None, _preserve_outputs: bool = False,
+           name: str | None = None) -> dict:
+    name = checked_name(name)
     if not sys.platform.startswith('linux'):
         raise Error('本地持久作业目前支持Linux/WSL；其他系统请在Linux服务器部署MCP')
     if mode not in ('run', 'plot', 'geometry-debug', 'deplete') or type(threads) is not int or not 1 <= threads <= 64:
@@ -159,7 +209,7 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
     input_files = {str(p.relative_to(copied)): file_hash(p) for p in copied.rglob('*') if p.is_file()}
     if _expected_inputs is not None and input_files != _expected_inputs:
         raise Error('输入在校核与快照之间发生变化，未启动计算；保留未完成目录供核对')
-    record = {'job_id': job_id, 'state': 'queued', 'submitted_at': time.time(),
+    record = {'job_id': job_id, 'name': name, 'state': 'queued', 'submitted_at': time.time(),
               'case_dir': case_dir, 'mode': mode, 'threads': threads,
               'provenance': provenance(source, cfg), 'runtime': cfg, 'concurrency': capacity,
               'work_dir': relative(copied), 'input_files': input_files}
@@ -167,7 +217,7 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
         record['example_workflow'] = _example_workflow
     atomic_json(directory / 'job.json', record)
     spawn_worker(directory, 'openmc_jobs.py', job_id)
-    return {'job_id': job_id, 'state': read(directory)['state'],
+    return {'job_id': job_id, 'name': name, 'state': read(directory)['state'],
             'provenance': record['provenance'], 'next': '使用openmc_job_status查询，提交不等于计算完成。'}
 
 
@@ -264,11 +314,12 @@ def status(job_id: str) -> dict:
         with log_path.open('rb') as log:
             log.seek(max(0, log_path.stat().st_size - 4000))
             tail = log.read().decode('utf-8', errors='replace')
-    result = {key: value[key] for key in ('job_id', 'state', 'mode', 'case_dir', 'submitted_at',
+    result = {key: value[key] for key in ('job_id', 'name', 'state', 'mode', 'case_dir', 'submitted_at',
               'started_at', 'finished_at', 'exit_code', 'error', 'provenance', 'log_truncated', 'process_cleanup', 'cancel_requested') if key in value}
     result['log_tail'] = tail
     result['progress'] = _progress(directory, value)
     result['input_files'] = sorted(value.get('input_files', {}))
+    result['input_hashes'] = dict(value.get('input_files', {}))
     result['files'] = sorted(value.get('output_files', {}))
     return result
 

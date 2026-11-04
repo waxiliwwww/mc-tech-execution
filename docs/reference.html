@@ -404,7 +404,7 @@
 <p class="source">函数：<a href="../mcp/openmc_tools.py">mcp/openmc_tools.py</a>。</p></details>
 <details class="tool" id="openmc_submit_job"><summary>openmc_submit_job
 <span class="tool-purpose">快照输入后提交本地OpenMC计算/绘图/几何调试，立即返回作业编号；随后查询终态与产物。Linux/WSL运行，不代表提交即完成。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>mode</td><td>string</td><td>否</td><td>&quot;run&quot;</td><td>run执行计算；plot调用OpenMC几何绘图；geometry-debug执行几何调试。只有成功计算产物可用于读取计分结果。省略时run。</td><td>—</td></tr><tr><td>threads</td><td>integer</td><td>否</td><td>1</td><td>每个本地OpenMC计算使用的线程数；受当前Schema范围约束，不表示同时运行多少计算。省略时使用函数默认值。</td><td>—</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>mode</td><td>string</td><td>否</td><td>&quot;run&quot;</td><td>run执行计算；plot调用OpenMC几何绘图；geometry-debug执行几何调试。只有成功计算产物可用于读取计分结果。省略时run。</td><td>—</td></tr><tr><td>threads</td><td>integer</td><td>否</td><td>1</td><td>每个本地OpenMC计算使用的线程数；受当前Schema范围约束，不表示同时运行多少计算。省略时使用函数默认值。</td><td>—</td></tr><tr><td>name</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选用户任务名，最多120字符，拒绝控制符；名称可重复，身份仍为job_id，可用openmc_list_jobs按精确名称查询。</td><td>—</td></tr></tbody></table></div>
 <h3>返回怎么看</h3><p>job_id用于继续查询；初始state只表示请求受理，不能直接读取尚未完成的结果。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>job_id</td><td>计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。</td></tr><tr><td>state</td><td>操作或计算的当前状态；提交受理、计算完成与专业结果正确分别判断。</td></tr><tr><td>provenance</td><td>数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
@@ -437,6 +437,12 @@
       &quot;maximum&quot;: 64,
       &quot;description&quot;: &quot;每个本地OpenMC计算使用的线程数；受当前Schema范围约束，不表示同时运行多少计算。省略时使用函数默认值。&quot;,
       &quot;default&quot;: 1
+    },
+    &quot;name&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;maxLength&quot;: 120,
+      &quot;description&quot;: &quot;可选用户任务名，最多120字符，拒绝控制符；名称可重复，身份仍为job_id，可用openmc_list_jobs按精确名称查询。&quot;
     }
   },
   &quot;required&quot;: [
@@ -1117,7 +1123,7 @@
 <p class="source">函数：<a href="../mcp/openmc_scan.py">mcp/openmc_scan.py</a>。</p></details>
 <details class="tool" id="openmc_submit_scan"><summary>openmc_submit_scan
 <span class="tool-purpose">按axes的笛卡尔组合串行计算；先检查全部参数组合，再返回scan_id。复用计算作业，可查询和取消；默认记录失败并继续，禁止把统计设置比较当物理响应验证。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>axes</td><td>object</td><td>是</td><td>不可省略</td><td>扫描参数名到非空数值数组的映射，键/单位/范围取自openmc_list_parameters。多维按笛卡尔积组合；整数参数用整数，无重复值。</td><td>{&quot;settings.particles&quot;: [200, 400]}</td></tr><tr><td>threads</td><td>integer</td><td>否</td><td>1</td><td>每个本地OpenMC计算使用的线程数；受当前Schema范围约束，不表示同时运行多少计算。省略时使用函数默认值。</td><td>—</td></tr><tr><td>stop_on_error</td><td>boolean</td><td>否</td><td>false</td><td>遇到一组计算失败后是否停止后续组合。省略为false，记录失败后继续；失败点仍保留，不能当作成功或填0。</td><td>—</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>axes</td><td>object</td><td>是</td><td>不可省略</td><td>扫描参数名到非空数值数组的映射，键/单位/范围取自openmc_list_parameters。多维按笛卡尔积组合；整数参数用整数，无重复值。</td><td>{&quot;settings.particles&quot;: [200, 400]}</td></tr><tr><td>threads</td><td>integer</td><td>否</td><td>1</td><td>每个本地OpenMC计算使用的线程数；受当前Schema范围约束，不表示同时运行多少计算。省略时使用函数默认值。</td><td>—</td></tr><tr><td>stop_on_error</td><td>boolean</td><td>否</td><td>false</td><td>遇到一组计算失败后是否停止后续组合。省略为false，记录失败后继续；失败点仍保留，不能当作成功或填0。</td><td>—</td></tr><tr><td>name</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选扫描名称；子作业名称为名称[index]，按零基组合编号派生，身份仍为各自job_id。</td><td>—</td></tr></tbody></table></div>
 <h3>返回怎么看</h3><p>scan_id用于批次查询，cases是计划组合数量，不是已完成数量。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>scan_id</td><td>扫描批次编号；与单个计算job_id不同。</td></tr><tr><td>state</td><td>操作或计算的当前状态；提交受理、计算完成与专业结果正确分别判断。</td></tr><tr><td>provenance</td><td>数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
@@ -1166,6 +1172,12 @@
       &quot;type&quot;: &quot;boolean&quot;,
       &quot;description&quot;: &quot;遇到一组计算失败后是否停止后续组合。省略为false，记录失败后继续；失败点仍保留，不能当作成功或填0。&quot;,
       &quot;default&quot;: false
+    },
+    &quot;name&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;maxLength&quot;: 120,
+      &quot;description&quot;: &quot;可选扫描名称；子作业名称为名称[index]，按零基组合编号派生，身份仍为各自job_id。&quot;
     }
   },
   &quot;required&quot;: [
@@ -2869,5 +2881,702 @@
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_tools.py">mcp/openmc_tools.py</a>。</p></details>
+<details class="tool" id="openmc_model_capabilities"><summary>openmc_model_capabilities
+<span class="tool-purpose">发现受控组合建模范围和完整参数schema；不是OpenMC全部API覆盖声明。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>无参数</td><td>object</td><td>—</td><td>空对象</td><td>不接受额外参数</td><td>{}</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>发现受控组合建模范围和完整参数schema；不是OpenMC全部API覆盖声明。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {},
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;发现受控组合建模范围和完整参数schema；不是OpenMC全部API覆盖声明。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/openmc_model_tools.py">mcp/openmc_model_tools.py</a>。</p></details>
+<details class="tool" id="openmc_build_model"><summary>openmc_build_model
+<span class="tool-purpose">按结构化模型参数组合新模型，经OpenMC Python API导出XML并读回；保留可重跑Python源码。无任意代码执行，不代表物理正确或微调生成。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>MC_WORKSPACE内新算例相对目录；拒绝覆盖、越界和符号链接。</td><td>—</td></tr><tr><td>spec</td><td>object</td><td>是</td><td>不可省略</td><td>OpenMC model-spec/v1。组合模型，不执行调用方Python；专业适用性需另行确认。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>按结构化模型参数组合新模型，经OpenMC Python API导出XML并读回；保留可重跑Python源码。无任意代码执行，不代表物理正确或微调生成。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;case_dir&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;description&quot;: &quot;MC_WORKSPACE内新算例相对目录；拒绝覆盖、越界和符号链接。&quot;
+    },
+    &quot;spec&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;description&quot;: &quot;OpenMC model-spec/v1。组合模型，不执行调用方Python；专业适用性需另行确认。&quot;,
+      &quot;properties&quot;: {
+        &quot;schema_version&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;description&quot;: &quot;结构版本。&quot;,
+          &quot;enum&quot;: [
+            &quot;1&quot;
+          ]
+        },
+        &quot;name&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;description&quot;: &quot;可读名称，不作为代码执行。&quot;,
+          &quot;maxLength&quot;: 200
+        },
+        &quot;materials&quot;: {
+          &quot;type&quot;: &quot;array&quot;,
+          &quot;description&quot;: &quot;材料定义。&quot;,
+          &quot;items&quot;: {
+            &quot;type&quot;: &quot;object&quot;,
+            &quot;description&quot;: &quot;显式组成的连续能材料；不自动推断化学式或富集度。&quot;,
+            &quot;properties&quot;: {
+              &quot;id&quot;: {
+                &quot;type&quot;: &quot;integer&quot;,
+                &quot;description&quot;: &quot;显式正整数编号；引用必须存在。&quot;,
+                &quot;minimum&quot;: 1
+              },
+              &quot;name&quot;: {
+                &quot;type&quot;: &quot;string&quot;,
+                &quot;description&quot;: &quot;可读名称，不作为代码执行。&quot;,
+                &quot;maxLength&quot;: 200
+              },
+              &quot;density&quot;: {
+                &quot;type&quot;: &quot;number&quot;,
+                &quot;description&quot;: &quot;有限正数。&quot;,
+                &quot;exclusiveMinimum&quot;: 0
+              },
+              &quot;density_unit&quot;: {
+                &quot;type&quot;: &quot;string&quot;,
+                &quot;description&quot;: &quot;密度单位。&quot;,
+                &quot;enum&quot;: [
+                  &quot;g/cm3&quot;,
+                  &quot;atom/b-cm&quot;,
+                  &quot;atom/cm3&quot;
+                ]
+              },
+              &quot;percent_type&quot;: {
+                &quot;type&quot;: &quot;string&quot;,
+                &quot;description&quot;: &quot;ao为原子份额，wo为质量份额；应用于所有核素。&quot;,
+                &quot;enum&quot;: [
+                  &quot;ao&quot;,
+                  &quot;wo&quot;
+                ]
+              },
+              &quot;nuclides&quot;: {
+                &quot;type&quot;: &quot;array&quot;,
+                &quot;description&quot;: &quot;核素及其相对份额，由OpenMC按所选口径归一化。&quot;,
+                &quot;items&quot;: {
+                  &quot;type&quot;: &quot;object&quot;,
+                  &quot;description&quot;: &quot;核素组成；全材料使用同一种原子/质量份额口径。&quot;,
+                  &quot;properties&quot;: {
+                    &quot;name&quot;: {
+                      &quot;type&quot;: &quot;string&quot;,
+                      &quot;description&quot;: &quot;OpenMC核素名，例如 U235、O16。&quot;,
+                      &quot;minLength&quot;: 1,
+                      &quot;maxLength&quot;: 40
+                    },
+                    &quot;fraction&quot;: {
+                      &quot;type&quot;: &quot;number&quot;,
+                      &quot;description&quot;: &quot;有限正数。&quot;,
+                      &quot;exclusiveMinimum&quot;: 0
+                    }
+                  },
+                  &quot;required&quot;: [
+                    &quot;name&quot;,
+                    &quot;fraction&quot;
+                  ],
+                  &quot;additionalProperties&quot;: false
+                },
+                &quot;minItems&quot;: 1,
+                &quot;maxItems&quot;: 500
+              },
+              &quot;temperature&quot;: {
+                &quot;type&quot;: &quot;number&quot;,
+                &quot;description&quot;: &quot;温度 K；可运行范围还取决于核数据。&quot;,
+                &quot;exclusiveMinimum&quot;: 0
+              },
+              &quot;sab&quot;: {
+                &quot;type&quot;: &quot;array&quot;,
+                &quot;description&quot;: &quot;热散射名称，例如 c_H_in_H2O；必须有对应数据。&quot;,
+                &quot;items&quot;: {
+                  &quot;type&quot;: &quot;string&quot;,
+                  &quot;description&quot;: &quot;可读名称，不作为代码执行。&quot;,
+                  &quot;maxLength&quot;: 200
+                },
+                &quot;minItems&quot;: 0,
+                &quot;maxItems&quot;: 20
+              },
+              &quot;depletable&quot;: {
+                &quot;type&quot;: &quot;boolean&quot;,
+                &quot;description&quot;: &quot;是否可燃耗；燃耗仍需功率、时间步和链。&quot;
+              },
+              &quot;volume&quot;: {
+                &quot;type&quot;: &quot;number&quot;,
+                &quot;description&quot;: &quot;材料体积 cm³；由建模者提供，工具不推断。&quot;,
+                &quot;exclusiveMinimum&quot;: 0
+              }
+            },
+            &quot;required&quot;: [
+              &quot;id&quot;,
+              &quot;name&quot;,
+              &quot;density&quot;,
+              &quot;density_unit&quot;,
+              &quot;percent_type&quot;,
+              &quot;nuclides&quot;
+            ],
+            &quot;additionalProperties&quot;: false
+          },
+          &quot;minItems&quot;: 1,
+          &quot;maxItems&quot;: 1000
+        },
+        &quot;surfaces&quot;: {
+          &quot;type&quot;: &quot;array&quot;,
+          &quot;description&quot;: &quot;CSG面定义。&quot;,
+          &quot;items&quot;: {
+            &quot;type&quot;: &quot;object&quot;,
+            &quot;description&quot;: &quot;受控CSG面。参数名与OpenMC Python API一致，长度为cm。&quot;,
+            &quot;properties&quot;: {
+              &quot;id&quot;: {
+                &quot;type&quot;: &quot;integer&quot;,
+                &quot;description&quot;: &quot;显式正整数编号；引用必须存在。&quot;,
+                &quot;minimum&quot;: 1
+              },
+              &quot;type&quot;: {
+                &quot;type&quot;: &quot;string&quot;,
+                &quot;description&quot;: &quot;面类型。&quot;,
+                &quot;enum&quot;: [
+                  &quot;x-plane&quot;,
+                  &quot;y-plane&quot;,
+                  &quot;z-plane&quot;,
+                  &quot;x-cylinder&quot;,
+                  &quot;y-cylinder&quot;,
+                  &quot;z-cylinder&quot;,
+                  &quot;sphere&quot;
+                ]
+              },
+              &quot;boundary&quot;: {
+                &quot;type&quot;: &quot;string&quot;,
+                &quot;description&quot;: &quot;边界条件；省略为transmission。&quot;,
+                &quot;enum&quot;: [
+                  &quot;transmission&quot;,
+                  &quot;vacuum&quot;,
+                  &quot;reflective&quot;,
+                  &quot;white&quot;
+                ]
+              },
+              &quot;parameters&quot;: {
+                &quot;type&quot;: &quot;object&quot;,
+                &quot;description&quot;: &quot;平面必须显式给对应坐标；圆柱/球须给r，省略中心坐标为0；不匹配参数报错。&quot;,
+                &quot;properties&quot;: {
+                  &quot;x0&quot;: {
+                    &quot;type&quot;: &quot;number&quot;,
+                    &quot;description&quot;: &quot;有限数值；单位取决于所在字段。&quot;
+                  },
+                  &quot;y0&quot;: {
+                    &quot;type&quot;: &quot;number&quot;,
+                    &quot;description&quot;: &quot;有限数值；单位取决于所在字段。&quot;
+                  },
+                  &quot;z0&quot;: {
+                    &quot;type&quot;: &quot;number&quot;,
+                    &quot;description&quot;: &quot;有限数值；单位取决于所在字段。&quot;
+                  },
+                  &quot;r&quot;: {
+                    &quot;type&quot;: &quot;number&quot;,
+                    &quot;description&quot;: &quot;有限正数。&quot;,
+                    &quot;exclusiveMinimum&quot;: 0
+                  }
+                },
+                &quot;required&quot;: [],
+                &quot;additionalProperties&quot;: false
+              }
+            },
+            &quot;required&quot;: [
+              &quot;id&quot;,
+              &quot;type&quot;,
+              &quot;parameters&quot;
+            ],
+            &quot;additionalProperties&quot;: false
+          },
+          &quot;minItems&quot;: 1,
+          &quot;maxItems&quot;: 10000
+        },
+        &quot;cells&quot;: {
+          &quot;type&quot;: &quot;array&quot;,
+          &quot;description&quot;: &quot;栅元及宇宙归属。&quot;,
+          &quot;items&quot;: {
+            &quot;type&quot;: &quot;object&quot;,
+            &quot;description&quot;: &quot;栅元属于一个宇宙，region引用面编号。&quot;,
+            &quot;properties&quot;: {
+              &quot;id&quot;: {
+                &quot;type&quot;: &quot;integer&quot;,
+                &quot;description&quot;: &quot;显式正整数编号；引用必须存在。&quot;,
+                &quot;minimum&quot;: 1
+              },
+              &quot;name&quot;: {
+                &quot;type&quot;: &quot;string&quot;,
+                &quot;description&quot;: &quot;可读名称，不作为代码执行。&quot;,
+                &quot;maxLength&quot;: 200
+              },
+              &quot;universe&quot;: {
+                &quot;type&quot;: &quot;integer&quot;,
+                &quot;description&quot;: &quot;所属宇宙编号；根宇宙可以是0。&quot;,
+                &quot;minimum&quot;: 0
+              },
+              &quot;region&quot;: {
+                &quot;type&quot;: &quot;string&quot;,
+                &quot;description&quot;: &quot;OpenMC区域表达式：负面号=内部，空格=交，|=并，~=补，支持括号；不执行Python。&quot;,
+                &quot;minLength&quot;: 1,
+                &quot;maxLength&quot;: 10000
+              },
+              &quot;fill&quot;: {
+                &quot;type&quot;: &quot;object&quot;,
+                &quot;description&quot;: &quot;填充材料、宇宙或格架；void表示真空材料。&quot;,
+                &quot;properties&quot;: {
+                  &quot;type&quot;: {
+                    &quot;type&quot;: &quot;string&quot;,
+                    &quot;description&quot;: &quot;引用类别。&quot;,
+                    &quot;enum&quot;: [
+                      &quot;material&quot;,
+                      &quot;universe&quot;,
+                      &quot;lattice&quot;,
+                      &quot;void&quot;
+                    ]
+                  },
+                  &quot;id&quot;: {
+                    &quot;type&quot;: &quot;integer&quot;,
+                    &quot;description&quot;: &quot;显式正整数编号；引用必须存在。&quot;,
+                    &quot;minimum&quot;: 1
+                  }
+                },
+                &quot;required&quot;: [
+                  &quot;type&quot;
+                ],
+                &quot;additionalProperties&quot;: false
+              }
+            },
+            &quot;required&quot;: [
+              &quot;id&quot;,
+              &quot;universe&quot;,
+              &quot;region&quot;,
+              &quot;fill&quot;
+            ],
+            &quot;additionalProperties&quot;: false
+          },
+          &quot;minItems&quot;: 1,
+          &quot;maxItems&quot;: 10000
+        },
+        &quot;lattices&quot;: {
+          &quot;type&quot;: &quot;array&quot;,
+          &quot;description&quot;: &quot;可选二维矩形格架。&quot;,
+          &quot;items&quot;: {
+            &quot;type&quot;: &quot;object&quot;,
+            &quot;description&quot;: &quot;二维矩形格架，可重复引用组件/燃料棒宇宙。&quot;,
+            &quot;properties&quot;: {
+              &quot;id&quot;: {
+                &quot;type&quot;: &quot;integer&quot;,
+                &quot;description&quot;: &quot;显式正整数编号；引用必须存在。&quot;,
+                &quot;minimum&quot;: 1
+              },
+              &quot;name&quot;: {
+                &quot;type&quot;: &quot;string&quot;,
+                &quot;description&quot;: &quot;可读名称，不作为代码执行。&quot;,
+                &quot;maxLength&quot;: 200
+              },
+              &quot;lower_left&quot;: {
+                &quot;type&quot;: &quot;array&quot;,
+                &quot;description&quot;: &quot;二维坐标/节距 [x,y]，cm。&quot;,
+                &quot;items&quot;: {
+                  &quot;type&quot;: &quot;number&quot;,
+                  &quot;description&quot;: &quot;有限数值；单位取决于所在字段。&quot;
+                },
+                &quot;minItems&quot;: 2,
+                &quot;maxItems&quot;: 2
+              },
+              &quot;pitch&quot;: {
+                &quot;type&quot;: &quot;array&quot;,
+                &quot;description&quot;: &quot;两个方向的正节距，cm。&quot;,
+                &quot;items&quot;: {
+                  &quot;type&quot;: &quot;number&quot;,
+                  &quot;description&quot;: &quot;有限正数。&quot;,
+                  &quot;exclusiveMinimum&quot;: 0
+                },
+                &quot;minItems&quot;: 2,
+                &quot;maxItems&quot;: 2
+              },
+              &quot;universes&quot;: {
+                &quot;type&quot;: &quot;array&quot;,
+                &quot;description&quot;: &quot;按y从上到下排列的行；每行x从左到右，元素为宇宙编号，各行等长。&quot;,
+                &quot;items&quot;: {
+                  &quot;type&quot;: &quot;array&quot;,
+                  &quot;description&quot;: &quot;一行宇宙编号。&quot;,
+                  &quot;items&quot;: {
+                    &quot;type&quot;: &quot;integer&quot;,
+                    &quot;description&quot;: &quot;宇宙编号。&quot;,
+                    &quot;minimum&quot;: 0
+                  },
+                  &quot;minItems&quot;: 1,
+                  &quot;maxItems&quot;: 100
+                },
+                &quot;minItems&quot;: 1,
+                &quot;maxItems&quot;: 100
+              },
+              &quot;outer&quot;: {
+                &quot;type&quot;: &quot;integer&quot;,
+                &quot;description&quot;: &quot;格架范围外的宇宙编号；省略则外部由几何边界限制。&quot;,
+                &quot;minimum&quot;: 0
+              }
+            },
+            &quot;required&quot;: [
+              &quot;id&quot;,
+              &quot;lower_left&quot;,
+              &quot;pitch&quot;,
+              &quot;universes&quot;
+            ],
+            &quot;additionalProperties&quot;: false
+          },
+          &quot;minItems&quot;: 0,
+          &quot;maxItems&quot;: 100
+        },
+        &quot;root_universe&quot;: {
+          &quot;type&quot;: &quot;integer&quot;,
+          &quot;description&quot;: &quot;根宇宙编号，必须含栅元。&quot;,
+          &quot;minimum&quot;: 0
+        },
+        &quot;settings&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;description&quot;: &quot;运行设置；低统计设置只用于工程调试。&quot;,
+          &quot;properties&quot;: {
+            &quot;run_mode&quot;: {
+              &quot;type&quot;: &quot;string&quot;,
+              &quot;description&quot;: &quot;本征值或固定源。&quot;,
+              &quot;enum&quot;: [
+                &quot;eigenvalue&quot;,
+                &quot;fixed source&quot;
+              ]
+            },
+            &quot;particles&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;description&quot;: &quot;每代粒子数。&quot;,
+              &quot;minimum&quot;: 1,
+              &quot;maximum&quot;: 100000000
+            },
+            &quot;batches&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;description&quot;: &quot;批次数；本征模式至少保留两个活跃批次。&quot;,
+              &quot;minimum&quot;: 2,
+              &quot;maximum&quot;: 1000000
+            },
+            &quot;inactive&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;description&quot;: &quot;非活跃批次数；固定源必须为0。&quot;,
+              &quot;minimum&quot;: 0
+            },
+            &quot;generations_per_batch&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;description&quot;: &quot;每批代数；省略为1。&quot;,
+              &quot;minimum&quot;: 1
+            },
+            &quot;seed&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;description&quot;: &quot;随机种子；省略为1。&quot;,
+              &quot;minimum&quot;: 1
+            },
+            &quot;source&quot;: {
+              &quot;type&quot;: &quot;object&quot;,
+              &quot;description&quot;: &quot;中子初始源；点或均匀长方体，方向各向同性。&quot;,
+              &quot;properties&quot;: {
+                &quot;type&quot;: {
+                  &quot;type&quot;: &quot;string&quot;,
+                  &quot;description&quot;: &quot;源空间分布。&quot;,
+                  &quot;enum&quot;: [
+                    &quot;point&quot;,
+                    &quot;box&quot;
+                  ]
+                },
+                &quot;point&quot;: {
+                  &quot;type&quot;: &quot;array&quot;,
+                  &quot;description&quot;: &quot;三维坐标 [x,y,z]，cm。&quot;,
+                  &quot;items&quot;: {
+                    &quot;type&quot;: &quot;number&quot;,
+                    &quot;description&quot;: &quot;有限数值；单位取决于所在字段。&quot;
+                  },
+                  &quot;minItems&quot;: 3,
+                  &quot;maxItems&quot;: 3
+                },
+                &quot;lower_left&quot;: {
+                  &quot;type&quot;: &quot;array&quot;,
+                  &quot;description&quot;: &quot;三维坐标 [x,y,z]，cm。&quot;,
+                  &quot;items&quot;: {
+                    &quot;type&quot;: &quot;number&quot;,
+                    &quot;description&quot;: &quot;有限数值；单位取决于所在字段。&quot;
+                  },
+                  &quot;minItems&quot;: 3,
+                  &quot;maxItems&quot;: 3
+                },
+                &quot;upper_right&quot;: {
+                  &quot;type&quot;: &quot;array&quot;,
+                  &quot;description&quot;: &quot;三维坐标 [x,y,z]，cm。&quot;,
+                  &quot;items&quot;: {
+                    &quot;type&quot;: &quot;number&quot;,
+                    &quot;description&quot;: &quot;有限数值；单位取决于所在字段。&quot;
+                  },
+                  &quot;minItems&quot;: 3,
+                  &quot;maxItems&quot;: 3
+                },
+                &quot;strength&quot;: {
+                  &quot;type&quot;: &quot;number&quot;,
+                  &quot;description&quot;: &quot;源相对强度，省略为1。&quot;,
+                  &quot;exclusiveMinimum&quot;: 0
+                },
+                &quot;energy_ev&quot;: {
+                  &quot;type&quot;: &quot;number&quot;,
+                  &quot;description&quot;: &quot;可选单能源能量 eV；省略保留OpenMC默认源能谱。&quot;,
+                  &quot;exclusiveMinimum&quot;: 0
+                }
+              },
+              &quot;required&quot;: [
+                &quot;type&quot;
+              ],
+              &quot;additionalProperties&quot;: false
+            }
+          },
+          &quot;required&quot;: [
+            &quot;run_mode&quot;,
+            &quot;particles&quot;,
+            &quot;batches&quot;,
+            &quot;inactive&quot;,
+            &quot;source&quot;
+          ],
+          &quot;additionalProperties&quot;: false
+        },
+        &quot;tallies&quot;: {
+          &quot;type&quot;: &quot;array&quot;,
+          &quot;description&quot;: &quot;可选计分定义。&quot;,
+          &quot;items&quot;: {
+            &quot;type&quot;: &quot;object&quot;,
+            &quot;description&quot;: &quot;统计量定义；未定义的量不会凭空生成。&quot;,
+            &quot;properties&quot;: {
+              &quot;id&quot;: {
+                &quot;type&quot;: &quot;integer&quot;,
+                &quot;description&quot;: &quot;显式正整数编号；引用必须存在。&quot;,
+                &quot;minimum&quot;: 1
+              },
+              &quot;name&quot;: {
+                &quot;type&quot;: &quot;string&quot;,
+                &quot;description&quot;: &quot;可读名称，不作为代码执行。&quot;,
+                &quot;maxLength&quot;: 200
+              },
+              &quot;scores&quot;: {
+                &quot;type&quot;: &quot;array&quot;,
+                &quot;description&quot;: &quot;OpenMC计分名，例如 flux、fission、nu-fission。&quot;,
+                &quot;items&quot;: {
+                  &quot;type&quot;: &quot;string&quot;,
+                  &quot;description&quot;: &quot;可读名称，不作为代码执行。&quot;,
+                  &quot;maxLength&quot;: 200
+                },
+                &quot;minItems&quot;: 1,
+                &quot;maxItems&quot;: 20
+              },
+              &quot;nuclides&quot;: {
+                &quot;type&quot;: &quot;array&quot;,
+                &quot;description&quot;: &quot;可选核素计分列表，例如 total、U235。&quot;,
+                &quot;items&quot;: {
+                  &quot;type&quot;: &quot;string&quot;,
+                  &quot;description&quot;: &quot;可读名称，不作为代码执行。&quot;,
+                  &quot;maxLength&quot;: 200
+                },
+                &quot;minItems&quot;: 1,
+                &quot;maxItems&quot;: 500
+              },
+              &quot;filters&quot;: {
+                &quot;type&quot;: &quot;array&quot;,
+                &quot;description&quot;: &quot;过滤器组合；省略为空。&quot;,
+                &quot;items&quot;: {
+                  &quot;type&quot;: &quot;object&quot;,
+                  &quot;description&quot;: &quot;基础计分过滤器。&quot;,
+                  &quot;properties&quot;: {
+                    &quot;type&quot;: {
+                      &quot;type&quot;: &quot;string&quot;,
+                      &quot;description&quot;: &quot;能量、材料或规则网格过滤。&quot;,
+                      &quot;enum&quot;: [
+                        &quot;energy&quot;,
+                        &quot;material&quot;,
+                        &quot;mesh&quot;
+                      ]
+                    },
+                    &quot;bins&quot;: {
+                      &quot;type&quot;: &quot;array&quot;,
+                      &quot;description&quot;: &quot;energy为eV边界，material为材料编号。&quot;,
+                      &quot;items&quot;: {
+                        &quot;type&quot;: &quot;number&quot;,
+                        &quot;description&quot;: &quot;有限数值；单位取决于所在字段。&quot;
+                      },
+                      &quot;minItems&quot;: 1,
+                      &quot;maxItems&quot;: 10000
+                    },
+                    &quot;dimension&quot;: {
+                      &quot;type&quot;: &quot;array&quot;,
+                      &quot;description&quot;: &quot;规则网格三个方向的箱数。&quot;,
+                      &quot;items&quot;: {
+                        &quot;type&quot;: &quot;integer&quot;,
+                        &quot;description&quot;: &quot;每方向正整数箱数。&quot;,
+                        &quot;minimum&quot;: 1
+                      },
+                      &quot;minItems&quot;: 3,
+                      &quot;maxItems&quot;: 3
+                    },
+                    &quot;lower_left&quot;: {
+                      &quot;type&quot;: &quot;array&quot;,
+                      &quot;description&quot;: &quot;三维坐标 [x,y,z]，cm。&quot;,
+                      &quot;items&quot;: {
+                        &quot;type&quot;: &quot;number&quot;,
+                        &quot;description&quot;: &quot;有限数值；单位取决于所在字段。&quot;
+                      },
+                      &quot;minItems&quot;: 3,
+                      &quot;maxItems&quot;: 3
+                    },
+                    &quot;upper_right&quot;: {
+                      &quot;type&quot;: &quot;array&quot;,
+                      &quot;description&quot;: &quot;三维坐标 [x,y,z]，cm。&quot;,
+                      &quot;items&quot;: {
+                        &quot;type&quot;: &quot;number&quot;,
+                        &quot;description&quot;: &quot;有限数值；单位取决于所在字段。&quot;
+                      },
+                      &quot;minItems&quot;: 3,
+                      &quot;maxItems&quot;: 3
+                    }
+                  },
+                  &quot;required&quot;: [
+                    &quot;type&quot;
+                  ],
+                  &quot;additionalProperties&quot;: false
+                },
+                &quot;minItems&quot;: 0,
+                &quot;maxItems&quot;: 8
+              }
+            },
+            &quot;required&quot;: [
+              &quot;id&quot;,
+              &quot;scores&quot;
+            ],
+            &quot;additionalProperties&quot;: false
+          },
+          &quot;minItems&quot;: 0,
+          &quot;maxItems&quot;: 100
+        }
+      },
+      &quot;required&quot;: [
+        &quot;schema_version&quot;,
+        &quot;name&quot;,
+        &quot;materials&quot;,
+        &quot;surfaces&quot;,
+        &quot;cells&quot;,
+        &quot;root_universe&quot;,
+        &quot;settings&quot;
+      ],
+      &quot;additionalProperties&quot;: false
+    }
+  },
+  &quot;required&quot;: [
+    &quot;case_dir&quot;,
+    &quot;spec&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;按结构化模型参数组合新模型，经OpenMC Python API导出XML并读回；保留可重跑Python源码。无任意代码执行，不代表物理正确或微调生成。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/openmc_model_tools.py">mcp/openmc_model_tools.py</a>。</p></details>
+<details class="tool" id="openmc_import_model"><summary>openmc_import_model
+<span class="tool-purpose">导入工作区内已有OpenMC模型输入，校验后发布新副本；不要求在例题清单中，不执行脚本，不覆盖原输入。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>source_dir</td><td>string</td><td>是</td><td>不可省略</td><td>MC_WORKSPACE内已有原生XML及依赖目录，相对路径；Python脚本须先自行导出XML。</td><td>—</td></tr><tr><td>target_dir</td><td>string</td><td>是</td><td>不可省略</td><td>MC_WORKSPACE内不存在的新副本相对目录，与源目录不嵌套。</td><td>—</td></tr><tr><td>api_check</td><td>boolean</td><td>否</td><td>true</td><td>是否用已配置OpenMC Python API解析模型；省略为true。false仅做结构和依赖检查，不能当作可运行证明。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>导入工作区内已有OpenMC模型输入，校验后发布新副本；不要求在例题清单中，不执行脚本，不覆盖原输入。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;additionalProperties&quot;: false,
+  &quot;properties&quot;: {
+    &quot;source_dir&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;MC_WORKSPACE内已有原生XML及依赖目录，相对路径；Python脚本须先自行导出XML。&quot;
+    },
+    &quot;target_dir&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;MC_WORKSPACE内不存在的新副本相对目录，与源目录不嵌套。&quot;
+    },
+    &quot;api_check&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;,
+      &quot;default&quot;: true,
+      &quot;description&quot;: &quot;是否用已配置OpenMC Python API解析模型；省略为true。false仅做结构和依赖检查，不能当作可运行证明。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;source_dir&quot;,
+    &quot;target_dir&quot;
+  ]
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;导入工作区内已有OpenMC模型输入，校验后发布新副本；不要求在例题清单中，不执行脚本，不覆盖原输入。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/openmc_import.py">mcp/openmc_import.py</a>。</p></details>
+<details class="tool" id="openmc_list_jobs"><summary>openmc_list_jobs
+<span class="tool-purpose">按可选任务名称和状态列出持久作业；重名返回所有匹配，后续按job_id操作。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>name</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选中文或其他任务名，精确匹配；可重名，不会自动选择某个作业。</td><td>—</td></tr><tr><td>state</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选当前状态过滤；省略表示全部状态。</td><td>—</td></tr><tr><td>limit</td><td>integer</td><td>否</td><td>50</td><td>最多返回的作业数，按提交时间倒序；total_matches和truncated说明是否未展示完。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>按可选任务名称和状态列出持久作业；重名返回所有匹配，后续按job_id操作。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;additionalProperties&quot;: false,
+  &quot;properties&quot;: {
+    &quot;name&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;maxLength&quot;: 120,
+      &quot;description&quot;: &quot;可选中文或其他任务名，精确匹配；可重名，不会自动选择某个作业。&quot;
+    },
+    &quot;state&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;queued&quot;,
+        &quot;running&quot;,
+        &quot;completed&quot;,
+        &quot;failed&quot;,
+        &quot;cancelled&quot;,
+        &quot;interrupted&quot;
+      ],
+      &quot;description&quot;: &quot;可选当前状态过滤；省略表示全部状态。&quot;
+    },
+    &quot;limit&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 1,
+      &quot;maximum&quot;: 200,
+      &quot;default&quot;: 50,
+      &quot;description&quot;: &quot;最多返回的作业数，按提交时间倒序；total_matches和truncated说明是否未展示完。&quot;
+    }
+  },
+  &quot;required&quot;: []
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;按可选任务名称和状态列出持久作业；重名返回所有匹配，后续按job_id操作。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/openmc_jobs.py">mcp/openmc_jobs.py</a>。</p></details>
 <footer>由 scripts/generate_tool_reference.py 从实际注册表生成 · 无需联网或启动服务</footer>
 </main></body></html>

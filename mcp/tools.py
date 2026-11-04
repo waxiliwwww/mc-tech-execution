@@ -69,7 +69,8 @@ TOOLS += [
      "outputSchema": OUTPUT, "function": validate_inputs},
     {"name": "openmc_submit_job", "description": "快照输入后提交本地OpenMC计算/绘图/几何调试，立即返回作业编号；随后查询终态与产物。Linux/WSL运行，不代表提交即完成。",
      "inputSchema": schema({"case_dir": TEXT, "mode": {"type": "string", "enum": ["run", "plot", "geometry-debug", "deplete"]},
-                            "threads": {"type": "integer", "minimum": 1, "maximum": 64}}, ["case_dir"]),
+                            "threads": {"type": "integer", "minimum": 1, "maximum": 64},
+                            "name": {"type": "string", "minLength": 1, "maxLength": 120, "description": "可选用户任务名，最多120字符，拒绝控制符；名称可重复，身份仍为job_id，可用openmc_list_jobs按精确名称查询。"}}, ["case_dir"]),
      "outputSchema": OUTPUT, "function": submit_job,
      "annotations": {"readOnlyHint": False, "destructiveHint": False}},
     {"name": "openmc_job_status", "description": "按作业编号查询真实终态、退出码、日志尾部与产物；服务重启后仍可查询，未知终态不冒充成功。",
@@ -114,7 +115,8 @@ TOOLS += [
      "outputSchema": OUTPUT, "function": prepare_case, "annotations": WRITE},
     {"name": "openmc_submit_scan", "description": "按axes的笛卡尔组合串行计算；先检查全部参数组合，再返回scan_id。复用计算作业，可查询和取消；默认记录失败并继续，禁止把统计设置比较当物理响应验证。",
      "inputSchema": schema({"case_dir": TEXT, "axes": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "array", "minItems": 1, "items": {"type": "number"}}},
-                            "threads": {"type": "integer", "minimum": 1, "maximum": 64}, "stop_on_error": {"type": "boolean"}}, ['case_dir', 'axes']),
+                            "threads": {"type": "integer", "minimum": 1, "maximum": 64}, "stop_on_error": {"type": "boolean"},
+                            "name": {"type": "string", "minLength": 1, "maxLength": 120, "description": "可选扫描名称；子作业名称为名称[index]，按零基组合编号派生，身份仍为各自job_id。"}}, ['case_dir', 'axes']),
      "outputSchema": OUTPUT, "function": submit_scan, "annotations": WRITE},
     {"name": "openmc_scan_status", "description": "查询计算参数批次的逐组合状态、作业编号、结果/失败与计数。completed仅表示每个组合完成；partial/failed/cancelled保留，不自动重新提交。",
      "inputSchema": schema({"scan_id": TEXT}, ['scan_id']), "outputSchema": OUTPUT, "function": scan_status},
@@ -294,6 +296,10 @@ def prepare_tools(definitions):
     return document_tools(definitions)
 
 
+from openmc_model_tools import MODEL_TOOLS
+from openmc_import import IMPORT_TOOLS
+TOOLS += MODEL_TOOLS + IMPORT_TOOLS
+
 # Standard MCP hints describe the business effect. Query bookkeeping/derived
 # caches do not change model inputs or start/modify calculations. Mutating tools
 # keep the conservative default and are never marked read-only by name pattern.
@@ -304,6 +310,7 @@ READ_ONLY_TOOLS={
     'openmc_diagnose_job','openmc_list_artifacts','openmc_list_parameters',
     'openmc_scan_status','openmc_list_official_examples','openmc_get_official_example',
     'openmc_example_status','openmc_read_example_results','openmc_inspect_step',
+    'openmc_model_capabilities','openmc_list_jobs',
 }
 for _tool in TOOLS:
     if _tool['name'] in READ_ONLY_TOOLS:

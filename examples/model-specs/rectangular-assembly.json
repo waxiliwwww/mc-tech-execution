@@ -1,0 +1,221 @@
+{
+  "schema_version": "1",
+  "name": "custom asymmetric 3 by 2 assembly",
+  "materials": [
+    {
+      "id": 1,
+      "name": "explicit UO2 atom ratios",
+      "density": 10.3,
+      "density_unit": "g/cm3",
+      "percent_type": "ao",
+      "nuclides": [
+        {
+          "name": "U235",
+          "fraction": 0.05
+        },
+        {
+          "name": "U238",
+          "fraction": 0.95
+        },
+        {
+          "name": "O16",
+          "fraction": 2.0
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "water",
+      "density": 0.7,
+      "density_unit": "g/cm3",
+      "percent_type": "ao",
+      "nuclides": [
+        {
+          "name": "H1",
+          "fraction": 2.0
+        },
+        {
+          "name": "O16",
+          "fraction": 1.0
+        }
+      ]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": 1,
+      "type": "x-plane",
+      "boundary": "reflective",
+      "parameters": {
+        "x0": -1.8
+      }
+    },
+    {
+      "id": 2,
+      "type": "x-plane",
+      "boundary": "reflective",
+      "parameters": {
+        "x0": 1.8
+      }
+    },
+    {
+      "id": 3,
+      "type": "y-plane",
+      "boundary": "reflective",
+      "parameters": {
+        "y0": -1.2
+      }
+    },
+    {
+      "id": 4,
+      "type": "y-plane",
+      "boundary": "reflective",
+      "parameters": {
+        "y0": 1.2
+      }
+    },
+    {
+      "id": 5,
+      "type": "z-plane",
+      "boundary": "reflective",
+      "parameters": {
+        "z0": -5
+      }
+    },
+    {
+      "id": 6,
+      "type": "z-plane",
+      "boundary": "reflective",
+      "parameters": {
+        "z0": 5
+      }
+    },
+    {
+      "id": 7,
+      "type": "z-cylinder",
+      "parameters": {
+        "r": 0.4
+      }
+    },
+    {
+      "id": 8,
+      "type": "sphere",
+      "parameters": {
+        "r": 100
+      }
+    }
+  ],
+  "cells": [
+    {
+      "id": 1,
+      "universe": 0,
+      "region": "1 -2 3 -4 5 -6",
+      "fill": {
+        "type": "lattice",
+        "id": 10
+      }
+    },
+    {
+      "id": 2,
+      "universe": 1,
+      "region": "-7",
+      "fill": {
+        "type": "material",
+        "id": 1
+      }
+    },
+    {
+      "id": 3,
+      "universe": 1,
+      "region": "7",
+      "fill": {
+        "type": "material",
+        "id": 2
+      }
+    },
+    {
+      "id": 4,
+      "universe": 2,
+      "region": "-8",
+      "fill": {
+        "type": "material",
+        "id": 2
+      }
+    }
+  ],
+  "root_universe": 0,
+  "lattices": [
+    {
+      "id": 10,
+      "lower_left": [
+        -1.8,
+        -1.2
+      ],
+      "pitch": [
+        1.2,
+        1.2
+      ],
+      "universes": [
+        [
+          1,
+          2,
+          1
+        ],
+        [
+          2,
+          1,
+          1
+        ]
+      ]
+    }
+  ],
+  "settings": {
+    "run_mode": "eigenvalue",
+    "particles": 400,
+    "batches": 12,
+    "inactive": 2,
+    "seed": 17,
+    "source": {
+      "type": "box",
+      "lower_left": [
+        -1.7,
+        -1.1,
+        -4.9
+      ],
+      "upper_right": [
+        1.7,
+        1.1,
+        4.9
+      ]
+    }
+  },
+  "tallies": [
+    {
+      "id": 1,
+      "name": "assembly flux per source neutron (not power normalized)",
+      "scores": [
+        "flux"
+      ],
+      "filters": [
+        {
+          "type": "mesh",
+          "dimension": [
+            3,
+            2,
+            1
+          ],
+          "lower_left": [
+            -1.8,
+            -1.2,
+            -5
+          ],
+          "upper_right": [
+            1.8,
+            1.2,
+            5
+          ]
+        }
+      ]
+    }
+  ]
+}

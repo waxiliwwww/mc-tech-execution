@@ -1,4 +1,4 @@
-"""prepare_case 逐参数差异离线测试：stub API 调用，验证读回核对三态（一致/不一致/缺项）。"""
+"""prepare_case 逐参数差异离线测试：stub API 调用，验证落盘核对与失败/并发下目标发布原子性。"""
 import json
 import os
 from pathlib import Path
@@ -76,34 +76,53 @@ class PrepareCaseDiff(unittest.TestCase):
                               {'materials.1.density': 0.6})
         self.assertTrue(result['parameter_diff']['verified'])
 
-    def test_mismatch_is_reported_not_hidden(self):
-        result = self.prepare({'settings.particles': 100}, {'settings.particles': 400})
-        diff = result['parameter_diff']
-        self.assertFalse(diff['verified'])
-        self.assertEqual(diff['readback'][0], {'name': 'settings.particles', 'expected': 400,
-                                               'found': 100, 'match': False})
+    def test_failed_update_removes_partial_target_and_preserves_source(self):
+        before=(self.case/'model.xml').read_bytes()
+        def fail_update(action,directory,payload,cfg=None):
+            if action=='check-parameters':return {'valid':True}
+            (directory/'model.xml').write_text('<partially-written/>')
+            raise business.MCInputError('injected update failure')
+        with patch.object(scan,'api',fail_update):
+            with self.assertRaisesRegex(ValueError,'injected update failure'):
+                scan.prepare_case('case','broken',{'settings.particles':400})
+        self.assertFalse((business.WORKSPACE/'broken').exists())
+        self.assertEqual((self.case/'model.xml').read_bytes(),before)
+        self.assertFalse(any(p.name.startswith('.prepare-') for p in business.WORKSPACE.iterdir()))
 
-    def test_missing_readback_entry_is_mismatch(self):
-        result = self.prepare({}, {'settings.particles': 400})
-        diff = result['parameter_diff']
-        self.assertFalse(diff['verified'])
-        self.assertIsNone(diff['readback'][0]['found'])
-        self.assertFalse(diff['readback'][0]['match'])
+    def test_racing_existing_target_is_not_overwritten(self):
+        original=self.stub_api({'settings.particles':400})
+        def concurrent(action,directory,payload,cfg=None):
+            result=original(action,directory,payload,cfg)
+            if action=='parameters':
+                target=business.WORKSPACE/'racing';target.mkdir()
+                (target/'keep').write_text('other writer')
+            return result
+        with patch.object(scan,'api',concurrent):
+            with self.assertRaisesRegex(ValueError,'拒绝覆盖'):
+                scan.prepare_case('case','racing',{'settings.particles':400})
+        self.assertEqual((business.WORKSPACE/'racing/keep').read_text(),'other writer')
+        self.assertFalse((business.WORKSPACE/'racing/model.xml').exists())
 
-    def test_empty_parameters_verified_vacuously(self):
-        result = self.prepare({}, {})
-        self.assertEqual(result['parameter_diff']['changes'], [])
-        self.assertEqual(result['parameter_diff']['readback'], [])
-        self.assertTrue(result['parameter_diff']['verified'])
+    def test_mismatch_is_refused_with_details_and_no_target(self):
+        with self.assertRaisesRegex(ValueError,'settings.particles.*100'):
+            self.prepare({'settings.particles':100},{'settings.particles':400},'mismatch')
+        self.assertFalse((business.WORKSPACE/'mismatch').exists())
+
+    def test_missing_readback_entry_refuses_publication(self):
+        with self.assertRaisesRegex(ValueError,'读回'):
+            self.prepare({}, {'settings.particles':400},'missing')
+        self.assertFalse((business.WORKSPACE/'missing').exists())
+
+    def test_empty_parameters_are_refused_before_copy(self):
+        with self.assertRaisesRegex(ValueError,'非空'):
+            self.prepare({}, {},'empty')
+        self.assertFalse((business.WORKSPACE/'empty').exists())
 
     def test_multiple_parameters_all_must_match(self):
-        result = self.prepare({'settings.particles': 400, 'settings.batches': 10},
-                              {'settings.particles': 400, 'settings.batches': 20})
-        diff = result['parameter_diff']
-        self.assertFalse(diff['verified'])
-        matches = {item['name']: item['match'] for item in diff['readback']}
-        self.assertTrue(matches['settings.particles'])
-        self.assertFalse(matches['settings.batches'])
+        with self.assertRaisesRegex(ValueError,'settings.batches'):
+            self.prepare({'settings.particles':400,'settings.batches':10},
+                         {'settings.particles':400,'settings.batches':20},'multi')
+        self.assertFalse((business.WORKSPACE/'multi').exists())
 
 
 if __name__ == '__main__':

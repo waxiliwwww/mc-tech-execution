@@ -26,6 +26,9 @@ def execute(action: str, params: dict) -> dict:
 
     if action == 'probe':
         return {'python_api': True, 'api_version': openmc.__version__}
+    if action == 'build-model':
+        from openmc_model_spec import build
+        return build(params['spec'])
     if action in ('plot-result', 'plot-series', 'plot-mesh', 'plot-convergence', 'render-report', 'select-series'):
         from openmc_visuals import draw, plot_convergence, plot_mesh, plot_result, render_docx, selected_series
         if action == 'plot-mesh':return plot_mesh(params)
@@ -37,11 +40,15 @@ def execute(action: str, params: dict) -> dict:
             return selected_series(point, params)
     if action in ('parameters', 'check-parameters', 'update-parameters'):
         from openmc_parameters import apply, checked, describe, load_model, write_parameters
+        from openmc_model_spec import checked_declarative_spec, mapped_declarative_spec
+        baseline=checked_declarative_spec() if action != 'parameters' else None
         model = load_model()
         if action == 'parameters':
             return {'parameters': describe(model), 'note': '仅列当前适配器支持的公开属性；sum密度及未适配表面不提供修改入口。'}
         if action == 'check-parameters':
-            for values in params['combinations']:checked(model, values)
+            for values in params['combinations']:
+                checked(model, values)
+                if baseline is not None:mapped_declarative_spec(baseline,values)
             return {'valid': True, 'combinations': len(params['combinations']), 'parameters': describe(model)}
         changes = apply(model, params['parameters'])
         write_parameters(model, params['parameters'])

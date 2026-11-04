@@ -128,7 +128,7 @@ def command(cfg: dict, directory: Path, *, action: str | None = None,
             arguments: list[str] | None = None) -> list[str]:
     arguments = arguments or []
     if action:
-        return cfg['python_command'] + [str(ROOT / 'mcp/openmc_worker.py'), action] + arguments
+        return cfg['python_command'] + [str(Path(__file__).resolve().parent / 'openmc_worker.py'), action] + arguments
     return cfg['openmc_command'] + arguments
 
 

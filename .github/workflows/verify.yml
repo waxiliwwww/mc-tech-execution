@@ -19,5 +19,6 @@ jobs:
       - name: 可安装包与命令行入口
         run: |
           python -m pip install --disable-pip-version-check --no-deps .
+          python mcp/cli.py list > /tmp/source-tools.json
           mc-agent-tools list > /tmp/tools.json
-          python -c "import json;d=json.load(open('/tmp/tools.json'));assert len(d['tools'])==51,d;print('tools', len(d['tools']))"
+          python -c "import json;d=json.load(open('/tmp/tools.json'));s=json.load(open('/tmp/source-tools.json'));assert d['tools']==s['tools'],'installed tool schemas differ from source';print('installed/source schemas match:',len(d['tools']))"

@@ -1,0 +1,80 @@
+{
+  "schema_version": "1",
+  "name": "custom fixed-source water sphere",
+  "materials": [
+    {
+      "id": 2,
+      "name": "water",
+      "density": 0.7,
+      "density_unit": "g/cm3",
+      "percent_type": "ao",
+      "nuclides": [
+        {
+          "name": "H1",
+          "fraction": 2.0
+        },
+        {
+          "name": "O16",
+          "fraction": 1.0
+        }
+      ]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": 1,
+      "type": "sphere",
+      "parameters": {
+        "r": 3
+      },
+      "boundary": "vacuum"
+    }
+  ],
+  "cells": [
+    {
+      "id": 1,
+      "universe": 0,
+      "region": "-1",
+      "fill": {
+        "type": "material",
+        "id": 2
+      }
+    }
+  ],
+  "root_universe": 0,
+  "settings": {
+    "run_mode": "fixed source",
+    "particles": 200,
+    "batches": 5,
+    "inactive": 0,
+    "source": {
+      "type": "point",
+      "point": [
+        0,
+        0,
+        0
+      ],
+      "energy_ev": 1000000.0
+    }
+  },
+  "tallies": [
+    {
+      "id": 2,
+      "scores": [
+        "flux",
+        "absorption"
+      ],
+      "filters": [
+        {
+          "type": "energy",
+          "bins": [
+            0,
+            0.625,
+            1000000.0,
+            20000000.0
+          ]
+        }
+      ]
+    }
+  ]
+}

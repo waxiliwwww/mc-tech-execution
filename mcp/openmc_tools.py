@@ -612,14 +612,14 @@ def validate_inputs(case_dir: str, api_check: bool = False, semantic_check: bool
     return result
 
 
-def submit_job(case_dir: str, mode: str = 'run', threads: int = 1) -> dict:
+def submit_job(case_dir: str, mode: str = 'run', threads: int = 1, name: str | None = None) -> dict:
     validation = validate_inputs(case_dir)
     if not validation['structure_valid']:
         raise Error('输入结构检查失败：' + '; '.join(validation['problems']))
     runtime = environment()
     if not runtime['executable_available'] or not runtime['version_matches']:
         raise Error('OpenMC可执行程序不可用或版本不符；先调用openmc_environment并按部署文档修正')
-    return jobs.submit(case_dir, mode, threads)
+    return jobs.submit(case_dir, mode, threads, name=name)
 
 
 def verified_result(job_id: str):
