@@ -1,0 +1,28 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MC工具包说明</title><link rel="stylesheet" href="assets/overview.css"></head><body><main>
+<nav><a href="index.html">使用手册</a><a href="development-plan.html">交付总览</a><a href="dsh.html">Windows DSH接入</a><a href="reference.html">完整工具参数</a></nav>
+<p class="eyebrow">实现基线 0.10.1 · 2026-11-04</p><h1>MC工具包说明</h1>
+<p class="lead">本包把OpenMC的建模、计算和结果处理接成一套可检查、可追踪的操作。用户可以直接用CLI，也可以让DSH等宿主通过MCP调用；OpenMC是现有的蒙特卡罗粒子输运引擎，负责求解；模型理解与对话由宿主完成。</p>
+<div class="flow" aria-label="两种输入汇合为同一条计算与结果链"><span>已有模型 / 结构化新模型</span><b>→</b><span>预览与校核</span><b>→</b><span>命名作业与输入快照</span><b>→</b><span>OpenMC</span><b>→</b><span>数据、图和报告</span></div>
+<h2 id="user">用户视角：一次任务怎样完成</h2>
+<ol><li><strong>准备环境。</strong>拿到完整源码包，按<a href="env.html">环境说明</a>配置接口、OpenMC和核数据。直接运行<code>./mc.sh</code>，或启动MCP服务后在DSH中连接；DSH模型配置不属于本包。</li>
+<li><strong>选输入来源。</strong>已有Python程序先导出XML，再把输入及依赖放入服务端工作区，用导入模型（<code>openmc_import_model</code>）创建副本。没有现成模型时，先发现建模能力（<code>openmc_model_capabilities</code>），再把有依据的材料、几何、源与计分交给组合建模（<code>openmc_build_model</code>）。自然语言由宿主组织成这些参数。组合模型的长度用cm、能量用eV、温度用K，材料份额明确原子或质量口径。</li>
+<li><strong>看清再算。</strong>预览输入（<code>openmc_preview_input</code>）、分层校核（<code>openmc_validate_inputs</code>）。改参先发现可调项，再建新副本，原输入保留；并非所有OpenMC属性都能自动修改。</li>
+<li><strong>命名提交。</strong>提交作业（<code>openmc_submit_job</code>）取得job_id，查询同一编号到终态，也可取消。任务名便于查找，重名仍靠ID区分；提交成功不等于计算完成。</li>
+<li><strong>读结果和产物。</strong>读取结果（<code>openmc_read_results</code>）后，按实际计分选择图与报告。输入、日志、StatePoint、CSV/JSON和报告留在服务端，返回绝对路径；远程调用不会自动上传输入或下载输出。</li></ol>
+<p><a href="domain-workflows.html">完整操作与改参示例</a>说明每一步的参数和命令；<a href="dsh.html">DSH接入说明</a>说明Windows连接方式。</p>
+<h2 id="example">同一个例子：简化全堆空间通量</h2>
+<p>输入来自随包适配的公开全堆模型，复用OpenMC的<code>pwr_core()</code>；空间统计由用户明确加入8×8×1网格flux计分。创建模型、定义计分、预览校核、提交查询后，工具从真实StatePoint提取keff和64格均值/标准差，再生成热图、完整数据和报告。</p>
+<p><strong>这条链的价值是把输入、作业和结果对应起来。</strong>实际输入有快照与指纹，图表沿用所选统计数据，失败有编号和日志。已有工程记录核对了原生数值、图和报告的一致性；小统计运行不证明收敛。keff无量纲；本包保留flux原始计分，不追加体积、源强或功率归一化，不能直接称为实际功率或工况通量。</p>
+<h2 id="developer">开发者视角：这些能力怎样实现</h2>
+<div class="table-wrap"><table><thead><tr><th>职责</th><th>实现与扩展入口</th><th>保留的行为</th></tr></thead><tbody>
+<tr><td>公共接口</td><td><a href="../mcp/tools.py">tools.py</a>注册函数和Schema；<a href="../mcp/cli.py">cli.py</a>、<a href="../mcp/server.py">server.py</a>共用适配层。</td><td>CLI与MCP调用同一业务实现，嵌套参数带含义、单位和约束。</td></tr>
+<tr><td>模型与改参</td><td><a href="../mcp/openmc_model_spec.py">openmc_model_spec.py</a>经官方Python API生成XML；<a href="../mcp/openmc_import.py">openmc_import.py</a>保留原生输入；参数适配在<a href="../mcp/openmc_parameters.py">openmc_parameters.py</a>。</td><td>组合建模受Schema约束，不执行任意用户代码；声明式改参同步描述、Python源码与XML，发现漂移就拒绝覆盖。</td></tr>
+<tr><td>作业与扫描</td><td><a href="../mcp/openmc_jobs.py">openmc_jobs.py</a>的<code>submit()</code>/<code>run_worker()</code>管理作业进程和持久状态；<a href="../mcp/openmc_scan.py">openmc_scan.py</a>复用作业执行参数组合。</td><td>快照、日志、失败及取消可追踪；接口进程与计算进程分开，提交后用后续调用查询长计算。</td></tr>
+<tr><td>结果与报告</td><td><a href="../mcp/openmc_worker.py">openmc_worker.py</a>的<code>execute()</code>在OpenMC环境读原生结果；图表和文档由<a href="../mcp/openmc_visuals.py">openmc_visuals.py</a>、<a href="../mcp/openmc_reports.py">openmc_reports.py</a>处理。</td><td>保留计分维度、来源和不确定度；所选图、完整数据与报告同源。</td></tr>
+<tr><td>其他适配</td><td>官方例题工作流、燃耗、CAD转换、几何查看、资料检索及有限诊断/确认修复，见<a href="reference.html">接口参考</a>。</td><td>各有适用范围；固定例题不是唯一输入入口，通用计算管理可接非目录模型。</td></tr>
+<tr><td>资源与维护</td><td><a href="../mcp/openmc_storage.py">openmc_storage.py</a>检查提交空间；<a href="../scripts/cleanup_artifacts.py">cleanup_artifacts.py</a>提供离线维护清理。</td><td>低空间拒绝新提交，清理先预览并保护关联记录；不自动删除核数据或旧证据，不承诺运行期硬配额。</td></tr>
+</tbody></table></div>
+<p>扩展一个操作时，在业务模块实现，再注册Schema、补参数说明和真实边界测试，最后重生成接口参考。修改建模能力还须同步发现、预检、执行与源码重建；只加工具名称不算完成。</p>
+<div class="note"><strong>当前边界：</strong>可运行、可自动改参、可组合生成是三个不同范围。DSH注册与自然语言任务按实际回执判断，不能从标准MCP测试推定通过。HPC、微调模型生成、指定CLEAR-S及专业验收未完成；宿主编排不替代这些合同要求。</div>
+<footer><a href="project-progress.html">合同功能与代码进展</a> · <a href="development-details.html">开发与验证明细</a> · <a href="domain-workflows.html#validation">测试入口</a></footer>
+</main></body></html>

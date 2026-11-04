@@ -3,6 +3,6 @@
   "port": 8770,
   "path": "/mcp",
   "name": "mc-agent-tools",
-  "version": "0.8.0",
+  "version": "0.10.1",
   "clientName": "mc"
 }

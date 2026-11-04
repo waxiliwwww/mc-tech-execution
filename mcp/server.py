@@ -207,7 +207,16 @@ def create_app(config, log, tools=None):
 
     @server.list_tools()
     async def list_tools():
-        return [Tool(**public_tool(tool)) for tool in definitions]
+        tools = [Tool(**public_tool(tool)) for tool in definitions]
+        # A real host's discovery is different evidence from /info or startup.
+        # Stateless HTTP does not retain initialize.clientInfo across requests.
+        # Record the transport peer, never headers, credentials or capabilities.
+        with contextlib.suppress(Exception):
+            request = server.request_context.request
+            peer = request.client if request else None
+            log.emit("INFO", "tools.listed", count=len(tools), names=[tool.name for tool in tools],
+                     peer={"host": peer.host, "port": peer.port} if peer else None)
+        return tools
 
     @server.call_tool(validate_input=False)
     async def call_tool(name, arguments):

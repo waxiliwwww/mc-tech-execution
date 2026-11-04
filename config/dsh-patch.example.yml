@@ -1,0 +1,11 @@
+# Append this patch to your existing DSH desktop profile/cordis.patch.yml.
+# This is a patch list, not a complete profile or a replacement for model settings.
+# Change the URL if the MCP service is deployed elsewhere; keep serverName unique.
+- insert:
+    - id: mcp-mc-tools
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: mc
+        transport: streamable-http
+        url: http://127.0.0.1:8770/mcp
+        failOnStartupError: true

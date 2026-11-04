@@ -129,6 +129,24 @@ class ProjectIntegration(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.data(await self.call("search_knowledge", {"query": "unfindable_76044865"}))["matches"], [])
         self.assertTrue(self.data(await self.call("search_knowledge", {"query": "particles"}))["matches"])
 
+    async def test_real_discovery_records_peer_and_returned_tool_names(self):
+        async with streamablehttp_client(self.url) as (read, write, _):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                tools = (await session.list_tools()).tools
+        self.log.seek(0)
+        event_path = next(Path(line.split("：", 1)[1].strip()) for line in self.log
+                          if line.startswith("事件日志："))
+        events = [json.loads(line) for line in event_path.read_text().splitlines()]
+        discovery = [event for event in events if event["event"] == "tools.listed"]
+        self.assertEqual(len(discovery), 1)
+        self.assertEqual(discovery[0]["peer"]["host"], "127.0.0.1")
+        self.assertIsInstance(discovery[0]["peer"]["port"], int)
+        self.assertGreater(discovery[0]["peer"]["port"], 0)
+        self.assertEqual(discovery[0]["names"], [tool.name for tool in tools])
+        self.assertEqual(discovery[0]["count"], len(tools))
+        self.assertEqual(set(discovery[0]), {"time", "level", "event", "count", "names", "peer"})
+
     async def test_stale_and_ambiguous_errors_are_actionable_over_mcp(self):
         bad = await self.call("preview_repair", {"path": "input.txt", "old_text": "missing", "new_text": "x"})
         self.assertTrue(bad.isError)

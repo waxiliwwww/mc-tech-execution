@@ -1,13 +1,36 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Windows DSH接入 · MC工具包</title><link rel="stylesheet" href="assets/overview.css"></head><body><main><nav><a href="development-plan.html">交付总览</a><a href="index.html">工具包手册</a><a href="domain-workflows.html">模型接入与建模</a><a href="reference.html">工具参数</a></nav><p class="eyebrow">DeepSeek Harness · 标准MCP</p><h1>Windows上的DSH，连接WSL里的计算服务</h1><p class="lead">OpenMC和MCP服务运行在WSL/Linux，Windows DSH通过HTTP发现并调用工具。DSH自己的模型配置保留，模型密钥不交给工具服务。</p>
-<h2>1．在WSL启动MCP服务</h2><p>先按<a href="env.html">环境说明</a>完成准备。在工具包根目录运行：</p><pre><code>./mcp/start.sh</code></pre><p>默认同机地址为 <code>http://127.0.0.1:8770/mcp</code>。远程部署使用实际服务器地址和部署方已有HTTPS入口，服务端按<a href="mcp.html#remote">远程监听与鉴权</a>配置；不要把WSL的文件路径当作MCP地址。</p>
-<h2>2．在Windows检查连通，再配置DSH</h2><p>在PowerShell运行（替换实际端口/地址）：</p><pre><code>Invoke-RestMethod http://127.0.0.1:8770/health</code></pre><p>同机Windows到WSL的localhost转发是否可用，应在这台机器实测。健康检查只证明网络与进程可达；随后还需MCP发现。可以在Windows PowerShell运行随包的 <a href="../scripts/check-mcp.ps1">scripts/check-mcp.ps1</a>，它只完成协议握手和工具发现，不调用模型或提交计算。未通时检查WSL网络、监听、端口和防火墙，不先放开所有网络访问。</p>
-<p>把 <a href="../config/dsh-mcp.example.yml">dsh-mcp.example.yml</a> 中的插件条目加入DSH现有profile的插件列表。它不是完整DSH配置，不要覆盖现有模型和账号设置。本机已定位DSH Desktop 2.0.17，桌面profile位于 <code>%USERPROFILE%\.dsh\profiles\desktop</code>；随包已有MCP客户端插件。此处仅核对版本与入口，未修改用户配置。</p><p>默认同机URL可直接使用；其他地址在启动DSH的PowerShell中设置：</p><pre><code>$env:MC_MCP_URL = "https://实际服务地址/mcp"
-# 远程服务需要Bearer时设置，并取消示例中的headers注释：
-$env:MCP_AUTH_TOKEN = "由部署管理员提供的令牌"</code></pre><p>启动或重载DSH后，检查 <code>mc</code> 服务的连接状态与工具发现。工具将以 <code>mcp__mc__openmc_…</code> 等名称出现，不需要逐个抄写函数。本机未发现 <code>dsh</code> 命令，使用现有桌面入口即可。</p>
-<h2>3．用一个代表任务检查是否好用</h2><p>建议使用已做过真实计算和数据核对的<strong>简化全堆空间通量</strong>：生成公开全堆输入 → 定义8×8×1通量计分 → 预览校核 → 命名提交 → 查看keff与64格分布 → 图和报告。小统计设置只用于调试，不代表专业精度。</p><blockquote>“使用mc工具准备公开的简化全堆模型，定义空间通量统计。先给我看输入和运行设置，确认后提交名为‘全堆调试’的计算；结束后给出keff、通量分布图、报告和服务端文件位置。”</blockquote><p>宿主应从实际模型发现参数、计分与ID，提交后继续查同一job_id；图表按实际计分处理，不能凭空转换成功率分布。初次也可先读取一份已完成任务的结果，验证发现与结果呈现，再安排重新计算。</p>
-<h2>4．产物在哪，怎样清理</h2><p>输入和结果都在<strong>服务端工作区</strong>。同机Windows可用资源管理器进入 <code>\\wsl.localhost\Ubuntu\home\zhangbolun\projects\mc-tech-execution\workspace</code>（发行版/安装位置不同请替换），或使用工具返回的实际路径。异机按现场约定交接；当前不自动远程下载。</p><pre><code>./mc.sh call openmc_storage_report '{}'
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Windows DSH接入</title><link rel="stylesheet" href="assets/overview.css"></head><body><main>
+<nav><a href="index.html">使用手册</a><a href="toolkit.html">工具包说明</a><a href="domain-workflows.html">模型接入与建模</a><a href="reference.html">工具参数</a></nav>
+<p class="eyebrow">DeepSeek Harness · 标准MCP · 2026-11-04</p><h1>Windows DSH接入</h1>
+<p class="lead">DSH负责理解任务和选择操作；WSL中的工具包负责建模、计算和保存结果。连接后，DSH自动获取工具及参数说明，不需要逐个录入函数。模型配置和密钥仍由DSH管理。</p>
+<div class="note"><strong>本机状态：</strong>DSH Desktop 2.0.17的desktop profile已加入MC插件，真实DSH进程连接后请求了55个工具定义。原有profile内容保留，模型设置未改。按用户决定，本轮模型请求为0、计算提交为0；自然语言完整任务尚未验证，不能计为宿主验收完成。</div>
+<h2 id="connect">1．启动服务，连接DSH</h2>
+<p>在WSL工具包根目录按<a href="env.html">环境说明</a>完成准备，然后运行：</p><pre><code>./mcp/start.sh</code></pre>
+<p>默认同机地址为 <code>http://127.0.0.1:8770/mcp</code>。在Windows PowerShell检查：</p><pre><code>Invoke-RestMethod http://127.0.0.1:8770/health
+# 在工具包目录运行；只做MCP握手和发现，不调用模型：
+.\scripts\check-mcp.ps1</code></pre>
+<p>健康检查和上述脚本证明网络、服务和标准协议；真实DSH仍需加载插件。桌面版常用profile位于 <code>%USERPROFILE%\.dsh\profiles\desktop</code>，先确认正在使用的profile，再备份其中的 <code>cordis.patch.yml</code>。</p>
+<p>将<a href="../config/dsh-patch.example.yml">DSH补丁示例</a>的 <code>- insert:</code> 条目追加到现有 <code>cordis.patch.yml</code>；保留原内容，不把它当完整配置覆盖。<code>serverName: mc</code>须与其他服务不同。若编辑的是完整插件列表而非patch文件，使用<a href="../config/dsh-mcp.example.yml">普通插件条目</a>，两种格式不要混用。</p>
+<p>保存后由DSH的profile监听热加载；如果从WSL修改Windows文件未生效，在Windows编辑器保存该文件并复查连接。本机曾需要Windows原生保存才能触发监听，未因此更改模型或重启整个DSH。工具在DSH中注册为 <code>mcp__mc__openmc_…</code>；历史无前缀工具如 <code>search_knowledge</code> 则为 <code>mcp__mc__search_knowledge</code>。</p>
+<p>服务启动输出会显示事件日志路径。真实宿主发现工具时会增加 <code>tools.listed</code>，包含工具名、数量及传输连接来源；结合实际宿主进程连接核对，不能把另一个检查客户端的记录当DSH记录。启动成功、工具发现、实际调用是三个检查层次。</p>
+<p>远程部署改用实际服务器URL和已有HTTPS入口，按<a href="mcp.html#remote">远程监听与鉴权</a>设置Bearer。本机回环地址不需要令牌；不要把WSL文件路径当MCP地址，也不要为连通性检查放开所有网络。本机连接不代表异机部署已验证。</p>
+<h2 id="walkthrough">2．先理解一个任务：读全堆结果，生成图和报告</h2>
+<p><strong>输入从哪里来：</strong>随包的 <code>core-lattice</code> 适配OpenMC官方 <code>pwr_core()</code>，生成公开简化全堆输入；额外明确加入8×8×1网格flux计分。此前通过标准MCP完成了真实计算，并核对原生StatePoint、图和报告。本机记录名为“DSH预备全堆用例”；这是已完成作业，不是这次DSH新算出的结果。换一个安装目录应先按<a href="domain-workflows.html">操作指南</a>准备自己的作业。</p>
+<div class="table-wrap"><table><thead><tr><th>步骤与工具</th><th>输入的来源</th><th>做了什么，怎样看结果</th></tr></thead><tbody>
+<tr><td>找计算<br><code>openmc_list_jobs</code></td><td>任务名、completed状态；重名时由用户选择。</td><td>从服务端持久记录取得job_id；后续始终使用同一ID。</td></tr>
+<tr><td>看输入<br><code>openmc_job_status</code><br><code>openmc_preview_input</code></td><td>job_id对应的case_dir；提交快照和指纹在作业记录内。</td><td>了解材料、几何、统计设置和计分。当前输入与提交快照要区分，不能只看文件名推断来源。</td></tr>
+<tr><td>读数据<br><code>openmc_read_results</code></td><td>同一job_id下真实StatePoint文件。</td><td>获取keff及tally类型、ID、均值和标准差；按实际返回选择flux计分，不猜ID。</td></tr>
+<tr><td>画热图<br><code>openmc_plot_mesh</code></td><td>job_id、实际tally_id和score=flux；本例为二维单层。</td><td>生成空间分布PNG及完整坐标/数值CSV、JSON。其他三维结果须选层，能量分箱须选箱。</td></tr>
+<tr><td>出报告<br><code>openmc_export_report</code></td><td>同一job_id、tally_id、score及需要的筛选；选择markdown或已配置格式。</td><td>正文、配套图与完整数据使用同一选择；默认摘要与显式选择报告不同。生成同格式会覆盖，留版本先归档。</td></tr>
+<tr><td>找文件<br><code>openmc_list_artifacts</code></td><td>kind=job，identifier为同一job_id。</td><td>返回服务端位置、文件清单、大小和哈希，便于查看及交接。</td></tr>
+</tbody></table></div>
+<p><strong>怎么看结论：</strong>热图表达各空间格子的原始flux计分分布，CSV/JSON用于核对全部格子及不确定度。它没有追加体积、源强或功率归一化，不能直接称实际功率或工况通量。此前1000粒子、12批、2非活跃批的运行是工程调试，小统计结果不证明收敛或专业精度。</p>
+<p><strong>工具的价值：</strong>模型仍能临时写脚本处理文件，但工具包预先固定了StatePoint读取、选择和坐标规则，将输入快照、作业ID、原始值、不确定度与产物关联起来；不同宿主可重复调用。模型负责选择与解释，工具不代替专业判据。</p>
+<p>后续获准模型预算后，可在DSH发起：“查找已完成的‘DSH预备全堆用例’，先说明输入来源和运行设置，再读取其空间flux结果，沿用同一结果选择生成热图与Markdown报告，列出文件绝对位置。不要重新计算，不把结果解释成实际功率；缺参数先询问。”本轮未执行这段自然语言任务。</p>
+<h2 id="artifacts">3．在哪里打开产物，怎样维护</h2>
+<p>所有产物保存在<strong>服务端工作区</strong>，不是DSH当前目录。默认布局为 <code>workspace/.mc-jobs/&lt;job_id&gt;/</code>；优先使用返回的 <code>server_path</code>。Windows同机可在资源管理器打开 <code>\\wsl.localhost\Ubuntu\home\zhangbolun\projects\mc-tech-execution\workspace</code>，再进入对应作业目录；发行版和安装位置不同请替换。异机按部署约定交接，当前不自动上传输入或下载产物。</p>
+<pre><code>./mc.sh call openmc_storage_report '{}'
 ./cleanup.sh --older-than-days 7
-# 核对预览，并在服务和CLI停止写入的维护窗口执行：
-./cleanup.sh --older-than-days 7 --apply</code></pre><p>7天是示例选择，不是自动保留策略。若年龄选择命中修复关联，清理会拒绝；先查存储报告，再按明确的非关联编号清理，不用允许断链开关绕过保护。清理脚本保护原算例及关联记录；核数据库、运行时和必要证据不列入日常删除。磁盘门禁只降低新任务继续占用的风险，不能代替运行中容量监测。WSL虚拟可用空间不等于Windows宿主盘剩余；本机Ubuntu在C盘，部署配置可用 <code>disk_space_check_paths</code> 加入 <code>/mnt/c</code> 同时检查，不把这个本机路径写进通用部署包。</p>
-<div class="note"><strong>验证边界：</strong>本机Windows已对隔离临时端口完成HTTP/MCP握手并发现工具，测试服务随后停止。标准MCP与真实OpenMC流程已有工程验证；DSH插件实际激活、自然语言完整任务尚未验证。按当前决定本轮不调用模型，不能据配置文件宣称DSH自然语言已通过，也不计为第二宿主验收。</div>
-<footer>配置依据：<a href="https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/mcp/mcp-client/README.zh.md">DSH官方MCP客户端说明</a>（2026-11-04核对）。<a href="development-plan.html">返回交付总览</a></footer></main></body></html>
+# 核对预览；在服务和CLI停止写入的维护窗口执行：
+./cleanup.sh --older-than-days 7 --apply</code></pre>
+<p>7天只是命令示例，不是保留承诺；命中修复关联时会拒绝清理，不绕过保护。核数据库、运行时和必要证据保留。提交前磁盘门禁不代替运行期容量监测；WSL虚拟空间也不等于Windows宿主盘空间，可通过 <code>disk_space_check_paths</code> 检查实际宿主卷。</p>
+<footer><a href="toolkit.html">用户和开发者如何理解工具包</a> · <a href="domain-workflows.html">已有模型、新建模型与测试</a> · 接入依据：本机DSH随包MCP客户端与profile加载实现。</footer></main></body></html>

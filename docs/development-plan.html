@@ -6,12 +6,12 @@
 <p class="minor">DSH负责理解与编排，工具负责可检查的操作，OpenMC负责求解。工具包可独立使用，也可接其他标准MCP宿主。</p>
 <h2 id="interfaces">近期主要做五件事</h2><div class="table-wrap"><table><thead><tr><th>要做的事</th><th>交到用户手里的东西</th><th>目前状态</th></tr></thead><tbody>
 <tr><td>把计算工具做好</td><td>模型接入、受控建模、改参校核、命名提交、结果与报告。</td><td>基础链路已实现；部件参数、HPC与微调生成继续补。</td></tr>
-<tr><td>接到DSH</td><td>Windows可用的连接配置、地址和鉴权说明。</td><td>Windows到WSL握手和工具发现已通过；DSH实际启用、自然语言另验。</td></tr>
+<tr><td>接到DSH</td><td>Windows可用的连接配置、地址和鉴权说明。</td><td>实际DSH已连接并请求55个工具定义；本轮不调用模型，自然语言任务待验证。</td></tr>
 <tr><td>跑一个代表任务</td><td>简化全堆计算，查看64格通量、图和报告，并能追溯输入。</td><td>真实计算与数据核对已通过；DSH自然语言串联后续验证。</td></tr>
-<tr><td>让下游会用</td><td>环境准备、可运行示例、参数与产物说明、部署包。</td><td>已有使用说明与源码包，本轮补DSH操作入口。</td></tr>
-<tr><td>控制资源占用</td><td>提交前检查磁盘余量，测试后清理临时内容，旧结果按规则清理。</td><td>已有清理脚本，本轮补低空间提交保护与占用报告。</td></tr>
+<tr><td>让下游会用</td><td>环境准备、可运行示例、参数与产物说明、部署包。</td><td>已有手册、源码包与DSH说明；新增用户/开发者总览。</td></tr>
+<tr><td>控制资源占用</td><td>提交前检查磁盘余量，测试后清理临时内容，旧结果按规则清理。</td><td>已有低空间提交保护、占用报告及清理预览；运行期仍需监测。</td></tr>
 </tbody></table></div>
-<div class="note"><strong>下一步：</strong>DSH配置与工具发现 → 用代表任务走完整操作。按当前决定，本轮不调用模型；DSH自然语言实跑另行安排。</div>
+<div class="note"><strong>待验证：</strong>由DSH用代表任务走完整操作。按当前决定，本轮不调用模型；自然语言实跑另行安排。</div>
 <p>公开例题跑通是基础条件。甲方的具体模型、HPC条件、专业参考值仍需配合确认；本次调试交付不等于最终合同验收，也不增加原合同指标。</p>
 <footer><a href="development-details.html">实现、接口、测试与配合项明细</a> · <a href="project-progress.html">合同功能进展</a> · <a href="domain-workflows.html">实际使用流程</a></footer>
 </main></body></html>
