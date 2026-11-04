@@ -93,6 +93,23 @@ def initialize_index(cfg: dict | None = None) -> Path:
     return index
 
 
+def chain_file(cfg: dict | None = None) -> Path:
+    """定位燃耗链文件：部署配置depletion_chain优先，其次核数据库的CASL热谱链。"""
+    cfg = cfg or {}
+    configured = cfg.get('depletion_chain')
+    if configured:
+        path = Path(configured)
+        if not path.is_absolute():
+            path = ROOT / path
+        if not path.is_file():
+            raise Error('部署配置depletion_chain不存在：' + str(path))
+        return path
+    candidate = managed_directory(cfg) / 'chain_casl_thermal.xml'
+    if candidate.is_file():
+        return candidate
+    raise Error('未找到燃耗链文件；把chain_casl_thermal.xml放入核数据目录或在部署配置depletion_chain指定')
+
+
 def runtime_env(cfg: dict) -> dict:
     env = dict(os.environ)
     configured = cfg.get('cross_sections') or env.get('OPENMC_CROSS_SECTIONS')

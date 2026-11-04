@@ -127,12 +127,19 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
            _example_workflow: dict | None = None, _preserve_outputs: bool = False) -> dict:
     if not sys.platform.startswith('linux'):
         raise Error('本地持久作业目前支持Linux/WSL；其他系统请在Linux服务器部署MCP')
-    if mode not in ('run', 'plot', 'geometry-debug') or type(threads) is not int or not 1 <= threads <= 64:
-        raise Error('mode须为run/plot/geometry-debug；threads须为1..64')
+    if mode not in ('run', 'plot', 'geometry-debug', 'deplete') or type(threads) is not int or not 1 <= threads <= 64:
+        raise Error('mode须为run/plot/geometry-debug/deplete；threads须为1..64')
     source = path_in_workspace(case_dir, internal=_internal)
     if not source.is_dir() or source == workspace():
         raise Error('case_dir须为工作区内的具体算例子目录')
     cfg = _runtime or config()
+    if mode == 'deplete':
+        markers = source / 'mc-case.json'
+        spec = json.loads(markers.read_text(encoding='utf-8')).get('depletion') if markers.is_file() else None
+        if not spec:
+            raise Error('燃耗提交前先用openmc_configure_depletion配置功率与时间步')
+        if not (source / 'materials.xml').is_file() and not (source / 'model.xml').is_file():
+            raise Error('燃耗算例缺少materials.xml或model.xml')
     capacity = check_capacity(cfg, threads)
     job_id = _job_id or uuid.uuid4().hex
     if not re.fullmatch('[a-f0-9]{32}', job_id):raise Error('无效预留作业编号')
@@ -318,6 +325,8 @@ def run_worker(job_id: str) -> None:
             invocation = cfg['python_command'] + [str(ROOT / 'mcp/official_runner.py'),
                 workflow['example_id'], workflow['step'], '--parameters', json.dumps(workflow['parameters']),
                 '--threads', str(value['threads'])]
+        elif value['mode'] == 'deplete':
+            invocation = cfg['python_command'] + [str(ROOT / 'mcp/deplete_runner.py')]
         from nuclear_data import runtime_env
         child_env = runtime_env(cfg)
         # Child runners and notebook kernels read the same immutable runtime

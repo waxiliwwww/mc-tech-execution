@@ -121,7 +121,7 @@ def execute(action: str, params: dict) -> dict:
             fuel.set_density('g/cm3', 10.3)
             fuel.add_nuclide('U235', 0.031, 'wo')
             fuel.add_nuclide('U238', 0.969, 'wo')
-            fuel.add_nuclide('O16', 2.0, 'wo')
+            fuel.add_nuclide('O16', 0.1184, 'wo')
             clad = openmc.Material(name='Zircaloy-4 (public parameters)')
             clad.set_density('g/cm3', 6.55)
             for nuclide, fraction in (('Zr90', 0.5145), ('Zr91', 0.1122), ('Zr92', 0.1715),
@@ -154,13 +154,45 @@ def execute(action: str, params: dict) -> dict:
             data_kind = 'public_parameters_self_test'
             note = ('公开文献常用压水堆栅元与控制棒参数自测模型（B4C吸收体，未加硼酸）；'
                     '不是甲方组件参数，未作专业准确率或控制棒价值验收。')
+        elif template == 'pincell-depletion':
+            import math
+            fuel = openmc.Material(name='UO2 2.4 w/o (public parameters)')
+            fuel.set_density('g/cm3', 10.29769)
+            fuel.add_nuclide('U234', 5.5815e-05, 'wo')
+            fuel.add_nuclide('U235', 0.024, 'wo')
+            fuel.add_nuclide('U238', 0.9753, 'wo')
+            fuel.add_nuclide('O16', 0.1184, 'wo')
+            fuel.volume = math.pi * 0.4096 ** 2 * 20.0  # 燃耗要求可烧材料显式体积
+            clad = openmc.Material(name='Zircaloy (public parameters)')
+            clad.set_density('g/cm3', 6.55)
+            clad.add_element('Zr', 0.98, 'wo')
+            clad.add_element('Sn', 0.015, 'wo')
+            clad.add_element('Fe', 0.002, 'wo')
+            water = openmc.Material(name='Water 600K (public parameters)')
+            water.set_density('g/cm3', 0.7)
+            water.add_nuclide('H1', 2.0, 'ao')
+            water.add_nuclide('O16', 1.0, 'ao')
+            fuel_cyl = openmc.ZCylinder(r=0.4096)
+            clad_cyl = openmc.ZCylinder(r=0.4750)
+            box = openmc.model.RectangularParallelepiped(-0.63, 0.63, -0.63, 0.63, -10.0, 10.0,
+                                                         boundary_type='reflective')
+            cells = [openmc.Cell(fill=fuel, region=-fuel_cyl & -box),
+                     openmc.Cell(fill=clad, region=+fuel_cyl & -clad_cyl & -box),
+                     openmc.Cell(fill=water, region=+clad_cyl & -box)]
+            geometry = openmc.Geometry(cells)
+            materials = openmc.Materials([fuel, clad, water])
+            settings = openmc.Settings()
+            model = openmc.Model(geometry, materials, settings)
+            data_kind = 'public_parameters_self_test'
+            note = ('公开压水堆栅元参数自测模型（2.4% UO2，燃料体积按πr²h显式计算，可做燃耗）；'
+                    '不是甲方组件参数，未作专业准确率或燃耗验收。')
         elif template == 'hex-lattice':
             # HexLattice自测：7根燃料棒六角栅格，钠冷，反射边界，2D。
             fuel = openmc.Material(name='UO2 4.95 w/o (public parameters)')
             fuel.set_density('g/cm3', 10.4)
             fuel.add_nuclide('U235', 0.0495, 'wo')
             fuel.add_nuclide('U238', 0.9505, 'wo')
-            fuel.add_nuclide('O16', 2.0, 'wo')
+            fuel.add_nuclide('O16', 0.1184, 'wo')
             clad = openmc.Material(name='Fe-15Cr steel (public parameters)')
             clad.set_density('g/cm3', 7.7)
             clad.add_element('Fe', 0.85, 'wo')
@@ -308,6 +340,71 @@ def execute(action: str, params: dict) -> dict:
                 'engine_parse': {'ok': True, 'materials': len(reparsed.materials)},
                 'warnings': warnings,
                 'note': '模型XML由公开API组装并回读验证；DAGMC材料指派、网格质量与源位置是否在模型内需业务确认。'}
+    if action == 'depletion-results':
+        import xml.etree.ElementTree as ET
+        from openmc.deplete import Results as DepletionResults
+        path = Path(params.get('file') or 'depletion_results.h5')
+        if not path.is_file():
+            raise ValueError('缺少depletion_results.h5；确认作业为mode=deplete且已完成')
+        data = DepletionResults(str(path))
+        times, keff = data.get_keff(time_units='d')
+        marker = Path('mc-case.json')
+        spec = json.loads(marker.read_text(encoding='utf-8')).get('depletion', {}) if marker.is_file() else {}
+        material_ids = []
+        materials_path = Path('materials.xml')
+        if materials_path.is_file():
+            for node in ET.parse(str(materials_path)).getroot().iter('material'):
+                identifier = node.get('id')
+                if identifier:
+                    material_ids.append(int(identifier))
+        heavy_symbols = {'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm', 'Md', 'No', 'Lr'}
+        chain = spec.get('chain_file')
+        heavy = []
+        if chain and Path(chain).is_file():
+            for node in ET.parse(chain).getroot().iter('nuclide'):
+                name = node.get('name') or ''
+                symbol = ''.join(ch for ch in name if ch.isalpha())
+                if symbol in heavy_symbols:
+                    heavy.append(name)
+        heavy_mass = {}
+        for identifier in material_ids:
+            total_g = 0.0
+            for nucleus in heavy:
+                try:
+                    mass = data.get_mass(str(identifier), nucleus, mass_units='g')[1]
+                except (ValueError, KeyError):
+                    continue
+                if np.isfinite(mass[0]):
+                    total_g += float(mass[0])
+            if total_g > 0:
+                heavy_mass[str(identifier)] = total_g
+        total_heavy_g = sum(heavy_mass.values())
+        key_nuclides = {}
+        for nucleus in ('U235', 'U238', 'Pu239', 'Pu241'):
+            if nucleus not in heavy:
+                continue
+            for identifier in material_ids:
+                try:
+                    values = data.get_mass(str(identifier), nucleus, mass_units='g')[1]
+                except (ValueError, KeyError):
+                    continue
+                if any(np.isfinite(values)):
+                    key_nuclides.setdefault(nucleus, {})[str(identifier)] = [float(v) for v in values]
+        steps = []
+        power = spec.get('power_watts')
+        for index in range(len(times)):
+            step = {'step': index, 'time_days': round(float(times[index]), 6),
+                    'keff': {'mean': float(keff[index][0]), 'std_dev': float(keff[index][1])}}
+            if power and total_heavy_g > 0:
+                megawatt_days = float(power) * float(times[index]) * 86400.0 / 1.0e6 / 86400.0
+                step['burnup_mwd_kg'] = round(megawatt_days / (total_heavy_g / 1000.0), 6)
+            steps.append(step)
+        return {'file': path.name, 'times_days': [round(float(v), 6) for v in times], 'steps': steps,
+                'heavy_metal_mass_g': {key: round(value, 3) for key, value in heavy_mass.items()},
+                'heavy_metal_total_g': round(total_heavy_g, 3),
+                'nuclide_mass_g': key_nuclides,
+                'chain_file': chain, 'note': '燃耗值按功率×时间/初始重金属质量估算（MWd/kgHM）；'
+                                            '核素质量为该材料的质量，非密度或份额。'}
     if action == 'add-tally':
         from pathlib import Path as _Path
         tallies_path = _Path('tallies.xml')

@@ -47,9 +47,9 @@ def environment() -> dict:
 def create_model(case_dir: str, template: str = 'synthetic-mgxs', particles: int = 200,
                  batches: int = 10, inactive: int = 2) -> dict:
     if template not in ('synthetic-mgxs', 'pwr-pin-cell', 'pincell-multigroup',
-                        'assembly-17x17', 'core-lattice', 'control-rod', 'hex-lattice'):
+                        'assembly-17x17', 'core-lattice', 'control-rod', 'hex-lattice', 'pincell-depletion'):
         raise Error('当前支持synthetic-mgxs、pwr-pin-cell、pincell-multigroup、'
-                    'assembly-17x17、core-lattice、control-rod、hex-lattice模板')
+                    'assembly-17x17、core-lattice、control-rod、hex-lattice、pincell-depletion模板')
     if any(type(v) is not int for v in (particles, batches, inactive)) or particles <= 0 or not 0 <= inactive < batches or batches - inactive < 2:
         raise Error('particles须为正整数，batches-inactive至少为2，inactive非负')
     directory = path_in_workspace(case_dir, exists=False)
@@ -942,6 +942,65 @@ def define_tally(case_dir: str, scores: list, filters: list | None = None,
     return {'case_dir': case_dir, **value, 'workspace': str(workspace()), 'location': 'server',
             'provenance': provenance(directory, cfg), 'professional_acceptance': False,
             'note': '已写入tallies.xml；需重新提交计算后结果才含该tally；计分口径为OpenMC原始归一化。'}
+
+
+DEPLETION_UNITS = ('s', 'min', 'h', 'd')
+
+
+def configure_depletion(case_dir: str, power_watts: float, timesteps: list,
+                        timestep_unit: str = 'd', chain_file: str | None = None) -> dict:
+    """为算例写入燃耗配置（功率、时间步、单位、链文件）；提交时用mode=deplete执行。"""
+    cfg = config()
+    directory = path_in_workspace(case_dir)
+    if not directory.is_dir():
+        raise Error('case_dir须为已存在的算例目录')
+    if not (directory / 'materials.xml').is_file() and not (directory / 'model.xml').is_file():
+        raise Error('算例缺少materials.xml或model.xml，不能配置燃耗')
+    if type(power_watts) not in (int, float) or isinstance(power_watts, bool) or power_watts <= 0:
+        raise Error('power_watts须为正数（单位W）')
+    if (not isinstance(timesteps, list) or not timesteps
+            or any(type(v) not in (int, float) or isinstance(v, bool) or v <= 0 for v in timesteps)):
+        raise Error('timesteps须为非空正数列表（每步长度）')
+    if timestep_unit not in DEPLETION_UNITS:
+        raise Error('timestep_unit须为' + '/'.join(DEPLETION_UNITS) + '之一')
+    if chain_file is not None:
+        if not isinstance(chain_file, str) or not Path(chain_file).is_file():
+            raise Error('chain_file须为存在的文件路径或省略（省略用部署配置的链文件）')
+        chain = Path(chain_file)
+    else:
+        chain = __import__('nuclear_data').chain_file(cfg)
+    materials_text = (directory / 'materials.xml').read_text(encoding='utf-8') if (directory / 'materials.xml').is_file() else ''
+    model_text = (directory / 'model.xml').read_text(encoding='utf-8') if (directory / 'model.xml').is_file() else ''
+    if 'volume=' not in materials_text and 'volume=' not in model_text:
+        raise Error('燃耗要求可烧材料显式体积：materials.xml未设volume；用pincell-depletion模板或补体积')
+    marker = directory / 'mc-case.json'
+    info = json.loads(marker.read_text(encoding='utf-8')) if marker.is_file() else {'data_kind': 'user_supplied_unverified'}
+    spec = {'power_watts': float(power_watts), 'timesteps': [float(v) for v in timesteps],
+            'timestep_unit': timestep_unit, 'chain_file': str(chain)}
+    info.update(depletion=spec)
+    marker.write_text(json.dumps(info, ensure_ascii=False, indent=2), encoding='utf-8')
+    digest = hashlib.sha256(chain.read_bytes()).hexdigest()
+    return {'case_dir': case_dir, **spec, 'chain_sha256': digest, 'steps': len(timesteps),
+            'workspace': str(workspace()), 'location': 'server',
+            'provenance': provenance(directory, cfg), 'professional_acceptance': False,
+            'note': '燃耗配置已写入算例；用openmc_submit_job(mode=deplete)执行，完成后用openmc_read_depletion读取。'}
+
+
+def read_depletion(job_id: str) -> dict:
+    """读取已完成燃耗作业的depletion_results.h5：逐时间步keff、燃耗估算、关键核素质量。"""
+    status = jobs.status(job_id)
+    if status['state'] != 'completed':
+        raise Error('作业尚未成功完成；先查询openmc_job_status')
+    directory = jobs.job_directory(job_id)
+    record = jobs.read(directory)
+    if record.get('mode') != 'deplete':
+        raise Error('该作业不是燃耗作业（mode不是deplete）')
+    work = directory / 'work'
+    if not (work / 'depletion_results.h5').is_file():
+        raise Error('作业缺少depletion_results.h5；确认燃耗已完成')
+    value = api('depletion-results', work, {'file': 'depletion_results.h5'}, record['runtime'])
+    return {'job_id': job_id, **value, 'workspace': str(workspace()), 'location': 'server',
+            'provenance': record['provenance'], 'professional_acceptance': False}
 
 
 def _report_metadata(directory: Path) -> dict:

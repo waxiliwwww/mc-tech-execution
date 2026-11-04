@@ -15,7 +15,7 @@ from openmc_artifacts import list_artifacts
 from openmc_knowledge import list_sources, read as read_knowledge
 from openmc_examples import prepare_example
 from openmc_cad import build_dagmc_model, convert_cad, inspect_step as inspect_cad_step
-from openmc_tools import define_tally
+from openmc_tools import configure_depletion, define_tally, read_depletion
 from openmc_diagnostics import diagnose_job, prepare_repair, recheck_repair
 from tool_metadata import document_tools
 from official_catalog import list_official_examples, describe as get_official_example
@@ -57,7 +57,8 @@ TOOLS += [
      "inputSchema": schema({}), "outputSchema": OUTPUT, "function": environment},
     {"name": "openmc_create_model", "description": "用公开API创建一个新算例目录。synthetic-mgxs使用合成截面做工程联调；pwr-pin-cell为官方示例，需核数据。不会覆盖已有目录，不是微调模型生成。",
      "inputSchema": schema({"case_dir": TEXT, "template": {"type": "string", "enum": ["synthetic-mgxs", "pwr-pin-cell", "pincell-multigroup",
-                                                        "assembly-17x17", "core-lattice", "control-rod", "hex-lattice"]},
+                                                        "assembly-17x17", "core-lattice", "control-rod", "hex-lattice",
+                                                         "pincell-depletion"]},
                             "particles": {"type": "integer", "minimum": 1}, "batches": {"type": "integer", "minimum": 2},
                             "inactive": {"type": "integer", "minimum": 0}}, ["case_dir"]),
      "outputSchema": OUTPUT, "function": create_model,
@@ -66,7 +67,7 @@ TOOLS += [
      "inputSchema": schema({"case_dir": TEXT, "api_check": {"type": "boolean"}, "semantic_check": {"type": "boolean"}, "geometry_check": {"type": "boolean"}}, ["case_dir"]),
      "outputSchema": OUTPUT, "function": validate_inputs},
     {"name": "openmc_submit_job", "description": "快照输入后提交本地OpenMC计算/绘图/几何调试，立即返回作业编号；随后查询终态与产物。Linux/WSL运行，不代表提交即完成。",
-     "inputSchema": schema({"case_dir": TEXT, "mode": {"type": "string", "enum": ["run", "plot", "geometry-debug"]},
+     "inputSchema": schema({"case_dir": TEXT, "mode": {"type": "string", "enum": ["run", "plot", "geometry-debug", "deplete"]},
                             "threads": {"type": "integer", "minimum": 1, "maximum": 64}}, ["case_dir"]),
      "outputSchema": OUTPUT, "function": submit_job,
      "annotations": {"readOnlyHint": False, "destructiveHint": False}},
@@ -208,6 +209,17 @@ TOOLS += [
                             "seed": {"type": "integer", "minimum": 1}},
                            ["case_dir", "materials"]),
      "outputSchema": OUTPUT, "function": build_dagmc_model, "annotations": WRITE},
+    {"name": "openmc_configure_depletion", "description": "为算例写入燃耗配置：功率（W）、时间步长列表与单位、链文件（省略用部署配置）。要求燃耗材料显式体积；只写mc-case.json，不改几何/材料/设置；提交时用openmc_submit_job(mode=deplete)。",
+     "inputSchema": schema({"case_dir": TEXT,
+                            "power_watts": {"type": "number", "exclusiveMinimum": 0},
+                            "timesteps": {"type": "array", "minItems": 1, "items": {"type": "number", "exclusiveMinimum": 0}},
+                            "timestep_unit": {"type": "string", "enum": ["s", "min", "h", "d"]},
+                            "chain_file": {"type": "string"}},
+                           ["case_dir", "power_watts", "timesteps"]),
+     "outputSchema": OUTPUT, "function": configure_depletion, "annotations": WRITE},
+    {"name": "openmc_read_depletion", "description": "读取已完成燃耗作业的结果：逐时间步k-eff（均值±标准差）、按功率×时间/初始重金属质量估算的燃耗（MWd/kgHM）与关键核素质量；不补缺失值、不把估算当实测裂变能。",
+     "inputSchema": schema({"job_id": TEXT}, ["job_id"]),
+     "outputSchema": OUTPUT, "function": read_depletion, "annotations": {"readOnlyHint": True}},
     {"name": "openmc_define_tally", "description": "向已有算例追加自定义tally：score列表+常用过滤（能量/材料/粒子/规则网格），写入tallies.xml；不改几何、材料、设置。需重新提交计算后结果才含该tally，返回的tally_id用于读取与对比。",
      "inputSchema": schema({"case_dir": TEXT,
                             "scores": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},

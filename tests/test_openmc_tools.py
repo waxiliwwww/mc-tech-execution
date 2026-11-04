@@ -186,6 +186,35 @@ class OpenMCTools(unittest.TestCase):
         self.assertIsNotNone(report['metadata']['runtime']['duration_seconds'])
         self.assertIn('报告头元数据', text)
 
+    def test_configure_depletion_validates_and_writes_marker(self):
+        case = self.root / 'workspace/dep'
+        case.mkdir(parents=True)
+        (case / 'materials.xml').write_text(
+            '<materials><material id="1" volume="1.0" density="10.0"></material></materials>', encoding='utf-8')
+        (case / 'settings.xml').write_text('<settings><particles>10</particles><batches>2</batches>'
+                                          '<inactive>0</inactive></settings>', encoding='utf-8')
+        chain = self.root / 'chain.xml'
+        chain.write_text('<depletion_chain/>', encoding='utf-8')
+        cfg = {**self.cfg, 'depletion_chain': str(chain)}
+        with patch.object(tools, 'config', lambda: cfg):
+            value = tools.configure_depletion('dep', 1000, [0.5, 0.5], 'd')
+        self.assertEqual(value['steps'], 2)
+        self.assertEqual(value['chain_file'], str(chain))
+        self.assertEqual(len(value['chain_sha256']), 64)
+        marker = json.loads((case / 'mc-case.json').read_text(encoding='utf-8'))
+        self.assertEqual(marker['depletion']['power_watts'], 1000.0)
+        self.assertEqual(marker['depletion']['timesteps'], [0.5, 0.5])
+        for bad in ({'power_watts': 0}, {'power_watts': -3}, {'timesteps': []},
+                    {'timesteps': [0.1, 0]}, {'timesteps': '0.1'}, {'timestep_unit': 'd2'}):
+            arguments = {'power_watts': 1000, 'timesteps': [0.1], 'timestep_unit': 'd', **bad}
+            with self.assertRaises(ValueError):
+                with patch.object(tools, 'config', lambda: cfg):
+                    tools.configure_depletion('dep', **arguments)
+        (case / 'materials.xml').write_text('<materials><material id="1"></material></materials>', encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, '体积'):
+            with patch.object(tools, 'config', lambda: cfg):
+                tools.configure_depletion('dep', 1000, [0.1])
+
     def test_concurrency_limits_by_cpu_threads_and_optional_job_count(self):
         cfg = {**self.cfg, 'threads': 1}
         (self.root / 'workspace/.mc-jobs').mkdir(parents=True, exist_ok=True)

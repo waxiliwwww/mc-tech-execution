@@ -60,6 +60,10 @@ COMMON = {
     'filter_selection': '可选计分过滤条件。先读取tally定义，再按OpenMC过滤器类名及其有效bin选择。省略保留全部bin；不要传null。',
     'title': '可选图标题，最多200字符；省略时使用默认标题，不改变计分数据、单位或归一化。不要传null。',
     'style': 'line为折线，bar为柱图。仅控制单次计分图的呈现，省略时line。',
+    'power_watts': '燃耗功率（W），正数；只写配置，不代表甲方批准的热功率。',
+    'timesteps': '燃耗步长列表，每项为正数（与timestep_unit一致）；步数是列表长度。',
+    'timestep_unit': '燃耗时间单位，s/min/h/d之一；省略为d（天）。',
+    'chain_file': '可选燃耗链文件路径（XML）；省略用部署配置depletion_chain或核数据库内的CASL热谱链；提供时须存在。',
     'energy_bin': '带能量过滤的网格tally中第几个能量箱（0起），从tally的EnergyFilter分界推出；省略则要求该tally无能量过滤。',
     'level': '三维网格的第几层（0起，沿第三个坐标方向）；省略仅允许二维网格，不静默投影。',
     'colorbar_label': '可选色标标题，最多200字符；省略用score名并注明未做功率归一化。',
@@ -75,7 +79,7 @@ COMMON = {
     'stop_on_error': '遇到一组计算失败后是否停止后续组合。省略为false，记录失败后继续；失败点仍保留，不能当作成功或填0。',
     'kind': 'job列出单次计算产物，scan列出批次汇总产物。identifier须提供相应类型的编号。',
     'identifier': 'kind=job时传job_id，kind=scan时传scan_id；均来自实际提交返回值，不能传任意服务器文件路径。',
-    'template': '输入模板：synthetic-mgxs是合成单群工程练习；pwr-pin-cell需要正式连续能核数据；pincell-multigroup使用公开C5G7数据；assembly-17x17为公开BEAVRS反射17×17组件、core-lattice为公开OECD/NEA性能基准全堆；control-rod与hex-lattice为公开文献常用参数自测模型（非甲方组件参数）。不是任意模型自动生成。',
+    'template': '输入模板：synthetic-mgxs是合成单群工程练习；pwr-pin-cell需要正式连续能核数据；pincell-multigroup使用公开C5G7数据；assembly-17x17为公开BEAVRS反射17×17组件、core-lattice为公开OECD/NEA性能基准全堆；control-rod与hex-lattice为公开文献常用参数自测模型（非甲方组件参数）；pincell-depletion为公开压水堆栅元参数自测模型（燃料体积显式，配合openmc_configure_depletion做燃耗）。不是任意模型自动生成。',
 }
 
 EXAMPLES = {
@@ -122,6 +126,8 @@ RESULTS = {
     'openmc_export_scan_report': '报告保留每组参数、状态与结果；成功导出不表示每组计算都成功。同一scan_id重复导出同格式会覆盖报告，留多版需另行归档。',
     'openmc_job_compare': 'sides给出两作业状态、运行设置、Combined k与输入指纹；comparison.inputs分identical/differing/only_in_a/only_in_b四类；keff_combined.difference=b-a，combined_std_dev按独立假设合成，仅工程参考。compare_tallies=true时comparison.tallies给出：summary总数（bins_compared/within_2sigma/outside_2sigma/non_finite_bins）、by_id逐tally结构对齐与问题bin（至多50条，含index/difference/combined_std_dev）、only_in_a/only_in_b、双方warnings合并；两倍σ判据为工程参考，非统计显著性判定。',
     'openmc_build_dagmc_model': 'case_dir为已转换目录；files=["model.xml"]，dagmc_filename恒为相对名dagmc.h5m（可随算例搬移）；materials/settings/source_point回显，engine_parse为引擎回读结果（ok/materials）；warnings列出未给组成的材料；provenance.data_kind为cad_conversion_unverified，professional_acceptance=false。',
+    'openmc_configure_depletion': 'case_dir/power_watts/timesteps回显；chain_sha256为链文件摘要；steps为步数；已写配置不代表已算完。',
+    'openmc_read_depletion': 'steps为逐时间步（含t=0起点）：time_days、keff均值/标准差、可选burnup_mwd_kg估算；heavy_metal_total_g为初始重金属质量；nuclide_mass_g为关键核素质量（g）。',
     'openmc_define_tally': 'tally_id为追加的编号（省略时为现有最大+1）；name/scores/filters回显，tally_count为写入后tally总数；已写盘但不代表可算，需重新提交计算。',
     'openmc_storage_report': '只读存储报告：records/totals（job/scan/example逐类计数与字节）、all_bytes、states分布、largest最大记录榜（含state与finished_at）；请求older_than_days时返回reclaimable预览（records/bytes/skipped/repair_references，与cleanup.sh同口径）。清点失败时ok=false并如实给出原因；本工具不删除任何内容。',
     'openmc_preview_input': 'files逐项含present/bytes/sha256及截断content（超2MiB不返回内容，超2万字符截断并标记）；summary为运行设置、材料核素、几何与tally计数摘要；problems列缺失文件与被拒符号链接。预览不代表输入正确。',
@@ -149,6 +155,11 @@ OUTPUT_FIELDS = {
     'engine_parse': '引擎回读结果（ok与可解析材料数）；回读成功不代表材料指派或网格质量正确。',
     'tally_count': '写入后tallies.xml内的tally总数（含原有条目）。',
     'tally_id': '本次追加或选定的tally编号；需重新提交计算后结果才含该tally。',
+    'power_watts': '燃耗功率（W）回显；只是配置值，不代表甲方批准的热功率。',
+    'chain_sha256': '燃耗链文件sha256；用于核对用的是哪一个链（CASL热谱链或部署指定文件）。',
+    'timesteps': '燃耗步长列表回显（与timestep_unit一致）。',
+    'steps': '逐时间步结果列表（含t=0起点）；每项含time_days与keff均值/标准差，配置完整时含burnup_mwd_kg估算。',
+    'heavy_metal_total_g': '初始重金属质量（g），按链文件重金属核素在该材料中的质量求和；用于燃耗换算。',
 }
 
 OUTPUT_KEYS = {
@@ -180,6 +191,8 @@ OUTPUT_KEYS = {
     'openmc_storage_report': ('workspace',),
     'openmc_build_dagmc_model': ('case_dir', 'dagmc_filename', 'engine_parse'),
     'openmc_define_tally': ('case_dir', 'tally_id', 'tally_count'),
+    'openmc_configure_depletion': ('case_dir', 'power_watts', 'timesteps', 'chain_sha256'),
+    'openmc_read_depletion': ('job_id', 'steps', 'heavy_metal_total_g'),
     'openmc_preview_input': ('case_dir', 'workspace', 'provenance'),
     'openmc_inspect_step': ('solids', 'workspace'),
     'openmc_convert_cad': ('case_dir', 'workspace', 'provenance'),
