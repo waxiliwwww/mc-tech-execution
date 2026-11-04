@@ -2337,6 +2337,99 @@
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_cad.py">mcp/openmc_cad.py</a>。</p></details>
+<details class="tool" id="openmc_view_geometry"><summary>openmc_view_geometry
+<span class="tool-purpose">按算例输入出2D几何切片图（xy/xz/yz、原点/宽度cm、像素可调，按材料或栅元着色），写入算例views目录并返回图片路径；只画输入几何，不代表几何已通过重叠检查，也不含计算结果。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>basis</td><td>string</td><td>否</td><td>&quot;xy&quot;</td><td>切片方位：xy（横切）、xz或yz（纵切）；与OpenMC引擎一致。</td><td>—</td></tr><tr><td>origin</td><td>array</td><td>否</td><td>省略时见说明</td><td>切片原点3个数，单位cm；省略用引擎默认。</td><td>—</td></tr><tr><td>width</td><td>array</td><td>否</td><td>省略时见说明</td><td>切片显示宽度一个或两个正数，单位cm；省略用几何包围盒。</td><td>—</td></tr><tr><td>pixels</td><td>integer</td><td>否</td><td>400</td><td>图像像素边长，50..1200；越大越慢。</td><td>—</td></tr><tr><td>color_by</td><td>string</td><td>否</td><td>&quot;material&quot;</td><td>按材料(material)或栅元(cell)着色。</td><td>—</td></tr><tr><td>title</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选图标题，最多200字符；省略时使用默认标题，不改变计分数据、单位或归一化。不要传null。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>path为图片路径；width/origin为实际采用的切片范围（cm）；cells/materials为模型计数；几何图不代表已通过几何检查。</p>
+<div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>path</td><td>相对服务端MC_WORKSPACE的产物路径；不是客户端本地路径。</td></tr><tr><td>basis</td><td>实际使用的切片方位（xy/xz/yz）。</td></tr><tr><td>width</td><td>实际采用的切片显示宽度（cm）；省略时为引擎按包围盒推算。</td></tr></tbody></table></div>
+<p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;case_dir&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。&quot;,
+      &quot;examples&quot;: [
+        &quot;cases/my-case&quot;
+      ]
+    },
+    &quot;basis&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;xy&quot;,
+        &quot;xz&quot;,
+        &quot;yz&quot;
+      ],
+      &quot;description&quot;: &quot;切片方位：xy（横切）、xz或yz（纵切）；与OpenMC引擎一致。&quot;,
+      &quot;default&quot;: &quot;xy&quot;
+    },
+    &quot;origin&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;minItems&quot;: 3,
+      &quot;maxItems&quot;: 3,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;number&quot;
+      },
+      &quot;description&quot;: &quot;切片原点3个数，单位cm；省略用引擎默认。&quot;
+    },
+    &quot;width&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;minItems&quot;: 1,
+      &quot;maxItems&quot;: 2,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;number&quot;,
+        &quot;exclusiveMinimum&quot;: 0
+      },
+      &quot;description&quot;: &quot;切片显示宽度一个或两个正数，单位cm；省略用几何包围盒。&quot;
+    },
+    &quot;pixels&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 50,
+      &quot;maximum&quot;: 1200,
+      &quot;description&quot;: &quot;图像像素边长，50..1200；越大越慢。&quot;,
+      &quot;default&quot;: 400
+    },
+    &quot;color_by&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;material&quot;,
+        &quot;cell&quot;
+      ],
+      &quot;description&quot;: &quot;按材料(material)或栅元(cell)着色。&quot;,
+      &quot;default&quot;: &quot;material&quot;
+    },
+    &quot;title&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;maxLength&quot;: 200,
+      &quot;description&quot;: &quot;可选图标题，最多200字符；省略时使用默认标题，不改变计分数据、单位或归一化。不要传null。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;case_dir&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;path为图片路径；width/origin为实际采用的切片范围（cm）；cells/materials为模型计数；几何图不代表已通过几何检查。&quot;,
+  &quot;properties&quot;: {
+    &quot;path&quot;: {
+      &quot;description&quot;: &quot;相对服务端MC_WORKSPACE的产物路径；不是客户端本地路径。&quot;
+    },
+    &quot;basis&quot;: {
+      &quot;description&quot;: &quot;实际使用的切片方位（xy/xz/yz）。&quot;
+    },
+    &quot;width&quot;: {
+      &quot;description&quot;: &quot;实际采用的切片显示宽度（cm）；省略时为引擎按包围盒推算。&quot;
+    }
+  }
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/openmc_tools.py">mcp/openmc_tools.py</a>。</p></details>
 <details class="tool" id="openmc_configure_depletion"><summary>openmc_configure_depletion
 <span class="tool-purpose">为算例写入燃耗配置：功率（W）、时间步长列表与单位、链文件（省略用部署配置）。要求燃耗材料显式体积；只写mc-case.json，不改几何/材料/设置；提交时用openmc_submit_job(mode=deplete)。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>power_watts</td><td>number</td><td>是</td><td>不可省略</td><td>燃耗功率（W），正数；只写配置，不代表甲方批准的热功率。</td><td>—</td></tr><tr><td>timesteps</td><td>array</td><td>是</td><td>不可省略</td><td>燃耗步长列表，每项为正数（与timestep_unit一致）；步数是列表长度。</td><td>—</td></tr><tr><td>timestep_unit</td><td>string</td><td>否</td><td>&quot;d&quot;</td><td>燃耗时间单位，s/min/h/d之一；省略为d（天）。</td><td>—</td></tr><tr><td>chain_file</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选燃耗链文件路径（XML）；省略用部署配置depletion_chain或核数据库内的CASL热谱链；提供时须存在。</td><td>—</td></tr></tbody></table></div>

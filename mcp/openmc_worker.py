@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import contextlib
 import json
+import os
 from pathlib import Path
+import shutil
 import sys
+import tempfile
 
 
 def numpy_scalar(value):
@@ -340,6 +343,55 @@ def execute(action: str, params: dict) -> dict:
                 'engine_parse': {'ok': True, 'materials': len(reparsed.materials)},
                 'warnings': warnings,
                 'note': '模型XML由公开API组装并回读验证；DAGMC材料指派、网格质量与源位置是否在模型内需业务确认。'}
+    if action == 'view-geometry':
+        basis = params.get('basis') or 'xy'
+        if basis not in ('xy', 'xz', 'yz'):
+            raise ValueError('basis须为xy/xz/yz')
+        pixels = params.get('pixels') or 400
+        if type(pixels) is not int or not 50 <= pixels <= 1200:
+            raise ValueError('pixels须为50..1200的整数')
+        color_by = params.get('color_by') or 'material'
+        if color_by not in ('material', 'cell'):
+            raise ValueError('color_by须为material或cell')
+        filename = params.get('filename') or 'slice.png'
+        model = (openmc.Model.from_model_xml('model.xml') if Path('model.xml').exists()
+                 else openmc.Model.from_xml())
+        here = Path.cwd()
+        before = {path.name for path in here.iterdir()}
+        plot = openmc.SlicePlot()
+        plot.basis = basis
+        plot.pixels = (pixels, pixels)
+        plot.color_by = color_by
+        if params.get('width') is not None:
+            plot.width = tuple(float(v) for v in params['width'])
+        if params.get('origin') is not None:
+            plot.origin = tuple(float(v) for v in params['origin'])
+        plot.from_geometry(model.geometry)
+        image = plot.to_ipython_image(openmc_exec=params['_openmc_exec'])
+        target = here / filename
+        target.parent.mkdir(parents=True, exist_ok=True)
+        data = getattr(image, 'data', None)
+        if isinstance(data, (bytes, bytearray)) and data[:8] == b'\x89PNG\r\n\x1a\n':
+            target.write_bytes(bytes(data))
+        else:
+            produced = sorted(here.glob('plot*.png'), key=lambda path: path.stat().st_mtime)
+            if not produced:
+                raise ValueError('渲染完成但未得到PNG数据')
+            shutil.copyfile(produced[-1], target)
+        for path in here.glob('plot*.png'):
+            if path.name not in before:
+                path.unlink()
+        plots_xml = here / 'plots.xml'
+        if plots_xml.is_file() and 'plots.xml' not in before:
+            plots_xml.unlink()
+        width = plot.width
+        origin = plot.origin
+        return {'image': filename, 'basis': basis, 'pixels': pixels, 'color_by': color_by,
+                'width': list(width) if isinstance(width, (tuple, list)) else width,
+                'origin': list(origin) if isinstance(origin, (tuple, list)) else origin,
+                'materials': len(model.materials),
+                'cells': len(model.geometry.get_all_cells()),
+                'note': '切片图由OpenMC引擎绘制；宽度/原点单位cm，显示范围以返回的width/origin为准。'}
     if action == 'depletion-results':
         import xml.etree.ElementTree as ET
         from openmc.deplete import Results as DepletionResults

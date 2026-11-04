@@ -134,7 +134,8 @@ def command(cfg: dict, directory: Path, *, action: str | None = None,
 
 def api(action: str, directory: Path, payload: dict, cfg: dict | None = None) -> dict:
     cfg = cfg or config()
-    payload = {**payload, '_expected_version': cfg['expected_version'], '_font_path': cfg.get('font_path')}
+    payload = {**payload, '_expected_version': cfg['expected_version'], '_font_path': cfg.get('font_path'),
+               '_openmc_exec': cfg['openmc_command'][0]}
     try:
         result = subprocess.run(command(cfg, directory, action=action), cwd=directory,
                                 input=json.dumps(payload, allow_nan=False), text=True,

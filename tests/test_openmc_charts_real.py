@@ -102,5 +102,19 @@ class ChartsReal(unittest.TestCase):
         self.assertIn('error', str(error))
 
 
+    def test_view_geometry_renders_slice_png(self):
+        self.call('openmc_create_model', {'case_dir': 'look', 'template': 'synthetic-mgxs',
+                                          'particles': 200, 'batches': 4, 'inactive': 1})
+        value = self.call('openmc_view_geometry', {'case_dir': 'look', 'basis': 'xy', 'pixels': 200})
+        image = Path(value['server_path'])
+        self.assertTrue(image.is_file())
+        self.assertGreater(image.stat().st_size, 400)
+        self.assertEqual(image.read_bytes()[:8], b'\x89PNG\r\n\x1a\n')
+        self.assertEqual(value['basis'], 'xy')
+        self.assertEqual(value['pixels'], 200)
+        self.assertGreater(len(value['width']), 0)
+        self.assertFalse(value['professional_acceptance'])
+
+
 if __name__ == '__main__':
     unittest.main()

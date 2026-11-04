@@ -186,6 +186,32 @@ class OpenMCTools(unittest.TestCase):
         self.assertIsNotNone(report['metadata']['runtime']['duration_seconds'])
         self.assertIn('报告头元数据', text)
 
+    def test_view_geometry_validates_arguments_and_writes_png(self):
+        case = self.root / 'workspace/look'
+        case.mkdir(parents=True)
+        captured = {}
+
+        def fake_api(action, directory, params, cfg=None):
+            captured.update(action=action, payload=params)
+            (Path(directory) / params['filename']).parent.mkdir(parents=True, exist_ok=True)
+            (Path(directory) / params['filename']).write_bytes(b'PNG')
+            return {'image': params['filename'], 'basis': params['basis'], 'pixels': params['pixels']}
+
+        with patch.object(tools, 'api', fake_api):
+            value = tools.view_geometry('look', basis='xz', pixels=256, color_by='cell',
+                                        width=[4.0, 8.0], origin=[1, 2, 3])
+        self.assertEqual(captured['action'], 'view-geometry')
+        self.assertEqual(captured['payload']['basis'], 'xz')
+        self.assertEqual(captured['payload']['width'], [4.0, 8.0])
+        self.assertEqual(captured['payload']['origin'], [1.0, 2.0, 3.0])
+        self.assertTrue(value['path']['path'].endswith('.png'), value)
+        for bad in ({'basis': 'ab'}, {'pixels': 10}, {'pixels': 5000}, {'color_by': 'zone'},
+                    {'origin': [1, 2]}, {'width': [0]}, {'width': [1, 2, 3]}):
+            arguments = {'basis': 'xy', 'pixels': 300, 'color_by': 'material', **bad}
+            with self.assertRaises(ValueError):
+                with patch.object(tools, 'api', fake_api):
+                    tools.view_geometry('look', **arguments)
+
     def test_configure_depletion_validates_and_writes_marker(self):
         case = self.root / 'workspace/dep'
         case.mkdir(parents=True)

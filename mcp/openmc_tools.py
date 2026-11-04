@@ -947,6 +947,50 @@ def define_tally(case_dir: str, scores: list, filters: list | None = None,
 DEPLETION_UNITS = ('s', 'min', 'h', 'd')
 
 
+VIEW_BASES = ('xy', 'xz', 'yz')
+
+
+def view_geometry(case_dir: str, basis: str = 'xy', origin: list | None = None,
+                  width: list | None = None, pixels: int = 400, color_by: str = 'material',
+                  title: str | None = None) -> dict:
+    """出2D几何切片图（横切xy/纵切xz/yz），写入算例views目录。"""
+    directory = path_in_workspace(case_dir)
+    if not directory.is_dir():
+        raise Error('case_dir须为已存在的算例目录')
+    if basis not in VIEW_BASES:
+        raise Error('basis须为xy/xz/yz之一')
+    if type(pixels) is not int or not 50 <= pixels <= 1200:
+        raise Error('pixels须为50..1200的整数')
+    if color_by not in ('material', 'cell'):
+        raise Error('color_by须为material或cell')
+    if origin is not None:
+        if (not isinstance(origin, (list, tuple)) or len(origin) != 3
+                or any(type(v) not in (int, float) or isinstance(v, bool) for v in origin)):
+            raise Error('origin须为3个数（单位cm）')
+    if width is not None:
+        numbers = width if isinstance(width, (list, tuple)) else [width]
+        if (not 1 <= len(numbers) <= 2
+                or any(type(v) not in (int, float) or isinstance(v, bool) or v <= 0 for v in numbers)):
+            raise Error('width须为正数或两个正数（单位cm）')
+    if title is not None and (not isinstance(title, str) or len(title) > 200):
+        raise Error('title须为不超过200字符的字符串')
+    filename = 'geometry-' + basis + '-' + __import__('uuid').uuid4().hex[:12] + '.png'
+    target = directory / 'views'
+    target.mkdir(exist_ok=True)
+    params = {'basis': basis, 'pixels': pixels, 'color_by': color_by,
+              'filename': str(Path('views') / filename)}
+    if origin is not None:
+        params['origin'] = [float(v) for v in origin]
+    if width is not None:
+        params['width'] = [float(v) for v in (width if isinstance(width, (list, tuple)) else [width])]
+    value = api('view-geometry', directory, params)
+    return {'case_dir': case_dir, **value, 'path': file_location(target / filename),
+            'server_path': str(target / filename), 'workspace': str(workspace()),
+            'location': 'server', 'provenance': provenance(directory, config()),
+            'professional_acceptance': False,
+            'note': '几何切片图仅供查看，不代表输入已通过结构/语义/几何检查，也不含任何计算结果。'}
+
+
 def configure_depletion(case_dir: str, power_watts: float, timesteps: list,
                         timestep_unit: str = 'd', chain_file: str | None = None) -> dict:
     """为算例写入燃耗配置（功率、时间步、单位、链文件）；提交时用mode=deplete执行。"""

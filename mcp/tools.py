@@ -15,7 +15,7 @@ from openmc_artifacts import list_artifacts
 from openmc_knowledge import list_sources, read as read_knowledge
 from openmc_examples import prepare_example
 from openmc_cad import build_dagmc_model, convert_cad, inspect_step as inspect_cad_step
-from openmc_tools import configure_depletion, define_tally, read_depletion
+from openmc_tools import configure_depletion, define_tally, read_depletion, view_geometry
 from openmc_diagnostics import diagnose_job, prepare_repair, recheck_repair
 from tool_metadata import document_tools
 from official_catalog import list_official_examples, describe as get_official_example
@@ -209,6 +209,16 @@ TOOLS += [
                             "seed": {"type": "integer", "minimum": 1}},
                            ["case_dir", "materials"]),
      "outputSchema": OUTPUT, "function": build_dagmc_model, "annotations": WRITE},
+    {"name": "openmc_view_geometry", "description": "按算例输入出2D几何切片图（xy/xz/yz、原点/宽度cm、像素可调，按材料或栅元着色），写入算例views目录并返回图片路径；只画输入几何，不代表几何已通过重叠检查，也不含计算结果。",
+     "inputSchema": schema({"case_dir": TEXT,
+                            "basis": {"type": "string", "enum": ["xy", "xz", "yz"]},
+                            "origin": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "number"}},
+                            "width": {"type": "array", "minItems": 1, "maxItems": 2, "items": {"type": "number", "exclusiveMinimum": 0}},
+                            "pixels": {"type": "integer", "minimum": 50, "maximum": 1200},
+                            "color_by": {"type": "string", "enum": ["material", "cell"]},
+                            "title": {"type": "string", "maxLength": 200}},
+                           ["case_dir"]),
+     "outputSchema": OUTPUT, "function": view_geometry, "annotations": WRITE},
     {"name": "openmc_configure_depletion", "description": "为算例写入燃耗配置：功率（W）、时间步长列表与单位、链文件（省略用部署配置）。要求燃耗材料显式体积；只写mc-case.json，不改几何/材料/设置；提交时用openmc_submit_job(mode=deplete)。",
      "inputSchema": schema({"case_dir": TEXT,
                             "power_watts": {"type": "number", "exclusiveMinimum": 0},
