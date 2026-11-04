@@ -86,6 +86,24 @@ try {
   assert.equal(await page.evaluate(()=>document.documentElement.localName),'svg');
   assert.match(await page.locator('svg > title').textContent(),/分层架构/);
   await page.goBack();
+  // Follow the overview into its input detail, then back to the same execution module.
+  // This catches the disconnected-diagram navigation the scientist reader encountered.
+  await page.locator('#module-m1 a[href="#inputs"]').click();
+  assert.equal(new URL(page.url()).hash,'#inputs');
+  await page.waitForFunction(()=>Math.abs(document.getElementById('inputs').getBoundingClientRect().top-28)<4);
+  await page.locator('#inputs figcaption a[href="#module-m2"]').click();
+  assert.equal(new URL(page.url()).hash,'#module-m2');
+  assert.ok(await page.locator('#module-m2').isVisible());
+  await page.locator('.jump a[href="#results"]').click();
+  assert.ok(await page.locator('#results-title').evaluate(e=>{
+    const r=e.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;
+  }),'The result-reading jump must bring its heading into view.');
+  await page.locator('#results').scrollIntoViewIfNeeded();await shot('05f3-scientific-result-reading');
+  await page.locator('.jump a[href="#files"]').click();
+  assert.ok(await page.locator('#files-title').evaluate(e=>{
+    const r=e.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;
+  }),'The file-format jump must bring its heading into view.');
+  await page.locator('#files').scrollIntoViewIfNeeded();await shot('05f4-file-formats');
   await page.locator('a[href="reference.html"]').first().click();
   assert.equal(await page.locator('#tool-search').isVisible(),true);
   await page.goto(url('toolkit.html'));await shot('05f-toolkit-overview');
@@ -135,6 +153,6 @@ try {
   await page.goto(url('index.html'));await shot('09-mobile');
   assert.deepEqual(problems,[]);assert.deepEqual(remoteRequests,[]);
   const standalone = await checkStandaloneToolkit(browser,root,path.join(out,'standalone-toolkit'));
-  await fs.writeFile(path.join(out,'receipt.json'),JSON.stringify({passed:true,pages:12,problems,remoteRequests,screenshots,standaloneToolkit:standalone.passed,entry:url('index.html'),checks:['offline file navigation','demo explanation disclosure','exact command copy/selection fallback','source/model layers','composable model instructions','two-week interface plan','user/developer overview navigation','three embedded PNG architecture diagrams and original SVG navigation','single-file copied toolkit without any asset access','CAD setup and tool-flow navigation','own program disclosure','search/no-match','deep-link reveals schema','mobile no page overflow']},null,2));
+  await fs.writeFile(path.join(out,'receipt.json'),JSON.stringify({passed:true,pages:12,problems,remoteRequests,screenshots,standaloneToolkit:standalone.passed,entry:url('index.html'),checks:['offline file navigation','demo explanation disclosure','exact command copy/selection fallback','source/model layers','composable model instructions','two-week interface plan','user/developer overview navigation','three embedded PNG architecture diagrams and original SVG navigation','overview/detail/module navigation','scientific-result and file-format reading sections','single-file copied toolkit without any asset access','CAD setup and tool-flow navigation','own program disclosure','search/no-match','deep-link reveals schema','mobile no page overflow']},null,2));
   process.stdout.write('HTML browser checks passed; screenshots: '+out+'\n');
 } finally {await browser.close();}

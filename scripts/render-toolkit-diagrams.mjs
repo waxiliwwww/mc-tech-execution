@@ -13,9 +13,9 @@ const documentPath = path.join(root, 'docs/toolkit.html');
 const original = await fs.readFile(documentPath, 'utf8');
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 const definitions = [
-  ['toolkit-architecture.svg', '图1 · 分层架构'],
-  ['toolkit-inputs.svg', '图2 · 三种模型输入流程'],
-  ['toolkit-sequence.svg', '图3 · 计算与结果调用时序'],
+  ['toolkit-architecture.svg', '图1 · 工作过程与模块职责'],
+  ['toolkit-inputs.svg', '图2 · 图1的M1模型准备展开'],
+  ['toolkit-sequence.svg', '图3 · M1—M3计算与结果调用时序'],
 ];
 const {chromium} = await import(process.env.MC_PLAYWRIGHT_MODULE || 'playwright');
 const browser = await chromium.launch({headless:true,
