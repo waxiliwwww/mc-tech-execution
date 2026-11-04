@@ -143,6 +143,20 @@ def render_docx(params):
     document.add_paragraph('数据来源：' + data['provenance']['data_kind'])
     document.add_paragraph('执行来源：' + data['provenance'].get('execution_kind', 'openmc_runtime'))
     document.add_paragraph('专业验收：未进行。合成数据和接口执行结果不能替代合同专业指标验证。')
+    metadata = data.get('metadata') or {}
+    if metadata:
+        parameters = '；'.join(f"{key}={value if value is not None else '未记录'}"
+                               for key, value in (metadata.get('parameters') or {}).items()) or '未记录'
+        runtime_info = metadata.get('runtime') or {}
+        duration = (f"{runtime_info['duration_seconds']}秒"
+                    if runtime_info.get('duration_seconds') is not None else '未记录')
+        document.add_paragraph('模板版本：' + str(metadata.get('template') or '未记录') + '（'
+                               + str(metadata.get('generator') or '生成方式未记录') + '）')
+        document.add_paragraph('参数：' + parameters)
+        document.add_paragraph('OpenMC版本：' + str(metadata.get('openmc_version') or '未记录'))
+        document.add_paragraph('运行时间：' + str(runtime_info.get('started_at') or '未记录') + ' → '
+                               + str(runtime_info.get('finished_at') or '未记录') + '（' + duration + '）')
+        document.add_paragraph('随机种子：' + str(metadata.get('seed') or '未记录'))
     for warning in params.get('warnings', data.get('warnings', [])):
         document.add_paragraph('提示：' + warning)
     series = data.get('selected_series')

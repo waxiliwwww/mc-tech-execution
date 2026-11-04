@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+from datetime import datetime, timezone
 import hashlib
 import io
 import json
@@ -863,6 +864,51 @@ def compare_jobs(job_a: str, job_b: str, compare_tallies: bool = False,
                        else '；tally逐bin对比未请求，compare_tallies=true可开启。')}
 
 
+def _report_metadata(directory: Path) -> dict:
+    """报告头元数据（表4-1 4.3 五项）：模板版本、参数、OpenMC版本、运行时间、随机种子。
+    全部取自作业目录已落盘文件（job.json/work/settings.xml/mc-case.json）；缺失如实写None，不推测。"""
+    record = jobs.read(directory)
+    provenance_info = record.get('provenance') or {}
+    runtime = record.get('runtime') or {}
+    marker = {}
+    case_path = directory / 'mc-case.json'
+    if case_path.is_file():
+        try:
+            marker = json.loads(case_path.read_text(encoding='utf-8'))
+        except (OSError, ValueError):
+            marker = {}
+    parameters = {}
+    settings_path = directory / 'work/settings.xml'
+    if settings_path.is_file():
+        try:
+            root = ET.parse(settings_path).getroot()
+        except ET.ParseError:
+            root = None
+        if root is not None:
+            for tag in ('run_mode', 'energy_mode', 'particles', 'batches', 'inactive', 'seed'):
+                node = root.find(tag)
+                parameters[tag] = node.text if node is not None else None
+
+    def iso(moment):
+        if not moment:
+            return None
+        return datetime.fromtimestamp(moment, tz=timezone.utc).astimezone().isoformat(timespec='seconds')
+
+    started, finished = record.get('started_at'), record.get('finished_at')
+    return {'template': provenance_info.get('template'),
+            'data_kind': provenance_info.get('data_kind'),
+            'generator': marker.get('generator') or marker.get('template'),
+            'parameters': parameters,
+            'openmc_version': marker.get('openmc_version') or runtime.get('expected_version'),
+            'runtime': {'state': record.get('state'), 'started_at': iso(started),
+                        'finished_at': iso(finished),
+                        'duration_seconds': round(finished - started, 3) if started and finished else None},
+            'seed': parameters.get('seed'),
+            'nuclear_data_library': runtime.get('nuclear_data_library'),
+            'source_files': {'job': 'job.json', 'settings': 'work/settings.xml',
+                             'case': 'mc-case.json' if case_path.is_file() else None}}
+
+
 def export_report(job_id: str, format: str = 'markdown', tally_id: int | None = None,
                   score: str | None = None, nuclide: str | None = None,
                   filter_selection: list | None = None) -> dict:
@@ -878,10 +924,21 @@ def export_report(job_id: str, format: str = 'markdown', tally_id: int | None = 
         return export_job(job_id, format)
     data = read_results(job_id)
     directory = jobs.job_directory(job_id)
+    metadata = _report_metadata(directory)
     note = data['provenance'].get('note', '')
     if format == 'markdown':
+        parameters = '；'.join(f"{key}={value if value is not None else '未记录'}"
+                              for key, value in metadata['parameters'].items()) or '未记录'
+        runtime_info = metadata['runtime']
+        duration = f"{runtime_info['duration_seconds']}秒" if runtime_info['duration_seconds'] is not None else '未记录'
         output = '# OpenMC接口联调结果\n\n'
         output += f"作业：{job_id}\n\n数据来源：{data['provenance']['data_kind']}\n\n{note}\n\n"
+        output += '## 报告头元数据（表4-1 4.3 五项）\n\n| 项 | 值 |\n|---|---|\n'
+        output += f"| 模板版本 | {metadata['template'] or '未记录'}（{metadata['generator'] or '生成方式未记录'}） |\n"
+        output += f"| 参数 | {parameters} |\n"
+        output += f"| OpenMC版本 | {metadata['openmc_version'] or '未记录'} |\n"
+        output += f"| 运行时间 | {runtime_info['started_at'] or '未记录'} → {runtime_info['finished_at'] or '未记录'}（{duration}） |\n"
+        output += f"| 随机种子 | {metadata['seed'] or '未记录'} |\n\n"
         output += '**专业验收：未进行。** 数值读取成功不代表满足合同物理指标。\n\n'
         output += '```json\n' + json.dumps(data, ensure_ascii=False, indent=2, allow_nan=False) + '\n```\n'
         name = 'report.md'
@@ -900,5 +957,5 @@ def export_report(job_id: str, format: str = 'markdown', tally_id: int | None = 
     report = directory / name
     report.write_text(output, encoding='utf-8')
     return {'job_id': job_id, 'format': format, 'selection_mode': 'job_summary', **file_location(report),
-            'provenance': data['provenance'], 'professional_acceptance': False,
+            'metadata': metadata, 'provenance': data['provenance'], 'professional_acceptance': False,
             'note': '完整shape、filter及原始计分归一化说明见同作业results.json；截断状态随结果保留。'}

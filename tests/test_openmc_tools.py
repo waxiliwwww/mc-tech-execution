@@ -167,6 +167,25 @@ class OpenMCTools(unittest.TestCase):
         self.assertIn('mock_process_fixture', text)
         self.assertIn('results.json', text)
 
+    def test_markdown_report_head_carries_metadata_five_items(self):
+        job_id = self.submit(); self.wait(job_id)
+        directory = jobs.job_directory(job_id)
+        (directory / 'work/settings.xml').write_text(
+            '<settings><run_mode>eigenvalue</run_mode><particles>400</particles>'
+            '<batches>20</batches><inactive>5</inactive><seed>7</seed></settings>')
+        data = {'provenance': {'data_kind': 'synthetic_mgxs', 'execution_kind': 'mock_process_fixture',
+                               'note': 'test'}, 'keff': None, 'tallies': []}
+        with patch.object(tools, 'read_results', return_value=data):
+            report = tools.export_report(job_id, 'markdown')
+        text = (business.WORKSPACE / report['path']).read_text()
+        for label in ('模板版本', '参数', 'OpenMC版本', '运行时间', '随机种子'):
+            self.assertIn(label, text)
+        self.assertEqual(report['metadata']['parameters']['particles'], '400')
+        self.assertEqual(report['metadata']['seed'], '7')
+        self.assertIn('particles=400', text)
+        self.assertIsNotNone(report['metadata']['runtime']['duration_seconds'])
+        self.assertIn('报告头元数据', text)
+
     def test_cancel_stops_solver_child_and_is_idempotent(self):
         self.mode('long'); job_id = self.submit()
         child_file = jobs.job_directory(job_id) / 'work/child.pid'

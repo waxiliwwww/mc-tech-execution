@@ -69,7 +69,9 @@ def export_job(job_id: str, format: str):
     from openmc_tools import read_results
     from openmc_plots import plot_results
     data = read_results(job_id)
+    from openmc_tools import _report_metadata
     target = jobs.job_directory(job_id); runtime = jobs.read(target)['runtime']
+    data['metadata'] = _report_metadata(target)
     chart = None
     if data['tallies']:
         try:chart = plot_results(job_id)
@@ -82,7 +84,7 @@ def export_job(job_id: str, format: str):
 
 def export_selected_job(job_id: str, format: str, selection: dict):
     """One native selection supplies chart, complete data and every report format."""
-    from openmc_tools import read_results
+    from openmc_tools import read_results, _report_metadata
     from openmc_plots import plot_results
     target = jobs.job_directory(job_id)
     # Validate/select before replacing any report. Never silently fall back to tally 1.
@@ -104,7 +106,17 @@ def export_selected_job(job_id: str, format: str, selection: dict):
             content = image.with_suffix('.csv').read_bytes()
             name = 'report.csv'
         else:
+            metadata = _report_metadata(target)
+            parameters = '；'.join(f"{key}={value if value is not None else '未记录'}"
+                                   for key, value in metadata['parameters'].items()) or '未记录'
+            runtime_info = metadata['runtime']
+            duration = f"{runtime_info['duration_seconds']}秒" if runtime_info['duration_seconds'] is not None else '未记录'
             rows = ['# OpenMC所选结果报告', '', '作业：' + job_id,
+                    '模板版本：' + str(metadata['template'] or '未记录') + '（' + str(metadata['generator'] or '生成方式未记录') + '）',
+                    '参数：' + parameters,
+                    'OpenMC版本：' + str(metadata['openmc_version'] or '未记录'),
+                    '运行时间：' + str(runtime_info['started_at'] or '未记录') + ' → ' + str(runtime_info['finished_at'] or '未记录') + '（' + duration + '）',
+                    '随机种子：' + str(metadata['seed'] or '未记录'),
                     '结果选择：' + selection_label(series),
                     '过滤条件：' + json.dumps(series['filter_selection'], ensure_ascii=False), '',
                     '数据来源：' + data['provenance']['data_kind'],

@@ -121,6 +121,12 @@ class DownstreamRealFlows(unittest.TestCase):
         report=call('openmc_export_report',{'job_id':job['job_id'],'format':'markdown'})
         artifacts=call('openmc_list_artifacts',{'kind':'job','identifier':job['job_id']})
         self.assertTrue(Path(chart['server_path']).is_file());self.assertTrue(Path(report['server_path']).is_file())
+        head=Path(report['server_path']).read_text()
+        for label in ('模板版本','参数','OpenMC版本','运行时间','随机种子'):
+            self.assertIn(label,head)
+        self.assertTrue(report['metadata']['openmc_version'],report['metadata'])
+        self.assertIsNotNone(report['metadata']['runtime']['duration_seconds'])
+        self.assertEqual(report['metadata']['parameters']['particles'],'400')
         self.assertTrue(artifacts['artifacts']);self.assertEqual(original.read_bytes(),before)
         folder=ROOT/'artifacts/runs/20261027-downstream-flow';folder.mkdir(parents=True,exist_ok=True)
         (folder/'existing-input-real.json').write_text(json.dumps({'created':created,'prepared':prepared,'validation':validation,'job':status,'results':result,'chart':chart,'report':report,'original_input_unchanged':True},ensure_ascii=False,indent=2))
