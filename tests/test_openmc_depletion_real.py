@@ -58,6 +58,27 @@ class DepletionReal(unittest.TestCase):
         self.assertGreater(result['steps'][-1]['burnup_mwd_kg'], 0.0)
         self.assertFalse(result['professional_acceptance'])
 
+    def test_deplete_job_can_be_cancelled(self):
+        tools.create_model('cancel-burn', 'pincell-depletion', particles=100, batches=3, inactive=1)
+        tools.configure_depletion('cancel-burn', 1000.0, [0.5, 0.5, 0.5], 'd')
+        record = tools.submit_job('cancel-burn', mode='deplete', threads=1)
+        job_id = record['job_id']
+        deadline = time.monotonic() + 120
+        while time.monotonic() < deadline:
+            if jobs.status(job_id)['state'] == 'running':
+                break
+            time.sleep(0.5)
+        jobs.cancel(job_id)
+        while time.monotonic() < deadline:
+            status = jobs.status(job_id)
+            if status['state'] in ('completed', 'failed', 'cancelled', 'interrupted'):
+                break
+            time.sleep(1)
+        self.assertIn(status['state'], ('cancelled', 'completed'), status)
+        cleanup = jobs.read(jobs.job_directory(job_id)).get('process_cleanup') or {}
+        self.assertTrue(cleanup.get('verified_empty', True), cleanup)
+        self.assertEqual(cleanup.get('remaining') or [], [])
+
 
 if __name__ == '__main__':
     unittest.main()
