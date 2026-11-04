@@ -286,7 +286,7 @@
 <p class="source">函数：<a href="../mcp/openmc_tools.py">mcp/openmc_tools.py</a>。</p></details>
 <details class="tool" id="openmc_create_model"><summary>openmc_create_model
 <span class="tool-purpose">用公开API创建一个新算例目录。synthetic-mgxs使用合成截面做工程联调；pwr-pin-cell为官方示例，需核数据。不会覆盖已有目录，不是微调模型生成。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>template</td><td>string</td><td>否</td><td>&quot;synthetic-mgxs&quot;</td><td>输入模板：synthetic-mgxs是合成单群工程练习；pwr-pin-cell需要正式连续能核数据；pincell-multigroup使用公开C5G7数据。不是任意模型自动生成。</td><td>—</td></tr><tr><td>particles</td><td>integer</td><td>否</td><td>200</td><td>每代历史粒子数，正整数。仅控制示例计算设置，不代表达到专业收敛或准确率要求；每批代数由模型设置决定。</td><td>—</td></tr><tr><td>batches</td><td>integer</td><td>否</td><td>10</td><td>示例总批次数，须与inactive共同满足batches-inactive至少为2；这是当前工程例题约束。</td><td>—</td></tr><tr><td>inactive</td><td>integer</td><td>否</td><td>2</td><td>示例非活跃批次数，非负整数，且须留出至少两个活跃批次。</td><td>—</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>template</td><td>string</td><td>否</td><td>&quot;synthetic-mgxs&quot;</td><td>输入模板：synthetic-mgxs是合成单群工程练习；pwr-pin-cell需要正式连续能核数据；pincell-multigroup使用公开C5G7数据；assembly-17x17为公开BEAVRS反射17×17组件、core-lattice为公开OECD/NEA性能基准全堆；control-rod与hex-lattice为公开文献常用参数自测模型（非甲方组件参数）。不是任意模型自动生成。</td><td>—</td></tr><tr><td>particles</td><td>integer</td><td>否</td><td>200</td><td>每代历史粒子数，正整数。仅控制示例计算设置，不代表达到专业收敛或准确率要求；每批代数由模型设置决定。</td><td>—</td></tr><tr><td>batches</td><td>integer</td><td>否</td><td>10</td><td>示例总批次数，须与inactive共同满足batches-inactive至少为2；这是当前工程例题约束。</td><td>—</td></tr><tr><td>inactive</td><td>integer</td><td>否</td><td>2</td><td>示例非活跃批次数，非负整数，且须留出至少两个活跃批次。</td><td>—</td></tr></tbody></table></div>
 <h3>返回怎么看</h3><p>case_dir是新输入目录；files相对该目录；后续先校核再提交。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>case_dir</td><td>输入目录，相对服务端MC_WORKSPACE；生成/修改后用此目录继续校核或计算。</td></tr><tr><td>workspace</td><td>服务端绝对数据根；工作区相对路径以它为基准。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
@@ -307,9 +307,13 @@
       &quot;enum&quot;: [
         &quot;synthetic-mgxs&quot;,
         &quot;pwr-pin-cell&quot;,
-        &quot;pincell-multigroup&quot;
+        &quot;pincell-multigroup&quot;,
+        &quot;assembly-17x17&quot;,
+        &quot;core-lattice&quot;,
+        &quot;control-rod&quot;,
+        &quot;hex-lattice&quot;
       ],
-      &quot;description&quot;: &quot;输入模板：synthetic-mgxs是合成单群工程练习；pwr-pin-cell需要正式连续能核数据；pincell-multigroup使用公开C5G7数据。不是任意模型自动生成。&quot;,
+      &quot;description&quot;: &quot;输入模板：synthetic-mgxs是合成单群工程练习；pwr-pin-cell需要正式连续能核数据；pincell-multigroup使用公开C5G7数据；assembly-17x17为公开BEAVRS反射17×17组件、core-lattice为公开OECD/NEA性能基准全堆；control-rod与hex-lattice为公开文献常用参数自测模型（非甲方组件参数）。不是任意模型自动生成。&quot;,
       &quot;default&quot;: &quot;synthetic-mgxs&quot;
     },
     &quot;particles&quot;: {

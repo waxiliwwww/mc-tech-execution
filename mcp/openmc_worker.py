@@ -96,6 +96,100 @@ def execute(action: str, params: dict) -> dict:
             model.plots = openmc.Plots([plot])
             data_kind = 'public_c5g7_multigroup_example'
             note = 'OpenMC官方多群pin-cell，使用源码自带C5G7多群数据；本次运行设置由调用参数指定，未作甲方基准或专业准确率验证。'
+        elif template in ('assembly-17x17', 'core-lattice'):
+            import hashlib
+            is_assembly = template == 'assembly-17x17'
+            model = openmc.examples.pwr_assembly() if is_assembly else openmc.examples.pwr_core()
+            data_kind = 'public_benchmark_example'
+            note = ('OpenMC官方BEAVRS反射17×17组件示例（公开基准几何与材料参数）；运行需真实核数据；'
+                    '不是甲方组件参数，未作专业准确率验收。' if is_assembly else
+                    'OpenMC官方OECD/NEA蒙卡性能基准全堆示例（21×21栅格）；规模大，仅供结构与接口验证；不是甲方模型。')
+            plot = openmc.Plot()
+            plot.width = (21.42, 21.42) if is_assembly else (400.0, 400.0)
+            plot.pixels = (400, 400)
+            plot.color_by = 'material'
+            model.plots = openmc.Plots([plot])
+            source_file = Path(openmc.examples.__file__)
+            benchmark = {'name': 'BEAVRS 17x17 assembly' if is_assembly else 'OECD/NEA MC performance benchmark core',
+                         'source_url': 'https://github.com/openmc-dev/openmc/blob/v' + openmc.__version__ + '/openmc/examples.py',
+                         'source_sha256': hashlib.sha256(source_file.read_bytes()).hexdigest()}
+        elif template == 'control-rod':
+            # 公开文献常用压水堆参数自测：单燃料栅元+单控制棒（B4C）置于纯水中，反射边界。
+            fuel = openmc.Material(name='UO2 3.1 w/o (public parameters)')
+            fuel.set_density('g/cm3', 10.3)
+            fuel.add_nuclide('U235', 0.031, 'wo')
+            fuel.add_nuclide('U238', 0.969, 'wo')
+            fuel.add_nuclide('O16', 2.0, 'wo')
+            clad = openmc.Material(name='Zircaloy-4 (public parameters)')
+            clad.set_density('g/cm3', 6.55)
+            for nuclide, fraction in (('Zr90', 0.5145), ('Zr91', 0.1122), ('Zr92', 0.1715),
+                                      ('Zr94', 0.1738), ('Zr96', 0.0280)):
+                clad.add_nuclide(nuclide, fraction, 'wo')
+            absorber = openmc.Material(name='B4C absorber (public parameters)')
+            absorber.set_density('g/cm3', 2.52)
+            absorber.add_nuclide('B10', 0.199, 'ao')
+            absorber.add_nuclide('B11', 0.801, 'ao')
+            absorber.add_nuclide('C0', 1.0, 'ao')  # 天然碳：库内无 C12 单同位素条目
+            water = openmc.Material(name='Light water 600K (public parameters)')
+            water.set_density('g/cm3', 0.743)
+            water.add_nuclide('H1', 2.0, 'ao')
+            water.add_nuclide('O16', 1.0, 'ao')
+            fuel_cyl = openmc.ZCylinder(x0=-0.63, y0=0.0, r=0.4096)
+            fuel_clad = openmc.ZCylinder(x0=-0.63, y0=0.0, r=0.4750)
+            rod_abs = openmc.ZCylinder(x0=0.63, y0=0.0, r=0.4300)
+            rod_clad = openmc.ZCylinder(x0=0.63, y0=0.0, r=0.4750)
+            box = openmc.model.RectangularParallelepiped(-1.26, 1.26, -1.26, 1.26, -10.0, 10.0,
+                                                         boundary_type='reflective')
+            cells = [openmc.Cell(fill=fuel, region=-fuel_cyl & -box),
+                     openmc.Cell(fill=clad, region=+fuel_cyl & -fuel_clad & -box),
+                     openmc.Cell(fill=absorber, region=-rod_abs & -box),
+                     openmc.Cell(fill=clad, region=+rod_abs & -rod_clad & -box),
+                     openmc.Cell(fill=water, region=+fuel_clad & +rod_clad & -box)]
+            geometry = openmc.Geometry(cells)
+            materials = openmc.Materials([fuel, clad, absorber, water])
+            settings = openmc.Settings()
+            model = openmc.Model(geometry, materials, settings)
+            data_kind = 'public_parameters_self_test'
+            note = ('公开文献常用压水堆栅元与控制棒参数自测模型（B4C吸收体，未加硼酸）；'
+                    '不是甲方组件参数，未作专业准确率或控制棒价值验收。')
+        elif template == 'hex-lattice':
+            # HexLattice自测：7根燃料棒六角栅格，钠冷，反射边界，2D。
+            fuel = openmc.Material(name='UO2 4.95 w/o (public parameters)')
+            fuel.set_density('g/cm3', 10.4)
+            fuel.add_nuclide('U235', 0.0495, 'wo')
+            fuel.add_nuclide('U238', 0.9505, 'wo')
+            fuel.add_nuclide('O16', 2.0, 'wo')
+            clad = openmc.Material(name='Fe-15Cr steel (public parameters)')
+            clad.set_density('g/cm3', 7.7)
+            clad.add_element('Fe', 0.85, 'wo')
+            clad.add_element('Cr', 0.15, 'wo')
+            coolant = openmc.Material(name='Sodium coolant (public parameters)')
+            coolant.set_density('g/cm3', 0.85)
+            coolant.add_nuclide('Na23', 1.0)
+            fuel_cyl = openmc.ZCylinder(r=0.45)
+            clad_cyl = openmc.ZCylinder(r=0.52)
+            pin_universe = openmc.Universe(cells=[
+                openmc.Cell(fill=fuel, region=-fuel_cyl),
+                openmc.Cell(fill=clad, region=+fuel_cyl & -clad_cyl),
+                openmc.Cell(fill=coolant, region=+clad_cyl)])
+            coolant_universe = openmc.Universe(cells=[openmc.Cell(fill=coolant)])
+            pitch = 1.5
+            lattice = openmc.HexLattice()
+            lattice.center = (0.0, 0.0)
+            lattice.pitch = (pitch,)
+            lattice.orientation = 'y'
+            # 由外到内逐环，每环从"顶部"顺时针：7根=外环6+中心1。
+            lattice.universes = [[pin_universe] * 6, [pin_universe]]
+            lattice.outer = coolant_universe
+            prism = openmc.model.HexagonalPrism(edge_length=pitch / np.sqrt(3.0), orientation='y',
+                                                boundary_type='reflective')
+            geometry = openmc.Geometry([openmc.Cell(fill=lattice, region=-prism)])
+            materials = openmc.Materials([fuel, clad, coolant])
+            settings = openmc.Settings()
+            model = openmc.Model(geometry, materials, settings)
+            data_kind = 'public_parameters_self_test'
+            note = ('公开参数六角栅格自测模型（7根钠冷燃料棒，HexLattice+反射六角棱柱）；'
+                    '不是甲方组件参数，未作专业准确率验收。')
         else:
             raise ValueError('Unsupported template')
         model.settings.particles = params['particles']
@@ -116,8 +210,16 @@ def execute(action: str, params: dict) -> dict:
             tree = ET.parse('materials.xml')
             tree.getroot().find('cross_sections').text = 'synthetic-mgxs.h5' if template == 'synthetic-mgxs' else 'mgxs.h5'
             tree.write('materials.xml', encoding='utf-8', xml_declaration=True)
+        lattices = model.geometry.get_all_lattices()
+        lattice_detail = [{'type': type(value).__name__,
+                           'shape': [int(v) for v in getattr(value, 'shape', []) or []]}
+                          for value in lattices.values()]
         marker = {'template': template, 'data_kind': data_kind, 'openmc_version': openmc.__version__,
                   'professional_acceptance': False, 'note': note}
+        if lattice_detail:
+            marker['lattices'] = lattice_detail
+        if template in ('assembly-17x17', 'core-lattice'):
+            marker.update(benchmark=benchmark)
         if template == 'pincell-multigroup':
             marker.update(source_url=metadata['source_url'], source_sha256=metadata['sha256'],
                           runtime_overrides={k: params[k] for k in ('particles', 'batches', 'inactive')})

@@ -186,6 +186,22 @@ class OpenMCTools(unittest.TestCase):
         self.assertIsNotNone(report['metadata']['runtime']['duration_seconds'])
         self.assertIn('报告头元数据', text)
 
+    def test_create_model_accepts_public_benchmark_templates_only(self):
+        calls = []
+
+        def fake(action, directory, payload, cfg=None):
+            calls.append(payload['template'])
+            return {'template': payload['template'], 'files': [], 'data_kind': 'stub'}
+
+        for template in ('assembly-17x17', 'core-lattice', 'control-rod', 'hex-lattice'):
+            with patch.object(tools, 'api', fake):
+                value = tools.create_model('case-' + template, template=template)
+            self.assertEqual(value['template'], template)
+        with self.assertRaises(business.MCInputError) as caught:
+            tools.create_model('bad-template', template='mystery')
+        self.assertIn('hex-lattice', str(caught.exception))
+        self.assertEqual(calls, ['assembly-17x17', 'core-lattice', 'control-rod', 'hex-lattice'])
+
     def test_define_tally_validates_and_sends_normalised_payload(self):
         calls = []
 

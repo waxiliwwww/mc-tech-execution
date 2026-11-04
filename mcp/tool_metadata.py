@@ -69,7 +69,7 @@ COMMON = {
     'stop_on_error': '遇到一组计算失败后是否停止后续组合。省略为false，记录失败后继续；失败点仍保留，不能当作成功或填0。',
     'kind': 'job列出单次计算产物，scan列出批次汇总产物。identifier须提供相应类型的编号。',
     'identifier': 'kind=job时传job_id，kind=scan时传scan_id；均来自实际提交返回值，不能传任意服务器文件路径。',
-    'template': '输入模板：synthetic-mgxs是合成单群工程练习；pwr-pin-cell需要正式连续能核数据；pincell-multigroup使用公开C5G7数据。不是任意模型自动生成。',
+    'template': '输入模板：synthetic-mgxs是合成单群工程练习；pwr-pin-cell需要正式连续能核数据；pincell-multigroup使用公开C5G7数据；assembly-17x17为公开BEAVRS反射17×17组件、core-lattice为公开OECD/NEA性能基准全堆；control-rod与hex-lattice为公开文献常用参数自测模型（非甲方组件参数）。不是任意模型自动生成。',
 }
 
 EXAMPLES = {

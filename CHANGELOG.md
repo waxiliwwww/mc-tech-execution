@@ -20,6 +20,7 @@
 - H1 准备件（离线/内网部署）：新增 `scripts/offline_check.py`（可查项自动检查：vendor例题与knowledge官方资料清单sha256、依赖全钉版、网络调用点静态扫描、运行时版本登记）与 `docs/离线部署演练清单.md`（目标环境逐条演练步骤+记录表+回滚）。**如实标注未演练**：本机不允许网络命名空间隔离（unshare: Operation not permitted），断网实跑与离线安装须在目标环境执行。可查项实测全过；静态扫描仅列可疑点（服务端socket监听、维护脚本update_openmc_sources.py按设计需联网），不构成"运行期无网络依赖"的证明。
 - D5（表4-1 4.3 报告头元数据）：`openmc_export_report` 报告头带齐五项——模板版本（含生成方式）、参数（run_mode/energy_mode/particles/batches/inactive/seed）、OpenMC版本、运行时间（起止+时长）、随机种子；全部取自作业目录落盘文件（job.json/work/settings.xml/mc-case.json），缺失如实写"未记录"不推测。覆盖 markdown 作业汇总、所选结果报告 markdown、DOCX/PDF/DOC 报告头；返回值新增 `metadata` 字段。离线测试+真实实跑档（downstream 148s、所选报告 48s）通过；过程留痕：所选报告与下游连跑曾出现一次不可复现的13s报错，单独复跑两次均通过，记录为瞬时干扰、未掩盖。
 - A3（表4-1 tally 定义）：新工具 `openmc_define_tally`——向已有算例追加自定义 tally（score 列表 + 能量/材料/粒子/规则网格过滤），写 `tallies.xml`（网格内联，引擎回读验证）；不改几何/材料/设置，拒绝与已有 tally_id 冲突；过滤参数严格校验（能量分界递增、材料编号、粒子名、网格维数与包围盒）。实测：合成例题加 MeshFilter+flux tally（2×2×1，覆盖-10..10）→ api_check 通过 → 实跑完成 → read_results 读出形状[2,2,1,1]与分箱值。
+- A1（表4-1 1.1 组件模型基础）：create_model 模板库扩容——`assembly-17x17`（OpenMC官方 BEAVRS 反射17×17组件，公开基准几何与材料）、`core-lattice`（OpenMC官方 OECD/NEA 蒙卡性能基准全堆，21×21栅格）、`control-rod`（公开文献常用参数自测：UO2栅元+B4C控制棒，反射盒）、`hex-lattice`（公开参数自测：7根钠冷燃料棒，HexLattice+反射六角棱柱）。marker 登记 lattices（RectLattice/HexLattice）与官方基准 source_sha256；真实实跑档：三模板 `openmc -g` 零重叠、无丢失粒子，17×17 组件短实跑 keff=1.1526±0.0055。**不是甲方组件参数**，"按甲方参数表生成"仍属 RF004 未实现范围。
 - 工具注册表 37→44；`docs/reference.html` 由生成器重生成；CI 工具计数断言同步。进度表 RF002 行更新为部分实现（工程已验证）。
 - 仍未做：h5m→可运行模型 XML 生成（材料定义与 DAGMC 几何接线）、甲方 STEP 件验收判据（1000 粒子 lost particle=0）、复杂装配体质量参数封装。
 
