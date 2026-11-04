@@ -113,7 +113,7 @@
   {
     "id": "s12-log-xml-syntax",
     "kind": "log",
-    "log": "logs/s12-log-xml-syntax.log",
+    "log": "logs/s12-log-xml-syntax.log.txt",
     "expected": {
       "source": "error-rules",
       "category": "syntax"
@@ -123,7 +123,7 @@
   {
     "id": "s13-log-invalid-run-mode",
     "kind": "log",
-    "log": "logs/s13-log-invalid-run-mode.log",
+    "log": "logs/s13-log-invalid-run-mode.log.txt",
     "expected": {
       "source": "error-rules",
       "category": "invalid_run_mode"
@@ -133,7 +133,7 @@
   {
     "id": "s14-log-missing-nuclide",
     "kind": "log",
-    "log": "logs/s14-log-missing-nuclide.log",
+    "log": "logs/s14-log-missing-nuclide.log.txt",
     "expected": {
       "source": "error-rules",
       "category": "missing_nuclide"
@@ -143,7 +143,7 @@
   {
     "id": "s15-log-missing-cross-sections",
     "kind": "log",
-    "log": "logs/s15-log-missing-cross-sections.log",
+    "log": "logs/s15-log-missing-cross-sections.log.txt",
     "expected": {
       "source": "error-rules",
       "category": "missing_input_data"
@@ -153,7 +153,7 @@
   {
     "id": "s16-log-lost-particle",
     "kind": "log",
-    "log": "logs/s16-log-lost-particle.log",
+    "log": "logs/s16-log-lost-particle.log.txt",
     "expected": {
       "source": "error-rules",
       "category": "lost_particle"
