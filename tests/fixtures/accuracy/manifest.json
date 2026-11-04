@@ -1,0 +1,30 @@
+{
+  "note": "表4-2 准确率比对harness的参考值清单（D6）。参考值一律给出类型与来源：analytic型从算例自身截面数据派生（不硬编码数字）；constant型必须填value与source，缺值判INCONCLUSIVE，不冒充通过。甲方统计定义/容差（待钉#2#3）到位后只改本文件即可比对。",
+  "tolerance_defaults": {"sigma": 3.0},
+  "benchmarks": [
+    {
+      "name": "synthetic-mgxs-infinite-medium",
+      "template": "synthetic-mgxs",
+      "case_dir": "accuracy/synthetic-mgxs-infinite",
+      "run": {"particles": 20000, "batches": 20, "inactive": 5},
+      "quantity": "keff",
+      "reference": {"type": "analytic_infinite_medium", "xs_file": "synthetic-mgxs.h5"},
+      "tolerance": {"sigma": 3.0, "relative": null},
+      "note": "合成单群MGXS（公开API生成）；齐次反射边界无泄漏，k_eff解析值=ΣνΣf/ΣΣa。属工程统计自检（MC统计与解析一致性），不代表反应堆精度。"
+    },
+    {
+      "name": "c5g7-pincell-multigroup",
+      "template": "pincell-multigroup",
+      "case_dir": "accuracy/c5g7-pincell",
+      "run": {"particles": 20000, "batches": 20, "inactive": 5},
+      "quantity": "keff",
+      "reference": {
+        "type": "constant",
+        "value": null,
+        "source": "待取证：vendor内官方例题（openmc 0.16.0 build_xml.py）不带参考值，官方文档页亦未检索到可引用数值；须按公开文献或甲方基准值复核后填入本字段，填入前本基准判INCONCLUSIVE。"
+      },
+      "tolerance": {"sigma": 3.0, "relative": null},
+      "note": "官方多群pin-cell（源码自带C5G7多群数据）。参考值未录入——这是如实占位，不是通过。"
+    }
+  ]
+}
