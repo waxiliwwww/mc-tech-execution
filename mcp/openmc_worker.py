@@ -204,6 +204,41 @@ def execute(action: str, params: dict) -> dict:
                 'engine_parse': {'ok': True, 'materials': len(reparsed.materials)},
                 'warnings': warnings,
                 'note': '模型XML由公开API组装并回读验证；DAGMC材料指派、网格质量与源位置是否在模型内需业务确认。'}
+    if action == 'add-tally':
+        from pathlib import Path as _Path
+        tallies_path = _Path('tallies.xml')
+        tallies = openmc.Tallies.from_xml(str(tallies_path)) if tallies_path.is_file() else openmc.Tallies()
+        used = {int(tally.id) for tally in tallies}
+        identifier = params.get('tally_id')
+        if identifier is None:
+            identifier = max(used, default=0) + 1
+        if identifier in used:
+            raise ValueError('tally_id已存在：' + str(identifier))
+        filters = []
+        for spec in params.get('filters') or []:
+            kind = spec['type']
+            if kind == 'energy':
+                filters.append(openmc.EnergyFilter(spec['bins']))
+            elif kind == 'material':
+                filters.append(openmc.MaterialFilter(spec['bins']))
+            elif kind == 'particle':
+                filters.append(openmc.ParticleFilter(spec['bins']))
+            elif kind == 'mesh':
+                mesh = openmc.RegularMesh(mesh_id=spec.get('mesh_id'))
+                mesh.dimension = tuple(spec['dimension'])
+                mesh.lower_left = tuple(spec['lower_left'])
+                mesh.upper_right = tuple(spec['upper_right'])
+                filters.append(openmc.MeshFilter(mesh))
+            else:
+                raise ValueError('不支持的filter类型：' + str(kind))
+        tally = openmc.Tally(tally_id=identifier, name=params.get('name') or '',
+                             scores=list(params['scores']), filters=filters)
+        tallies.append(tally)
+        tallies.export_to_xml(str(tallies_path))
+        return {'tally_id': identifier, 'name': tally.name, 'scores': list(tally.scores),
+                'filters': [{'type': type(f).__name__, 'description': str(f)[:2000]} for f in filters],
+                'tally_count': len(tallies),
+                'note': '已写入tallies.xml；计分口径为OpenMC原始归一化，未换算功率或实际源强。'}
     raise ValueError('Unsupported OpenMC API action')
 
 

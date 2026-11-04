@@ -20,4 +20,4 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check --no-deps .
           mc-agent-tools list > /tmp/tools.json
-          python -c "import json;d=json.load(open('/tmp/tools.json'));assert len(d['tools'])==43,d;print('tools', len(d['tools']))"
+          python -c "import json;d=json.load(open('/tmp/tools.json'));assert len(d['tools'])==44,d;print('tools', len(d['tools']))"

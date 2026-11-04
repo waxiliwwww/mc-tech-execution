@@ -15,6 +15,7 @@ from openmc_artifacts import list_artifacts
 from openmc_knowledge import list_sources, read as read_knowledge
 from openmc_examples import prepare_example
 from openmc_cad import build_dagmc_model, convert_cad, inspect_step as inspect_cad_step
+from openmc_tools import define_tally
 from openmc_diagnostics import diagnose_job, prepare_repair, recheck_repair
 from tool_metadata import document_tools
 from official_catalog import list_official_examples, describe as get_official_example
@@ -191,6 +192,22 @@ TOOLS += [
                             "seed": {"type": "integer", "minimum": 1}},
                            ["case_dir", "materials"]),
      "outputSchema": OUTPUT, "function": build_dagmc_model, "annotations": WRITE},
+    {"name": "openmc_define_tally", "description": "向已有算例追加自定义tally：score列表+常用过滤（能量/材料/粒子/规则网格），写入tallies.xml；不改几何、材料、设置。需重新提交计算后结果才含该tally，返回的tally_id用于读取与对比。",
+     "inputSchema": schema({"case_dir": TEXT,
+                            "scores": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+                            "filters": {"type": "array", "items": {"type": "object", "required": ["type"],
+                                "properties": {
+                                    "type": {"type": "string", "enum": ["energy", "material", "particle", "mesh"]},
+                                    "bins": {"type": "array", "items": {"type": "number"}},
+                                    "dimension": {"type": "array", "items": {"type": "integer"}, "minItems": 3, "maxItems": 3},
+                                    "lower_left": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+                                    "upper_right": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+                                    "mesh_id": {"type": "integer", "minimum": 1}}}},
+                            "name": {"type": "string", "maxLength": 80,
+                                     "description": "可选tally名称（不超过80字符）；省略则仅以编号识别。用于在结果里分辨自定义tally。"},
+                            "tally_id": {"type": "integer", "minimum": 1}},
+                           ["case_dir", "scores"]),
+     "outputSchema": OUTPUT, "function": define_tally, "annotations": WRITE},
     {"name": "openmc_preview_input", "description": "提交前逐文件看清输入：截断内容预览、字节数与SHA256，附结构摘要（运行设置、材料核素、几何与tally计数）。只读；算例内符号链接拒绝读取；预览不证明物理正确。",
      "inputSchema": schema({"case_dir": TEXT}, ["case_dir"]),
      "outputSchema": OUTPUT, "function": preview_input},

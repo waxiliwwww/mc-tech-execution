@@ -186,6 +186,45 @@ class OpenMCTools(unittest.TestCase):
         self.assertIsNotNone(report['metadata']['runtime']['duration_seconds'])
         self.assertIn('报告头元数据', text)
 
+    def test_define_tally_validates_and_sends_normalised_payload(self):
+        calls = []
+
+        def fake(action, directory, payload, cfg=None):
+            calls.append((action, payload))
+            return {'tally_id': payload.get('tally_id') or 7, 'name': payload.get('name') or '',
+                    'scores': payload['scores'], 'filters': payload['filters'], 'tally_count': 2,
+                    'note': ''}
+
+        mesh = {'type': 'mesh', 'dimension': [2, 2, 1], 'lower_left': [-10, -10, -10],
+                'upper_right': [10, 10, 10]}
+        with patch.object(tools, 'api', fake):
+            value = tools.define_tally('case', ['flux'], filters=[mesh], name='网格通量')
+        self.assertEqual(value['tally_id'], 7)
+        self.assertEqual(calls[0][0], 'add-tally')
+        self.assertEqual(calls[0][1]['filters'][0]['type'], 'mesh')
+        for bad in (
+            {'scores': []},
+            {'scores': ['']},
+            {'scores': ['flux'], 'filters': [{'type': 'mystery'}]},
+            {'scores': ['flux'], 'filters': [{'type': 'energy', 'bins': [1e7, 1e6]}]},
+            {'scores': ['flux'], 'filters': [{'type': 'energy', 'bins': [0]}]},
+            {'scores': ['flux'], 'filters': [{'type': 'material', 'bins': [0]}]},
+            {'scores': ['flux'], 'filters': [{'type': 'particle', 'bins': ['muon']}]},
+            {'scores': ['flux'], 'filters': [{'type': 'mesh', 'dimension': [2, 2],
+                                              'lower_left': [0, 0, 0], 'upper_right': [1, 1, 1]}]},
+            {'scores': ['flux'], 'filters': [{'type': 'mesh', 'dimension': [2, 2, 1],
+                                              'lower_left': [0, 0, 0], 'upper_right': [0, 1, 1]}]},
+            {'scores': ['flux'], 'filters': [{'type': 'mesh', 'dimension': [2, 2, 1],
+                                              'lower_left': [0, 0, 0], 'upper_right': [1, 1, 1]},
+                                             {'type': 'mesh', 'dimension': [2, 2, 1],
+                                              'lower_left': [0, 0, 0], 'upper_right': [1, 1, 1]}]},
+            {'scores': ['flux'], 'tally_id': 0},
+            {'scores': ['flux'], 'name': 'x' * 81},
+        ):
+            with self.assertRaises(business.MCInputError):
+                tools.define_tally('case', **bad)
+        self.assertEqual(len(calls), 1)  # 非法请求不应触达引擎
+
     def test_cancel_stops_solver_child_and_is_idempotent(self):
         self.mode('long'); job_id = self.submit()
         child_file = jobs.job_directory(job_id) / 'work/child.pid'

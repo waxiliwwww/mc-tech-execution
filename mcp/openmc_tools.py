@@ -864,6 +864,83 @@ def compare_jobs(job_a: str, job_b: str, compare_tallies: bool = False,
                        else '；tally逐bin对比未请求，compare_tallies=true可开启。')}
 
 
+TALLY_FILTER_TYPES = ('energy', 'material', 'particle', 'mesh')
+PARTICLE_BINS = ('neutron', 'photon', 'electron', 'positron')
+
+
+def _tally_filters(value):
+    """校验并规范化filters：能量/材料/粒子/网格四类；网格每tally最多一个。"""
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise Error('filters须为列表或省略')
+    result = []
+    mesh_seen = 0
+    for item in value:
+        if not isinstance(item, dict):
+            raise Error('filters每项须为对象：type加对应参数')
+        kind = item.get('type')
+        if kind not in TALLY_FILTER_TYPES:
+            raise Error('filters.type须为' + '/'.join(TALLY_FILTER_TYPES) + '之一')
+        if kind == 'energy':
+            bins = item.get('bins')
+            if (not isinstance(bins, list) or len(bins) < 2
+                    or any(type(v) not in (int, float) or isinstance(v, bool) for v in bins)
+                    or any(b <= a for a, b in zip(bins, bins[1:]))):
+                raise Error('energy.bins须为至少2个严格递增的数值（eV）')
+        elif kind == 'material':
+            bins = item.get('bins')
+            if not isinstance(bins, list) or not bins or any(type(v) is not int or v <= 0 for v in bins):
+                raise Error('material.bins须为至少1个正整数材料编号')
+        elif kind == 'particle':
+            bins = item.get('bins')
+            if not isinstance(bins, list) or not bins or any(v not in PARTICLE_BINS for v in bins):
+                raise Error('particle.bins须为' + '/'.join(PARTICLE_BINS) + '之一')
+        else:
+            mesh_seen += 1
+            if mesh_seen > 1:
+                raise Error('同一tally仅支持一个mesh filter')
+            dimension = item.get('dimension')
+            if (not isinstance(dimension, list) or len(dimension) != 3
+                    or any(type(v) is not int or v <= 0 for v in dimension)):
+                raise Error('mesh.dimension须为三个正整数')
+            for key in ('lower_left', 'upper_right'):
+                corner = item.get(key)
+                if (not isinstance(corner, list) or len(corner) != 3
+                        or any(type(v) not in (int, float) or isinstance(v, bool) for v in corner)):
+                    raise Error('mesh.' + key + '须为三个数值')
+            if any(u <= l for l, u in zip(item['lower_left'], item['upper_right'])):
+                raise Error('mesh.upper_right须在每个方向上大于lower_left')
+            if 'mesh_id' in item and item['mesh_id'] is not None                     and (type(item['mesh_id']) is not int or item['mesh_id'] <= 0):
+                raise Error('mesh.mesh_id须为正整数或省略')
+        result.append({'type': kind, **{key: value for key, value in item.items() if key != 'type'}})
+    return result
+
+
+def define_tally(case_dir: str, scores: list, filters: list | None = None,
+                 name: str | None = None, tally_id: int | None = None) -> dict:
+    """向已有算例追加自定义tally（能量/材料/粒子/网格过滤+score），写tallies.xml；不改其它XML。"""
+    cfg = config()
+    directory = path_in_workspace(case_dir)
+    if not directory.is_dir():
+        raise Error('case_dir须为已存在的算例目录')
+    if not (directory / 'geometry.xml').is_file():
+        raise Error('算例缺少geometry.xml，不能确认是OpenMC输入目录')
+    if (not isinstance(scores, list) or not scores
+            or any(not isinstance(item, str) or not item.strip() for item in scores)):
+        raise Error('scores须为非空字符串列表，如["flux"]')
+    normalised = _tally_filters(filters)
+    if name is not None and (not isinstance(name, str) or not name.strip() or len(name) > 80):
+        raise Error('name须为非空字符串（不超过80字符）或省略')
+    if tally_id is not None and (type(tally_id) is not int or isinstance(tally_id, bool) or tally_id <= 0):
+        raise Error('tally_id须为正整数或省略（省略用现有最大编号+1）')
+    value = api('add-tally', directory,
+                {'scores': scores, 'filters': normalised, 'name': name, 'tally_id': tally_id}, cfg)
+    return {'case_dir': case_dir, **value, 'workspace': str(workspace()), 'location': 'server',
+            'provenance': provenance(directory, cfg), 'professional_acceptance': False,
+            'note': '已写入tallies.xml；需重新提交计算后结果才含该tally；计分口径为OpenMC原始归一化。'}
+
+
 def _report_metadata(directory: Path) -> dict:
     """报告头元数据（表4-1 4.3 五项）：模板版本、参数、OpenMC版本、运行时间、随机种子。
     全部取自作业目录已落盘文件（job.json/work/settings.xml/mc-case.json）；缺失如实写None，不推测。"""

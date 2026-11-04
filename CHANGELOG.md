@@ -19,7 +19,8 @@
 - D6 第一刀（表4-2 准确率比对 harness）：新增 `scripts/accuracy_baseline.py` + `./accuracy.sh` 入口与参考值清单 `tests/fixtures/accuracy/manifest.json`。流程：生成/复用算例→登记核数据版本（模板/引擎版本/截面 sha256/设置）→比对前校验（结构+引擎解析）→相同设置运行→读取 keff→按容差判定→表格+JSON 报告；退出码 0/1/2 对应 PASS/FAIL/INCONCLUSIVE。参考值两类：解析型从算例自身 MGXS 派生 `k∞=ΣνΣf/ΣΣa`（齐次反射无泄漏，不硬编码），常数型必须给 value+source、缺值判 INCONCLUSIVE 不冒充通过。实测：合成单群解析基准全链 PASS（σ内），C5G7 多群条目如实 INCONCLUSIVE（官方例题不带参考值，待取证/甲方值）。离线判定测试 + 真实门控测试。
 - H1 准备件（离线/内网部署）：新增 `scripts/offline_check.py`（可查项自动检查：vendor例题与knowledge官方资料清单sha256、依赖全钉版、网络调用点静态扫描、运行时版本登记）与 `docs/离线部署演练清单.md`（目标环境逐条演练步骤+记录表+回滚）。**如实标注未演练**：本机不允许网络命名空间隔离（unshare: Operation not permitted），断网实跑与离线安装须在目标环境执行。可查项实测全过；静态扫描仅列可疑点（服务端socket监听、维护脚本update_openmc_sources.py按设计需联网），不构成"运行期无网络依赖"的证明。
 - D5（表4-1 4.3 报告头元数据）：`openmc_export_report` 报告头带齐五项——模板版本（含生成方式）、参数（run_mode/energy_mode/particles/batches/inactive/seed）、OpenMC版本、运行时间（起止+时长）、随机种子；全部取自作业目录落盘文件（job.json/work/settings.xml/mc-case.json），缺失如实写"未记录"不推测。覆盖 markdown 作业汇总、所选结果报告 markdown、DOCX/PDF/DOC 报告头；返回值新增 `metadata` 字段。离线测试+真实实跑档（downstream 148s、所选报告 48s）通过；过程留痕：所选报告与下游连跑曾出现一次不可复现的13s报错，单独复跑两次均通过，记录为瞬时干扰、未掩盖。
-- 工具注册表 37→43；`docs/reference.html` 由生成器重生成；CI 工具计数断言同步。进度表 RF002 行更新为部分实现（工程已验证）。
+- A3（表4-1 tally 定义）：新工具 `openmc_define_tally`——向已有算例追加自定义 tally（score 列表 + 能量/材料/粒子/规则网格过滤），写 `tallies.xml`（网格内联，引擎回读验证）；不改几何/材料/设置，拒绝与已有 tally_id 冲突；过滤参数严格校验（能量分界递增、材料编号、粒子名、网格维数与包围盒）。实测：合成例题加 MeshFilter+flux tally（2×2×1，覆盖-10..10）→ api_check 通过 → 实跑完成 → read_results 读出形状[2,2,1,1]与分箱值。
+- 工具注册表 37→44；`docs/reference.html` 由生成器重生成；CI 工具计数断言同步。进度表 RF002 行更新为部分实现（工程已验证）。
 - 仍未做：h5m→可运行模型 XML 生成（材料定义与 DAGMC 几何接线）、甲方 STEP 件验收判据（1000 粒子 lost particle=0）、复杂装配体质量参数封装。
 
 ## 0.8.0 — 2026-11-03
