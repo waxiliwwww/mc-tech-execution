@@ -132,6 +132,16 @@ try {
   await page.locator('a[href="reference.html"]').first().click();
   assert.equal(await page.locator('#tool-search').isVisible(),true);
   await page.goto(url('toolkit.html'));await shot('05f-toolkit-overview');
+  await page.locator('a[href="expert-trial.html"]').click();
+  assert.match(await page.locator('h1').innerText(),/专家试用清单/);
+  const firstCheck=page.locator('input[type="checkbox"]').first();
+  assert.equal(await firstCheck.isChecked(),false);
+  await firstCheck.check();assert.equal(await firstCheck.isChecked(),true);
+  await page.reload();assert.equal(await firstCheck.isChecked(),false);
+  await page.locator('.jump a[href="#test"]').click();await shot('05f9-expert-trial');
+  await page.locator('nav a[href="toolkit.html#job-details"]').click();
+  await page.waitForFunction(()=>document.getElementById('job-details').open);
+
   await page.goto(url('index.html'));
   await page.locator('a[href="cad.html"]').click();
   assert.match(await page.locator('#setup').innerText(),/环境/);
@@ -171,13 +181,13 @@ try {
   assert.match(await page.locator('#openmc_read_example_results').innerText(),/calculation_id/);
   await shot('08c-stage-selection');
   await page.setViewportSize({width:390,height:844});
-  for(const name of ['index.html','compute.html','inputs.html','mcp.html','reference.html','official-examples.html','domain-workflows.html','development-plan.html','development-details.html','dsh.html','toolkit.html','toolkit-usage.html','cad.html']) {
+  for(const name of ['index.html','compute.html','inputs.html','mcp.html','reference.html','official-examples.html','domain-workflows.html','development-plan.html','development-details.html','dsh.html','toolkit.html','toolkit-usage.html','cad.html','expert-trial.html']) {
     await page.goto(url(name));
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal page overflow: '+name);
   }
   await page.goto(url('index.html'));await shot('09-mobile');
   assert.deepEqual(problems,[]);assert.deepEqual(remoteRequests,[]);
   const standalone = await checkStandaloneToolkit(browser,root,path.join(out,'standalone-toolkit'));
-  await fs.writeFile(path.join(out,'receipt.json'),JSON.stringify({passed:true,pages:13,problems,remoteRequests,screenshots,standaloneToolkit:standalone.passed,entry:url('index.html'),checks:['offline file navigation','demo explanation disclosure','exact command copy/selection fallback','source/model layers','composable model instructions','two-week interface plan','separate user manual and developer design navigation','five embedded architecture diagrams and original SVG navigation','folded core details and nested deep-link reveal','scientific-result and file-format reading sections','single-file copied toolkit without any asset access','CAD setup and tool-flow navigation','own program disclosure','search/no-match','deep-link reveals schema','mobile no page overflow']},null,2));
+  await fs.writeFile(path.join(out,'receipt.json'),JSON.stringify({passed:true,pages:14,problems,remoteRequests,screenshots,standaloneToolkit:standalone.passed,entry:url('index.html'),checks:['offline file navigation','demo explanation disclosure','exact command copy/selection fallback','source/model layers','composable model instructions','two-week interface plan','separate user manual and developer design navigation','five embedded architecture diagrams and original SVG navigation','folded core details and nested deep-link reveal','scientific-result and file-format reading sections','single-file copied toolkit without any asset access','CAD setup and tool-flow navigation','own program disclosure','search/no-match','deep-link reveals schema','mobile no page overflow']},null,2));
   process.stdout.write('HTML browser checks passed; screenshots: '+out+'\n');
 } finally {await browser.close();}
