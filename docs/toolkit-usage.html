@@ -2,7 +2,7 @@
 
 main{max-width:1160px}.jump{display:flex;flex-wrap:wrap;gap:8px 22px;margin:24px 0}section[id]{scroll-margin-top:28px}h3{font-size:18px}.table-wrap{margin:18px 0}</style></head><body><main><nav><a href="index.html">手册首页</a><a href="toolkit.html">架构设计</a><a href="compute.html">完整计算</a><a href="cad.html">CAD计算</a><a href="reference.html">工具参数</a></nav><p class="eyebrow">面向使用者 · 软件基线0.11.1 · 2026-11-05</p><h1>MC工具包使用说明</h1><p class="lead">本包帮助使用者把OpenMC模型接入、参数研究、计算执行和结果整理连成可复查的流程。你提供物理模型和判断依据，OpenMC求解；工具包保存每次提交的输入与设置，管理长计算，并把同一结果选择整理成数据、图和报告。可直接用CLI，也可通过标准MCP交给平台调用。</p><div class="flow"><span>准备模型</span>→<span>预览与校核</span>→<span>命名提交、查询终态</span>→<span>选择结果、取用产物</span></div><p class="minor">本页帮助选择操作路线和理解结果；模块机制、执行后端和扩展位置见<a href="toolkit.html">架构设计</a>。</p><div class="jump"><a href="#capabilities">能做什么</a><a href="#using">怎样使用</a><a href="#results">怎样看结果</a><a href="#files">文件与位置</a><a href="#guide">适用范围</a></div><section id="capabilities" aria-labelledby="capabilities-title"><h2 id="capabilities-title">1．能帮助完成哪些工作</h2>
 <div class="table-wrap"><table><thead><tr><th>你的工作</th><th>工具包提供的操作</th><th>你仍需明确的内容</th></tr></thead><tbody>
-<tr><td>沿用已有模型</td><td>导入原生XML及依赖，预览、校核并保存副本；已有建模程序可继续用。</td><td>程序先导出OpenMC输入；核数据、外部文件和模型适用性要具备。</td></tr>
+<tr><td>沿用已有模型</td><td>导入原生XML及依赖，预览、校核并保存副本；参数新建则由包内Python生成输入。</td><td>提供受支持的模型文件与依赖；用户无需编写Python，核数据与模型适用性仍需具备。</td></tr>
 <tr><td>比较多组参数</td><td>发现可调整项，创建参数副本并回显差异；命名提交、串行扫描、按作业比较输入与结果。</td><td>研究参数的物理意义、允许范围，以及是否还要联动修改其他条件。</td></tr>
 <tr><td>使用CAD几何</td><td>检查STEP实体、换算长度并转换H5M；补齐材料、源与边界后交给OpenMC。</td><td>CAD只提供几何；实体材料映射、源、计分与几何质量须有依据。</td></tr>
 <tr><td>分析和交接结果</td><td>选择计分、核素与过滤箱，保留均值和标准差；输出图、完整所选数据和同源报告。</td><td>计分是否合适、统计是否充分，以及如何换算为目标工况或作专业比较。</td></tr>
@@ -10,7 +10,7 @@ main{max-width:1160px}.jump{display:flex;flex-wrap:wrap;gap:8px 22px;margin:24px
 <p>这些操作把常用的文件组织和交接规则固定下来：修改有副本，计算有编号，失败有记录，图和报告能追到原始统计。原生XML、HDF5及CSV仍可用OpenMC或自己的程序继续处理。建模可表达范围、自动改参范围和结果接口范围分别明确，不把接口封装等同于OpenMC全部API。</p>
 </section><section id="using" aria-labelledby="using-title"><h2 id="using-title">2．怎样开始，以及怎样带入自己的模型</h2>
 <p>先按<a href="env.html">部署说明</a>准备Linux/WSL环境。在完整源码包根目录运行 <code>./quickstart.sh</code>；已有基础环境只补CAD可用 <code>--cad-only</code>。按自己的任务选入口：已有模型按下方步骤导入；初次体验OpenMC按<a href="compute.html">公开例题的完整计算步骤</a>操作；需要CAD再运行 <code>mcp/.venv/bin/python examples/cad_case_demo.py</code>，核对STEP到数据、图与报告的交接。CAD示例的固定输入、物理设置和选项含义见<a href="cad.html#demo">示例说明</a>，不把示例条件套到自己的工程几何。</p>
-<p>已有模型时，把自己程序导出的XML及本地依赖放入 <code>workspace/incoming/model/</code>，再按下面的目录创建独立工作副本：</p>
+<p>已有模型时，把原生XML及本地依赖放入 <code>workspace/incoming/model/</code>，再按下面的目录创建独立工作副本：</p>
 <pre><code>./mc.sh call openmc_import_model '{"source_dir":"incoming/model","target_dir":"cases/model"}'
 ./mc.sh call openmc_preview_input '{"case_dir":"cases/model"}'
 ./mc.sh call openmc_validate_inputs '{"case_dir":"cases/model","api_check":true}'

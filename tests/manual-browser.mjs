@@ -90,6 +90,15 @@ try {
       .every(img=>img.complete&&img.naturalWidth>0));
     const name='05f'+(index+1)+'-architecture-'+id+'.png';
     await diagram.screenshot({path:path.join(out,name)});screenshots.push(name);
+    if(id==='model-details') {
+      const optional=page.locator('#python-entry');
+      assert.equal(await optional.getAttribute('open'),null,'Existing Python code is an optional folded entrance.');
+      await optional.locator('summary').click();
+      assert.equal(await optional.getAttribute('open'),'');
+      await optional.screenshot({path:path.join(out,'05f1b-optional-python-entry.png')});
+      screenshots.push('05f1b-optional-python-entry.png');
+      await optional.locator('summary').click();
+    }
   }
   // The scene link must reveal both a folded parent and the nested HPC design.
   await page.locator('#job-details > summary').click();
