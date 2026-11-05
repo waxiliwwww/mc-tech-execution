@@ -145,6 +145,10 @@ RESULTS = {
 }
 
 OUTPUT_FIELDS = {
+    'zero_bins': '当前所选网格切片内均值恰为0的格数；缺失值不计入，不能据此判定物理零或无径迹。',
+    'progress': '日志解析的末批/代、最近k、平均k、Combined k与提示；熵列可缺失，不替代StatePoint结果。',
+    'cross_sections_env_set': '当前进程是否设置OPENMC_CROSS_SECTIONS；false不代表模型或受管核数据库不可用。旧cross_sections_configured保持此含义。',
+    'nuclear_data': '部署候选库/source/index_path/index_exists；未校验模型所需全部文件，模型显式索引可覆盖。',
     'job_id': '计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。',
     'job_a': '作业编号（a方）；来自openmc_submit_job返回值。',
     'job_b': '作业编号（b方）；来自openmc_submit_job返回值。',
@@ -193,11 +197,11 @@ OUTPUT_FIELDS = {
 OUTPUT_KEYS = {
     'diagnose_log': ('path',), 'preview_repair': ('plan_id', 'state'),
     'read_repair_plan': ('plan_id', 'state'), 'apply_repair': ('plan_id', 'state'),
-    'openmc_environment': ('workspace',),
+    'openmc_environment': ('workspace', 'cross_sections_env_set', 'nuclear_data'),
     'openmc_create_model': ('case_dir', 'workspace'),
     'openmc_prepare_example': ('case_dir', 'workspace', 'provenance'),
     'openmc_submit_job': ('job_id', 'state', 'provenance'),
-    'openmc_job_status': ('job_id', 'state', 'provenance'),
+    'openmc_job_status': ('job_id', 'state', 'provenance', 'progress'),
     'openmc_cancel_job': ('job_id', 'state'),
     'openmc_read_results': ('job_id', 'keff', 'warnings', 'provenance'),
     'openmc_export_report': ('job_id', 'path', 'server_path', 'workspace', 'provenance'),
@@ -212,7 +216,7 @@ OUTPUT_KEYS = {
     'openmc_cancel_scan': ('scan_id', 'state'),
     'openmc_plot_results': ('job_id', 'path', 'server_path', 'workspace', 'provenance'),
     'openmc_plot_scan': ('scan_id', 'path', 'server_path', 'workspace', 'provenance'),
-    'openmc_plot_mesh': ('job_id', 'path', 'server_path', 'workspace', 'provenance'),
+    'openmc_plot_mesh': ('job_id', 'path', 'server_path', 'workspace', 'provenance', 'zero_bins', 'warnings'),
     'openmc_plot_convergence': ('job_id', 'path', 'server_path', 'workspace', 'provenance'),
     'openmc_export_scan_report': ('scan_id', 'path', 'server_path', 'workspace', 'provenance'),
     'openmc_job_compare': ('job_a', 'job_b', 'workspace'),

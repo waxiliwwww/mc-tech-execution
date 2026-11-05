@@ -262,7 +262,7 @@
 <span class="tool-purpose">检查OpenMC运行时、API与可执行程序版本；安装成功不代表专业计算验收。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>无参数</td><td>object</td><td>—</td><td>空对象</td><td>不接受额外参数</td><td>{}</td></tr></tbody></table></div>
 <h3>返回怎么看</h3><p>分别检查API、求解器和版本；workspace给出服务端绝对工作区，核数据条件另行核对。</p>
-<div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>workspace</td><td>服务端绝对数据根；工作区相对路径以它为基准。</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>workspace</td><td>服务端绝对数据根；工作区相对路径以它为基准。</td></tr><tr><td>cross_sections_env_set</td><td>当前进程是否设置OPENMC_CROSS_SECTIONS；false不代表模型或受管核数据库不可用。旧cross_sections_configured保持此含义。</td></tr><tr><td>nuclear_data</td><td>部署候选库/source/index_path/index_exists；未校验模型所需全部文件，模型显式索引可覆盖。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
@@ -279,6 +279,12 @@
   &quot;properties&quot;: {
     &quot;workspace&quot;: {
       &quot;description&quot;: &quot;服务端绝对数据根；工作区相对路径以它为基准。&quot;
+    },
+    &quot;cross_sections_env_set&quot;: {
+      &quot;description&quot;: &quot;当前进程是否设置OPENMC_CROSS_SECTIONS；false不代表模型或受管核数据库不可用。旧cross_sections_configured保持此含义。&quot;
+    },
+    &quot;nuclear_data&quot;: {
+      &quot;description&quot;: &quot;部署候选库/source/index_path/index_exists；未校验模型所需全部文件，模型显式索引可覆盖。&quot;
     }
   }
 }
@@ -473,7 +479,7 @@
 <span class="tool-purpose">按作业编号查询真实终态、退出码、日志尾部与产物；服务重启后仍可查询，未知终态不冒充成功。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>job_id</td><td>string</td><td>是</td><td>不可省略</td><td>计算编号，直接使用openmc_submit_job或扫描子项返回的job_id；不是目录、文件名或scan_id。查询/读取不会自动提交新计算。</td><td>—</td></tr></tbody></table></div>
 <h3>返回怎么看</h3><p>state为实际当前状态，error/log_tail等用于诊断；failed/cancelled/interrupted均不算完成结果。progress节按日志尾部解析最新批次/k/平均k、Combined k、总批数与elapsed_seconds；仅本征值批次表可解析，解析不到时如实说明，不替代read_results统计量。</p>
-<div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>job_id</td><td>计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。</td></tr><tr><td>state</td><td>操作或计算的当前状态；提交受理、计算完成与专业结果正确分别判断。</td></tr><tr><td>provenance</td><td>数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>job_id</td><td>计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。</td></tr><tr><td>state</td><td>操作或计算的当前状态；提交受理、计算完成与专业结果正确分别判断。</td></tr><tr><td>provenance</td><td>数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。</td></tr><tr><td>progress</td><td>日志解析的末批/代、最近k、平均k、Combined k与提示；熵列可缺失，不替代StatePoint结果。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
@@ -504,6 +510,9 @@
     },
     &quot;provenance&quot;: {
       &quot;description&quot;: &quot;数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。&quot;
+    },
+    &quot;progress&quot;: {
+      &quot;description&quot;: &quot;日志解析的末批/代、最近k、平均k、Combined k与提示；熵列可缺失，不替代StatePoint结果。&quot;
     }
   }
 }
@@ -1422,10 +1431,10 @@
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_plots.py">mcp/openmc_plots.py</a>。</p></details>
 <details class="tool" id="openmc_plot_mesh"><summary>openmc_plot_mesh
-<span class="tool-purpose">把规则网格tally画成二维分布热图：从StatePoint取网格分箱值，坐标取自算例tallies.xml或model.xml的网格定义（不猜几何）；3D网格须用level指定层，带能量过滤须用energy_bin指定箱。缺数据不补0，非有限值留空。输出PNG与完整JSON/CSV。</span></summary>
+<span class="tool-purpose">把规则网格tally画成二维分布热图：从StatePoint取网格分箱值，坐标取自算例tallies.xml或model.xml的网格定义（不猜几何）；3D网格须用level指定层，带能量过滤须用energy_bin指定箱。缺数据不补0，非有限值留空。输出PNG与完整JSON/CSV，零均值加标记并返回zero_bins/警告，不作物理零判断。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>job_id</td><td>string</td><td>是</td><td>不可省略</td><td>计算编号，直接使用openmc_submit_job或扫描子项返回的job_id；不是目录、文件名或scan_id。查询/读取不会自动提交新计算。</td><td>—</td></tr><tr><td>tally_id</td><td>integer</td><td>否</td><td>省略时见说明</td><td>计分器ID，先从openmc_read_results返回的tallies[].id选择。省略时取StatePoint首个tally，不等于自动选择业务上正确的量；不要传null。</td><td>—</td></tr><tr><td>score</td><td>string</td><td>否</td><td>省略时见说明</td><td>计分类型，取所选tally的scores，例如flux。省略时使用首个score；不要传null，也不要为不存在的计分编造名称。</td><td>—</td></tr><tr><td>energy_bin</td><td>integer</td><td>否</td><td>省略时见说明</td><td>带能量过滤的网格tally中第几个能量箱（0起），从tally的EnergyFilter分界推出；省略则要求该tally无能量过滤。</td><td>—</td></tr><tr><td>level</td><td>integer</td><td>否</td><td>省略时见说明</td><td>三维网格的第几层（0起，沿第三个坐标方向）；省略仅允许二维网格，不静默投影。</td><td>—</td></tr><tr><td>format</td><td>string</td><td>否</td><td>&quot;png&quot;</td><td>图文件格式，png或svg；同次另存对应JSON/CSV数据。</td><td>—</td></tr><tr><td>title</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选图标题，最多200字符；省略时使用默认标题，不改变计分数据、单位或归一化。不要传null。</td><td>—</td></tr><tr><td>x_label</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选横轴标题，最多200字符；只改显示文本，不改数据坐标。</td><td>—</td></tr><tr><td>y_label</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选纵轴标题，最多200字符；只改显示文本，不改数据或单位。</td><td>—</td></tr><tr><td>colorbar_label</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选色标标题，最多200字符；省略用score名并注明未做功率归一化。</td><td>—</td></tr></tbody></table></div>
 <h3>返回怎么看</h3><p>image为热图文件；values_json/values_csv含网格坐标与全部值；mesh回显网格编号/维数/层；cells为格数；失败或缺失值留空不补0。</p>
-<div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>job_id</td><td>计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。</td></tr><tr><td>path</td><td>相对服务端MC_WORKSPACE的产物路径；不是客户端本地路径。</td></tr><tr><td>server_path</td><td>服务端绝对文件位置；远程调用不会自动下载文件。</td></tr><tr><td>workspace</td><td>服务端绝对数据根；工作区相对路径以它为基准。</td></tr><tr><td>provenance</td><td>数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>job_id</td><td>计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。</td></tr><tr><td>path</td><td>相对服务端MC_WORKSPACE的产物路径；不是客户端本地路径。</td></tr><tr><td>server_path</td><td>服务端绝对文件位置；远程调用不会自动下载文件。</td></tr><tr><td>workspace</td><td>服务端绝对数据根；工作区相对路径以它为基准。</td></tr><tr><td>provenance</td><td>数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。</td></tr><tr><td>zero_bins</td><td>当前所选网格切片内均值恰为0的格数；缺失值不计入，不能据此判定物理零或无径迹。</td></tr><tr><td>warnings</td><td>统计量等不确定性提示，不能因工具调用成功而忽略。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
@@ -1510,6 +1519,12 @@
     },
     &quot;provenance&quot;: {
       &quot;description&quot;: &quot;数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。&quot;
+    },
+    &quot;zero_bins&quot;: {
+      &quot;description&quot;: &quot;当前所选网格切片内均值恰为0的格数；缺失值不计入，不能据此判定物理零或无径迹。&quot;
+    },
+    &quot;warnings&quot;: {
+      &quot;description&quot;: &quot;统计量等不确定性提示，不能因工具调用成功而忽略。&quot;
     }
   }
 }
@@ -1810,9 +1825,9 @@
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_reports.py">mcp/openmc_reports.py</a>。</p></details>
 <details class="tool" id="openmc_list_official_examples"><summary>openmc_list_official_examples
-<span class="tool-purpose">列出固定版本的全部官方源码例题、内置模型和Notebook，含来源、步骤与实际适配状态；未适配或未实跑的条目不能算通过。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>group</td><td>string</td><td>否</td><td>&quot;all&quot;</td><td>按官方来源筛选；省略显示全部三处，第三方不在清单。</td><td>—</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>列出固定版本的全部官方源码例题、内置模型和Notebook，含来源、步骤与实际适配状态；未适配或未实跑的条目不能算通过。</p>
+<span class="tool-purpose">列出固定版本官方例题；首次推荐group筛选、limit=10、summary=true，按next_offset翻页，详情用get接口；省略新选项保留全量，未实跑不算通过。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>group</td><td>string</td><td>否</td><td>&quot;all&quot;</td><td>按官方来源筛选；省略显示全部三处，第三方不在清单。</td><td>—</td></tr><tr><td>offset</td><td>integer</td><td>否</td><td>0</td><td>从0开始的分页偏移；继续使用上一页next_offset。count为筛选总数，不是本页条数。</td><td>—</td></tr><tr><td>limit</td><td>integer</td><td>否</td><td>省略时见说明</td><td>本页最多条数，推荐10；省略返回偏移之后全部条目，不自动截断。</td><td>—</td></tr><tr><td>summary</td><td>boolean</td><td>否</td><td>false</td><td>true仅返回例题ID/名称/来源组/范围/适配状态等摘要；详情用openmc_get_official_example。省略保留完整说明。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>列出固定版本官方例题；首次推荐group筛选、limit=10、summary=true，按next_offset翻页，详情用get接口；省略新选项保留全量，未实跑不算通过。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
@@ -1827,6 +1842,23 @@
       ],
       &quot;description&quot;: &quot;按官方来源筛选；省略显示全部三处，第三方不在清单。&quot;,
       &quot;default&quot;: &quot;all&quot;
+    },
+    &quot;offset&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 0,
+      &quot;description&quot;: &quot;从0开始的分页偏移；继续使用上一页next_offset。count为筛选总数，不是本页条数。&quot;,
+      &quot;default&quot;: 0
+    },
+    &quot;limit&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 1,
+      &quot;maximum&quot;: 100,
+      &quot;description&quot;: &quot;本页最多条数，推荐10；省略返回偏移之后全部条目，不自动截断。&quot;
+    },
+    &quot;summary&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;,
+      &quot;description&quot;: &quot;true仅返回例题ID/名称/来源组/范围/适配状态等摘要；详情用openmc_get_official_example。省略保留完整说明。&quot;,
+      &quot;default&quot;: false
     }
   },
   &quot;required&quot;: [],
@@ -1836,7 +1868,7 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;列出固定版本的全部官方源码例题、内置模型和Notebook，含来源、步骤与实际适配状态；未适配或未实跑的条目不能算通过。&quot;
+  &quot;description&quot;: &quot;列出固定版本官方例题；首次推荐group筛选、limit=10、summary=true，按next_offset翻页，详情用get接口；省略新选项保留全量，未实跑不算通过。&quot;
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/official_catalog.py">mcp/official_catalog.py</a>。</p></details>

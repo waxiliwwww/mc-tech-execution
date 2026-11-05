@@ -223,11 +223,25 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
             'provenance': record['provenance'], 'next': '使用openmc_job_status查询，提交不等于计算完成。'}
 
 
+# Entropy is optional in OpenMC's k table. Horizontal whitespace prevents a
+# partial row from accidentally consuming the next line. Keep unknown values null.
+PROGRESS_NUMBER = r'[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[EeDd][+-]?\d+)?'
+PROGRESS_VALUE = rf'(?:{PROGRESS_NUMBER}|[+-]?(?:nan|inf(?:inity)?))'
 PROGRESS_BATCH_LINE = re.compile(
-    r'^\s*(\d+)/(\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)(?:\s+(\d+\.\d+)\s+\+/-\s+(\d+\.\d+))?\s*$',
-    re.M)
-PROGRESS_COMBINED_KEFF = re.compile(r'Combined k-effective\s*=\s*(\d+\.\d+)\s*\+/-\s*(\d+\.\d+)')
+    rf'^[ \t]*(\d+)/(\d+)[ \t]+({PROGRESS_VALUE})'
+    rf'(?:[ \t]+({PROGRESS_VALUE}))?'
+    rf'(?:[ \t]+({PROGRESS_VALUE})[ \t]+\+/-[ \t]+({PROGRESS_VALUE}))?[ \t]*$',
+    re.M | re.I)
+PROGRESS_COMBINED_KEFF = re.compile(
+    rf'Combined k-effective\s*=\s*({PROGRESS_VALUE})\s*\+/-\s*({PROGRESS_VALUE})(?=$|[ \t\r\n])', re.I)
 PROGRESS_COMBINED_LOOSE = re.compile(r'Combined k-effective\s*=\s*(\S+)\s*\+/-\s*(\S+)')
+
+
+def _finite_progress(raw):
+    import math
+    if not raw:return None
+    value = float(raw.replace('D', 'E').replace('d', 'e'))
+    return value if math.isfinite(value) else None
 
 
 def _progress(directory: Path, value: dict) -> dict:
@@ -271,9 +285,11 @@ def _progress(directory: Path, value: dict) -> dict:
     if matches:
         batch, generation, keff, entropy, average_mean, average_std = matches[-1]
         progress.update(latest_batch=int(batch), latest_generation=int(generation),
-                        keff_latest=float(keff), entropy_latest=float(entropy))
+                        keff_latest=_finite_progress(keff), entropy_latest=_finite_progress(entropy))
         if average_mean:
-            progress['keff_average'] = {'mean': float(average_mean), 'std_dev': float(average_std)}
+            progress['keff_average'] = {'mean': _finite_progress(average_mean), 'std_dev': _finite_progress(average_std)}
+        if any(raw and _finite_progress(raw) is None for raw in (keff, entropy, average_mean, average_std)):
+            progress['note'] = '批次行含非有限统计量；保留批号，不可用数值为空，请核对采样条件和原日志。'
         if batches_total:
             progress['percent'] = round(100.0 * min(int(batch), batches_total) / batches_total, 2)
     elif mode == 'eigenvalue':
@@ -281,9 +297,9 @@ def _progress(directory: Path, value: dict) -> dict:
     else:
         progress['note'] = '该run_mode无批次k表；进度以状态与日志尾部为准，不编造百分比。'
     combined = PROGRESS_COMBINED_KEFF.search(text)
-    if combined:
-        progress['keff_combined'] = {'mean': float(combined.group(1)),
-                                     'std_dev': float(combined.group(2))}
+    if combined and all(_finite_progress(v) is not None for v in combined.groups()):
+        progress['keff_combined'] = {'mean': _finite_progress(combined.group(1)),
+                                     'std_dev': _finite_progress(combined.group(2))}
         progress['percent'] = 100.0
     else:
         loose = PROGRESS_COMBINED_LOOSE.search(text)

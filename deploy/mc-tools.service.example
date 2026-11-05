@@ -1,0 +1,23 @@
+[Unit]
+Description=MC toolkit standard MCP service
+After=network.target
+
+[Service]
+Type=simple
+# Replace all @PACKAGE_DIR@ occurrences with the actual absolute installation path.
+# Prerequisite: quickstart/setup completed; do not install dependencies on each restart.
+WorkingDirectory=@PACKAGE_DIR@
+ExecStart=@PACKAGE_DIR@/mcp/.venv/bin/python @PACKAGE_DIR@/mcp/server.py
+Environment=MCP_HOST=127.0.0.1
+Environment=MCP_PORT=8770
+EnvironmentFile=-%h/.config/mc-toolkit/service.env
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+# Deliberately preserve the toolkit's detached jobs when only the MCP server stops.
+# Stop/cancel jobs by their own IDs; process is not the systemd default and leaves
+# child jobs outside normal service-stop cleanup. Host/WSL shutdown still stops them.
+KillMode=process
+
+[Install]
+WantedBy=default.target

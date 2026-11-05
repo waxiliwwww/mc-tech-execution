@@ -40,6 +40,9 @@ def environment() -> dict:
     except (OSError, subprocess.TimeoutExpired) as exc:
         result['executable_error'] = type(exc).__name__ + '；请按部署文档配置OpenMC运行时'
         result['version_matches'] = False
+    from nuclear_data import deployment_status
+    result['cross_sections_env_set'] = result['cross_sections_configured']
+    result['nuclear_data'] = deployment_status(cfg)
     result['note'] = '接口包、可执行程序和核数据分别检查；探测成功不等于物理验收。'
     return result
 
@@ -1080,6 +1083,7 @@ def _report_metadata(directory: Path) -> dict:
         except (OSError, ValueError):
             marker = {}
     parameters = {}
+    parameter_sources = {}
     settings_path = directory / 'work/model.xml'
     combined_model = settings_path.is_file()
     if not combined_model:
@@ -1095,6 +1099,11 @@ def _report_metadata(directory: Path) -> dict:
             for tag in ('run_mode', 'energy_mode', 'particles', 'batches', 'inactive', 'seed'):
                 node = root.find(tag)
                 parameters[tag] = node.text if node is not None else None
+                if node is not None:parameter_sources[tag] = 'input_xml'
+            if (root.find('energy_mode') is None
+                    and str(marker.get('openmc_version') or runtime.get('expected_version', '')).startswith('0.16.')):
+                parameters['energy_mode'] = 'continuous-energy'
+                parameter_sources['energy_mode'] = 'openmc_default'
 
     def iso(moment):
         if not moment:
@@ -1105,7 +1114,7 @@ def _report_metadata(directory: Path) -> dict:
     return {'template': provenance_info.get('template'),
             'data_kind': provenance_info.get('data_kind'),
             'generator': marker.get('generator') or marker.get('template'),
-            'parameters': parameters,
+            'parameters': parameters, 'parameter_sources': parameter_sources,
             'openmc_version': marker.get('openmc_version') or runtime.get('expected_version'),
             'runtime': {'state': record.get('state'), 'started_at': iso(started),
                         'finished_at': iso(finished),
@@ -1135,8 +1144,8 @@ def export_report(job_id: str, format: str = 'markdown', tally_id: int | None = 
     metadata = _report_metadata(directory)
     note = data['provenance'].get('note', '')
     if format == 'markdown':
-        parameters = '；'.join(f"{key}={value if value is not None else '未记录'}"
-                              for key, value in metadata['parameters'].items()) or '未记录'
+        from openmc_visuals import metadata_parameters
+        parameters = metadata_parameters(metadata)
         runtime_info = metadata['runtime']
         duration = f"{runtime_info['duration_seconds']}秒" if runtime_info['duration_seconds'] is not None else '未记录'
         output = '# OpenMC接口联调结果\n\n'

@@ -126,7 +126,7 @@ TOOLS += [
     {"name": "openmc_plot_results", "description": "从完整StatePoint选择tally/score/nuclide/filter，生成PNG/SVG与完整JSON/CSV。单一能量过滤器用eV区间中点，保留上下界；多过滤器用明确的展平分箱索引，不冒充物理坐标。默认首个tally/score，不用截断预览，不做功率或能宽归一化。",
      "inputSchema": schema({"job_id": TEXT, **PLOT_FIELDS, "style": {"type": "string", "enum": ['line', 'bar']}}, ['job_id']),
      "outputSchema": OUTPUT, "function": plot_results, "annotations": WRITE},
-    {"name": "openmc_plot_mesh", "description": "把规则网格tally画成二维分布热图：从StatePoint取网格分箱值，坐标取自算例tallies.xml或model.xml的网格定义（不猜几何）；3D网格须用level指定层，带能量过滤须用energy_bin指定箱。缺数据不补0，非有限值留空。输出PNG与完整JSON/CSV。",
+    {"name": "openmc_plot_mesh", "description": "把规则网格tally画成二维分布热图：从StatePoint取网格分箱值，坐标取自算例tallies.xml或model.xml的网格定义（不猜几何）；3D网格须用level指定层，带能量过滤须用energy_bin指定箱。缺数据不补0，非有限值留空。输出PNG与完整JSON/CSV，零均值加标记并返回zero_bins/警告，不作物理零判断。",
      "inputSchema": schema({"job_id": TEXT, "tally_id": {"type": "integer", "minimum": 1},
                             "score": {"type": "string"}, "energy_bin": {"type": "integer", "minimum": 0},
                             "level": {"type": "integer", "minimum": 0},
@@ -153,8 +153,11 @@ TOOLS += [
 EXAMPLE_ID = {"type": "string", "minLength": 1, "description": "固定官方例题ID；先从openmc_list_official_examples返回的examples[].example_id选择，不是脚本路径。"}
 INSTANCE_ID = {"type": "string", "pattern": "^[a-f0-9]{32}$", "description": "准备官方例题返回的instance_id；关联该实例的各步骤和计算编号。"}
 TOOLS += [
-    {"name": "openmc_list_official_examples", "description": "列出固定版本的全部官方源码例题、内置模型和Notebook，含来源、步骤与实际适配状态；未适配或未实跑的条目不能算通过。",
-     "inputSchema": schema({"group": {"type": "string", "enum": ["all", "source", "api", "notebook"], "description": "按官方来源筛选；省略显示全部三处，第三方不在清单。"}}),
+    {"name": "openmc_list_official_examples", "description": "列出固定版本官方例题；首次推荐group筛选、limit=10、summary=true，按next_offset翻页，详情用get接口；省略新选项保留全量，未实跑不算通过。",
+     "inputSchema": schema({"group": {"type": "string", "enum": ["all", "source", "api", "notebook"], "description": "按官方来源筛选；省略显示全部三处，第三方不在清单。"},
+                            "offset": {"type":"integer","minimum":0,"description":"从0开始的分页偏移；继续使用上一页next_offset。count为筛选总数，不是本页条数。"},
+                            "limit": {"type":"integer","minimum":1,"maximum":100,"description":"本页最多条数，推荐10；省略返回偏移之后全部条目，不自动截断。"},
+                            "summary": {"type":"boolean","description":"true仅返回例题ID/名称/来源组/范围/适配状态等摘要；详情用openmc_get_official_example。省略保留完整说明。"}}),
      "outputSchema": OUTPUT, "function": list_official_examples},
     {"name": "openmc_get_official_example", "description": "查指定官方例题的固定来源、步骤和可用范围。先看此说明，再提供输入并准备实例。",
      "inputSchema": schema({"example_id": EXAMPLE_ID}, ['example_id']), "outputSchema": OUTPUT, "function": get_official_example},

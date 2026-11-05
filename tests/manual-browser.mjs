@@ -76,6 +76,23 @@ try {
   assert.match(await page.locator('#dsh').innerText(),/cordis.patch.yml/);
   assert.match(await page.locator('#dsh').innerText(),/不修改已有模型配置/);
   await shot('05-deployment-dsh');
+  await page.goto(url('deployment.html#systemd-user'));await anchor('systemd-user');
+  assert.match(await page.locator('#systemd-user').innerText(),/KillMode=process/);
+  assert.match(await page.locator('#systemd-user').innerText(),/不是已启用/);
+  await shot('05b-service-lifecycle');
+  await page.goto(url('deployment.html#connection-troubleshooting'));await anchor('connection-troubleshooting');
+  assert.match(await page.locator('#connection-troubleshooting').innerText(),/Connection refused/);
+  await page.goto(url('deployment.html#artifact-delivery'));await anchor('artifact-delivery');
+  assert.match(await page.locator('#artifact-delivery').innerText(),/SCP\/SFTP/);
+  await shot('05c-artifact-delivery');
+  await page.goto(url('toolkit-usage.html#results'));
+  assert.match(await page.locator('#results').innerText(),/zero_bins/);
+  await page.goto(url('project-progress.html#trial-20261105'));await anchor('trial-20261105');
+  assert.match(await page.locator('#trial-20261105').innerText(),/0.93804/);
+  assert.match(await page.locator('#trial-20261105').innerText(),/未独立重演/);
+  await shot('05d-trial-receipt');
+  await page.goto(url('deployment.html#dsh'));
+
   await page.locator('#dsh a[href="toolkit-usage.html#assembly"]').click();await anchor('assembly');
   // Open a runnable command in the native-input section and exercise local file copy fallback.
   await page.goto(url('toolkit-usage.html#existing'));

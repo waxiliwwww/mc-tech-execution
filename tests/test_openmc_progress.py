@@ -1,4 +1,4 @@
-"""B6 离线测试：job_status 结构化进度解析。日志样本按真实 OpenMC 0.16 输出格式构造，无物理含义。"""
+"""B6 离线测试：job_status 结构化进度解析。包含真实OpenMC 0.16日志回归及构造边界样本，不执行输运。"""
 import json
 import os
 from pathlib import Path
@@ -93,6 +93,34 @@ class JobProgress(unittest.TestCase):
         progress = jobs.status('cd' * 16)['progress']
         self.assertEqual(progress['keff_combined'], {'mean': 1.16262, 'std_dev': 0.00308})
         self.assertEqual(progress['percent'], 100.0)
+
+    def test_actual_no_entropy_log_preserves_last_batch_average_and_combined(self):
+        log=(ROOT/'tests/fixtures/openmc-no-entropy.txt').read_text()
+        self.make_job('02'*16, 'completed', log, batches=12, inactive=2)
+        p=jobs.status('02'*16)['progress']
+        self.assertEqual((p['latest_batch'],p['latest_generation']),(12,1))
+        self.assertEqual(p['keff_latest'],1.16911)
+        self.assertIsNone(p['entropy_latest'])
+        self.assertEqual(p['keff_average'],{'mean':1.18114,'std_dev':.01027})
+        self.assertEqual(p['keff_combined'],{'mean':1.17112,'std_dev':.00833})
+
+    def test_inactive_and_scientific_rows_do_not_consume_the_next_line(self):
+        directory=self.make_job('03'*16,'running','')
+        for log,batch,keff,entropy in [
+            ('  1/1   1.20202\n',1,1.20202,None),
+            ('  2/1   1.2E+0  6.3D+0\n',2,1.2,6.3),
+            (' 12/1   1.16911  1.18114 +/- 1.027E-2\n 13/1\n',12,1.16911,None)]:
+            (directory/'solver.log').write_text(log)
+            p=jobs.status('03'*16)['progress']
+            self.assertEqual(p['latest_batch'],batch);self.assertEqual(p['keff_latest'],keff)
+            self.assertEqual(p['entropy_latest'],entropy)
+
+    def test_last_nonfinite_values_remain_null_with_batch_and_warning(self):
+        self.make_job('04'*16,'running',' 1/1 1.2\n 2/1 nan 1.1 +/- inf\n')
+        p=jobs.status('04'*16)['progress']
+        self.assertEqual(p['latest_batch'],2);self.assertIsNone(p['keff_latest'])
+        self.assertIsNone(p['keff_average']['std_dev']);self.assertIn('非有限',p['note'])
+        json.dumps(p,allow_nan=False)
 
     def test_fixed_source_has_no_invented_percent(self):
         self.make_job('ef' * 16, 'running', ' Initializing source particles...\n batch 3 done\n',

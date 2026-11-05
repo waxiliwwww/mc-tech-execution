@@ -12,7 +12,7 @@ import zipfile
 
 import openmc_jobs as jobs
 from openmc_runtime import Error, ROOT, api, relative, file_location
-from openmc_visuals import selection_label, selected_report_rows
+from openmc_visuals import selection_label, selected_report_rows, metadata_parameters
 
 
 def office_command(runtime):
@@ -109,8 +109,7 @@ def export_selected_job(job_id: str, format: str, selection: dict):
             content = image.with_suffix('.csv').read_bytes()
             name = 'report.csv'
         else:
-            parameters = '；'.join(f"{key}={value if value is not None else '未记录'}"
-                                   for key, value in metadata['parameters'].items()) or '未记录'
+            parameters = metadata_parameters(metadata)
             runtime_info = metadata['runtime']
             duration = f"{runtime_info['duration_seconds']}秒" if runtime_info['duration_seconds'] is not None else '未记录'
             rows = ['# OpenMC所选结果报告', '', '作业：' + job_id,

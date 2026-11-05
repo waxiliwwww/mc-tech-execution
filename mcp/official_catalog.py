@@ -52,12 +52,20 @@ def describe(example_id: str) -> dict:
             'execution_status': 'not_run', 'note': '已收录不等于已经运行；按步骤执行后查询实际终态。'}
 
 
-def list_official_examples(group: str = 'all') -> dict:
+def list_official_examples(group: str = 'all', offset: int = 0, limit: int | None = None, summary: bool = False) -> dict:
     value = load_catalog()
     if group not in ('all', 'source', 'api', 'notebook'):
         raise Error('group须为all/source/api/notebook')
+    if type(offset) is not int or offset < 0:raise Error('offset须为非负整数')
+    if limit is not None and (type(limit) is not int or not 1 <= limit <= 100):raise Error('limit须为1..100的整数或省略')
+    if type(summary) is not bool:raise Error('summary须为布尔值')
     selected = [describe(x['id']) for x in value['examples'] if group == 'all' or x['source_group'] == group]
-    return {'openmc_version': value['openmc_version'], 'examples': selected,
+    page = selected[offset:offset + limit if limit is not None else None]
+    if summary:
+        keys = ('example_id', 'name', 'source_group', 'scope', 'workflow', 'implementation_status', 'execution_status')
+        page = [{key: item[key] for key in keys if key in item} for item in page]
+    return {'openmc_version': value['openmc_version'], 'examples': page, 'offset': offset, 'returned_count': len(page),
+            'next_offset': offset + len(page) if offset + len(page) < len(selected) else None,
             'count': len(selected), 'included_count':sum(x.get('scope')!='deferred' for x in selected),
             'deferred_count':sum(x.get('scope')=='deferred' for x in selected), 'sources': value['sources'],
             'note': '固定官方清单；第三方例题不在范围，未执行条目不能计为已通过。'}

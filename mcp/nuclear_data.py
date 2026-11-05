@@ -73,6 +73,20 @@ def managed_directory(cfg: dict | None = None) -> Path:
     return ROOT / '.runtime/nuclear-data' / library(cfg)[0]
 
 
+def deployment_status(cfg: dict) -> dict:
+    """Report the deployment fallback index; model-level overrides are not assessed."""
+    env_value = os.environ.get('OPENMC_CROSS_SECTIONS')
+    configured = cfg.get('cross_sections') or env_value
+    source = 'deployment_config' if cfg.get('cross_sections') else 'environment' if env_value else 'managed_cache'
+    managed = managed_directory(cfg) / 'cross_sections.xml'
+    selected = Path(configured).resolve() if configured else managed.resolve()
+    return {'library': library(cfg)[0] if selected == managed.resolve() else 'external_unverified',
+            'configured_library': library(cfg)[0], 'source': source,
+            'index_path': str(selected), 'index_exists': selected.is_file(),
+            'model_data_checked': False,
+            'note': '仅部署候选索引定位；未校验全部HDF5和模型所需核素。模型显式cross_sections优先，须再校核该模型。'}
+
+
 def initialize_index(cfg: dict | None = None) -> Path:
     directory = managed_directory(cfg)
     if library(cfg)[1].get('archive'):

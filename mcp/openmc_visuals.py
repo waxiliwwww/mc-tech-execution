@@ -210,8 +210,8 @@ def plot_mesh(params):
         if not np.isfinite(grid).any():
             raise ValueError('网格值全为非有限值，不能绘图；失败或缺失数据不能补0')
         series = {'values': grid, 'errors': error_grid, 'x_edges': x_edges, 'y_edges': y_edges,
-                  'x_label': params.get('x_label') or 'x (model units)',
-                  'y_label': params.get('y_label') or 'y (model units)',
+                  'x_label': params.get('x_label') or 'x (cm)',
+                  'y_label': params.get('y_label') or 'y (cm)',
                   'title': params.get('title') or f'Mesh tally {tally.id} / {score}',
                   'mesh_id': mesh_id, 'dimension': [nx, ny, nz], 'level': level,
                   'score': score, 'energy_label': energy_label,
@@ -227,12 +227,22 @@ def draw_mesh(series, path: Path, params):
     import matplotlib.pyplot as plt
     import numpy as np
     _set_font(params)
+    zero_mask = np.isfinite(series['values']) & (series['values'] == 0)
+    zero_bins = int(np.count_nonzero(zero_mask))
+    zero_note = '本次统计均值为0；单凭该值不能判断物理量严格为0或断言没有径迹贡献。'
     figure, axes = plt.subplots(figsize=(7.2, 5.6), constrained_layout=True)
     try:
         image = axes.pcolormesh(series['x_edges'], series['y_edges'], series['values'], shading='flat',
                                 cmap='viridis')
         bar = figure.colorbar(image, ax=axes)
         bar.set_label(series['colorbar_label'])
+        if zero_bins:
+            xs = .5 * (np.asarray(series['x_edges'][:-1]) + series['x_edges'][1:])
+            ys = .5 * (np.asarray(series['y_edges'][:-1]) + series['y_edges'][1:])
+            j, i = np.nonzero(zero_mask)
+            axes.scatter(xs[i], ys[j], marker='x', s=20, color='#f5bd55', linewidths=.9,
+                         label=f'zero estimate: {zero_bins} bins (not a physical-zero conclusion)')
+            axes.legend(loc='upper center', bbox_to_anchor=(.5, -.14), fontsize=7, framealpha=.9)
         axes.set_aspect('equal')
         axes.set_xlabel(series['x_label'])
         axes.set_ylabel(series['y_label'])
@@ -244,12 +254,13 @@ def draw_mesh(series, path: Path, params):
             note += ' | energy bin ' + series['energy_label']
         kind = params['provenance']['data_kind']
         figure.suptitle(note + ' | ' + kind + ' | engineering output; professional acceptance: not performed',
-                        fontsize=8, color='#804000')
-        figure.savefig(path, dpi=150)
+                        fontsize=8, color='#804000', y=1.02)
+        figure.savefig(path, dpi=150, bbox_inches='tight')
     finally:
         plt.close(figure)
     values_path = path.with_suffix('.json')
-    values_path.write_text(json.dumps({'mesh_id': series['mesh_id'], 'dimension': series['dimension'],
+    values_path.write_text(json.dumps({'tally_id': series['tally_id'], 'mesh_id': series['mesh_id'], 'dimension': series['dimension'],
+                                       'zero_bins': zero_bins, 'zero_bin_note': zero_note if zero_bins else None,
                                        'level': series.get('level'), 'score': series['score'],
                                        'energy_label': series.get('energy_label'),
                                        'x_edges': [float(v) for v in series['x_edges']],
@@ -277,6 +288,8 @@ def draw_mesh(series, path: Path, params):
                                  '' if not np.isfinite(error) else format(float(error), '.9g'),
                                  series['mesh_id'], series.get('level'), series['score']])
     return {'image': path.name, 'values_json': values_path.name, 'values_csv': csv_path.name,
+            'tally_id': series['tally_id'], 'zero_bins': zero_bins,
+            'warnings': [zero_note] if zero_bins else [],
             'cells': int(series['dimension'][0] * series['dimension'][1]),
             'mesh': {'id': series['mesh_id'], 'dimension': series['dimension'], 'level': series.get('level')}}
 
@@ -377,6 +390,15 @@ def selection_label(series):
     return f"tally {series['tally_id']} / {series['score']} / {series['nuclide']}"
 
 
+def metadata_parameters(metadata):
+    values = []
+    for key, value in (metadata.get('parameters') or {}).items():
+        if value is None:continue
+        suffix = '（OpenMC默认）' if metadata.get('parameter_sources', {}).get(key) == 'openmc_default' else ''
+        values.append(f'{key}={value}{suffix}')
+    return '；'.join(values) or '未记录'
+
+
 def selected_report_rows(series, limit):
     def number(value):return '不可用' if value is None else format(value, '.9g')
     rows = []
@@ -405,8 +427,7 @@ def render_docx(params):
     document.add_paragraph('专业验收：未进行。合成数据和接口执行结果不能替代合同专业指标验证。')
     metadata = data.get('metadata') or {}
     if metadata:
-        parameters = '；'.join(f"{key}={value if value is not None else '未记录'}"
-                               for key, value in (metadata.get('parameters') or {}).items()) or '未记录'
+        parameters = metadata_parameters(metadata)
         runtime_info = metadata.get('runtime') or {}
         duration = (f"{runtime_info['duration_seconds']}秒"
                     if runtime_info.get('duration_seconds') is not None else '未记录')

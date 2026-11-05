@@ -2,11 +2,20 @@ param([string]$Url = "http://127.0.0.1:8770/mcp")
 # Windows PowerShell 5.1+; performs discovery only, no model or computation calls.
 $ErrorActionPreference = "Stop"
 $phase = "URL"
+$displayUrl = "(invalid URL)"
 try {
     $endpoint = [Uri]$Url
     if ($endpoint.Scheme -notin @("http", "https") -or $endpoint.UserInfo) {
         throw "Use an HTTP(S) endpoint without credentials in the URL."
     }
+    $displayUrl = $endpoint.GetLeftPart([UriPartial]::Path)
+    $phase = "TCP"
+    $tcp = New-Object System.Net.Sockets.TcpClient
+    try {
+        $connecting = $tcp.ConnectAsync($endpoint.DnsSafeHost, $endpoint.Port)
+        if (-not $connecting.Wait(3000)) { throw "TCP connection timeout" }
+        $null = $connecting.GetAwaiter().GetResult()
+    } finally { $tcp.Dispose() }
     $headers = @{ Accept = "application/json, text/event-stream" }
     if ($env:MCP_AUTH_TOKEN) { $headers.Authorization = "Bearer " + $env:MCP_AUTH_TOKEN }
     function Send-Mcp($payload) {
@@ -40,12 +49,28 @@ try {
         if ($required -notin $tools.name) { throw "Required tool not discovered: $required" }
     }
     [ordered]@{
-        passed=$true; phase="discovery"; url=$Url; protocol=$initialized.result.protocolVersion
+        passed=$true; phase="discovery"; url=$displayUrl; protocol=$initialized.result.protocolVersion
         tools=$tools.Count; model_requests=0; compute_submissions=0
         note="Windows HTTP/MCP discovery passed. DSH plugin activation and natural-language use are separate checks."
     } | ConvertTo-Json -Depth 5
 } catch {
     # Never dump HTTP request headers or tokens on a failed connection.
-    Write-Error "MCP check failed at $phase. Check URL, service, firewall and authentication; no model or computation was called."
+    $reason = "Check service, tunnel, firewall, HTTP status and authentication."
+    $current = $_.Exception
+    while ($null -ne $current) {
+        if ($current -is [System.Net.Sockets.SocketException]) {
+            if ($current.SocketErrorCode -eq [System.Net.Sockets.SocketError]::ConnectionRefused) {
+                $reason = "Connection refused: no listener accepted this endpoint, or a firewall rejected it. Start/check the MCP service or SSH tunnel."
+            } elseif ($current.SocketErrorCode -eq [System.Net.Sockets.SocketError]::HostNotFound) {
+                $reason = "Host name could not be resolved. Check the server address and DNS."
+            }
+        }
+        if ($current -is [System.Net.WebException] -and $null -ne $current.Response) {
+            $status = [int]$current.Response.StatusCode
+            $reason = "HTTP status $status. Check the MCP URL/path, reverse proxy and authentication."
+        }
+        $current = $current.InnerException
+    }
+    [Console]::Error.WriteLine("MCP check failed at $phase; endpoint=$displayUrl. $reason No model or computation was called.")
     exit 1
 }

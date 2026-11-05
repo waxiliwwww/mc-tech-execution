@@ -14,6 +14,20 @@ from openmc_runtime import Error
 
 
 class DataCacheIntegrity(unittest.TestCase):
+    def test_deployment_status_reports_index_without_claiming_model_readiness(self):
+        with tempfile.TemporaryDirectory() as folder,patch.object(data,'ROOT',Path(folder)),patch.dict(data.os.environ,{},clear=True):
+            cfg={'nuclear_data_library':'official-endfb-vii.1'}
+            index=data.managed_directory(cfg)/'cross_sections.xml';index.parent.mkdir(parents=True)
+            index.write_text('<cross_sections/>')
+            status=data.deployment_status(cfg)
+            self.assertEqual(status['source'],'managed_cache');self.assertTrue(status['index_exists'])
+            self.assertFalse(status['model_data_checked']);self.assertEqual(status['index_path'],str(index))
+            data.os.environ['OPENMC_CROSS_SECTIONS']=str(index)
+            cfg['cross_sections']=str(Path(folder)/'missing.xml')
+            status=data.deployment_status(cfg)
+            self.assertEqual(status['source'],'deployment_config');self.assertFalse(status['index_exists'])
+            self.assertEqual(status['library'],'external_unverified')
+
     def test_complete_default_library_contains_actual_water_thermal_object(self):
         identity=json.loads((ROOT/'config/data-index/endfb-vii.1-files.json').read_text())
         self.assertEqual(identity['revision'],data.LIBRARIES['endfb-vii.1']['revision'])

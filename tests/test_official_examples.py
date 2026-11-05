@@ -38,6 +38,24 @@ class OfficialCorpus(unittest.TestCase):
         self.assertEqual({x['id'] for x in value['examples'] if x['scope']=='deferred'},
                          {'notebook-nuclear-data','notebook-nuclear-data-resonance-covariance'})
 
+    def test_pagination_and_summary_keep_group_totals_and_all_ids(self):
+        full=catalog.list_official_examples('api')
+        ids=[];offset=0
+        while True:
+            page=catalog.list_official_examples('api',offset=offset,limit=2,summary=True)
+            self.assertEqual(page['count'],full['count'])
+            self.assertLessEqual(page['returned_count'],2)
+            self.assertTrue(all('steps' not in x and x['source_group']=='api' for x in page['examples']))
+            ids.extend(x['example_id'] for x in page['examples'])
+            if page['next_offset'] is None:break
+            offset=page['next_offset']
+        self.assertEqual(ids,[x['example_id'] for x in full['examples']])
+        self.assertEqual(len(ids),len(set(ids)))
+        empty=catalog.list_official_examples('api',offset=100,limit=2)
+        self.assertEqual(empty['returned_count'],0);self.assertIsNone(empty['next_offset'])
+        for args in [dict(offset=-1),dict(limit=0),dict(limit=True),dict(summary='yes')]:
+            with self.assertRaises(MCInputError):catalog.list_official_examples(**args)
+
     def test_fixed_ids_not_arbitrary_script_paths_or_commands(self):
         for value in ('../../etc/passwd', '/tmp/user.py', 'source-pincell; touch hacked', ''):
             with self.subTest(value=value), self.assertRaises(MCInputError):
