@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>开发与验证明细 · MC工具包</title><link rel="stylesheet" href="assets/manual.css"><script src="assets/manual.js" defer></script></head>
-<body><a class="sr-only" href="#content">跳到正文</a><aside class="sidebar"><a class="brand" href="index.html">MC 工具包<br>使用与开发手册</a><p class="edition">近期开发 · 内部安排</p><nav><a href="index.html">认识工具包</a><a href="development-plan.html">交付总览</a><a href="development-details.html" aria-current="page">开发与验证明细</a><a href="domain-workflows.html">模型接入与建模</a><a href="project-progress.html">合同功能进展</a><a href="reference.html">接口参数</a></nav></aside><main id="content">
+<body><a class="sr-only" href="#content">跳到正文</a><aside class="sidebar"><a class="brand" href="index.html">MC 工具包<br>使用与开发手册</a><p class="edition">近期开发 · 内部安排</p><nav aria-label="文档导航"><a href="index.html">工具包总览</a><a href="toolkit-usage.html">使用手册</a><a href="deployment.html">部署与接入</a><a href="toolkit.html">架构设计</a><a href="reference.html">接口参考</a></nav></aside><main id="content">
 <p class="eyebrow">2026-11-04确认方向 · 滚动计划</p><h1>交付能接模型、能建模的MCP调试包</h1>
 <p class="lead">不到两周内供甲方接入调试：既能使用已有OpenMC模型，也能让宿主模型通过标准MCP组合建模、校核和计算。公开例题跑通只是基础条件；可运行范围、可修改范围和可生成范围分别说明。</p>
 <div class="note">这是内部开发安排，不增加或替代合同指标。以下“完成检查”用于工程交接；正式验收仍按原规格书表4-1、表4-2及确认的测试计划执行。确切交付日期尚未给出，按实际日期压缩排期，保留末段联调修复时间。</div>
@@ -35,7 +35,7 @@
 <tr><td>标准MCP</td><td>实际启动隔离服务，发现完整参数、调用建模/导入/命名计算/查询/结果接口；错误响应可定位。CLI与协议调用共用实现。</td><td>无模型的MCP客户端不算自然语言宿主端到端通过，也不算第二宿主。</td></tr>
 <tr><td>自然语言与目标部署</td><td>明确预算后在实际宿主中提出不照抄固定demo的任务；观察模型生成的参数、实际工具回执、终态和结果。目标环境安装与甲方样例另留记录。</td><td>未拿到预算、环境或样例的项目记待验证，不能用模拟或本机证据填成通过。</td></tr>
 </tbody></table></div>
-<p>沿用 <code>./verify.sh --tools-only</code>，真实引擎用 <code>MC_TEST_OPENMC_CONFIG</code> 显式启用；具体命令与证据见<a href="domain-workflows.html#validation">模型工作流说明</a>。当前测试默认跳过的真实门控不计为通过。源码包不含凭据、核数据和运行环境；首次环境准备后自包含使用的约束保持不变。</p>
+<p>沿用 <code>./verify.sh --tools-only</code>，真实引擎用 <code>MC_TEST_OPENMC_CONFIG</code> 显式启用；具体命令与证据见<a href="project-records.html#validation">模型工作流说明</a>。当前测试默认跳过的真实门控不计为通过。源码包不含凭据、核数据和运行环境；首次环境准备后自包含使用的约束保持不变。</p>
 <h2 id="inputs">需要甲方配合什么，哪些我们自己做</h2>
 <div class="table-wrap"><table><thead><tr><th>条件</th><th>需要配合 / 项目内落实</th><th>未取得时继续做什么</th></tr></thead><tbody>
 <tr><td>近期领域任务</td><td>一个代表性堆/组件模型或参数说明、要修改的量、要查看的输出；确认联系人。不是要求先提供完整业务包。</td><td>按合同组件/控制棒方向和公开模型开发，明确候选范围；不宣称它就是甲方业务模型。</td></tr>
@@ -43,8 +43,8 @@
 <tr><td>微调模型</td><td>项目明确模型、数据、运行资源、接入方式和提供方；不能直接把全部责任默认转给甲方。</td><td>完成结构化约束、模型生成/校核接口和受控错误反馈，宿主调用工程测试单独举证。</td></tr>
 <tr><td>专业验收</td><td>CLEAR-S等指定基准、17×17相关测试集、参考值、专业容差、95%/90%统计口径及测试计划确认。</td><td>建立并复用公开自测与比对机制；内部判据不升级为合同条款。</td></tr>
 </tbody></table></div>
-<p>2026-11-04补充：对用户的确认入口已压缩为<a href="development-plan.html">交付总览</a>，本页保留实施细节。<a href="dsh.html">Windows DSH接入</a>单独提供配置。存储报告增加磁盘容量，作业快照提交前检查输入估算量和可配置保留空间，不自动删除旧证据；不是运行中配额，也不覆盖所有写入路径。WSL部署可通过disk_space_check_paths显式加入虚拟磁盘所在的宿主卷检测路径；默认空列表，通用包不绑定Windows路径。</p><h2 id="status">本轮状态与下一步</h2>
+<p>2026-11-04补充：对用户的确认入口已压缩为<a href="development-plan.html">交付总览</a>，本页保留实施细节。<a href="deployment.html#dsh">Windows DSH接入</a>单独提供配置。存储报告增加磁盘容量，作业快照提交前检查输入估算量和可配置保留空间，不自动删除旧证据；不是运行中配额，也不覆盖所有写入路径。WSL部署可通过disk_space_check_paths显式加入虚拟磁盘所在的宿主卷检测路径；默认空列表，通用包不绑定Windows路径。</p><h2 id="status">本轮状态与下一步</h2>
 <p id="implementation-status">第一批已实现：组合建模与能力发现、原生模型导入、作业/扫描命名、按名查询、声明式改参后源码/XML一致性、失败保全，以及调用示例和手册。非预置格架、真实MCP流程和简化全堆短计算已留工程记录；最终检查数量与版本见本轮回执。HPC、微调生成、部件级语义深化与目标环境联调继续按上文推进；真实自然语言模型联调按用户决定本轮暂不执行。</p>
 <p>产物本期继续保存在服务端，返回绝对路径和清单；MCP不自动上传输入，也不自动下载输出。下游需先将模型放入服务器工作区，按部署约定取回产物，远程下载功能仍按先前决定暂缓。</p>
-<footer><a href="project-progress.html">全部15项合同进展</a> · <a href="验收导向开发计划.md">既有计划与历史实施记录</a> · <a href="domain-workflows.html">实际使用与测试命令</a></footer>
+<footer><a href="project-progress.html">全部15项合同进展</a> · <a href="验收导向开发计划.md">既有计划与历史实施记录</a> · <a href="toolkit-usage.html#own-models">实际使用与测试命令</a></footer>
 </main></body></html>

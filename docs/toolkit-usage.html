@@ -1,60 +1,210 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MC工具包使用说明</title><style>:root{color-scheme:dark;--bg:#111820;--panel:#18232e;--ink:#e6edf4;--muted:#9eafbf;--line:#344353;--accent:#77d7c6}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.75 system-ui,"Microsoft YaHei",sans-serif}main{max-width:1100px;margin:auto;padding:32px 32px 48px}nav{display:flex;gap:12px 25px;flex-wrap:wrap;padding-bottom:20px;border-bottom:1px solid var(--line);font-size:14px}a{color:var(--accent);text-underline-offset:4px}a:focus-visible,button:focus-visible{outline:3px solid #f6cc72;outline-offset:4px}.eyebrow{color:var(--accent);font-size:13px;letter-spacing:.08em;margin-top:30px}h1{font-size:32px;line-height:1.35;margin:10px 0 16px}h2{font-size:22px;margin:30px 0 12px}.lead{font-size:18px;max-width:930px}.minor,footer{color:var(--muted);font-size:14px}.flow{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);padding:18px 22px;border-radius:8px;margin-top:24px}.flow b{color:var(--accent)}table{width:100%;border-collapse:collapse}th,td{padding:13px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line);font-size:15px}th{background:var(--panel);font-weight:650}td:first-child{width:18%;font-weight:650}td:last-child{width:35%;color:var(--muted)}.table-wrap{overflow-x:auto}.note{background:var(--panel);border-left:3px solid var(--accent);padding:16px 18px;margin:24px 0}footer{border-top:1px solid var(--line);margin-top:30px;padding-top:18px}code{font:13px/1.6 ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:var(--panel);padding:2px 4px}pre{background:var(--panel);padding:16px 20px;border:1px solid var(--line);overflow:auto;border-radius:6px}pre code{background:none;padding:0;white-space:pre}li{margin:8px 0}blockquote{border-left:3px solid var(--accent);margin:20px 0;padding:4px 18px;color:var(--muted)}@media(max-width:700px){main{padding:22px 18px 36px}h1{font-size:26px}.lead{font-size:16px}th,td{font-size:13px;padding:9px 8px}td:first-child{width:23%}td:last-child{width:31%}}@media print{:root{color-scheme:light;--bg:#fff;--panel:#f0f3f4;--ink:#16232c;--muted:#4b606e;--line:#cbd5db;--accent:#12675e}main{padding:0}nav{display:none}}
-
-main{max-width:1160px}.jump{display:flex;flex-wrap:wrap;gap:8px 22px;margin:24px 0}section[id]{scroll-margin-top:28px}h3{font-size:18px}.table-wrap{margin:18px 0}</style></head><body><main><nav><a href="index.html">手册首页</a><a href="toolkit.html">架构设计</a><a href="compute.html">完整计算</a><a href="cad.html">CAD计算</a><a href="reference.html">工具参数</a></nav><p class="eyebrow">面向使用者 · 软件基线0.11.1 · 2026-11-05</p><h1>MC工具包使用说明</h1><p class="minor"><a href="capabilities.html">能力范围：生成、接入、修改与解析</a> · <a href="reproduce.html">公开模型复现：组件与全堆的完整MCP/DSH步骤</a></p><p class="lead">本包帮助使用者把OpenMC模型接入、参数研究、计算执行和结果整理连成可复查的流程。你提供物理模型和判断依据，OpenMC求解；工具包保存每次提交的输入与设置，管理长计算，并把同一结果选择整理成数据、图和报告。可直接用CLI，也可通过标准MCP交给平台调用。</p><div class="flow"><span>准备模型</span>→<span>预览与校核</span>→<span>命名提交、查询终态</span>→<span>选择结果、取用产物</span></div><p class="minor">本页帮助选择操作路线和理解结果；模块机制、执行后端和扩展位置见<a href="toolkit.html">架构设计</a>。</p><div class="jump"><a href="#capabilities">能做什么</a><a href="#using">怎样使用</a><a href="#results">怎样看结果</a><a href="#files">文件与位置</a><a href="#guide">适用范围</a></div><section id="capabilities" aria-labelledby="capabilities-title"><h2 id="capabilities-title">1．能帮助完成哪些工作</h2>
-<div class="table-wrap"><table><thead><tr><th>你的工作</th><th>工具包提供的操作</th><th>你仍需明确的内容</th></tr></thead><tbody>
-<tr><td>沿用已有模型</td><td>导入原生XML及依赖，预览、校核并保存副本；参数新建则由包内Python生成输入。</td><td>提供受支持的模型文件与依赖；用户无需编写Python，核数据与模型适用性仍需具备。</td></tr>
-<tr><td>比较多组参数</td><td>发现可调整项，创建参数副本并回显差异；命名提交、串行扫描、按作业比较输入与结果。</td><td>研究参数的物理意义、允许范围，以及是否还要联动修改其他条件。</td></tr>
-<tr><td>使用CAD几何</td><td>检查STEP实体、换算长度并转换H5M；补齐材料、源与边界后交给OpenMC。</td><td>CAD只提供几何；实体材料映射、源、计分与几何质量须有依据。</td></tr>
-<tr><td>分析和交接结果</td><td>选择计分、核素与过滤箱，保留均值和标准差；输出图、完整所选数据和同源报告。</td><td>计分是否合适、统计是否充分，以及如何换算为目标工况或作专业比较。</td></tr>
-</tbody></table></div>
-<p>这些操作把常用的文件组织和交接规则固定下来：修改有副本，计算有编号，失败有记录，图和报告能追到原始统计。原生XML、HDF5及CSV仍可用OpenMC或自己的程序继续处理。建模可表达范围、自动改参范围和结果接口范围分别明确，不把接口封装等同于OpenMC全部API。</p>
-</section><section id="using" aria-labelledby="using-title"><h2 id="using-title">2．怎样开始，以及怎样带入自己的模型</h2>
-<p>先按<a href="env.html">部署说明</a>准备Linux/WSL环境。在完整源码包根目录运行 <code>./quickstart.sh</code>；已有基础环境只补CAD可用 <code>--cad-only</code>。按自己的任务选入口：已有模型按下方步骤导入；初次体验OpenMC按<a href="compute.html">公开例题的完整计算步骤</a>操作；需要CAD再运行 <code>mcp/.venv/bin/python examples/cad_case_demo.py</code>，核对STEP到数据、图与报告的交接。CAD示例的固定输入、物理设置和选项含义见<a href="cad.html#demo">示例说明</a>，不把示例条件套到自己的工程几何。</p>
-<p>已有模型时，把原生XML及本地依赖放入 <code>workspace/incoming/model/</code>，再按下面的目录创建独立工作副本：</p>
-<pre><code>./mc.sh call openmc_import_model '{"source_dir":"incoming/model","target_dir":"cases/model"}'
-./mc.sh call openmc_preview_input '{"case_dir":"cases/model"}'
-./mc.sh call openmc_validate_inputs '{"case_dir":"cases/model","api_check":true}'
-./mc.sh call openmc_submit_job '{"case_dir":"cases/model","name":"模型研究","threads":1}'</code></pre>
-<p>公开官方例题也可作为学习和运行检查的起点，目录与分步骤操作见<a href="official-examples.html">官方例题说明</a>；专业基准对比仍需适用模型、参考结果和比较判据。接下来的状态查询和结果读取使用返回的真实 <code>job_id</code>。若要改参，先发现参数并创建新副本；若要空间/能量分布，提交前先定义对应tally。完整参数示例、失败时怎样继续及实际命令见<a href="domain-workflows.html">模型操作指南</a>与<a href="compute.html">一次完整计算</a>。</p>
-<p>通过MCP使用时启动 <code>./mcp/start.sh</code>，把服务地址和需要的鉴权交给宿主；宿主通过工具发现取得同一套参数说明，无须逐个配置函数。CLI与MCP共享业务实现。宿主的自然语言理解、工具选择和图像展示能力需要单独验证，配置连接不等于已完成任意自然语言任务。连接方式见<a href="mcp.html">标准MCP说明</a>和<a href="dsh.html">Windows DSH接入</a>。</p>
-<p>日常先用存储报告查看占用，清理只在预览后执行并保留需要复查的记录。输入快照能固定模型文件，跨环境复现仍要一起记录引擎、核数据、随机种子、运行设置和线程条件；不承诺仅靠同一文件名就得到相同数值。</p>
-</section><section id="results" aria-labelledby="results-title"><h2 id="results-title">3．选择哪一份结果，图中的数怎样解释</h2>
-<p>OpenMC产生数值，工具提取和组织数值。先读结果清单，再明确 <code>tally_id</code>（哪项统计）、<code>score</code>（通量/反应率等量）、<code>nuclide</code>（总量或核素）和 <code>filter_selection</code>（哪些分箱）。多个候选时应显式选择，避免默认首项与你的问题不同。固定源计算通常没有keff，不能把空值当故障或零。</p>
-<div class="table-wrap"><table><thead><tr><th>结果层次</th><th>拿来做什么</th><th>完整性与限制</th></tr></thead><tbody>
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MC工具包使用手册</title><link rel="stylesheet" href="assets/manual.css"><script src="assets/manual.js" defer></script></head><body><a class="sr-only" href="#content">跳到正文</a><aside class="sidebar"><a class="brand" href="index.html">MC工具包<br>使用与开发手册</a><p class="edition">OpenMC 0.16.0 · 工具包0.11.2</p><nav aria-label="文档导航"><a href="index.html">工具包总览</a><a href="toolkit-usage.html" aria-current="page">使用手册</a><a href="deployment.html">部署与接入</a><a href="toolkit.html">架构设计</a><a href="reference.html">接口参考</a></nav><p class="minor">按任务阅读，参数按需查询。<br>可在本地离线打开。<br><a href="project-records.html">项目资料与验证记录</a></p></aside><main id="content"><h1>MC工具包使用手册</h1><p class="lead">从一份明确的输入出发，完成校核、计算、读取、绘图与报告；换模型时复用同一条流程。</p><div class="jump"><a href="#start">使用前准备</a><a href="#assembly">组件完整流程</a><a href="#core">换成全堆</a><a href="#own-models">用自己的模型</a><a href="#results">读懂结果</a><a href="#advanced">其他任务</a><a href="#failure">异常与清理</a></div><section id="start"><h2>1．使用前准备</h2><p>计算运行在Linux服务器或WSL。先由管理员按<a href="deployment.html#setup">部署说明</a>准备环境；通过DSH使用时，先完成<a href="deployment.html#dsh">连接与工具发现</a>。以下工具均以服务器工作区为文件基准，客户端文件不会自动上传。</p><p>先调用<code>openmc_environment</code>，确认<code>api_available</code>、<code>executable_available</code>、<code>version_matches</code>为true，并记住workspace。本文默认一次一个任务、1线程；目录、材料、几何、源和计分分别决定“在哪算、算什么、统计什么”。</p><div class="note"><strong>复现状态：</strong>下面组件和全堆两条完整流程待按本手册实测；本文不预填运行结果。1000粒子/12批/2非活跃批是工程练习设置，专业计算需另行确定采样与收敛条件。</div></section><section id="assembly"><h2>2．用官方17×17组件完成一次计算</h2><p><strong>研究对象：</strong>OpenMC内置<code>openmc.examples.pwr_assembly()</code>，使用官方组件几何与材料。我们适配生成输入，新增规则网格flux计分并覆盖采样设置。它不是甲方指定组件，也不是未修改的官方完整统计计算。</p>
+<p><strong>先理解四个输入：</strong>case_dir是服务器工作区内的新模型目录；particles=1000是每代粒子数；batches=12是总批数；inactive=2是前两批不计入活跃统计。本次仅有10个活跃批，便于学习接口，专家计算需自行确定采样与收敛条件。</p>
+<h3>2.1 新建输入，追加明确要计算的量</h3><p><strong>创建模型 openmc_create_model</strong></p><pre><code>{
+  "case_dir": "reproduction/assembly-001",
+  "template": "assembly-17x17",
+  "particles": 1000,
+  "batches": 12,
+  "inactive": 2
+}</code></pre><p>目录已存在就停下，保留旧输入，改用新的后缀。成功后记录返回的case_dir。模型内容来自包内官方工厂适配，不是DSH现场编写物理算法。</p><p><strong>定义计分 openmc_define_tally</strong></p><pre><code>{
+  "case_dir": "reproduction/assembly-001",
+  "name": "assembly central slice flux",
+  "scores": ["flux"],
+  "filters": [
+    {
+      "type": "mesh",
+      "dimension": [17, 17, 1],
+      "lower_left": [-10.71, -10.71, -1],
+      "upper_right": [10.71, 10.71, 1]
+    }
+  ]
+}</code></pre><p>tally是希望OpenMC统计的量，本例统计中间2cm厚区域内的flux；x/y覆盖21.42cm组件宽度，分为17×17格。<strong>每格是空间统计箱，不承诺等于一个独立燃料棒或组件功率。</strong>记录本次返回的<code>tally_id</code>为T，下文T必须替换成实际整数，不能猜1或17。未定义计分就不会自动出现相应结果。</p>
+<h3>2.2 看输入，分别核对各层校验</h3><p><strong>预览输入 openmc_preview_input</strong></p><pre><code>{
+  "case_dir": "reproduction/assembly-001"
+}</code></pre><p>查看返回的files中settings.xml采样设置、材料/几何摘要和tallies.xml计分；预览内容可能截断，以文件SHA256记录本次确认的输入。保留本次返回值供提交快照比较。</p><p><strong>校核输入 openmc_validate_inputs</strong></p><pre><code>{
+  "case_dir": "reproduction/assembly-001",
+  "api_check": true,
+  "semantic_check": true
+}</code></pre><p>继续条件同时满足：<code>structure_valid=true</code>、<code>openmc_api.api_parsed=true</code>、<code>semantic.checked/ok/complete</code>均为true。complete=false不算已全部校验，通过skipped_reason查未执行的原因；报错则停止，不跳过错误提交。此处API读回/静态校验不做真实几何抽样，也不替代专业判断。</p>
+<h3>2.3 命名提交，按返回编号查到终态</h3><p><strong>提交计算 openmc_submit_job</strong></p><pre><code>{
+  "case_dir": "reproduction/assembly-001",
+  "name": "组件公开模型试用-001",
+  "threads": 1
+}</code></pre><p>将返回的<code>job_id</code>记录为J，通常是32位字符串。下面JSON中的<code>"J"</code>只表示这次真实编号，执行前替换；T也是实际整数。不要复制示例占位符直接执行。</p><p><strong>查询状态 openmc_job_status</strong></p><pre><code>{
+  "job_id": "J"
+}</code></pre><p>queued/running时隔几秒再查原编号；completed后才能读结果。failed/cancelled/interrupted进入<a href="#failure">失败处理</a>，不假装完成。将终态input_hashes与预览files的SHA256逐项比较；不一致时停止把结果归属于先前确认输入。</p>
+<h3>2.4 读取真实结果，再按实际tally生成产物</h3><p><strong>读取结果 openmc_read_results</strong></p><pre><code>{
+  "job_id": "J",
+  "max_values": 10000
+}</code></pre><p>在tallies数组找id=T且score含flux的计分，确认nuclides为total、values_truncated=false、mean和std_dev各289个数。查看keff及其std_dev；有null或warnings要保留并说明。不能为得到图而静默选择另一个tally。</p><p><strong>空间热图 openmc_plot_mesh</strong></p><pre><code>{
+  "job_id": "J",
+  "tally_id": "T（替换为整数）",
+  "score": "flux",
+  "format": "png"
+}</code></pre><p>返回PNG路径及values_json/values_csv。横轴x/cm、纵轴y/cm，颜色是该网格的原始flux计分；本例只有一层，不需要level。不是实际功率，也没有追加体积或外部源强归一化。</p><p><strong>完整所选曲线 openmc_plot_results</strong></p><pre><code>{
+  "job_id": "J",
+  "tally_id": "T（替换为整数）",
+  "score": "flux",
+  "nuclide": "total",
+  "filter_selection": [],
+  "format": "png"
+}</code></pre><p>此曲线横轴是明确标注的展平网格分箱索引，用于逐点核对，不是能量轴或空间长度。空间关系看前一张热图。</p><p><strong>所选结果报告 openmc_export_report</strong></p><pre><code>{
+  "job_id": "J",
+  "tally_id": "T（替换为整数）",
+  "score": "flux",
+  "nuclide": "total",
+  "filter_selection": [],
+  "format": "markdown"
+}</code></pre><p>保留selection_mode、selection、points、chart、series_json和series_csv；应为selected、同一T/flux/total/空筛选、289点。报告引用的是完整所选曲线，不会自动嵌入前一张网格热图；热图作为独立产物一起交付。Markdown无需Office；PDF等需另配转换环境。</p><p><strong>列产物 openmc_list_artifacts</strong></p><pre><code>{
+  "kind": "job",
+  "identifier": "J"
+}</code></pre><p>记录directory和每个artifact.server_path，下一节按这些真实文件核对。不要用DSH当前目录猜测.mc-jobs的位置。</p></section><section id="core"><h2>3．沿同一流程换成简化全堆</h2><p>只在组件流程完成后开始，避免同时计算。模型来自<code>openmc.examples.pwr_core()</code>，官方21×21格架基准。它包含多层结构和不同材料，是比单棒更适合观察接入范围的公开例子；当前低统计和8×8网格仍是工程练习。</p>
+<div class="table-wrap"><table><thead><tr><th>位置</th><th>组件参数</th><th>全堆替换值</th></tr></thead><tbody><tr><th>create_model</th><td>assembly-17x17</td><td>template=core-lattice；case_dir=reproduction/core-001；采样仍1000/12/2</td></tr><tr><th>define_tally</th><td>17×17×1，宽21.42cm</td><td>8×8×1；lower_left=[-200,-200,-1]；upper_right=[200,200,1]；name=core central slice flux</td></tr><tr><th>作业和选择</th><td>组件任务名与J/T</td><td>新名称“全堆公开模型试用-001”，记录全堆自己的J/T；不可沿用组件编号</td></tr><tr><th>核对点数</th><td>289</td><td>64；这只是中心层粗网格，不是全堆每个组件的功率分布</td></tr></tbody></table></div>
+<p>逐步调用顺序及停止规则与例一相同：创建→追加计分→预览/校核→提交/终态→读取→热图/曲线/所选报告→产物。全堆资源与用时可能更高，超时保留原作业；不能通过增加资源无限重试。</p>
+<details><summary>可直接交给DSH的任务说明（两条分别发送）</summary><pre><code>仅通过mc服务的MCP工具做组件例题，不调用Shell代替工具，不安装软件。
+创建新的reproduction/assembly-001，使用assembly-17x17，particles=1000、batches=12、inactive=2。
+追加名为assembly central slice flux的flux tally，网格[17,17,1]，
+范围[-10.71,-10.71,-1]到[10.71,10.71,1]，记住工具返回的tally_id。
+先预览输入并展示统计设置、材料/几何摘要及计分；执行API和静态语义校验，
+structure_valid、api_parsed和semantic.checked/ok/complete必须全为true。
+确认目录全新且上述检查通过后，允许提交一次，命名“组件公开模型试用-001”，threads=1。
+立即保存并展示job_id，查询原作业到终态，核对预览与提交输入哈希。
+成功后读结果，核对新增tally的289点均值/标准差与截断状态。
+沿用同一job_id/tally_id/flux/total及空筛选，生成网格PNG、完整曲线和Markdown所选报告。
+说明热图坐标与原始flux含义、报告的展平索引、低统计局限，列出服务端绝对产物路径。
+目录重复、校验不完整、任务失败或工具调用结果未知就停止，保留原编号，不自动重投。
+不要自行修复或删除输入、记录和结果，不声称专业精度或生产验证通过。</code></pre><pre><code>按相同MCP流程做全堆例题，使用全新的reproduction/core-001和core-lattice，
+particles=1000、batches=12、inactive=2、threads=1。
+新增core central slice flux计分，网格[8,8,1]，范围[-200,-200,-1]到[200,200,1]。
+其余检查与停止条件沿用组件流程，任务名“全堆公开模型试用-001”。
+这次必须保存自己的case_dir、job_id、tally_id，不复用组件编号；期望64个计分点。
+一次只提交一个任务，输出完整产物位置及限制，不能把中心切片解释为全堆功率分布。</code></pre><p>DSH没有按任务要求调用时，记录偏离步骤和原始返回；人工补操作要单独记录。</p></details></section><section id="own-models"><h2>4．换成自己的输入</h2><p>三种入口最终都得到<code>case_dir</code>，从组件流程的<strong>预览/校核</strong>接着走；每次提交后使用它自己返回的job_id，不沿用例题编号。需要的量应在提交前定义tally；不在参数Schema里的模型特征可先准备原生输入，不能靠猜参数名补齐。</p><details id="parameter-layers"><summary>脚本选项、工具参数和模型字段有什么区别</summary><div class="table-wrap"><table><thead><tr><th>层次</th><th>控制什么</th></tr></thead><tbody><tr><td>示例脚本选项</td><td>如--particles，只控制该脚本已开放的配置，不是模型能力全集。</td></tr><tr><td>工具调用参数</td><td>case_dir、threads、tally_id描述在哪份输入上做什么操作，MCP与CLI用同一Schema。</td></tr><tr><td>模型描述字段</td><td>材料、几何、源、计分等由spec或原生输入表达；自动改参仅接受openmc_list_parameters实际返回的键。</td></tr></tbody></table></div><p>例如新建模型的particles=1000会形成运行设置；对已有模型修改时使用parameters={"settings.particles":1000}。动作、字段含义与单位要分别看，不能用猜测的键名代替能力发现。</p></details><details id="existing"><summary>已有原生OpenMC模型：文件、依赖与导入</summary><p>把XML及本地依赖放入服务端工作区的一个专用目录，例如 <code>inbox/my-model/</code>，再调用：</p><pre class="command"><code>./mc.sh call openmc_import_model '{"source_dir":"inbox/my-model","target_dir":"cases/my-model"}'
+./mc.sh call openmc_list_parameters '{"case_dir":"cases/my-model"}'
+./mc.sh call openmc_preview_input '{"case_dir":"cases/my-model"}'</code></pre><p>导入会复制原始输入、检查文件与依赖并通过官方API读回，然后发布新副本；原输入不变，也不会按生成器Schema重建陌生模型。<code>api_check=false</code> 只关闭API解析，不表示模型可计算。</p><div class="table-wrap"><table><thead><tr><th>输入情况</th><th>处理与需要你注意的事</th></tr></thead><tbody><tr><td>原生合法模型 / 更复杂几何</td><td>可导入范围比新建模型Schema宽；是否能运行还取决于引擎编译、核数据和模型本身，可自动改参范围另由发现接口给出。</td></tr><tr><td>相对路径依赖</td><td>文件须整理进源目录，随目录复制；<code>../</code>、符号链接和特殊文件拒绝。不要把旧计算记录混入输入目录。</td></tr><tr><td>绝对路径与核数据索引</td><td>绝对文件要求在服务器存在，返回依赖清单并标为不可直接搬移；复制了截面索引也不等于已核验/复制它引用的全部核数据。</td></tr><tr><td>编译源 / 自定义输出目录</td><td>当前导入拒绝compiled source及非默认output.path，分别需要管理员审查、原生产物路径适配；不会静默删除或改写这些设置。</td></tr><tr><td>原工具包私有marker</td><td>导入会重置未审定来源，不继承“已验证”声明；燃耗配置需用专用配置接口重新配置。</td></tr></tbody></table></div><details id="python-export"><summary>可选：已有Python建模程序时怎样接入</summary><p>已有Python建模程序：先在安装OpenMC的环境运行它，导出 <code>model.xml</code> 或几何、材料、设置、计分分文件。导出步骤由你或部署管理员执行；MCP导入工具不执行随输入提供的Python或本地动态库。</p></details></details><details id="build"><summary>按自然语言或结构化条件建立新模型</summary><p>结构化生成与原生接入的区别、支持字段范围见<a href="index.html#scope">总览能力范围</a>；执行所需完整Schema由openmc_model_capabilities返回。</p><p>先调用能力发现（<code>openmc_model_capabilities</code>），取得与实际执行同源的 <code>spec_schema</code>。长度是cm、能量是eV、温度是K；核素份额的 <code>ao/wo</code> 由调用者明确指定，工具不推断富集度、材料成分或专业设计。</p><pre class="command"><code>./mc.sh call openmc_model_capabilities '{}'</code></pre><p>随包 <a href="../examples/model-specs/rectangular-assembly.json">rectangular-assembly.json</a> 是显式组成的3×2异构格架输入，四个燃料棒位置和两个水位置，六个通量网格箱；它用于解释布局与接口，不是甲方组件或已核验的堆设计。<a href="../examples/model-specs/fixed-source-water.json">fixed-source-water.json</a> 展示另一种固定源水球输入。可以换材料、数量、区域、格架排列、源与计分，不需要增加例题ID。</p><p>先只生成并检查输入，以下代码把JSON文件作为数据传给工具，不把它当代码执行：</p><pre class="command"><code>mcp/.venv/bin/python - &lt;&lt;'PY'
+import json, subprocess, sys
+from pathlib import Path
+spec = json.loads(Path('examples/model-specs/rectangular-assembly.json').read_text())
+subprocess.run([sys.executable, 'mcp/cli.py', 'call', 'openmc_build_model',
+    json.dumps({'case_dir':'cases/my-assembly', 'spec':spec})], check=True)
+PY
+./mc.sh call openmc_preview_input '{"case_dir":"cases/my-assembly"}'
+./mc.sh call openmc_validate_inputs '{"case_dir":"cases/my-assembly","api_check":true,"semantic_check":true}'</code></pre><p>得到分离XML、model-spec.json和build_model.py；后者与描述文件可在装有OpenMC的独立空目录重建输入。API读回不判断专业适用性。若需要几何抽样检查，另明确启用geometry_check=true，它会在临时副本执行低批次输运并消耗计算资源。</p></details><details id="parameters"><summary>发现参数、创建修改副本，再重算比较</summary><p>组合示例的材料编号2在JSON中明确是水，初始密度0.7 g/cm³。因此将 <code>materials.2.density</code> 设为0.8，是改变冷却剂密度；它不是随便改某个数字，也不是对真实工况的推荐。</p><pre class="command"><code>./mc.sh call openmc_list_parameters '{"case_dir":"cases/my-assembly"}'
+./mc.sh call openmc_prepare_case '{"case_dir":"cases/my-assembly","target_dir":"cases/my-assembly-denser","parameters":{"materials.2.density":0.8}}'
+./mc.sh call openmc_preview_input '{"case_dir":"cases/my-assembly-denser"}'
+./mc.sh call openmc_validate_inputs '{"case_dir":"cases/my-assembly-denser","api_check":true,"semantic_check":true}'
+# 查看API和semantic各层检查，全部完整通过再执行下一行。
+./mc.sh call openmc_submit_job '{"case_dir":"cases/my-assembly-denser","name":"组件冷却剂密度0.8","threads":1}'
+./mc.sh call openmc_list_jobs '{"name":"组件冷却剂密度0.8"}'</code></pre><p>任务名只是标签，可重名；从返回列表取得实际 <code>job_id</code> 再查状态、取消或读取结果。状态中的 <code>input_hashes</code> 可与预览SHA256核对，确认结果归属于看到的输入；查询不会替你重算。</p><p>本工具生成且指纹未漂移的模型，改参会同步模型描述并经Python API重建，保留可重跑性。手工改了XML、描述文件，或用其他接口改变了生成输入后，应重新导入为原生模型，或修改描述后构建新目录；工具会拒绝用旧描述覆盖已改变的输入。原生模型继续保留局部改参能力，不强制进入受限Schema。</p><h3>完整调用示例：用你的模型走同一流程</h3><pre class="command"><code>mcp/.venv/bin/python examples/model_workflow.py \
+  --spec examples/model-specs/rectangular-assembly.json \
+  --name '组件密度研究' --set materials.2.density=0.8 \
+  --receipt artifacts/my-model-workflow.json</code></pre><p>这次命令会明确执行两次计算：原模型与修改副本，然后按同一计分画图、导报告并比较。默认中文摘要包含服务端绝对位置，<code>--json</code> 输出完整结构。低统计比较只显示观察值及不确定度，不预先保证变化趋势或显著性。</p><div class="table-wrap"><table><thead><tr><th>选项</th><th>含义</th></tr></thead><tbody><tr><td><code>--spec FILE</code> / <code>--source-dir DIR</code></td><td>二选一：客户端JSON模型描述，或已放在服务端工作区的原生输入目录。后者仍会导入新副本，不自动上传文件。</td></tr><tr><td><code>--set NAME=VALUE</code></td><td>可重复，参数名/单位先从发现接口取得；不传只算原模型，传入时额外创建修改副本并对比。完整模型结构修改使用spec，不能猜通用改参键。</td></tr><tr><td><code>--case-dir / --name</code></td><td>新目录省略则唯一生成；任务名省略为model-workflow。已有目标拒绝覆盖。</td></tr><tr><td><code>--mcp-url URL</code></td><td>通过标准MCP调用相同接口；不传走直接CLI。模型JSON可在客户端，原生模型目录和核数据必须先在服务器就绪。</td></tr><tr><td><code>--threads / --timeout</code></td><td>每次求解线程数默认1，等待终态默认300秒；超时请求取消并保留编号。</td></tr><tr><td><code>--tally-id / --report-format</code></td><td>省略时选实际首个含flux计分（否则首个计分）、Markdown；可选其他实际计分与报告格式。没有计分时只导作业摘要。</td></tr><tr><td><code>--receipt FILE</code></td><td>完整调用记录保存到客户端指定位置；计算、图和报告仍在服务端。任何阶段失败会保存已完成部分、失败阶段和job_id，不自动重试计算。清理产物用<a href="toolkit-usage.html#maintenance">既有维护入口</a>，默认仅预览。</td></tr></tbody></table></div></details></section><section id="results"><h2>5．读取结果与交付文件</h2><p>OpenMC产生数值，工具提取和组织数值。先读结果清单，再明确 <code>tally_id</code>（哪项统计）、<code>score</code>（通量/反应率等量）、<code>nuclide</code>（总量或核素）和 <code>filter_selection</code>（哪些分箱）。多个候选时应显式选择，避免默认首项与你的问题不同。固定源计算通常没有keff，不能把空值当故障或零。</p><div class="table-wrap"><table><thead><tr><th>结果层次</th><th>拿来做什么</th><th>完整性与限制</th></tr></thead><tbody>
 <tr><td>接口预览</td><td>快速看keff、计分、形状及部分均值/标准差。</td><td>受max_values等限制，返回截断标记；默认作业汇总CSV也可能来自预览，不能一概当全量。</td></tr>
 <tr><td>完整所选数据</td><td>明确选择后得到配套CSV/JSON，继续用Python、表格或专业程序分析。</td><td>通用所选曲线、数据和所选报告同源；正文最多预览20点，所选数据文件保留全部所选点。绘图点数超限须缩小选择，不静默截断。</td></tr>
 <tr><td>原始StatePoint</td><td>保留更深入分析所需的求解输出，用官方API重新读取。</td><td>不等同于轻量预览或一张图；大计分仍需评估读取内存。</td></tr>
-</tbody></table></div>
-<p><strong>横轴决定图能说明什么。</strong>单能量过滤图用eV区间的算术中点，保留上下界；计分仍是bin积分量，没有自动除以能宽。多过滤器通用图使用展平分箱序号，不是空间距离。空间关系应看规则网格热图；多层三维网格选层、带能量过滤选箱，不能不说明条件就投影。</p>
-<p><strong>统计误差和归一化须一起看。</strong><code>std_dev</code>是OpenMC对均值统计不确定度的估计（标准误），不是空间各格分布的离散程度，也不自动等于95%置信区间；非有限值保留为空并提示，不补零。图表没有自动追加功率、实际源强或体积归一化。k逐批图可辅助观察统计过程，不能单凭曲线平缓宣布收敛。</p>
-<p>例如公开全堆模型加8×8×1网格flux计分，得到64格均值与误差：热图回答“所选计分在空间上怎样分布”，完整数据用于复核与后续归一化，报告说明输入与选择。它不能在没有功率和归一化条件时直接称为实际功率分布。CAD示例也遵循同一结果处理链，详见<a href="cad.html#results">16格示例结果说明</a>。</p>
-</section><section id="files" aria-labelledby="files-title"><h2 id="files-title">4．文件分别做什么，本包处理到哪一步</h2>
-<h3>准备计算时的输入</h3>
-<div class="table-wrap"><table><thead><tr><th>文件</th><th>科学用途</th><th>本包的处理</th></tr></thead><tbody>
+</tbody></table></div><p><strong>横轴决定图能说明什么。</strong>单能量过滤图用eV区间的算术中点，保留上下界；计分仍是bin积分量，没有自动除以能宽。多过滤器通用图使用展平分箱序号，不是空间距离。空间关系应看规则网格热图；多层三维网格选层、带能量过滤选箱，不能不说明条件就投影。</p><p><strong>统计误差和归一化须一起看。</strong><code>std_dev</code>是OpenMC对均值统计不确定度的估计（标准误），不是空间各格分布的离散程度，也不自动等于95%置信区间；非有限值保留为空并提示，不补零。图表没有自动追加功率、实际源强或体积归一化。k逐批图可辅助观察统计过程，不能单凭曲线平缓宣布收敛。</p><p></p></section><details id="files"><summary>文件格式、原始结果与整理产物各是什么</summary><h3>准备计算时的输入</h3><div class="table-wrap"><table><thead><tr><th>文件</th><th>科学用途</th><th>本包的处理</th></tr></thead><tbody>
 <tr><td>model.xml；或geometry/materials/settings/tallies.xml</td><td>几何、材料、运行设置与计分定义。</td><td>导入、预览、受支持改参及分层校核；生成模型经官方Python API导出。</td></tr>
 <tr><td>model-spec.json / build_model.py</td><td>结构化建模依据及独立重建。</td><td>组合建模时保留；不表示全部OpenMC属性都能由spec表达。</td></tr>
 <tr><td>.step / .stp → dagmc.h5m</td><td>CAD实体及其DAGMC网格几何。</td><td>检查实体、按明确缩放/标签转换并读回；H5M是MOAB/HDF5几何输入。</td></tr>
 <tr><td>cross_sections.xml + 核数据.h5</td><td>核素、温度等相互作用数据索引与实际数据。</td><td>初始化或指定库，检查相应索引并注入运行；复制索引不等于数据库已搬移。</td></tr>
 <tr><td>燃耗链XML + 燃耗配置</td><td>衰变/反应链、功率与时间步。</td><td>供受支持燃耗作业使用；材料体积和实际链文件仍需准备。</td></tr>
-</tbody></table></div>
-<h3>OpenMC原始输出</h3>
-<div class="table-wrap"><table><thead><tr><th>文件</th><th>用来查看什么</th><th>直接分析、保留还是外部处理</th></tr></thead><tbody>
+</tbody></table></div><h3>OpenMC原始输出</h3><div class="table-wrap"><table><thead><tr><th>文件</th><th>用来查看什么</th><th>直接分析、保留还是外部处理</th></tr></thead><tbody>
 <tr><td>statepoint.N.h5</td><td>keff、tally均值/标准差、维度与过滤条件。</td><td>通用结果读取的主要依据，使用官方StatePoint API；入口是本包成功作业，不是任意HDF5文件。</td></tr>
 <tr><td>summary.h5 / source.h5等</td><td>几何材料辅助快照、源分布；源库也可能是模型输入。</td><td>若产生则可保留/列清单；可核对声明依赖，但没有独立通用Summary/源库分析工具。</td></tr>
 <tr><td>tallies.out</td><td>人可读的计分文本。</td><td>若产生则保留供查看；通用结果提取选用StatePoint，不以ASCII文本解析为主。</td></tr>
 <tr><td>solver.log / worker.log</td><td>运行过程、进度与错误。</td><td>用于状态和有限诊断；日志尾部不是最终统计结果，截断会标注。</td></tr>
 <tr><td>几何PNG / PPM等</td><td>检查输入模型外形或切片。</td><td>绘图作业与切片入口；不是通量分布，也不证明无重叠或物理正确。切片与自动边界推断有适用范围。</td></tr>
 <tr><td>depletion_results.h5</td><td>时间序列的燃耗计算结果。</td><td>读取时间、keff及U235/U238/Pu239/Pu241等当前支持项；不是通用解析全部HDF5结构。</td></tr>
-</tbody></table></div>
-<h3>用于分析和交接的整理产物</h3>
-<div class="table-wrap"><table><thead><tr><th>格式</th><th>适合什么用途</th><th>打开或继续使用时注意</th></tr></thead><tbody>
+</tbody></table></div><h3>用于分析和交接的整理产物</h3><div class="table-wrap"><table><thead><tr><th>格式</th><th>适合什么用途</th><th>打开或继续使用时注意</th></tr></thead><tbody>
 <tr><td>PNG / SVG</td><td>看结果曲线、误差或空间热图；SVG便于矢量排版。</td><td>留意坐标、计分选择和归一化说明。几何图与计算结果图要区分。</td></tr>
 <tr><td>CSV / JSON</td><td>二次数值分析与自动处理。</td><td>显式选择后的完整数据包含所选值、误差与坐标/来源；默认汇总可能截断。</td></tr>
 <tr><td>Markdown / DOCX / PDF / DOC</td><td>阅读、编辑、交流报告。</td><td>所选报告沿用通用曲线的同一数据，网格热图是独立产物；MD图片用同目录相对链接，DOCX嵌图，PDF/DOC需Office转换。正文预览不替代完整数据。</td></tr>
 <tr><td>job.json / runtime.json / mc-case.json</td><td>回查名称、状态、输入、配置和来源。</td><td>这是工具包管理记录，不能当物理结果；同一job_id把它们与求解文件关联。</td></tr>
+</tbody></table></div><p>文件存于<strong>服务端</strong>，默认记录目录为 <code>workspace/.mc-jobs/&lt;job_id&gt;/</code>，其中 <code>work/</code>保存提交副本和原始输出。以工具返回的 <code>server_path</code>为准；MCP返回数据或路径不等于已下载到客户端。部分PNG可随调用预览，网格热图主要返回文件位置，能否内联显示还取决于宿主。异机文件取回目前需另行安排；同机Windows可经WSL共享路径打开，见<a href="toolkit-usage.html#files">产物与清理</a>。</p></details><details id="check"><summary>核对输入、原生数据、图表与报告是否一致</summary><ol><li><strong>归属：</strong>记录J/T、输入SHA256、版本、采样与种子；所有结果必须来自同一J。read_results的keff与statepoint一致，缺不确定度不能补0。</li>
+<li><strong>图与数：</strong>热图配套JSON的dimension应为[17,17,1]或[8,8,1]，values/errors分别为17×17或8×8；CSV中(i,j)对应JSON的values[j][i]与errors[j][i]。x/y中心由边界等距计算：组件首格中心(-10.08,-10.08)cm、全堆(-175,-175)cm。</li>
+<li><strong>原生计分：</strong>本例单一mesh、flux、total，原生展平索引为i+nx*j；将StatePoint该tally均值/标准差与热图每格核对。完整曲线JSON的mean/std_dev应按该顺序一致；CSV以9位有效数字显示，比较时允许显示舍入，不引入物理准确率容差。</li>
+<li><strong>报告：</strong>打开report.md，检查版本、采样、选择说明与正文引用的plot-*.png/json/csv；报告预览最多20点，完整CSV仍289/64行。对照第1、最后1个点及任一中间点，核对均值和标准差，不能拿另一个tally替代。报告附带的曲线与此前显式生成的曲线文件名可能不同，数据选择和值应一致。</li>
+<li><strong>科学结论：</strong>这轮只说明公开模型经过工具处理得到相互一致的计分和产物。图的空间差异是样例原始计分分布，不足以断言工程功率、收敛或专业精度。需更高统计、参考值、归一化和专家判据后才能作进一步结论。</li></ol><p>推荐先打开网格PNG理解空间分布，再打开report.md看计算信息和所选曲线，最后用配套CSV/JSON核数。图表文件名是随机唯一名，以工具返回为准。</p><details><summary>管理员：从服务器直接核对原生StatePoint与派生JSON</summary><p>在包根目录，用产物清单directory的实际绝对目录替换第一行，用本次真实T替换第二行。使用配置中实际OpenMC环境的Python；下列为quickstart默认安装路径。此检查只读取文件，不重新求解；任何assert失败都应保留并定位，不删除文件重来。</p><pre><code>JOB_DIR='/实际返回的directory绝对路径'
+TALLY_ID='实际返回的整数tally_id'
+.runtime/openmc/bin/python - "$JOB_DIR" "$TALLY_ID" &lt;&lt;'CHECK'
+from pathlib import Path
+import json, sys
+import numpy as np
+import openmc
+p=Path(sys.argv[1]); t=int(sys.argv[2])
+r=json.loads((p/'job.json').read_text())
+assert r['state']=='completed'
+points=[p/'work'/name for name in r['output_files'] if name.startswith('statepoint.') and name.endswith('.h5')]
+assert len(points)==1, '本流程应只有最终StatePoint；多个文件须先明确实际结果来源'
+with openmc.StatePoint(points[0], autolink=False) as sp:
+    tally=sp.get_tally(id=t)
+    assert list(tally.scores)==['flux'] and list(tally.nuclides)==['total']
+    mean=tally.mean.reshape(-1); std=tally.std_dev.reshape(-1)
+    print('原生keff：',sp.keff,'；计分点数：',len(mean))
+curves=[]
+for f in p.glob('plot-*.json'):
+    d=json.loads(f.read_text())
+    if d.get('tally_id')!=t or d.get('score')!='flux': continue
+    assert d['nuclide']=='total' and d['filter_selection']==[]
+    np.testing.assert_allclose(np.asarray(d['mean'],dtype=float),mean,equal_nan=True)
+    np.testing.assert_allclose(np.asarray(d['std_dev'],dtype=float),std,equal_nan=True)
+    curves.append(f.name)
+meshes=[]
+for f in p.glob('mesh-*.json'):
+    d=json.loads(f.read_text()); nx,ny,nz=d['dimension']
+    assert nz==1 and nx*ny==len(mean)
+    np.testing.assert_allclose(np.asarray(d['values'],dtype=float).reshape(-1),mean,equal_nan=True)
+    np.testing.assert_allclose(np.asarray(d['errors'],dtype=float).reshape(-1),std,equal_nan=True)
+    meshes.append(f.name)
+assert curves and meshes, '缺少曲线或热图完整JSON'
+report=(p/'report.md').read_text()
+assert any(name in report for name in curves), '报告未引用本次所选曲线元数据'
+print('原生计分、曲线/热图JSON及报告引用一致；仍需目视图、CSV与报告正文。')
+CHECK</code></pre><p>该读取片段针对本页单次新目录、单tally流程；不作为任意作业的通用物理验收程序。它不检查所有CSV显示舍入，也不识别图像像素，应结合上面的人工核对。</p></details><h3>文件怎么拿到Windows</h3><p>同机WSL用<code>\wsl.localhost\Ubuntu</code>加服务端Linux绝对路径浏览；例如directory为<code>/home/user/mc-tech-execution/workspace/.mc-jobs/J</code>，资源管理器打开<code>\wsl.localhost\Ubuntu\home\user\mc-tech-execution\workspace\.mc-jobs\J</code>，替换真实目录与J。</p><p>远程服务器由管理员交付产物；如获准SSH文件访问，在Windows PowerShell执行下式，将返回directory的<strong>真实绝对路径</strong>整体替换后下载到新目录：</p><pre><code>scp -r linux-user@server-address:/真实绝对目录/.mc-jobs/真实J .\mc-result-真实J</code></pre><p>保留图、CSV、JSON和report.md的同目录关系再打开报告。工具目前不提供远程下载接口；下载是人工交接步骤，MCP返回路径不等于浏览器可点击的下载URL。</p></details><details id="mcp-script"><summary>用标准MCP脚本重复同一流程（不调用模型）</summary><p><a href="../examples/reproduce_public_models.py">reproduce_public_models.py</a>执行与上述相同的工具调用，便于比较“工具本身是否可用”和“DSH是否正确组织调用”。它不调用LLM，但会提交真实计算；用户统一实测时再执行：</p><pre><code># 在源码包根目录执行；MCP服务需已启动。
+mcp/.venv/bin/python examples/reproduce_public_models.py \
+  --mcp-url http://127.0.0.1:8770/mcp --model assembly
+# 组件成功并核对后，再执行全堆：
+mcp/.venv/bin/python examples/reproduce_public_models.py \
+  --mcp-url http://127.0.0.1:8770/mcp --model core</code></pre><p>脚本默认新建唯一目录，使用1000粒子/12批/2非活跃批、1线程、600秒求解等待；<code>--help</code>列出可调选项和含义。可明确改变采样，不能据此改掉专业输入。</p><p>默认客户端记录保存到脚本所打印的<code>artifacts/reproduction/&lt;model&gt;-&lt;nonce&gt;.json</code>绝对路径；服务端产物另打印directory。每次调用前后增量保存工具名、参数、返回值和J/T。遇未知响应不自动重试，超时只请求取消并保留J；仍须查原编号确认终态。</p><p>脚本检查完整校核、输入指纹、计分点数与报告选择；文件内容交叉核对标记为待按<a href="#check">数据核对章节</a>执行，不能把脚本退出0当作全部检查通过，更不能替代DSH自然语言验证。</p></details><p>想选择其他官方输入，打开<a href="official-examples.html">官方例题参考</a>：其中包含固定清单、Notebook多阶段选择及逐步执行接口。</p><section id="advanced"><h2>6．其他常见任务</h2><details id="cad"><summary>CAD：同一STEP转换、组装后进入计算</summary><p>STEP提供几何；用户还须给出单位缩放、材料标签/组成/密度与适用物理条件。先按<a href="deployment.html#cad-runtime">CAD环境配置</a>准备转换环境，文件放入服务器工作区。以下例子仅为原点中心10mm单实体立方体，自有复杂件使用接口明确条件。</p><pre><code>mcp/.venv/bin/python examples/cad_case_demo.py
+# 走标准MCP时，先在服务端启动 ./mcp/start.sh，再运行：
+mcp/.venv/bin/python examples/cad_case_demo.py \
+  --mcp-url http://127.0.0.1:8770/mcp</code></pre><p>脚本默认打印中文进度、输入来源、计算编号和图/报告的服务端绝对位置；<code>--json</code>返回完整结构，<code>--help</code>查看全部选项。每次默认新建目录，不覆盖已有模型。脚本不调用大模型。</p><div class="table-wrap"><table><thead><tr><th>默认输入或选项</th><th>含义与预期</th></tr></thead><tbody>
+<tr><td>10mm立方体、scale_factor=0.1</td><td>原几何每轴为−5到5mm，H5M中换算为−0.5到0.5cm。尺寸必须结合STEP单位与业务意图确认。</td></tr>
+<tr><td>纯U235、18.95g/cm³</td><td>明确提供的工程测试材料，标签为fuel；不从CAD文件推断，不是实际业务模型的推荐组成。</td></tr>
+<tr><td>原点源、真空包围</td><td>示例源位于立方体中心；模型用官方API生成真空包围，使离开计算区域的粒子有明确边界处理。</td></tr>
+<tr><td>--particles 1000<br>--batches 12<br>--inactive 2</td><td>小统计调试设置；调整这些选项改变采样量和耗时，不改变CAD尺寸，不保证某次物理结果更准确。</td></tr>
+<tr><td>4×4×1网格flux计分</td><td>观察立方体内16格的原始空间计分。热图坐标用cm，配套CSV/JSON保留各格均值和标准差。</td></tr>
+<tr><td>--report-format markdown</td><td>默认生成Markdown；可选csv/docx/pdf/doc，PDF/DOC需Office。Markdown与配套图片放在同一目录，不能只搬走md后要求外链图仍可见。</td></tr>
+<tr><td>--step-path、--case-dir、--timeout</td><td>分别指定服务端STEP、新算例目录、等待计算的秒数。此演示只接原点中心10mm单实体立方体；自己的几何用下方接口路线明确材料/源/网格，不能直接套示例物理条件。</td></tr>
+</tbody></table></div><div class="table-wrap"><table><thead><tr><th>中文操作与代码名</th><th>输入 → 输出</th><th>核对重点</th></tr></thead><tbody>
+<tr><td>检查STEP<br><code>openmc_inspect_step</code></td><td>STEP相对路径 → 实体数、包围盒、版本。</td><td>确认拿到的几何、实体数量与单位。</td></tr>
+<tr><td>转换网格<br><code>openmc_convert_cad</code></td><td>STEP、材料标签、缩放与新目录 → H5M、源和产物指纹。</td><td>同一STEP来源，mm→cm后尺寸正确；转换成功不代替网格质量判断。</td></tr>
+<tr><td>组装计算模型<br><code>openmc_build_dagmc_model</code></td><td>转换目录、材料与设置 → 单文件model.xml、真空包围及API读回。</td><td>材料名称与几何标签对应，核素/密度/源明确，H5M相对引用保留。</td></tr>
+<tr><td>定义计分<br><code>openmc_define_tally</code></td><td>scores、网格或其他过滤 → tally_id。</td><td>单文件输入更新model.xml中的计分，保留几何、材料和设置。</td></tr>
+<tr><td>预览和校核<br><code>openmc_preview_input</code><br><code>openmc_validate_inputs</code></td><td>case_dir → 文件、指纹、设置及问题。</td><td>用户先看实际输入；结构和API解析通过不代表物理正确。</td></tr>
+<tr><td>提交、查询<br><code>openmc_submit_job</code><br><code>openmc_job_status</code></td><td>case_dir/任务名 → job_id → 真实终态。</td><td>提交副本中的H5M和XML指纹对应本次输入；失败留日志，不把queued当完成。</td></tr>
+<tr><td>读结果、图和报告<br><code>openmc_read_results</code><br><code>openmc_plot_mesh</code><br><code>openmc_export_report</code></td><td>同一job_id与tally选择 → 原始结果、热图、完整数据、报告。</td><td>StatePoint原始均值/误差、网格坐标、所选报告数据逐项对应。</td></tr>
+<tr><td>列产物<br><code>openmc_list_artifacts</code></td><td>kind=job、identifier=job_id → 清单、位置、大小和哈希。</td><td>确认文件确实存在、属于该作业，按返回位置打开。</td></tr>
+</tbody></table></div></details><details id="knowledge"><summary>查专业资料：检索后读取原文</summary><p>随包knowledge/openmc-0.16.0保存固定版本官方原文。用search_knowledge输入问题，例如“非活跃批次”；再按返回的source及行号调用read_knowledge读取上下文。资料可能含未展开的RST跨文件引用，命中片段不是完整适用性判断。</p><p>工具返回原文与出处；DSH等宿主将它交给模型组织面向用户的解释，工具本身不生成专业结论。固定原文与真实工具参数优先于模型猜测。</p></details></section><details id="scan"><summary>批量计算：从一份模型生成多组参数</summary>
+<p>先对组件目录调用openmc_list_parameters，再使用发现的 <code>settings.particles</code>，在原输入上建立 1000 和 2000 两组计算：</p>
+<pre class="command"><code>./mc.sh call openmc_submit_scan '{"case_dir":"reproduction/assembly-001","axes":{"settings.particles":[1000,2000]},"threads":1}'</code></pre>
+<p>它返回 <code>scan_id</code>，用 <a href="reference.html#openmc_scan_status">openmc_scan_status</a> 查询；多轴取笛卡尔积，当前串行执行。图和报告保存到 <code>.mc-scans/&lt;scan_id&gt;</code>；失败项保留，曲线不以 0 替代缺失值。横轴、固定维度与报告参数见<a href="reference.html#openmc_plot_scan">扫描绘图</a>和<a href="reference.html#openmc_export_scan_report">扫描报告</a>。</p></details><details id="depletion"><summary>燃耗：先给材料体积，再配置时间步</summary>
+<p>燃耗比普通计算多两步：<code>openmc_configure_depletion</code> 写入功率（W）与时间步长，再用 <code>openmc_submit_job</code> 以 <code>mode=deplete</code> 提交。引擎要求可燃耗材料<strong>显式给出体积</strong>，否则提交时报 <code>Volume not specified for depletable material</code>；同一材料也不能混用原子分数与质量分数（报 <code>Cannot mix atom and weight percents</code>）。</p>
+<pre class="command"><code>./mc.sh call openmc_create_model '{"case_dir":"cases/burnup","template":"pincell-depletion"}'
+./mc.sh call openmc_configure_depletion '{"case_dir":"cases/burnup","power_watts":100000.0,"timesteps":[0.05,0.05],"timestep_unit":"d"}'
+./mc.sh call openmc_submit_job '{"case_dir":"cases/burnup","mode":"deplete","threads":4}'</code></pre>
+<p>完成后用 <code>openmc_read_depletion</code> 读取逐时间步的 k-eff、关键核素质量与初始重金属质量。燃耗值按"功率×时间/初始重金属质量"估算（MWd/kgHM），不是裂变能积分得来的实测值；核素只报少数关键项。</p>
+<p>链文件（<code>chain_casl_thermal.xml</code>，约 1MB）不在 OpenMC 安装里，也不在核数据安装脚本范围内：由部署配置 <code>depletion_chain</code> 指定，未配置时在核数据目录下找同名文件。缺文件时提交会在链解析阶段失败，报错会给出期望路径。</p></details><details id="repair"><summary>诊断与确认修复：先看差异，再决定</summary>
+<p><code>openmc_diagnose_job</code> 读取指定计算的日志，提供有证据的提示；受支持问题可在新副本生成修复计划。只有用户看过差异并明确确认后才应用，再校核或关联重算。</p>
+<p>现成练习用 <code>mcp/.venv/bin/python examples/repair_demo.py</code>。它故意制造运行模式拼写错误，并保留第一次失败。当前自动修复仅限普通 run 中唯一的 <code>run_mode</code> 近似拼写；不自动修物理参数。CLI 需要交互终端确认，MCP 需要可信宿主逐次取得批准。</p></details><details id="view"><summary>看几何：切片图只画输入，不等于几何检查通过</summary>
+<p><code>openmc_view_geometry</code> 按已有算例输入出 2D 切片图（xy/xz/yz），可给 <code>origin</code>/<code>width</code>（cm）与像素数，PNG 写在算例的 <code>views/</code> 下。它只渲染输入几何，不做重叠判定；几何是否合法仍要用 <code>openmc_validate_inputs</code> 的 <code>geometry_check</code> 或几何调试作业确认。</p>
+<p>实测限制：以六角棱柱为外边界的模型会报"切片平面上无界"，工具把引擎原话改写成可操作提示（改用矩形/圆柱外边界，或先用 <code>origin</code>/<code>width</code> 限定范围）；矩形、圆柱与组件模板正常。</p></details><details id="small-example"><summary>只检查较短的C5G7链路：脚本选项和预期</summary><p>官方多群燃料棒示例自带C5G7截面。它用于较短的接口练习，不代表组件或全堆场景。</p><pre class="command"><code>mcp/.venv/bin/python examples/public_case_demo.py</code></pre><div class="table-wrap"><table><thead><tr><th>选项</th><th>含义 / 省略后的行为</th></tr></thead><tbody><tr><td><code>--particles</code></td><td>每代模拟粒子数，正整数；工具默认 200。改变统计采样量，不能保证某次结果更准确。</td></tr><tr><td><code>--batches</code></td><td>总批次数；工具默认 10。</td></tr><tr><td><code>--inactive</code></td><td>非活跃批次数，不计入活跃批次统计；工具默认 2。非负，且 batches − inactive 至少为 2。</td></tr><tr><td><code>--case-dir</code></td><td>服务端工作区内的新输入目录；默认 <code>demos/public-mg-随机后缀</code>。已存在会报错，不覆盖。</td></tr><tr><td><code>--report-format</code></td><td>markdown（默认）、csv、docx、pdf、doc；后两者需 Office 转换组件。</td></tr><tr><td><code>--timeout</code></td><td>脚本等待计算终态的秒数，默认 120；超时会请求取消，后续按编号查询。不是服务端作业时限。</td></tr><tr><td><code>--mcp-url</code></td><td>实际服务地址；省略时直接 CLI 调用，无需启动 MCP 服务。</td></tr><tr><td><code>--json</code></td><td>将默认人读摘要换成完整 JSON；进度仍写到 stderr。</td></tr><tr><td><code>-h / --help</code></td><td>查看脚本选项，不执行计算。</td></tr></tbody></table></div><p>这些选项只有运行设置与演示控制，不包含任意几何或材料字段。要改变模型，走<a href="toolkit-usage.html#parameters">参数发现与输入副本</a>，或<a href="toolkit-usage.html#existing">准备自己的输入</a>。</p><p>正常完成打印输入、作业、图和报告的服务端绝对位置；默认200粒子/10批/2非活跃批。能谱横轴是eV分箱中点，计分未除以能宽。</p></details><section id="failure"><h2>7．异常、继续与记录</h2><div class="table-wrap"><table><thead><tr><th>情况</th><th>怎样处理</th><th>怎样继续</th></tr></thead><tbody>
+<tr><th>连接/发现失败</th><td>核对health、隧道、profile和插件事件，不重复提交。</td><td>先使环境工具只读调用成功，再进入建模。</td></tr>
+<tr><th>目录重复/输入不完整</th><td>保留旧目录；核对校验problems和skipped_reason。缺核数据请管理员处理。</td><td>修正明确原因后重新校核；新一轮用新目录。不得让模型猜材料、跳过不完整检查。</td></tr>
+<tr><th>提交响应未知</th><td>记录原case_dir、任务名及工具调用记录，用openmc_list_jobs按精确name查询，核对case_dir和时间。</td><td>找到作业后继续原job_id；多个匹配由用户确认。未确认无作业前不重投。</td></tr>
+<tr><th>超时/取消/失败</th><td>用原J查询openmc_job_status，看error、日志和终态。需要取消时调用openmc_cancel_job，再查询到终态。</td><td>保留首次记录。先处理原因，资源变更经用户确定；重算用明确关联的新作业。</td></tr>
+<tr><th>图或报告失败</th><td>先查原J是否completed；原生结果保留，不为重出报告重做求解。</td><td>修复依赖/选择后仅重调相应产物工具；同格式报告会覆盖，留旧版先归档。</td></tr>
 </tbody></table></div>
-<p>文件存于<strong>服务端</strong>，默认记录目录为 <code>workspace/.mc-jobs/&lt;job_id&gt;/</code>，其中 <code>work/</code>保存提交副本和原始输出。以工具返回的 <code>server_path</code>为准；MCP返回数据或路径不等于已下载到客户端。部分PNG可随调用预览，网格热图主要返回文件位置，能否内联显示还取决于宿主。异机文件取回目前需另行安排；同机Windows可经WSL共享路径打开，见<a href="dsh.html#artifacts">产物与清理</a>。</p>
-</section><section id="guide" aria-labelledby="guide-title"><h2 id="guide-title">5．运行范围与依赖</h2>
-<p>接口由MCP服务与CLI共用注册表和Schema校验；OpenMC 0.16.0的Python API用于建模、解析和读原始结果，可执行程序用于求解。CAD分支额外使用CadQuery、cad_to_dagmc和网格组件；Matplotlib绘图，DOCX生成与Office转换负责报告输出。核数据独立于软件安装。这些组件在初始化时准备，不要求科研用户把它们都装到同一个Python环境。</p>
-<p>当前执行器面向本地Linux/WSL进程，尚无Slurm/HPC适配；组合建模和自动改参只覆盖已公布范围，CAD复杂件与统计/物理适用性仍需实际模型验证。官方原文检索不是完整专业知识库，宿主编排也不等同于微调模型生成。使用这些范围判断适合接入的任务，具体条件见对应操作页。</p>
-</section><footer>详细命令与参数见<a href="compute.html">计算步骤</a>、<a href="domain-workflows.html">自有模型</a>、<a href="mcp.html">标准MCP</a>；模块实现见<a href="toolkit.html">架构设计</a>。</footer></main></body></html>
+<p>每轮填写：提交SHA、环境/核数据、J/T、采样、选择、是否截断/警告、产物目录、数据核对、DSH自动完成或人工补操作、首次失败和复测。分别记工程通过、未覆盖、发现问题、待专业判定，不预填结果。</p>
+<p>结束后先用<code>openmc_storage_report</code>查看占用，按<a href="toolkit-usage.html#maintenance">清理说明</a>预览本次J的删除计划。只在维护窗口、资料归档后执行；原输入、核数据库、运行时和必要证据保留，不用一键全删腾空间。</p></section><h2 id="maintenance">清理本次练习产物</h2><p>在计算服务器与相同PID命名空间执行。先将组件流程中返回的真实job_id赋给shell变量，再预览：</p><pre class="command"><code>mc_job_id='J（替换为本次真实job_id）'
+./cleanup.sh --job-id "$mc_job_id"</code></pre><p>需要删除时，先归档结果并确认计算结束；停止 MCP 和其它 CLI 写入，进入维护窗口，再对<strong>同一选择</strong>加 <code>--apply</code>：</p><pre class="command"><code>./cleanup.sh --job-id "$mc_job_id" --apply</code></pre><p>它删除选定终态记录及其快照、日志、图和报告；原 <code>cases/</code> / <code>demos/</code> 输入保留。删除后不能再按编号查询。扫描按整批用 <code>--scan-id</code>；运行中、未确认中断、关联冲突等会拒绝。<code>./cleanup.sh --help</code> 可查保留时间和修复引用选项；默认不删，失败非 0，不应无条件重试。</p><footer>MC工具包 · <a href="project-records.html">项目资料与验证记录</a></footer></main></body></html>

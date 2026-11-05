@@ -1,10 +1,10 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MC工具包专家试用清单</title><link rel="stylesheet" href="assets/overview.css"><style>main{max-width:1160px}section[id]{scroll-margin-top:28px}.jump{display:flex;flex-wrap:wrap;gap:10px 24px;margin:24px 0}input{accent-color:#77d7c6}label{cursor:pointer}.minor{max-width:1000px}@media print{input{appearance:auto}}</style></head><body><main>
-<nav><a href="index.html">手册首页</a><a href="toolkit.html#job-details">M2架构</a><a href="toolkit-usage.html">使用说明</a><a href="compute.html">完整计算步骤</a><a href="dsh.html">DSH连接</a></nav>
+<nav aria-label="文档导航"><a href="index.html">工具包总览</a><a href="toolkit-usage.html">使用手册</a><a href="deployment.html">部署与接入</a><a href="toolkit.html">架构设计</a><a href="reference.html">接口参考</a></nav>
 <p class="eyebrow">自有Linux服务器统一部署 · 技术试用 · 2026-11-05</p><h1>MC工具包专家试用清单</h1>
-<p class="minor"><a href="capabilities.html">能力范围：生成、接入、修改与解析</a> · <a href="reproduce.html">公开模型复现：组件与全堆的完整MCP/DSH步骤</a></p><p class="lead">我们提供Linux服务器、工具包和MCP服务，专家连接使用。先用一个专家熟悉的组件或简化堆芯模型，核对输入、计算和结果是否符合其研究意图，再做少量改参及异常验证。此清单用于准备和记录技术试用，不代表已部署、已测试或合同验收通过。</p>
+<p class="lead">我们提供Linux服务器、工具包和MCP服务，专家连接使用。先用一个专家熟悉的组件或简化堆芯模型，核对输入、计算和结果是否符合其研究意图，再做少量改参及异常验证。此清单用于准备和记录技术试用，不代表已部署、已测试或合同验收通过。</p>
 <div class="jump"><a href="#prepare">准备什么</a><a href="#test">怎么测</a><a href="#judge">怎么看结果</a><a href="#record">怎么记录</a></div>
 <section id="prepare"><h2>1．试用前准备</h2><div class="table-wrap"><table><thead><tr><th>负责方</th><th>准备和核对</th><th>开始条件</th></tr></thead><tbody>
-<tr><td>我们：部署与连接</td><td>冻结代码提交/包校验值；按<a href="env.html">环境说明</a>部署接口、OpenMC、核数据及所需CAD/报告依赖；核对服务地址、网络可达、鉴权与工具发现。</td><td>从专家实际使用的客户端完成连接检查。当前没有目标服务器部署成功回执，执行时记录。</td></tr>
+<tr><td>我们：部署与连接</td><td>冻结代码提交/包校验值；按<a href="deployment.html#setup">环境说明</a>部署接口、OpenMC、核数据及所需CAD/报告依赖；核对服务地址、网络可达、鉴权与工具发现。</td><td>从专家实际使用的客户端完成连接检查。当前没有目标服务器部署成功回执，执行时记录。</td></tr>
 <tr><td>我们：资源与文件</td><td>记录工作区绝对路径、核数/线程和可用磁盘，核对作业时限、单XML大小限制和日志上限；首轮按受控单任务安排。接收专家模型到独立目录，约定产物交接通道。</td><td>预算适合该模型；文件在服务器可读，专家能实际取得CSV、图和报告。MCP路径不等于上传/下载，现有工具不提供远程下载。</td></tr>
 <tr><td>专家：模型与研究问题</td><td>一个已知可运行的原生OpenMC模型及依赖；版本/核数据、原生运行设置与结果；希望观察的keff/tally、单位、筛选与归一化；一个要修改的参数及允许范围。</td><td>双方确认当前工具支持该输入和结果类型；缺少资料先记录，不让模型猜物理条件。</td></tr>
 <tr><td>共同：判定方式</td><td>明确参考结果来源、采样/收敛要求、比较容差、专业判定人。我们核对工具与文件交接，专家判断物理适用性；其他材料提供责任由项目落实。</td><td>没有可靠参考也能试操作，但不形成准确率结论。模板假设与真实业务模型分开。</td></tr>
@@ -17,12 +17,12 @@
 <tr><td><label><input type="checkbox"> 数据、图与报告</label></td><td>读取 openmc_read_results；明确tally/score/nuclide/filter后绘图、导出所选报告，空间结果另用openmc_plot_mesh。</td><td>对照原生结果与参考，核对值、标准差、维度/坐标、单位和选择。交付配套CSV/JSON及实际图/报告，不只检查文件存在。</td></tr>
 <tr><td><label><input type="checkbox"> 少量改参</label></td><td>发现参数 openmc_list_parameters → 副本 openmc_prepare_case；专家指定两三个取值，用openmc_submit_scan串行执行。</td><td>原模型保留，修改读回一致；scan_id与各job_id对应，失败/未运行项不隐藏；专业趋势由专家判断。</td></tr>
 <tr><td><label><input type="checkbox"> 单独异常测试</label></td><td>用独立副本和已约定资源的任务测试取消 openmc_cancel_job，或测试一个已知输入错误；继续查询终态。</td><td>确认取消请求与完成区别、无继续运行的本任务进程、原输入和首次失败保留。过快完成的任务记“取消未覆盖”，不能算取消通过；不在专家主作业上做破坏性演练。</td></tr>
-</tbody></table></div><p>详细调用方法见<a href="domain-workflows.html">模型工作流</a>、<a href="compute.html">计算与结果操作</a>和<a href="reference.html">参数参考</a>。本清单不新增测试阈值。</p></section>
+</tbody></table></div><p>详细调用方法见<a href="toolkit-usage.html#own-models">模型工作流</a>、<a href="toolkit-usage.html#assembly">计算与结果操作</a>和<a href="reference.html">参数参考</a>。本清单不新增测试阈值。</p></section>
 <section id="judge"><h2>3．结果怎样判断</h2><ul>
 <li><strong>工程交接：</strong>输入、参数、job_id、原生结果和整理产物关联一致；失败有证据且能说明如何继续。进度百分比和“调用成功”不替代终态及数据核对。</li>
 <li><strong>专业结果：</strong>用事先确认的参考和容差评价，结合统计不确定度、收敛与归一化判断。没有依据的项记“待专业确认”，不能改成通过或补零。</li>
 <li><strong>数据完整性：</strong>read_results预览可能截断；明确选择后的配套数据才是完整所选数据。通用曲线与所选报告同源，网格热图当前为独立产物，不自动并入该报告。固定源通常没有keff。</li>
 <li><strong>范围：</strong>本轮是受控领域技术试用。合同功能、性能、指定基准、宿主/模型兼容与稳定性仍按合同和正式测试计划逐项验收，另见<a href="project-progress.html">执行对照</a>。</li>
-</ul><p class="minor">执行中若日志截断、worker丢失、结果缺失或磁盘不足，暂停受影响任务，保留原记录；未知结果先查原编号，不盲目重投。清理先预览，确认维护窗口与证据保留范围后再执行，见<a href="compute.html#maintenance">产物与清理</a>。</p></section>
+</ul><p class="minor">执行中若日志截断、worker丢失、结果缺失或磁盘不足，暂停受影响任务，保留原记录；未知结果先查原编号，不盲目重投。清理先预览，确认维护窗口与证据保留范围后再执行，见<a href="toolkit-usage.html#maintenance">产物与清理</a>。</p></section>
 <section id="record"><h2>4．每个场景记录这些信息</h2><p>提交/包版本；客户端与服务器环境；模型及参考来源；case_dir、job_id/scan_id；参数和选择条件；工程结果与专家结论；实际产物位置；首次失败与复测关联。结论区分<strong>通过、发现问题、未覆盖、待专业确认</strong>，注明判定人和日期。</p><p>我们整理问题清单并处理接口、部署与产物交接问题，专家补充专业依据与使用反馈。HPC、微调生成等未完成能力单独跟踪，不借试用改写合同责任。</p></section>
 <footer>说明：本页为执行清单，无预填的测试结论。<a href="toolkit.html#job-details">本地实现与HPC设计</a> · <a href="toolkit-usage.html#files">文件格式与位置</a></footer></main></body></html>

@@ -39,8 +39,15 @@ if (search) {
   };
   search.addEventListener('input', update); update();
 }
+const legacyChapters = {
+  'index.html': {demo:'toolkit-usage.html#small-example', 'demo-options':'toolkit-usage.html#small-example', 'other-demos':'toolkit-usage.html#advanced'},
+  'toolkit-usage.html': {'results-title':'toolkit-usage.html#results', 'files-title':'toolkit-usage.html#files', using:'toolkit-usage.html#start', 'using-title':'toolkit-usage.html#start', capabilities:'index.html#scope', 'capabilities-title':'index.html#scope', guide:'deployment.html#configuration', 'guide-title':'deployment.html#configuration'},
+  'mcp.html': {'mc-service':'deployment.html#mcp-service', handoff:'deployment.html#handoff', remote:'deployment.html#remote', helix:'deployment.html#helix'}
+};
 function revealHash() {
   if (!location.hash) return;
+  const legacy = legacyChapters[location.pathname.split('/').pop()]?.[decodeURIComponent(location.hash.slice(1))];
+  if (legacy) { location.replace(legacy); return; }
   const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
   if (!target) return;
   if (search && target.matches('details.tool')) {

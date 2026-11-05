@@ -8,9 +8,9 @@ details{border:1px solid var(--line);background:var(--panel);padding:14px 20px;m
 
 .diagram-title{margin:24px 0 8px;font-size:18px;color:var(--accent)}
 </style></head><body><main>
-<nav><a href="index.html">手册首页</a><a href="toolkit-usage.html">使用说明</a><a href="domain-workflows.html">模型操作</a><a href="cad.html">CAD操作</a><a href="reference.html">工具参数</a></nav>
+<nav aria-label="文档导航"><a href="index.html">工具包总览</a><a href="toolkit-usage.html">使用手册</a><a href="deployment.html">部署与接入</a><a href="toolkit.html" aria-current="page">架构设计</a><a href="reference.html">接口参考</a></nav>
 <p class="eyebrow">面向开发者 · 实现基线0.11.1 · 2026-11-05</p><h1>MC工具包架构设计</h1>
-<p class="minor"><a href="capabilities.html">能力范围：生成、接入、修改与解析</a> · <a href="reproduce.html">公开模型复现：组件与全堆的完整MCP/DSH步骤</a></p><p class="lead">本包在OpenMC之上组织模型输入、计算作业和结果分析。CLI与MCP共用领域实现，宿主负责自然语言编排；本包负责模型和文件交接、后台计算及可追查的产物。下面从总图展开各模块，说明常见任务怎样落实到源码与运行过程。</p>
+<p class="lead">本包在OpenMC之上组织模型输入、计算作业和结果分析。CLI与MCP共用领域实现，宿主负责自然语言编排；本包负责模型和文件交接、后台计算及可追查的产物。下面从总图展开各模块，说明常见任务怎样落实到源码与运行过程。</p>
 <p class="minor">当前执行后端为Linux/WSL本地进程。HPC部分是接入设计，尚未实现。本文解释系统机制；具体命令与结果阅读见<a href="toolkit-usage.html">使用说明</a>。</p>
 <div class="jump"><a href="#architecture">总体架构</a><a href="#scenarios">常见场景</a><a href="#inputs">M1模型准备</a><a href="#jobs">M2作业管理</a><a href="#results">M3结果分析</a><a href="#developer">运行与扩展</a></div>
 <section id="architecture" aria-labelledby="architecture-title"><h2 id="architecture-title">1．总体架构</h2>
@@ -70,7 +70,7 @@ details{border:1px solid var(--line);background:var(--panel);padding:14px 20px;m
    ├─ work/                    提交输入及原生计算输出
    │  └─ statepoint.N.h5等
    └─ results.json、图表与报告  后续分析产生</code></pre>
-<p>上面路径相对于部署配置中的服务端工作区，不能直接当作专家电脑路径。产物清单返回服务器位置与指纹，目前不提供远程下载；由我们按约定通道接收模型、交付产物。历史简化全堆作业<code>d5e646736f8e4c0eb197e5d58cc3ff8f</code>使用<code>demos/dsh-core-e1fb3244</code>、2线程，保留了<code>statepoint.12.h5</code>等文件；这是既有短算工程证据，不是本次部署或专业结论。</p>
+<p>上面路径相对于部署配置中的服务端工作区，不能直接当作专家电脑路径。产物清单返回服务器位置与指纹，目前不提供远程下载；由我们按约定通道接收模型、交付产物。历史运行示例另见<a href="project-records.html#historical-core">项目记录</a>。</p>
 <h3>本地实现的交接与状态</h3>
 <p><code>submit_job</code>检查输入与运行环境后，由<code>jobs.submit</code>完成容量/空间准入，创建<code>.mc-jobs/&lt;job_id&gt;/work/</code>提交副本，记录输入SHA256、任务名和runtime配置，再以独立会话启动<code>run_worker</code>。worker写出供子进程使用的<code>runtime.json</code>，启动求解器；普通计算、绘图、几何检查和燃耗按各自模式组装命令。</p>
 <div class="table-wrap"><table><thead><tr><th>对象 / 状态</th><th>如何处理</th><th>不能据此推出什么</th></tr></thead><tbody>
@@ -123,10 +123,33 @@ details{border:1px solid var(--line);background:var(--panel);padding:14px 20px;m
 <p>配置由包内默认值和本地覆盖形成，业务操作进入时读取；作业与扫描会保存自己的runtime配置用于后台执行。路径配置不代表外部程序、核数据内容被永久冻结。部署依赖在初始化阶段准备，模型输入路径与产物路径相对于服务端工作区；迁移还需处理外部依赖与版本。</p>
 </details>
 <details id="support-details"><summary>展开资料、诊断、空间与接口扩展</summary><p>知识检索返回固定版本原文、出处与行号，宿主把结果交给模型组织回答；不是工具自己产生专家结论。诊断按有限规则提取日志证据，允许的修复先展示差异，确认由调用方组织，修复工具按确认参数执行并重校核。MCP连接鉴权不等于多租户隔离，也不等于HPC账户授权。</p><p>存储报告和清理负责服务器产物生命周期；清理有预览和关联保护，运行期增长仍需维护。业务路径检查防止越出工作区，不是任意代码执行的操作系统沙箱。</p><p>增加模型表达时修改Schema、可信builder与读回一致性；增加执行后端时修改M2的提交收据、状态、取消和产物交接；增加结果类型时修改M3的原生解析和消费关系。工具注册表与参数Schema保持统一，CLI/MCP共享适配器；新增函数名本身不代表完成能力。</p></details>
-<p class="minor">实现入口：<a href="reference.html">公开工具参数</a>；验证入口：<a href="cad.html#validation">CAD与结果复验</a>、<a href="domain-workflows.html#validation">通用测试条件</a>。当前能力和未实施部分据源码说明，工程测试不代替科学适用性判断。</p>
+<p class="minor">实现入口：<a href="reference.html">公开工具参数</a>；验证入口：<a href="project-records.html#validation">CAD与结果复验</a>、<a href="project-records.html#validation">通用测试条件</a>。当前能力和未实施部分据源码说明，工程测试不代替科学适用性判断。</p>
 </section>
 <footer>技术依据：甲方《OpenMC_MCP_表4-1技术落点对照与开发指引》、当前实现及<a href="https://docs.openmc.org/en/v0.16.0/">OpenMC官方文档</a>。技术指引中的组件建议与当前采用方案分开核对；合同进展另见<a href="project-progress.html">执行对照</a>。面向使用者的操作与文件说明见<a href="toolkit-usage.html">使用说明</a>。</footer>
-</main><script>
+<section id="engineering"><h2>7．校验机制与开发依据</h2><details id="input-validation"><summary>输入校验的职责、层次及非强制门禁</summary><div class="table-wrap"><table><thead><tr><th>层次</th><th>现在做什么</th><th>如何使用及边界</th></tr></thead><tbody>
+<tr><th>接口Schema</th><td>MCP/CLI共用工具定义，校验类型、必填、范围及部分组合；参数含说明。</td><td>合法JSON不表示模型物理有效。参数化spec另查编号引用、区域、循环填充和单位等约束。</td></tr>
+<tr><th>XML结构</th><td>缺文件、根元素、解析、DTD/实体拒绝、少量运行参数及文件大小。</td><td>默认validate_inputs和提交入口的基础检查；structure_valid只回答这一层。</td></tr>
+<tr><th>API与静态语义</th><td>公开API读回模型；密度/温度有限且为正、核素/S(a,b)索引可用性、计分过滤器与引用规则。</td><td>调用api_check=true、semantic_check=true；核对openmc_api.api_parsed及semantic.checked/ok/complete。索引存在不保证其HDF5文件完整或温度范围适用。</td></tr>
+<tr><th>几何与专业检查</th><td>geometry_check=true在临时副本低批次运行openmc -g；报告重叠/未完成及抽样限制。</td><td>会消耗计算资源，按需单独执行。通过不证明无重叠；专业判据、收敛、核数据适用性仍需专家。</td></tr>
+</tbody></table></div><div class="note"><strong>重要使用规则：</strong>提交工具目前不会强制执行API/语义/几何全部检查。宿主或调用脚本必须安排校核并读取各层结果；不要只看structure_valid=true就提交。新复现脚本对API和静态语义设置停止条件，未改变所有调用方的默认提交行为。</div></details><details id="design-basis"><summary>设计依据、采用方式与限制</summary><p>本包依据公开OpenMC接口及技术指引组织实现；下表说明采用方式和替代路线。</p><div class="table-wrap"><table><thead><tr><th>指引/参考机制</th><th>本包落点</th><th>采用程度与原因</th></tr></thead><tbody>
+<tr><th>Python生成XML</th><td>spec→包内Python/OpenMC API→分离XML；固定官方工厂→分离XML；保留生成依据。</td><td>已采用。原生导入保留现有XML，局部改参会精确更新字段，并非所有入口都重建整个模型。</td></tr>
+<tr><th>DAGMC与CAD</th><td>cad_to_dagmc→H5M→DAGMCUniverse→OpenMC计算。</td><td>已实现接线；外部CAD环境独立锁定。几何质量及甲方复杂件需实际检验。</td></tr>
+<tr><th>结果格式</th><td>以官方StatePoint API读HDF5，保留原始值与标准差；CSV/JSON/PNG/报告供交接。</td><td>已采用主路径。tallies.out/stdout等原文保留；不是把所有ASCII/HDF5都重做一遍解析器。</td></tr>
+<tr><th>输入/输出分区与来源</th><td>case_dir保留输入，.mc-jobs/job_id/work是提交副本和原生输出，作业目录另放日志、台账、图报告。</td><td>已采用按作业隔离的等效布局；mc-case.json、输入/输出哈希和版本登记支持追溯。配置快照不封存核数据库。</td></tr>
+<tr><th>模板+参数Schema</th><td>model-spec/v1 + Schema + API渲染；固定模板与原生导入并存。</td><td>采用受控字段思路。未照搬“开发时Python、运行时纯XML”路线；本包运行期仍依赖OpenMC Python API。</td></tr>
+<tr><th>PromptMC校验与来源记录</th><td>复用现有Schema、静态语义、API读回、预览和来源信息，已有规则校验。</td><td>参考其机制，没有引入PromptMC服务依赖或复制物理算法；不把对方README当全路径均有强校验的证据。</td></tr>
+<tr><th>Slurm、微调与业务知识</th><td>架构保留执行后端边界；知识目前是固定官方原文检索。</td><td>HPC后端与微调生成未实现；未用模拟调度或模板生成冒充完成。</td></tr>
+</tbody></table></div></details><details id="developer-extension"><summary>源码职责、扩展与验证打包</summary><div class="flow" role="img" aria-label="CLI或MCP，进入共享注册表和校验，再到业务与OpenMC运行时，写出工作区记录"><span>CLI / MCP</span><span>工具定义与校验</span><span>业务 / OpenMC</span><span>工作区记录和产物</span></div><div class="table-wrap"><table><thead><tr><th>你想改什么</th><th>先看这些文件</th></tr></thead><tbody><tr><td>工具名、参数、说明</td><td><a href="../mcp/tools.py">mcp/tools.py</a> 注册操作；<a href="../mcp/tool_metadata.py">tool_metadata.py</a> 补现有 OpenMC 语义。新增参数要有 description，嵌套字段也需解释来源和单位。</td></tr><tr><td>CLI 与 MCP 公共调用</td><td><a href="../mcp/cli.py">cli.py</a> / <a href="../mcp/server.py">server.py</a> 共用 <a href="../mcp/adapters.py">adapters.py</a> 的校验与函数/程序/HTTP 执行。demo 仅调用它们。</td></tr><tr><td>输入解析、例题和参数修改</td><td><a href="../mcp/openmc_tools.py">openmc_tools.py</a>、<a href="../mcp/openmc_worker.py">openmc_worker.py</a> 调用官方 API；<a href="../mcp/openmc_parameters.py">openmc_parameters.py</a> 负责发现、检查与局部 XML 修改。</td></tr><tr><td>计算 / 扫描 / 数据位置</td><td><a href="../mcp/openmc_jobs.py">openmc_jobs.py</a> / <a href="../mcp/openmc_scan.py">openmc_scan.py</a>；<a href="../mcp/openmc_runtime.py">openmc_runtime.py</a> 读取运行配置并检查工作区边界。</td></tr><tr><td>图、报告、文件清单</td><td><a href="../mcp/openmc_plots.py">openmc_plots.py</a> / <a href="../mcp/openmc_visuals.py">openmc_visuals.py</a>、<a href="../mcp/openmc_reports.py">openmc_reports.py</a>、<a href="../mcp/openmc_artifacts.py">openmc_artifacts.py</a>。</td></tr></tbody></table></div><p>求解器 API 动作在配置的 OpenMC Python 环境执行；调用层用自己的 <code>mcp/.venv</code>。长计算交给独立 worker，以编号和持久记录查询；MCP 停服不会代替作业取消。Harness 位于可选宿主层，工具包不依赖它。</p><details><summary>新增一个可自动修改的 OpenMC 字段</summary>
+<p>在 <code>openmc_parameters.py</code> 同时补齐发现描述、值与组合校核、官方属性赋值和对应 XML 局部写入；不要只在参数清单增加名字。用实际输入检查修改值生效、原输入未变、无关字段未丢失，再跑到真实计算和结果读取。</p>
+<p>本实现采用局部 XML 写入，原因之一是全量 Model XML 往返在 OpenMC 0.16 下可能丢失宏观材料条目。扩展时保持单位和未修改内容，不能只看 Python 属性赋值成功。</p></details><details><summary>新增工具、例题、资料或结果格式</summary>
+<p>已有函数/程序/API 的注册步骤见<a href="mcp.html#register">MCP 封装</a>。例题目录在 <code>config/cases.json</code>，需写来源、依赖和准备状态；<code>ready_to_prepare</code> 不等于已计算。资料更新需保留版本、许可、出处及哈希。</p>
+<p>结果扩展使用真实 StatePoint/Tally；保留标准差、非有限值、截断和来源标记。图从完整所选计分读取，不从截断预览作图。专业规则和修复范围需业务依据，不能仅靠模型猜测。</p></details><details id="verify"><summary>改完如何验证、打包、交付</summary>
+<p>先用 <code>tests/</code> 中相关用例验证受影响行为。涉及求解器就启用真实运行时；涉及确认修复，保留拒绝和原失败。再从新的解压目录按文档走完整路径。</p>
+<pre class="command"><code>mcp/.venv/bin/python scripts/generate_tool_reference.py
+./verify.sh
+./package.sh</code></pre>
+<p>第一条从真实注册表生成 HTML 参数参考；<code>verify.sh</code> 检查工程行为并输出日志，不等于业务验收。设置 <code>MC_TEST_OPENMC_CONFIG</code> 可启用真实 OpenMC 用例；完整工程回归也测可选 Harness，需要 Node 22/pnpm。<code>package.sh</code> 生成 <code>dist/</code> 下源码包、文件清单和 SHA256，不代替验证。</p>
+<p>包不含环境、个人密钥、本机配置、原合同和运行数据；接收方需按初配准备依赖。部署前在新位置检查运行、产物和文件引用。项目执行记录见<a href="project-records.html">项目资料</a>；公开工程例题、协议连通和专业验收分开判断。</p></details></details></section></main><script>
 function revealTarget(){const id=decodeURIComponent(location.hash.slice(1));if(!id)return;const el=document.getElementById(id);if(!el)return;for(let p=el;p;p=p.parentElement)if(p.tagName==='DETAILS')p.open=true;el.scrollIntoView({block:'start'});}
 addEventListener('hashchange',revealTarget);addEventListener('DOMContentLoaded',revealTarget);
 </script></body></html>

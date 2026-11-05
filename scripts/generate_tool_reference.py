@@ -33,8 +33,8 @@ def table(headers, rows):
 
 def generate(definitions=None):
     definitions = TOOLS if definitions is None else definitions
-    nav = [('index', '认识工具包'), ('compute', '完成一次计算'), ('official-examples', '全部官方例题'), ('inputs', '自有模型与源码'),
-           ('mcp', '封装与部署 MCP'), ('reference', '查工具参数')]
+    nav = [('index', '工具包总览'), ('toolkit-usage', '使用手册'), ('deployment', '部署与接入'),
+           ('toolkit', '架构设计'), ('reference', '接口参考')]
     navigation = ''.join(f'<a href="{name}.html"' + (' aria-current="page"' if name == 'reference' else '')
                          + f'>{label}</a>' for name, label in nav)
     lines = ['<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">',
@@ -44,9 +44,9 @@ def generate(definitions=None):
              '<a class="sr-only" href="#content">跳到正文</a><aside class="sidebar">',
              '<a class="brand" href="index.html">MC 工具包<br>使用与开发手册</a>',
              '<p class="edition">OpenMC · 独立 MCP</p><nav aria-label="文档导航">', navigation,
-             '</nav><p class="minor">先沿一个实际任务操作。<br>参数全集随用随查。<br>本手册可离线打开。</p></aside>',
+             '</nav><p class="minor">先沿一个实际任务操作。<br>参数全集随用随查。<br>本手册可离线打开。<br><a href="project-records.html">项目资料与验证记录</a></p></aside>',
              '<main id="content"><p class="eyebrow">按需查阅 · 来自实际工具注册表</p><h1>查一个工具的参数</h1>',
-             '<p class="lead">先按操作指南完成任务，本页用于查询具体字段。CLI 与 MCP 使用同一 Schema；',
+             '<p class="lead">先按使用手册完成任务，本页用于查询具体字段。CLI 与 MCP 使用同一 Schema；',
              '下面的参数说明也会通过 tools/list 发给调用方。</p>',
              '<div class="note">默认值表示实际省略行为；Schema 注解不替程序填参。可省略不代表可填 null。',
              '模型 ID、参数名、计分和单位须先从实际输入/结果发现，不能照抄示例。</div>',

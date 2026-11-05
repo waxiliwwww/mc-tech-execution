@@ -1,7 +1,5 @@
-# 文档入口已迁至 HTML
+# MC工具包文档
 
-日常使用从 [HTML 手册](index.html) 开始；本文件仅保留旧链接定位。
+用浏览器打开 [工具包总览](index.html)。日常入口为 [使用手册](toolkit-usage.html)、[部署与接入](deployment.html)、[架构设计](toolkit.html)、[接口参考](reference.html)。
 
-<a id="开发和项目维护"></a>
-
-- [开发和项目维护](inputs.html#source)
+官方清单及通用MCP封装从相应章节进入；[项目资料](project-records.html) 单独保存合同进展、计划和历史验证。原主题页只保留兼容跳转。

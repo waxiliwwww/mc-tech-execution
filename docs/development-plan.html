@@ -1,5 +1,5 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>近期交付总览 · MC工具包</title><link rel="stylesheet" href="assets/overview.css"></head><body><main>
-<nav><a href="index.html">工具包手册</a><a href="domain-workflows.html">怎么使用</a><a href="cad.html">CAD流程</a><a href="dsh.html">Windows DSH接入</a><a href="development-details.html">开发与验证明细</a></nav>
+<nav aria-label="文档导航"><a href="index.html">工具包总览</a><a href="toolkit-usage.html">使用手册</a><a href="deployment.html">部署与接入</a><a href="toolkit.html">架构设计</a><a href="reference.html">接口参考</a></nav>
 <p class="eyebrow">两周内的调试交付 · 2026-11-04</p><h1>交付一套能在DSH中使用的蒙卡MCP工具</h1>
 <p class="lead">用户既能带入已有OpenMC模型，也能通过自然语言调用建模工具，完成计算、查看结果。先让甲方拿到可调试的工具包，再据复杂业务反馈深化。</p>
 <div class="flow" aria-label="用户任务交给DSH理解，MCP工具负责建模和作业，OpenMC求解，返回数据图和报告"><span>用户任务</span><b>→</b><span>Windows DSH</span><b>→</b><span>MCP工具</span><b>→</b><span>OpenMC计算</span><b>→</b><span>数据、图和报告</span></div>
@@ -13,5 +13,5 @@
 </tbody></table></div>
 <div class="note"><strong>待验证：</strong>由DSH用代表任务走完整操作。按当前决定，本轮不调用模型；自然语言实跑另行安排。</div>
 <p>公开例题跑通是基础条件。甲方的具体模型、HPC条件、专业参考值仍需配合确认；本次调试交付不等于最终合同验收，也不增加原合同指标。</p>
-<footer><a href="development-details.html">实现、接口、测试与配合项明细</a> · <a href="project-progress.html">合同功能进展</a> · <a href="domain-workflows.html">实际使用流程</a> · <a href="capabilities.html">当前能力范围</a> · <a href="reproduce.html">组件/全堆复现手册</a></footer>
+<footer><a href="development-details.html">实现、接口、测试与配合项明细</a> · <a href="project-progress.html">合同功能进展</a> · <a href="toolkit-usage.html#own-models">实际使用流程</a> · <a href="index.html#scope">当前能力范围</a> · <a href="toolkit-usage.html#assembly">组件/全堆复现手册</a></footer>
 </main></body></html>
