@@ -261,7 +261,7 @@ TOOLS += [
                             "tally_id": {"type": "integer", "minimum": 1}},
                            ["case_dir", "scores"]),
      "outputSchema": OUTPUT, "function": define_tally, "annotations": WRITE},
-    {"name": "openmc_preview_input", "description": "提交前逐文件看清输入：截断内容预览、字节数与SHA256，附结构摘要（运行设置、材料核素、几何与tally计数）。只读；算例内符号链接拒绝读取；预览不证明物理正确。",
+    {"name": "openmc_preview_input", "description": "提交前查看普通作业将复制的完整输入清单（XML、mc-case.json和相对资源），返回大小、SHA256及有限文本预览。大文件/二进制只列指纹；manifest_complete和problems说明清单是否完整，input_hashes用于与提交快照作完整比较。只读，拒绝符号链接；清单不含外部部署核数据库，也不证明物理正确。",
      "inputSchema": schema({"case_dir": TEXT}, ["case_dir"]),
      "outputSchema": OUTPUT, "function": preview_input},
     {"name": "openmc_job_compare", "description": "对比两个本地作业：逐输入文件SHA256异同、状态/模式/线程/批数、双方Combined k及差值与合成σ（工程参考，非统计显著性判定）。compare_tallies=true时读取两作业StatePoint，按tally id对齐逐bin对比（两倍σ工程判据；结构不齐/截断/非有限值如实报告）。只读。",

@@ -40,6 +40,8 @@ try {
   assert.match(await page.locator('#assembly').innerText(),/openmc_define_tally/);
   assert.match(await page.locator('#assembly').innerText(),/semantic.checked\/ok\/complete/);
   assert.match(await page.locator('#assembly').innerText(),/289/);
+  assert.match(await page.locator('#assembly').innerText(),/manifest_complete=true/);
+  assert.match(await page.locator('#assembly').innerText(),/完整字典比较/);
   assert.match(await page.locator('#assembly').innerText(),/selection_mode/);
   await shot('02-component-workflow');
   await page.locator('.jump a[href="#core"]').click();await anchor('core');
@@ -83,6 +85,8 @@ try {
   assert.match(await page.locator('#dsh').innerText(),/ssh -N -L 8770/);
   assert.match(await page.locator('#dsh').innerText(),/cordis.patch.yml/);
   assert.match(await page.locator('#dsh').innerText(),/不修改已有模型配置/);
+  assert.match(await page.locator('#dsh').innerText(),/group\/offset\/limit\/summary/);
+  assert.match(await page.locator('#dsh').innerText(),/新开会话/);
   await shot('05-deployment-dsh');
   await page.goto(url('deployment.html#systemd-user'));await anchor('systemd-user');
   assert.match(await page.locator('#systemd-user').innerText(),/KillMode=process/);

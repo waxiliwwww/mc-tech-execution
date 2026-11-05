@@ -18,6 +18,28 @@ from openmc_demo import client, error_text
 from public_case_demo import wait_job
 
 
+def verified_preview_hashes(preview):
+    """Fail before compute when old/incomplete previews cannot attest the inputs."""
+    message = '输入预览清单或指纹不完整；更新服务并重新预览，不提交计算'
+    if preview.get('problems') or preview.get('manifest_complete') is not True:
+        raise RuntimeError(message)
+    files = preview.get('files')
+    expected = preview.get('input_hashes')
+    if not isinstance(files, list) or not files or not isinstance(expected, dict) or not expected:
+        raise RuntimeError(message)
+    actual = {}
+    for item in files:
+        if (not isinstance(item, dict) or item.get('present') is not True or item.get('symlink')
+                or not isinstance(item.get('name'), str) or not item['name']
+                or not isinstance(item.get('sha256'), str) or not item['sha256']
+                or item['name'] in actual):
+            raise RuntimeError(message)
+        actual[item['name']] = item['sha256']
+    if actual != expected:
+        raise RuntimeError(message)
+    return actual
+
+
 def safe_value(value):
     """Receipts never include connection settings or known credential values."""
     if isinstance(value,dict):
@@ -86,6 +108,7 @@ async def workflow(args):
                 run={'case_dir':directory,'state':'preparing','chart':None};output['runs'].append(run)
                 print('2/5 预览、API与语义检查：'+directory,file=sys.stderr)
                 preview=await step('preview','openmc_preview_input',{'case_dir':directory},run,'preview')
+                expected=verified_preview_hashes(preview)
                 validation=await step('validate','openmc_validate_inputs',{'case_dir':directory,
                     'api_check':True,'semantic_check':True},run,'validation')
                 if not validation['structure_valid'] or not validation.get('semantic',{}).get('ok',True):
@@ -100,9 +123,10 @@ async def workflow(args):
                 if status['state']!='completed':
                     raise RuntimeError('计算未成功，原记录保留：'+str(status.get('error')))
                 output['stage']='verify_snapshot';save_receipt(args,output)
-                expected={f['name']:f['sha256'] for f in preview.get('files',[]) if f.get('sha256')}
-                mismatched=[key for key,digest in expected.items() if status['input_hashes'].get(key)!=digest]
-                if mismatched:raise RuntimeError('预览后输入发生变化，结果不能归属于先前预览：'+', '.join(mismatched))
+                snapshot=status.get('input_hashes',{})
+                mismatched=sorted(key for key in set(expected)|set(snapshot) if expected.get(key)!=snapshot.get(key))
+                if not expected or preview.get('manifest_complete') is False or mismatched:
+                    raise RuntimeError('完整预览清单与提交快照不一致，结果不能归属于先前预览：'+', '.join(mismatched))
                 run['preview_matches_snapshot']=True
                 # Preserve the actual service-side artifact directory before any
                 # optional plot/report component can fail. Refresh after exports.

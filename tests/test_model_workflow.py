@@ -22,10 +22,10 @@ class WorkflowReceipts(unittest.TestCase):
             async def call(name,args):
                 self.calls.append((name,args))
                 if name==fail:raise RuntimeError(message)
-                return {
+                value = {
                     'openmc_import_model':{'case_dir':'cases/example','server_path':'/server/workspace/cases/example'},
                     'openmc_list_parameters':{'parameters':[]},
-                    'openmc_preview_input':{'files':[{'name':'geometry.xml','sha256':'abc'}]},
+                    'openmc_preview_input':{'manifest_complete':True,'input_hashes':{'geometry.xml':'abc'},'files':[{'name':'geometry.xml','present':True,'sha256':'abc'}]},
                     'openmc_validate_inputs':{'structure_valid':True,'semantic':{'ok':True}},
                     'openmc_submit_job':{'job_id':'a'*32,'state':'queued'},
                     'openmc_read_results':{'keff':{'mean':1.1,'std_dev':0.01},'tallies':[{'id':1,'scores':['flux']}]},
@@ -34,13 +34,20 @@ class WorkflowReceipts(unittest.TestCase):
                     'openmc_list_artifacts':{'directory':'/server/workspace/.mc-jobs/'+'a'*32},
                     'openmc_list_jobs':{'jobs':[]},
                 }[name]
+                if name=='openmc_preview_input':
+                    if fail=='preview_without_flag':value.pop('manifest_complete')
+                    elif fail=='preview_empty':value['files']=[];value['input_hashes']={}
+                    elif fail=='preview_missing_hash':value['files'][0].pop('sha256')
+                return value
             yield call
         async def wait_job(call,identifier,timeout):
             if receipt:
                 # Must already exist immediately after submission, before waiting.
                 snapshot=json.loads(self.path.read_text())
                 assert snapshot['runs'][0]['submitted']['job_id']==identifier
-            return {'job_id':identifier,'name':'test','state':'completed','input_hashes':{'geometry.xml':'abc'}}
+            hashes={'geometry.xml':'abc'}
+            if fail=='unpreviewed_input':hashes['mc-case.json']='not-in-preview'
+            return {'job_id':identifier,'name':'test','state':'completed','input_hashes':hashes}
         argv=['model_workflow.py','--source-dir','incoming','--case-dir','cases/example']
         if receipt:argv+=['--receipt',str(self.path)]
         if machine:argv+=['--json']
@@ -58,6 +65,19 @@ class WorkflowReceipts(unittest.TestCase):
         self.assertTrue(receipt['runs'][0]['artifacts']['directory'].endswith('a'*32))
         self.assertIn('a'*32,err);self.assertIn('openmc_job_status',err)
         self.assertEqual(sum(name=='openmc_submit_job' for name,args in self.calls),1)
+
+    def test_incomplete_preview_never_submits(self):
+        for failure in ['preview_without_flag','preview_empty','preview_missing_hash']:
+            with self.subTest(failure=failure):
+                code,out,err=self.invoke(failure)
+                self.assertEqual(code,1);self.assertIn('不提交计算',err)
+                self.assertNotIn('openmc_submit_job',[name for name,_ in self.calls])
+
+    def test_extra_unpreviewed_snapshot_file_is_not_accepted_as_a_match(self):
+        code,out,err=self.invoke('unpreviewed_input')
+        self.assertEqual(code,1);self.assertIn('完整预览清单与提交快照不一致',err)
+        self.assertNotIn('openmc_read_results',[name for name,_ in self.calls])
+        self.assertEqual(json.loads(self.path.read_text())['runs'][0]['job']['job_id'],'a'*32)
 
     def test_report_failure_keeps_already_created_chart(self):
         code,out,err=self.invoke('openmc_export_report')

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -15,6 +16,39 @@ def numpy_scalar(value):
     if isinstance(value, np.generic):
         return value.item()
     raise TypeError('Unsupported JSON result type: ' + type(value).__name__)
+
+
+def filter_summary(item):
+    """Compact scientific meaning; never dump an SDK object's repr to clients."""
+    kind = type(item).__name__
+    count = int(item.num_bins)
+    parameters = {}
+    def number(value):
+        value = float(value)
+        return value if math.isfinite(value) else None
+    description = kind + '：' + str(count) + '个分箱'
+    if kind == 'MeshFilter':
+        mesh = item.mesh
+        parameters = {'mesh_id': int(mesh.id), 'mesh_type': type(mesh).__name__}
+        if type(mesh).__name__ == 'RegularMesh':
+            parameters.update(dimension=[int(v) for v in mesh.dimension],
+                              lower_left=[number(v) for v in mesh.lower_left],
+                              upper_right=[number(v) for v in mesh.upper_right], unit='cm')
+            description = '规则网格 ' + '×'.join(str(v) for v in parameters['dimension']) + '，坐标单位cm'
+    elif kind in ('EnergyFilter', 'EnergyoutFilter'):
+        edges = item.values
+        parameters = {'bounds_preview': [number(v) for v in edges[:20]], 'bounds_count': len(edges),
+                      'lower_bound': number(edges[0]), 'upper_bound': number(edges[-1]),
+                      'bounds_truncated': len(edges) > 20, 'unit': 'eV'}
+        description = ('入射' if kind == 'EnergyFilter' else '出射') + '能量：' + str(count) + '个区间，单位eV'
+    elif kind in ('MaterialFilter', 'ParticleFilter', 'CellFilter', 'UniverseFilter'):
+        values = item.bins
+        preview = values[:20].tolist() if hasattr(values, 'tolist') else list(values[:20])
+        parameters = {'bins_preview': preview, 'bins_truncated': count > 20}
+        label = {'MaterialFilter': '材料编号', 'ParticleFilter': '粒子类型',
+                 'CellFilter': '栅元编号', 'UniverseFilter': '宇宙编号'}[kind]
+        description = label + '：' + '、'.join(str(v) for v in preview) + ('…' if count > 20 else '')
+    return {'type': kind, 'description': description, 'bin_count': count, 'parameters': parameters}
 
 
 def execute(action: str, params: dict) -> dict:
@@ -295,7 +329,7 @@ def execute(action: str, params: dict) -> dict:
             for tally in point.tallies.values():
                 tallies.append({'id': tally.id, 'name': tally.name, 'scores': tally.scores,
                                 'nuclides': tally.nuclides, 'estimator': tally.estimator,
-                                'filters': [{'type': type(f).__name__, 'description': str(f)[:2000]} for f in tally.filters],
+                                'filters': [filter_summary(f) for f in tally.filters],
                                 'shape': list(tally.mean.shape), 'mean': values(tally.mean),
                                 'std_dev': values(tally.std_dev), 'values_truncated': tally.mean.size > limit,
                                 'total_values': int(tally.mean.size), 'returned_values': min(int(tally.mean.size), limit),
@@ -549,7 +583,7 @@ def execute(action: str, params: dict) -> dict:
                     os.unlink(pending)
             input_file = 'model.xml'
         return {'tally_id': identifier, 'name': tally.name, 'scores': list(tally.scores),
-                'filters': [{'type': type(f).__name__, 'description': str(f)[:2000]} for f in filters],
+                'filters': [filter_summary(f) for f in filters],
                 'tally_count': len(tallies), 'input_file': input_file,
                 'note': '已写入' + input_file + '；计分口径为OpenMC原始归一化，未换算功率或实际源强。'}
     raise ValueError('Unsupported OpenMC API action')

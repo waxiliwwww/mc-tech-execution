@@ -418,44 +418,66 @@ def preview_input(case_dir: str) -> dict:
     directory = path_in_workspace(case_dir)
     if not directory.is_dir():
         raise Error('case_dir须为目录')
-    names = ['model.xml'] if (directory / 'model.xml').exists() else \
-            ['materials.xml', 'geometry.xml', 'settings.xml']
-    for optional in ('tallies.xml', 'plots.xml'):
-        if (directory / optional).exists():
-            names.append(optional)
-    files, problems, roots = [], [], {}
-    for name in names:
-        path = directory / name
-        if not path.is_file():
-            if name != 'plots.xml':
-                problems.append(name + '缺失')
-            files.append({'name': name, 'present': False})
-            continue
+    if (directory / 'mc-case.json').is_symlink():
+        # provenance() reads this marker separately, after listing the inputs.
+        # Refuse before it could follow a link outside the input directory.
+        raise Error('mc-case.json为符号链接；预览拒绝读取，作业也会拒绝提交')
+    required = ['model.xml'] if (directory / 'model.xml').exists() else \
+               ['materials.xml', 'geometry.xml', 'settings.xml']
+    # Match ordinary submit/copytree's per-component exclusion policy. Include
+    # markers and relative resources, not only the XML that OpenMC parses.
+    names = set(required)
+    for path in directory.rglob('*'):
+        name = path.relative_to(directory).as_posix()
         if path.is_symlink():
-            # 与复制作业同一口径：防经符号链接读取工作区外文件。
-            problems.append(name + '为符号链接；预览拒绝读取')
+            names.add(name)
+        elif path.is_file() and not any(jobs.is_old_output(part) for part in Path(name).parts):
+            names.add(name)
+    files, problems, roots = [], [], {}
+    text_suffixes = {'.xml', '.json', '.py', '.txt', '.yaml', '.yml', '.csv', '.md', '.rst', '.sh'}
+    for name in sorted(names):
+        path = directory / name
+        if path.is_symlink():
+            problems.append(name + '为符号链接；预览拒绝读取，作业也会拒绝提交')
             files.append({'name': name, 'present': True, 'symlink': True})
             continue
-        data = path.read_bytes()
-        entry = {'name': name, 'present': True, 'bytes': len(data),
-                 'sha256': hashlib.sha256(data).hexdigest()}
-        if len(data) > PREVIEW_MAX_FILE_BYTES:
-            entry.update(content=None, truncated=True, note='超过2MiB预览上限；未返回内容')
+        if not path.is_file():
+            problems.append(name + '缺失')
+            files.append({'name': name, 'present': False})
+            continue
+        size = path.stat().st_size
+        entry = {'name': name, 'present': True, 'bytes': size,
+                 'sha256': jobs.file_hash(path)}
+        if size > PREVIEW_MAX_FILE_BYTES:
+            entry.update(content=None, truncated=True, note='超过2MiB预览上限；仅返回大小和SHA256，未返回内容')
+        elif path.suffix.lower() not in text_suffixes:
+            entry.update(content=None, truncated=False, note='资源文件只列大小和SHA256，不返回二进制或未知格式正文')
         else:
+            data = path.read_bytes()
+            # Do not attach content from a different revision to this fingerprint.
+            if hashlib.sha256(data).hexdigest() != entry['sha256']:
+                problems.append(name + '在预览期间改变；请重新预览')
+                entry.update(content=None, truncated=False, changed_during_preview=True)
+                files.append(entry)
+                continue
             text = data.decode('utf-8', errors='replace')
             entry.update(content=text[:PREVIEW_CONTENT_CHARS],
                          truncated=len(text) > PREVIEW_CONTENT_CHARS)
             if entry['truncated']:
                 entry['note'] = f'内容截断至前{PREVIEW_CONTENT_CHARS}字符；完整文件以服务端为准'
-            try:
-                roots[name] = ET.fromstring(data)
-            except ET.ParseError as exc:
-                entry['parse_error'] = str(exc)[:200]
+            if path.suffix.lower() == '.xml':
+                try:
+                    roots[name] = ET.fromstring(data)
+                except ET.ParseError as exc:
+                    entry['parse_error'] = str(exc)[:200]
         files.append(entry)
     return {'case_dir': case_dir, 'files': files, 'summary': _preview_summary(roots),
-            'problems': problems, 'provenance': provenance(directory),
+            'problems': problems, 'manifest_complete': not problems,
+            'input_hashes': {item['name']: item['sha256'] for item in files if item.get('sha256')},
+            'manifest_policy': 'ordinary_job_snapshot', 'provenance': provenance(directory),
             'professional_acceptance': False, 'workspace': str(workspace()), 'location': 'server',
-            'note': '服务端文件的截断预览与结构摘要，供提交前人工核对；不代表几何、核数据或物理正确。'}
+            'note': '列出普通作业将复制的算例文件及指纹（不包含外部部署核数据库）；文本截断预览，大文件/资源只列指纹。'
+                    '应将完整input_hashes与提交快照双向比较，不只是检查预览中已有的子集；不代表几何、核数据或物理正确。'}
 
 
 GEOMETRY_CHECK_MAX_BATCHES = 2

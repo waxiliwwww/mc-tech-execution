@@ -13,7 +13,7 @@ import sys
 import time
 import uuid
 
-from model_workflow import safe_value, save_receipt
+from model_workflow import safe_value, save_receipt, verified_preview_hashes
 from openmc_demo import ToolCallError, client, error_text
 
 MODELS = {
@@ -68,6 +68,7 @@ async def reproduce(args, call):
         tally_id = tally['tally_id']
         record['tally_id'] = tally_id; save()
         preview = await step('openmc_preview_input', {'case_dir': args.case_dir})
+        expected = verified_preview_hashes(preview)
         validation = await step('openmc_validate_inputs', {'case_dir': args.case_dir,
                                 'api_check': True, 'semantic_check': True})
         require_validation(validation)
@@ -85,8 +86,7 @@ async def reproduce(args, call):
             await asyncio.sleep(2)
         if status['state'] != 'completed':
             raise RuntimeError('作业终态=' + status['state'] + '；查看原作业日志，不自动重投')
-        expected = {f['name']: f['sha256'] for f in preview.get('files', []) if f.get('sha256')}
-        if not expected or any(status.get('input_hashes', {}).get(k) != v for k, v in expected.items()):
+        if expected != status.get('input_hashes', {}):
             raise RuntimeError('提交快照与所预览输入不一致或缺指纹；停止结果归属判断')
         record['checks']['preview_matches_snapshot'] = True
         results = await step('openmc_read_results', {'job_id': record['job_id'], 'max_values': 10000})

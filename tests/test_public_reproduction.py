@@ -33,11 +33,11 @@ class ReproductionContract(unittest.TestCase):
                 self.assertEqual(before['calls'][-1]['state'],'calling')
             if name=='openmc_job_status':
                 self.assertEqual(json.loads(receipt.read_text())['job_id'],'a'*32)
-            return {
+            value = {
                 'openmc_environment':dict(api_available=True,executable_available=True,version_matches=True),
                 'openmc_create_model':{'case_dir':args.case_dir},
                 'openmc_define_tally':{'tally_id':73},
-                'openmc_preview_input':{'files':[{'name':'geometry.xml','sha256':'abc'}]},
+                'openmc_preview_input':{'manifest_complete':True,'input_hashes':{'geometry.xml':'abc'},'files':[{'name':'geometry.xml','present':True,'sha256':'abc'}]},
                 'openmc_validate_inputs':{'structure_valid':True,'openmc_api':{'api_parsed':True},
                     'semantic':dict(checked=True,ok=True,complete=not incomplete)},
                 'openmc_submit_job':{'job_id':'a'*32},
@@ -50,6 +50,13 @@ class ReproductionContract(unittest.TestCase):
                                  'nuclide':'total','filter_selection':[]}},
                 'openmc_list_artifacts':{'directory':'/server/workspace/.mc-jobs/'+'a'*32},
             }[name]
+            if name=='openmc_preview_input':
+                if fail=='preview_without_flag':value.pop('manifest_complete')
+                elif fail=='preview_empty':value['files']=[];value['input_hashes']={}
+                elif fail=='preview_missing_hash':value['files'][0].pop('sha256')
+            if name=='openmc_job_status' and fail=='unpreviewed_input':
+                value['input_hashes']['mc-case.json']='not-in-preview'
+            return value
         error=None
         try:result=asyncio.run(demo.reproduce(args,call))
         except RuntimeError as exc:error=str(exc);result=None
@@ -86,6 +93,19 @@ class ReproductionContract(unittest.TestCase):
         self.assertEqual(receipt['calls'][-1]['state'],'response_unknown')
         self.assertEqual(calls.count('openmc_submit_job'),1)
         self.assertIsNone(receipt['job_id'])
+
+    def test_incomplete_preview_never_submits(self):
+        for failure in ['preview_without_flag','preview_empty','preview_missing_hash']:
+            with self.subTest(failure=failure):
+                result,receipt,calls,error=self.run_flow(fail=failure)
+                self.assertIsNone(result);self.assertIn('不提交计算',error)
+                self.assertNotIn('openmc_submit_job',calls)
+
+    def test_extra_unpreviewed_snapshot_file_stops_before_result_use(self):
+        result,receipt,calls,error=self.run_flow(fail='unpreviewed_input')
+        self.assertIsNone(result);self.assertIn('预览输入不一致',error)
+        self.assertNotIn('openmc_read_results',calls)
+        self.assertEqual(receipt['job_id'],'a'*32)
 
     def test_export_failure_keeps_original_job_and_never_resubmits(self):
         result,receipt,calls,error=self.run_flow(fail='openmc_export_report')

@@ -94,6 +94,13 @@ class PreviewInput(unittest.TestCase):
         self.assertEqual(len(entry['content']), 20000)
         self.assertIn('截断', entry['note'])
 
+    def test_symlinked_provenance_marker_is_rejected_before_metadata_read(self):
+        outside=self.root/'private.json'
+        outside.write_text('{"data_kind":"private","note":"must not be read"}')
+        (self.case/'mc-case.json').symlink_to(outside)
+        with self.assertRaisesRegex(business.MCInputError,'符号链接'):
+            tools.preview_input('case')
+
     def test_oversize_file_content_withheld_but_fingerprint_kept(self):
         big = b'<tallies>' + b' ' * (2 * 1024 * 1024 + 100) + b'</tallies>'
         (self.case / 'tallies.xml').write_bytes(big)
@@ -119,6 +126,53 @@ class PreviewInput(unittest.TestCase):
         entry = self.entry(value, 'tallies.xml')
         self.assertIn('parse_error', entry)
         self.assertIn('tally', entry['content'])
+
+    def test_manifest_matches_actual_mock_job_snapshot_including_markers_and_resources(self):
+        import time
+        import openmc_jobs as jobs
+        marker={'data_kind':'mock_process_fixture','note':'input manifest fixture, no physics'}
+        (self.case/'mc-case.json').write_text(json.dumps(marker))
+        (self.case/'mock-mode.json').write_text('{"mode":"success"}')
+        (self.case/'resources').mkdir();(self.case/'resources/dagmc.h5m').write_bytes(b'path/hash fixture')
+        (self.case/'views').mkdir();(self.case/'views/old.png').write_bytes(b'not input')
+        self.cfg.update(openmc_command=[sys.executable,str(ROOT/'tests/fixtures/mock_openmc.py')],
+                        python_command=[sys.executable],job_timeout_seconds=15,max_log_bytes=4096)
+        self.config.write_text(json.dumps(self.cfg))
+        before={str(p.relative_to(self.case)):hashlib.sha256(p.read_bytes()).hexdigest() for p in self.case.rglob('*') if p.is_file()}
+        preview=tools.preview_input('case')
+        job=jobs.submit('case');identifier=job['job_id']
+        try:
+            deadline=time.monotonic()+10
+            while True:
+                status=jobs.status(identifier)
+                if status['state'] in jobs.TERMINAL:break
+                if time.monotonic()>deadline:self.fail('mock worker timeout')
+                time.sleep(.03)
+            self.assertEqual(status['state'],'completed',status)
+            self.assertTrue(preview['manifest_complete'])
+            self.assertEqual(preview['input_hashes'],status['input_hashes'])
+            self.assertEqual({e['name']:e['sha256'] for e in preview['files']},status['input_hashes'])
+            self.assertIn('mc-case.json',preview['input_hashes'])
+            self.assertIn('resources/dagmc.h5m',preview['input_hashes'])
+            self.assertNotIn('views/old.png',preview['input_hashes'])
+            self.assertNotIn('parse_error',self.entry(preview,'mc-case.json'))
+            self.assertIsNone(self.entry(preview,'resources/dagmc.h5m')['content'])
+            after={str(p.relative_to(self.case)):hashlib.sha256(p.read_bytes()).hexdigest() for p in self.case.rglob('*') if p.is_file()}
+            self.assertEqual(before,after)
+        finally:
+            if jobs.status(identifier)['state'] not in jobs.TERMINAL:jobs.cancel(identifier)
+
+    def test_large_binary_fingerprint_does_not_read_whole_file_into_memory(self):
+        asset=self.case/'mesh.h5m';content=b'0'*(2*1024*1024+10);asset.write_bytes(content)
+        read_bytes=Path.read_bytes
+        def guarded(path):
+            if path==asset:raise AssertionError('binary resource must be streamed')
+            return read_bytes(path)
+        with patch.object(Path,'read_bytes',guarded):value=tools.preview_input('case')
+        entry=self.entry(value,'mesh.h5m')
+        self.assertEqual(entry['sha256'],hashlib.sha256(content).hexdigest())
+        self.assertIsNone(entry['content'])
+        self.assertTrue(value['manifest_complete'])
 
     def test_path_rules_apply(self):
         for bad in ('/abs/case', '../escape', 'missing-dir'):
