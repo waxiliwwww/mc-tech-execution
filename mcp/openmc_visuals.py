@@ -404,6 +404,15 @@ def selection_label(series):
     return f"tally {series['tally_id']} / {series['score']} / {series['nuclide']}"
 
 
+def template_label(metadata):
+    """Display actual template/generator metadata once, including older records."""
+    template = str(metadata.get('template') or '未记录')
+    generator = metadata.get('generator')
+    if not generator or str(generator) == template:
+        return template
+    return template + '（生成方式：' + str(generator) + '）'
+
+
 def metadata_parameters(metadata):
     values = []
     for key, value in (metadata.get('parameters') or {}).items():
@@ -445,8 +454,7 @@ def render_docx(params):
         runtime_info = metadata.get('runtime') or {}
         duration = (f"{runtime_info['duration_seconds']}秒"
                     if runtime_info.get('duration_seconds') is not None else '未记录')
-        document.add_paragraph('模板版本：' + str(metadata.get('template') or '未记录') + '（'
-                               + str(metadata.get('generator') or '生成方式未记录') + '）')
+        document.add_paragraph('模板版本：' + template_label(metadata))
         document.add_paragraph('参数：' + parameters)
         document.add_paragraph('OpenMC版本：' + str(metadata.get('openmc_version') or '未记录'))
         document.add_paragraph('运行时间：' + str(runtime_info.get('started_at') or '未记录') + ' → '

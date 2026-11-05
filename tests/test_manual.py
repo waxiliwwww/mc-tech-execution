@@ -48,6 +48,21 @@ class Manual(unittest.TestCase):
         document=Document(current)
         for tool in module.TOOLS:self.assertIn(tool['name'],document.ids)
 
+    def test_dsh_debug_table_lists_the_complete_server_keys_for_reported_tools(self):
+        import sys
+        sys.path.insert(0,str(ROOT/'mcp'))
+        from tools import TOOLS
+        text=(ROOT/'docs/deployment.html').read_text()
+        section=re.search(r'<details id="schema-check">.*?</details>',text,re.S)
+        self.assertIsNotNone(section)
+        for name in ['openmc_list_official_examples','openmc_read_example_results']:
+            rows=[row for row in re.findall(r'<tr>.*?</tr>',section.group(),re.S) if name in row]
+            self.assertEqual(len(rows),1)
+            cells=re.findall(r'<td[^>]*>(.*?)</td>',rows[0],re.S)
+            actual=set(''.join(Document(cells[1]).text).strip().split('/'))
+            tool=next(t for t in TOOLS if t['name']==name)
+            self.assertEqual(actual,set(tool['inputSchema']['properties']))
+
     def test_user_schema_text_is_escaped_without_loss(self):
         spec=importlib.util.spec_from_file_location('mc_reference_escape',ROOT/'scripts/generate_tool_reference.py')
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)

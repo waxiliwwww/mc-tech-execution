@@ -12,7 +12,7 @@ import zipfile
 
 import openmc_jobs as jobs
 from openmc_runtime import Error, ROOT, api, relative, file_location
-from openmc_visuals import selection_label, selected_report_rows, metadata_parameters
+from openmc_visuals import selection_label, selected_report_rows, metadata_parameters, template_label
 
 
 def office_command(runtime):
@@ -113,7 +113,7 @@ def export_selected_job(job_id: str, format: str, selection: dict):
             runtime_info = metadata['runtime']
             duration = f"{runtime_info['duration_seconds']}秒" if runtime_info['duration_seconds'] is not None else '未记录'
             rows = ['# OpenMC所选结果报告', '', '作业：' + job_id,
-                    '模板版本：' + str(metadata['template'] or '未记录') + '（' + str(metadata['generator'] or '生成方式未记录') + '）',
+                    '模板版本：' + template_label(metadata),
                     '参数：' + parameters,
                     'OpenMC版本：' + str(metadata['openmc_version'] or '未记录'),
                     '运行时间：' + str(runtime_info['started_at'] or '未记录') + ' → ' + str(runtime_info['finished_at'] or '未记录') + '（' + duration + '）',

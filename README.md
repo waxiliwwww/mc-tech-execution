@@ -12,8 +12,8 @@
 | [架构设计](docs/toolkit.html) | 理解模型准备、作业管理、结果分析的机制、源码职责和扩展位置 |
 | [接口参考](docs/reference.html) | 按工具名、用途或参数搜索实际Schema及返回含义 |
 
-服务端使用Linux/WSL，适配OpenMC 0.16.0，源码版本0.11.5。初次准备在完整源码包根目录执行 `./quickstart.sh`；首次需网络并下载运行时、数据与依赖，准备条件及可选安装见部署说明。计算和产物默认在本包 `workspace/`，路径属于服务器。
+服务端使用Linux/WSL，适配OpenMC 0.16.0，源码版本0.11.6。初次准备在完整源码包根目录执行 `./quickstart.sh`；首次需网络并下载运行时、数据与依赖，准备条件及可选安装见部署说明。计算和产物默认在本包 `workspace/`，路径属于服务器。
 
-`./verify.sh --tools-only` 做工具工程检查；`./package.sh` 生成 `dist/` 源码部署包；`./cleanup.sh` 默认只预览。它们分别用于检查、分发和维护，具体步骤在手册对应章节。
+`./verify.sh --tools-only` 做工具工程检查；`./package.sh` 生成 `dist/` 压缩包与对应版本清单/摘要，`./scripts/verify-package.sh <压缩包路径>` 校验这份交付物；`./cleanup.sh` 默认只预览。工程检查、归档校验、分发和维护各有用途，具体步骤在手册对应章节。
 
 [官方例题参考](docs/official-examples.html) 和 [独立MCP封装](docs/mcp.html) 是按需附录，由使用/开发章节引入。合同进展、开发计划、历史验证及专家试用记录统一从 [项目资料](docs/project-records.html) 查，不作为下游使用前置阅读。旧主题页仅保留到正式章节的跳转。

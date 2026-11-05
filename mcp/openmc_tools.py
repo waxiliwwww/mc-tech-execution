@@ -1135,7 +1135,7 @@ def _report_metadata(directory: Path) -> dict:
     started, finished = record.get('started_at'), record.get('finished_at')
     return {'template': provenance_info.get('template'),
             'data_kind': provenance_info.get('data_kind'),
-            'generator': marker.get('generator') or marker.get('template'),
+            'generator': marker.get('generator') or marker.get('generation_method'),
             'parameters': parameters, 'parameter_sources': parameter_sources,
             'openmc_version': marker.get('openmc_version') or runtime.get('expected_version'),
             'runtime': {'state': record.get('state'), 'started_at': iso(started),
@@ -1166,14 +1166,14 @@ def export_report(job_id: str, format: str = 'markdown', tally_id: int | None = 
     metadata = _report_metadata(directory)
     note = data['provenance'].get('note', '')
     if format == 'markdown':
-        from openmc_visuals import metadata_parameters
+        from openmc_visuals import metadata_parameters, template_label
         parameters = metadata_parameters(metadata)
         runtime_info = metadata['runtime']
         duration = f"{runtime_info['duration_seconds']}秒" if runtime_info['duration_seconds'] is not None else '未记录'
         output = '# OpenMC接口联调结果\n\n'
         output += f"作业：{job_id}\n\n数据来源：{data['provenance']['data_kind']}\n\n{note}\n\n"
         output += '## 报告头元数据（表4-1 4.3 五项）\n\n| 项 | 值 |\n|---|---|\n'
-        output += f"| 模板版本 | {metadata['template'] or '未记录'}（{metadata['generator'] or '生成方式未记录'}） |\n"
+        output += f"| 模板版本 | {template_label(metadata)} |\n"
         output += f"| 参数 | {parameters} |\n"
         output += f"| OpenMC版本 | {metadata['openmc_version'] or '未记录'} |\n"
         output += f"| 运行时间 | {runtime_info['started_at'] or '未记录'} → {runtime_info['finished_at'] or '未记录'}（{duration}） |\n"

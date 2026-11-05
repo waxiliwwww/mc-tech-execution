@@ -51,4 +51,16 @@ class SerializedMetadata(unittest.TestCase):
                     self.assertIn('数据来源：'+kind,text);self.assertNotIn('合成数据和',text)
                     self.assertIn('专业验收：未进行',text)
                 finally:os.chdir(old)
+    def test_docx_template_header_does_not_repeat_legacy_template_as_generator(self):
+        from openmc_visuals import render_docx
+        from docx import Document
+        with tempfile.TemporaryDirectory() as d:
+            old=Path.cwd()
+            try:
+                os.chdir(d)
+                render_docx({'data':dict(job_id='fixture',provenance={'data_kind':'public_benchmark_example'},tallies=[],
+                    metadata={'template':'assembly-17x17','generator':'assembly-17x17'})})
+                rows=[p.text for p in Document('report.docx').paragraphs if p.text.startswith('模板版本：')]
+                self.assertEqual(rows,['模板版本：assembly-17x17'])
+            finally:os.chdir(old)
 if __name__=='__main__':unittest.main()
