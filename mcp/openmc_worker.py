@@ -298,12 +298,13 @@ def execute(action: str, params: dict) -> dict:
                                 'filters': [{'type': type(f).__name__, 'description': str(f)[:2000]} for f in tally.filters],
                                 'shape': list(tally.mean.shape), 'mean': values(tally.mean),
                                 'std_dev': values(tally.std_dev), 'values_truncated': tally.mean.size > limit,
+                                'total_values': int(tally.mean.size), 'returned_values': min(int(tally.mean.size), limit),
                                 'normalization': 'OpenMC原始计分归一化；未换算为工程功率或实际源强。'})
             keff_values = values([keff.nominal_value, keff.std_dev], cap=2) if keff is not None else None
             return {'openmc_version': list(point.version), 'run_mode': point.run_mode,
                     'particles': point.n_particles, 'realizations': point.n_realizations,
                     'keff': None if keff is None else {'mean': keff_values[0], 'std_dev': keff_values[1]},
-                    'tallies': tallies, 'warnings': warnings}
+                    'tallies': tallies, 'max_values_per_tally': limit, 'warnings': warnings}
     if action == 'inspect-h5m':
         universe = openmc.DAGMCUniverse(params['filename'])
         box = universe.bounding_box
@@ -373,38 +374,49 @@ def execute(action: str, params: dict) -> dict:
         model = (openmc.Model.from_model_xml('model.xml') if Path('model.xml').exists()
                  else openmc.Model.from_xml())
         here = Path.cwd()
-        before = {path.name for path in here.iterdir()}
-        plot = openmc.SlicePlot()
-        plot.basis = basis
+        supplied_origin = params.get('origin')
+        supplied_width = params.get('width')
+        if supplied_origin is not None and supplied_width is not None:
+            plot = openmc.SlicePlot()
+            plot.basis = basis
+        else:
+            # from_geometry is a factory: discarding its return value silently
+            # leaves SlicePlot's default 4 cm width. Only the plane must be finite.
+            slice_axis = {'xy': 2, 'xz': 1, 'yz': 0}[basis]
+            plot = openmc.SlicePlot.from_geometry(model.geometry, basis=basis,
+                slice_coord=0. if supplied_origin is None else supplied_origin[slice_axis])
         plot.pixels = (pixels, pixels)
         plot.color_by = color_by
-        if params.get('width') is not None:
-            plot.width = tuple(float(v) for v in params['width'])
-        if params.get('origin') is not None:
-            plot.origin = tuple(float(v) for v in params['origin'])
-        plot.from_geometry(model.geometry)
-        image = plot.to_ipython_image(openmc_exec=params['_openmc_exec'])
+        if supplied_width is not None:
+            width = [float(v) for v in supplied_width]
+            plot.width = tuple(width * 2 if len(width) == 1 else width)
+        if supplied_origin is not None:
+            plot.origin = tuple(float(v) for v in supplied_origin)
         target = here / filename
         target.parent.mkdir(parents=True, exist_ok=True)
-        data = getattr(image, 'data', None)
-        if isinstance(data, (bytes, bytearray)) and data[:8] == b'\x89PNG\r\n\x1a\n':
-            target.write_bytes(bytes(data))
-        else:
-            produced = sorted(here.glob('plot*.png'), key=lambda path: path.stat().st_mtime)
-            if not produced:
+        # The SDK writes plots.xml and renderer output into cwd. Export a
+        # plotting-only model into disposable scratch; never touch case inputs.
+        for universe in model.geometry.get_all_universes().values():
+            if isinstance(universe, openmc.DAGMCUniverse):
+                universe.filename = str((here / universe.filename).resolve())
+        if model.materials.cross_sections:
+            model.materials.cross_sections = str((here / model.materials.cross_sections).resolve())
+        with tempfile.TemporaryDirectory(prefix='mc-view-') as scratch:
+            isolated = openmc.Model(model.geometry, model.materials, model.settings)
+            isolated.export_to_model_xml(Path(scratch) / 'model.xml')
+            image = plot.to_ipython_image(openmc_exec=params['_openmc_exec'], cwd=scratch)
+            data = getattr(image, 'data', None)
+            if not isinstance(data, (bytes, bytearray)) or data[:8] != b'\x89PNG\r\n\x1a\n':
                 raise ValueError('渲染完成但未得到PNG数据')
-            shutil.copyfile(produced[-1], target)
-        for path in here.glob('plot*.png'):
-            if path.name not in before:
-                path.unlink()
-        plots_xml = here / 'plots.xml'
-        if plots_xml.is_file() and 'plots.xml' not in before:
-            plots_xml.unlink()
+            target.write_bytes(bytes(data))
         width = plot.width
         origin = plot.origin
         return {'image': filename, 'basis': basis, 'pixels': pixels, 'color_by': color_by,
-                'width': list(width) if isinstance(width, (tuple, list)) else width,
-                'origin': list(origin) if isinstance(origin, (tuple, list)) else origin,
+                'width': [float(v) for v in width],
+                'origin': [float(v) for v in origin],
+                'width_source': 'user' if supplied_width is not None else 'geometry_bounding_box',
+                'origin_source': 'user' if supplied_origin is not None else 'bounding_box_plane_center_slice_0',
+                'input_files_modified': False,
                 'materials': len(model.materials),
                 'cells': len(model.geometry.get_all_cells()),
                 'note': '切片图由OpenMC引擎绘制；宽度/原点单位cm，显示范围以返回的width/origin为准。'}

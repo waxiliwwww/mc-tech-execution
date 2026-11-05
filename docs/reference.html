@@ -1431,7 +1431,7 @@
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_plots.py">mcp/openmc_plots.py</a>。</p></details>
 <details class="tool" id="openmc_plot_mesh"><summary>openmc_plot_mesh
-<span class="tool-purpose">把规则网格tally画成二维分布热图：从StatePoint取网格分箱值，坐标取自算例tallies.xml或model.xml的网格定义（不猜几何）；3D网格须用level指定层，带能量过滤须用energy_bin指定箱。缺数据不补0，非有限值留空。输出PNG与完整JSON/CSV，零均值加标记并返回zero_bins/警告，不作物理零判断。</span></summary>
+<span class="tool-purpose">把规则网格tally画成二维分布热图：从StatePoint取网格分箱值，坐标取自算例tallies.xml或model.xml的网格定义（不猜几何）；3D网格须用level指定层，带能量过滤须用energy_bin指定箱；多score须显式选择score，优先total核素，不隐式合并核素。缺数据不补0，非有限值留空。输出PNG与完整JSON/CSV，零均值加标记并返回zero_bins/警告，不作物理零判断。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>job_id</td><td>string</td><td>是</td><td>不可省略</td><td>计算编号，直接使用openmc_submit_job或扫描子项返回的job_id；不是目录、文件名或scan_id。查询/读取不会自动提交新计算。</td><td>—</td></tr><tr><td>tally_id</td><td>integer</td><td>否</td><td>省略时见说明</td><td>计分器ID，先从openmc_read_results返回的tallies[].id选择。省略时取StatePoint首个tally，不等于自动选择业务上正确的量；不要传null。</td><td>—</td></tr><tr><td>score</td><td>string</td><td>否</td><td>省略时见说明</td><td>计分类型，取所选tally的scores，例如flux。省略时使用首个score；不要传null，也不要为不存在的计分编造名称。</td><td>—</td></tr><tr><td>energy_bin</td><td>integer</td><td>否</td><td>省略时见说明</td><td>带能量过滤的网格tally中第几个能量箱（0起），从tally的EnergyFilter分界推出；省略则要求该tally无能量过滤。</td><td>—</td></tr><tr><td>level</td><td>integer</td><td>否</td><td>省略时见说明</td><td>三维网格的第几层（0起，沿第三个坐标方向）；省略仅允许二维网格，不静默投影。</td><td>—</td></tr><tr><td>format</td><td>string</td><td>否</td><td>&quot;png&quot;</td><td>图文件格式，png或svg；同次另存对应JSON/CSV数据。</td><td>—</td></tr><tr><td>title</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选图标题，最多200字符；省略时使用默认标题，不改变计分数据、单位或归一化。不要传null。</td><td>—</td></tr><tr><td>x_label</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选横轴标题，最多200字符；只改显示文本，不改数据坐标。</td><td>—</td></tr><tr><td>y_label</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选纵轴标题，最多200字符；只改显示文本，不改数据或单位。</td><td>—</td></tr><tr><td>colorbar_label</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选色标标题，最多200字符；省略用score名并注明未做功率归一化。</td><td>—</td></tr></tbody></table></div>
 <h3>返回怎么看</h3><p>image为热图文件；values_json/values_csv含网格坐标与全部值；mesh回显网格编号/维数/层；cells为格数；失败或缺失值留空不补0。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>job_id</td><td>计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。</td></tr><tr><td>path</td><td>相对服务端MC_WORKSPACE的产物路径；不是客户端本地路径。</td></tr><tr><td>server_path</td><td>服务端绝对文件位置；远程调用不会自动下载文件。</td></tr><tr><td>workspace</td><td>服务端绝对数据根；工作区相对路径以它为基准。</td></tr><tr><td>provenance</td><td>数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。</td></tr><tr><td>zero_bins</td><td>当前所选网格切片内均值恰为0的格数；缺失值不计入，不能据此判定物理零或无径迹。</td></tr><tr><td>warnings</td><td>统计量等不确定性提示，不能因工具调用成功而忽略。</td></tr></tbody></table></div>
@@ -2087,9 +2087,9 @@
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/example_workflows.py">mcp/example_workflows.py</a>。</p></details>
 <details class="tool" id="openmc_read_example_results"><summary>openmc_read_example_results
-<span class="tool-purpose">按官方实例读取实际计算结果和每阶段产物位置；包含原始数据和日志，不假造不存在的计分或物理结论。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>instance_id</td><td>string</td><td>是</td><td>不可省略</td><td>准备官方例题返回的instance_id；关联该实例的各步骤和计算编号。</td><td>—</td></tr><tr><td>calculation_id</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选Notebook求解阶段编号；先省略查看阶段清单，再选择0001等实际编号读取该次求解的StatePoint。</td><td>—</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>按官方实例读取实际计算结果和每阶段产物位置；包含原始数据和日志，不假造不存在的计分或物理结论。</p>
+<span class="tool-purpose">按官方实例读取计算统计预览和每阶段产物位置；每个tally默认最多1000值，返回截断标记/总数/实际返回数和完整StatePoint路径。不假造计分或物理结论。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>instance_id</td><td>string</td><td>是</td><td>不可省略</td><td>准备官方例题返回的instance_id；关联该实例的各步骤和计算编号。</td><td>—</td></tr><tr><td>max_values</td><td>integer</td><td>否</td><td>1000</td><td>每个tally最多返回多少个值；只限制预览，不改变源文件/图表。截断看values_truncated及total_values/returned_values；完整结果见StatePoint路径。</td><td>—</td></tr><tr><td>calculation_id</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选Notebook求解阶段编号；先省略查看阶段清单，再选择0001等实际编号读取该次求解的StatePoint。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>按官方实例读取计算统计预览和每阶段产物位置；每个tally默认最多1000值，返回截断标记/总数/实际返回数和完整StatePoint路径。不假造计分或物理结论。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
@@ -2098,6 +2098,13 @@
       &quot;type&quot;: &quot;string&quot;,
       &quot;pattern&quot;: &quot;^[a-f0-9]{32}$&quot;,
       &quot;description&quot;: &quot;准备官方例题返回的instance_id；关联该实例的各步骤和计算编号。&quot;
+    },
+    &quot;max_values&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 1,
+      &quot;maximum&quot;: 10000,
+      &quot;default&quot;: 1000,
+      &quot;description&quot;: &quot;每个tally最多返回多少个值；只限制预览，不改变源文件/图表。截断看values_truncated及total_values/returned_values；完整结果见StatePoint路径。&quot;
     },
     &quot;calculation_id&quot;: {
       &quot;type&quot;: &quot;string&quot;,
@@ -2114,7 +2121,7 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;按官方实例读取实际计算结果和每阶段产物位置；包含原始数据和日志，不假造不存在的计分或物理结论。&quot;
+  &quot;description&quot;: &quot;按官方实例读取计算统计预览和每阶段产物位置；每个tally默认最多1000值，返回截断标记/总数/实际返回数和完整StatePoint路径。不假造计分或物理结论。&quot;
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/example_workflows.py">mcp/example_workflows.py</a>。</p></details>
@@ -2449,8 +2456,8 @@
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_faults.py">mcp/openmc_faults.py</a>。</p></details>
 <details class="tool" id="openmc_view_geometry"><summary>openmc_view_geometry
-<span class="tool-purpose">按算例输入出2D几何切片图（xy/xz/yz、原点/宽度cm、像素可调，按材料或栅元着色），写入算例views目录并返回图片路径；只画输入几何，不代表几何已通过重叠检查，也不含计算结果。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>basis</td><td>string</td><td>否</td><td>&quot;xy&quot;</td><td>切片方位：xy（横切）、xz或yz（纵切）；与OpenMC引擎一致。</td><td>—</td></tr><tr><td>origin</td><td>array</td><td>否</td><td>省略时见说明</td><td>切片原点3个数，单位cm；省略用引擎默认。</td><td>—</td></tr><tr><td>width</td><td>array</td><td>否</td><td>省略时见说明</td><td>切片显示宽度一个或两个正数，单位cm；省略用几何包围盒。</td><td>—</td></tr><tr><td>pixels</td><td>integer</td><td>否</td><td>400</td><td>图像像素边长，50..1200；越大越慢。</td><td>—</td></tr><tr><td>color_by</td><td>string</td><td>否</td><td>&quot;material&quot;</td><td>按材料(material)或栅元(cell)着色。</td><td>—</td></tr><tr><td>title</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选图标题，最多200字符；省略时使用默认标题，不改变计分数据、单位或归一化。不要传null。</td><td>—</td></tr></tbody></table></div>
+<span class="tool-purpose">按算例输入出2D几何切片图（xy/xz/yz、原点/宽度cm、像素可调，按材料或栅元着色），在独立临时目录渲染，不修改原输入；PNG写入算例views目录并返回图片路径。省略视野使用有限包围盒，无法确定时报错，请同时提供origin/width；只画输入几何，不代表几何已通过重叠检查，也不含计算结果。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>basis</td><td>string</td><td>否</td><td>&quot;xy&quot;</td><td>切片方位：xy（横切）、xz或yz（纵切）；与OpenMC引擎一致。</td><td>—</td></tr><tr><td>origin</td><td>array</td><td>否</td><td>省略时见说明</td><td>切片中心[x,y,z]，cm；省略为平面包围盒中心且切片坐标0。包围盒无界时须与width一起提供。</td><td>—</td></tr><tr><td>width</td><td>array</td><td>否</td><td>省略时见说明</td><td>视野宽度cm；一项表示正方形，两项对应basis的两个轴。省略取几何有限包围盒；显式值为用户指定视野。</td><td>—</td></tr><tr><td>pixels</td><td>integer</td><td>否</td><td>400</td><td>图像像素边长，50..1200；越大越慢。</td><td>—</td></tr><tr><td>color_by</td><td>string</td><td>否</td><td>&quot;material&quot;</td><td>按材料(material)或栅元(cell)着色。</td><td>—</td></tr><tr><td>title</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选图标题，最多200字符；省略时使用默认标题，不改变计分数据、单位或归一化。不要传null。</td><td>—</td></tr></tbody></table></div>
 <h3>返回怎么看</h3><p>path为图片路径；width/origin为实际采用的切片范围（cm）；cells/materials为模型计数；几何图不代表已通过几何检查。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>path</td><td>相对服务端MC_WORKSPACE的产物路径；不是客户端本地路径。</td></tr><tr><td>basis</td><td>实际使用的切片方位（xy/xz/yz）。</td></tr><tr><td>width</td><td>实际采用的切片显示宽度（cm）；省略时为引擎按包围盒推算。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
@@ -2478,22 +2485,22 @@
     },
     &quot;origin&quot;: {
       &quot;type&quot;: &quot;array&quot;,
+      &quot;description&quot;: &quot;切片中心[x,y,z]，cm；省略为平面包围盒中心且切片坐标0。包围盒无界时须与width一起提供。&quot;,
       &quot;minItems&quot;: 3,
       &quot;maxItems&quot;: 3,
       &quot;items&quot;: {
         &quot;type&quot;: &quot;number&quot;
-      },
-      &quot;description&quot;: &quot;切片原点3个数，单位cm；省略用引擎默认。&quot;
+      }
     },
     &quot;width&quot;: {
       &quot;type&quot;: &quot;array&quot;,
+      &quot;description&quot;: &quot;视野宽度cm；一项表示正方形，两项对应basis的两个轴。省略取几何有限包围盒；显式值为用户指定视野。&quot;,
       &quot;minItems&quot;: 1,
       &quot;maxItems&quot;: 2,
       &quot;items&quot;: {
         &quot;type&quot;: &quot;number&quot;,
         &quot;exclusiveMinimum&quot;: 0
-      },
-      &quot;description&quot;: &quot;切片显示宽度一个或两个正数，单位cm；省略用几何包围盒。&quot;
+      }
     },
     &quot;pixels&quot;: {
       &quot;type&quot;: &quot;integer&quot;,

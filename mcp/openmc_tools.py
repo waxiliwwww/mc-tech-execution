@@ -979,17 +979,17 @@ def view_geometry(case_dir: str, basis: str = 'xy', origin: list | None = None,
         raise Error('color_by须为material或cell')
     if origin is not None:
         if (not isinstance(origin, (list, tuple)) or len(origin) != 3
-                or any(type(v) not in (int, float) or isinstance(v, bool) for v in origin)):
+                or any(type(v) not in (int, float) or not __import__('math').isfinite(v) for v in origin)):
             raise Error('origin须为3个数（单位cm）')
     if width is not None:
         numbers = width if isinstance(width, (list, tuple)) else [width]
         if (not 1 <= len(numbers) <= 2
-                or any(type(v) not in (int, float) or isinstance(v, bool) or v <= 0 for v in numbers)):
+                or any(type(v) not in (int, float) or not __import__('math').isfinite(v) or v <= 0 for v in numbers)):
             raise Error('width须为正数或两个正数（单位cm）')
     if title is not None and (not isinstance(title, str) or len(title) > 200):
         raise Error('title须为不超过200字符的字符串')
     filename = 'geometry-' + basis + '-' + __import__('uuid').uuid4().hex[:12] + '.png'
-    target = directory / 'views'
+    target = path_in_workspace(case_dir + '/views', exists=False)
     target.mkdir(exist_ok=True)
     params = {'basis': basis, 'pixels': pixels, 'color_by': color_by,
               'filename': str(Path('views') / filename)}
@@ -1002,8 +1002,8 @@ def view_geometry(case_dir: str, basis: str = 'xy', origin: list | None = None,
     except Error as error:
         message = str(error)
         if 'does not appear to be bounded' in message or 'not bounded' in message:
-            raise Error('该几何在' + basis + '切片平面上无界（如六角棱柱外边界），引擎无法出切片图；'
-                        '可改用矩形/圆柱外边界，或先用origin/width给出有界范围') from None
+            raise Error('该几何在' + basis + '切片平面上无界或无法确定有限包围盒；'
+                        '请同时给出origin/width指定查看范围，未修改原算例输入') from None
         raise
     value.pop('image', None)
     return {'case_dir': case_dir, **value, **file_location(target / filename),

@@ -154,16 +154,29 @@ def plot_mesh(params):
             dimension.append(1)
         nx, ny, nz = dimension
         cells = nx * ny * nz
-        mean = np.asarray(tally.mean, dtype=float)
-        std = np.asarray(tally.std_dev, dtype=float)
+        scores = [str(item) for item in tally.scores]
+        score = params.get('score')
+        if score is None:
+            if len(scores) != 1:
+                raise ValueError('该tally有多个score，请用score明确选择：' + '、'.join(scores))
+            score = scores[0]
+        if score not in scores:
+            raise ValueError('score不存在；可选：' + '、'.join(scores))
+        nuclides = [str(item) for item in tally.nuclides]
+        if 'total' in nuclides:
+            nuclide = 'total'
+        elif len(nuclides) == 1:
+            nuclide = nuclides[0]
+        else:
+            raise ValueError('该网格tally含多个核素且无total，不能隐式合并；请使用openmc_plot_results选择nuclide')
+        selected = tally.get_slice(scores=[score], nuclides=[nuclide])
+        # Restore filter axes before choosing a score/energy column. Flattening
+        # first silently scrambles EnergyFilter -> MeshFilter combinations.
+        mesh_axis = kinds.index('MeshFilter')
+        mean = np.moveaxis(np.asarray(selected.get_reshaped_data(value='mean'), dtype=float)[..., 0, 0], mesh_axis, 0)
+        std = np.moveaxis(np.asarray(selected.get_reshaped_data(value='std_dev'), dtype=float)[..., 0, 0], mesh_axis, 0)
         if mean.ndim < 1 or mean.shape[0] != cells:
             raise ValueError('网格分箱数与网格维度不一致，不能还原坐标')
-        scores = [str(item) for item in tally.scores]
-        if len(scores) > 1:
-            raise ValueError('该tally有多个score，网格图请用单一score的网格tally（如flux）：' + '、'.join(scores))
-        score = scores[0]
-        if params.get('score') is not None and params['score'] != score:
-            raise ValueError('score与该网格tally的计分不一致：' + score)
         rest_mean = mean.reshape(cells, -1)
         rest_std = std.reshape(cells, -1)
         energy_label = None
@@ -214,7 +227,7 @@ def plot_mesh(params):
                   'y_label': params.get('y_label') or 'y (cm)',
                   'title': params.get('title') or f'Mesh tally {tally.id} / {score}',
                   'mesh_id': mesh_id, 'dimension': [nx, ny, nz], 'level': level,
-                  'score': score, 'energy_label': energy_label,
+                  'score': score, 'nuclide': nuclide, 'energy_label': energy_label,
                   'colorbar_label': params.get('colorbar_label') or
                                      (str(score) + ' (OpenMC raw score; no power normalization)'),
                   'tally_id': int(tally.id)}
@@ -262,6 +275,7 @@ def draw_mesh(series, path: Path, params):
     values_path.write_text(json.dumps({'tally_id': series['tally_id'], 'mesh_id': series['mesh_id'], 'dimension': series['dimension'],
                                        'zero_bins': zero_bins, 'zero_bin_note': zero_note if zero_bins else None,
                                        'level': series.get('level'), 'score': series['score'],
+                                       'nuclide': series.get('nuclide'),
                                        'energy_label': series.get('energy_label'),
                                        'x_edges': [float(v) for v in series['x_edges']],
                                        'y_edges': [float(v) for v in series['y_edges']],
@@ -288,7 +302,7 @@ def draw_mesh(series, path: Path, params):
                                  '' if not np.isfinite(error) else format(float(error), '.9g'),
                                  series['mesh_id'], series.get('level'), series['score']])
     return {'image': path.name, 'values_json': values_path.name, 'values_csv': csv_path.name,
-            'tally_id': series['tally_id'], 'zero_bins': zero_bins,
+            'tally_id': series['tally_id'], 'score': series['score'], 'nuclide': series.get('nuclide'), 'zero_bins': zero_bins,
             'warnings': [zero_note] if zero_bins else [],
             'cells': int(series['dimension'][0] * series['dimension'][1]),
             'mesh': {'id': series['mesh_id'], 'dimension': series['dimension'], 'level': series.get('level')}}
@@ -424,7 +438,7 @@ def render_docx(params):
     document.add_paragraph('编号：' + identifier)
     document.add_paragraph('数据来源：' + data['provenance']['data_kind'])
     document.add_paragraph('执行来源：' + data['provenance'].get('execution_kind', 'openmc_runtime'))
-    document.add_paragraph('专业验收：未进行。合成数据和接口执行结果不能替代合同专业指标验证。')
+    document.add_paragraph('专业验收：未进行。数据来源见上文；本报告不替代专业基准核验。')
     metadata = data.get('metadata') or {}
     if metadata:
         parameters = metadata_parameters(metadata)

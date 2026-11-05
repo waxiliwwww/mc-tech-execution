@@ -87,8 +87,33 @@ def load_config(env=None, defaults=None):
             defaults = json.loads(config_file.read_text(encoding="utf-8"))
         except (OSError, ValueError) as error:
             raise ValueError(f"Cannot read service configuration: {config_file} ({type(error).__name__}).") from error
-    if not isinstance(defaults, dict) or not {"host", "port", "path", "name", "version", "clientName"} <= defaults.keys():
-        raise ValueError("Configuration requires host, port, path, name, version, clientName.")
+    if not isinstance(defaults, dict) or not {"host", "port", "path", "name", "clientName"} <= defaults.keys():
+        raise ValueError("Configuration requires host, port, path, name, clientName and version/versionFile.")
+    defaults = dict(defaults)
+    if "versionFile" in defaults:
+        if not isinstance(defaults["versionFile"], str) or not defaults["versionFile"].strip():
+            raise ValueError("versionFile must be a nonempty path.")
+        version_path = Path(defaults["versionFile"])
+        if not version_path.is_absolute():
+            version_path = config_file.parent / version_path
+        try:
+            defaults["version"] = version_path.read_text(encoding="utf-8").strip()
+        except OSError as error:
+            # A wheel has no repository root. Its distribution version is built
+            # by setuptools from the same VERSION, never a config literal.
+            if defaults["versionFile"] != "../VERSION" or config_file.resolve() != (ROOT / 'service.config.json').resolve():
+                raise ValueError("Cannot read versionFile: " + str(version_path)) from error
+            from importlib.metadata import PackageNotFoundError, distribution
+            try:
+                installed = distribution("mc-agent-tools")
+                owner = Path(installed.locate_file('mc_agent_tools/server.py')).resolve()
+                if owner != (ROOT / 'server.py').resolve():
+                    raise ValueError("Installed package metadata does not belong to this server; restore VERSION.") from error
+                defaults["version"] = installed.version
+            except PackageNotFoundError:
+                raise ValueError("Cannot read VERSION or installed package version.") from error
+    if "version" not in defaults:
+        raise ValueError("Configuration requires version or versionFile.")
     host = env.get("MCP_HOST", defaults["host"])
     if not isinstance(host, str) or not host or host.strip() != host:
         raise ValueError("MCP_HOST must be an IP address or localhost.")

@@ -60,6 +60,14 @@ try {
   assert.match(await page.locator('#parameters').innerText(),/openmc_validate_inputs/);
   assert.match(await page.locator('#parameters').innerText(),/openmc_prepare_case/);
   await shot('04-own-model');
+  await page.goto(url('toolkit-usage.html#view'));await anchor('view');
+  assert.match(await page.locator('#view').innerText(),/有限几何包围盒/);
+  assert.match(await page.locator('#view').innerText(),/原算例的XML/);
+  assert.doesNotMatch(await page.locator('#view').innerText(),/这个“查看”会改写/);
+  await shot('04b-geometry-isolation');
+  await page.goto(url('official-examples.html'));
+  assert.match(await page.locator('main').innerText(),/returned_values/);
+  assert.doesNotMatch(await page.locator('main').innerText(),/不做数值截断/);
   await page.goto(url('toolkit-usage.html#cad'));await anchor('cad');
   assert.match(await page.locator('#cad').innerText(),/openmc_convert_cad/);
   assert.match(await page.locator('#cad').innerText(),/scale_factor/);

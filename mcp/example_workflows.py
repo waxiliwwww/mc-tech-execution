@@ -220,9 +220,11 @@ def cancel_example(instance_id: str) -> dict:
             'note': '取消仅针对本实例正在运行的步骤；查询实例终态确认。'}
 
 
-def read_example_results(instance_id: str, calculation_id: str | None = None) -> dict:
+def read_example_results(instance_id: str, calculation_id: str | None = None, max_values: int = 1000) -> dict:
     from openmc_artifacts import list_artifacts
     from openmc_tools import read_results
+    if type(max_values) is not int or not 1 <= max_values <= 10000:
+        raise Error('max_values须为1..10000；只影响返回预览，不改变StatePoint或图表数据')
     value = example_status(instance_id)
     artifacts = []
     for step, job in value['steps'].items():
@@ -231,7 +233,7 @@ def read_example_results(instance_id: str, calculation_id: str | None = None) ->
     notebook = None
     job = value['steps'].get('compute')
     if job and job['state'] == 'completed':
-        result = read_results(job['job_id'])
+        result = read_results(job['job_id'], max_values=max_values)
         result['statepoint_server_path'] = str(path_in_workspace(result['statepoint'], internal=True))
     executed = value['steps'].get('execute')
     if executed:
@@ -270,7 +272,7 @@ def read_example_results(instance_id: str, calculation_id: str | None = None) ->
         if not points:raise Error('该阶段没有StatePoint；使用results中的Notebook输出和实际文件')
         point=max(points,key=lambda p: (int(p.name.split('.')[1]) if p.name.startswith('statepoint.') else -1,p.name))
         from openmc_runtime import api
-        data=api('results',point.parent,{'statepoint':point.name,'max_values':1000},record['runtime'])
+        data=api('results',point.parent,{'statepoint':point.name,'max_values':max_values},record['runtime'])
         selected_calculation={**data,'calculation_id':calculation_id,'origin_job_id':executed['job_id'],
                               'statepoint_server_path':str(point),'statepoint_sha256':jobs.file_hash(point),
                               'original_cell_index':stage['original_cell_index'],
@@ -287,6 +289,7 @@ def read_example_results(instance_id: str, calculation_id: str | None = None) ->
                 raise Error('多阶段结果摘要已改变，不能报告原结果')
             script_results.append({**json.loads(summary.read_text()),'summary_server_path':str(summary)})
     return {'instance_id': instance_id, 'example_id': value['example_id'], 'state': value['state'],
+            'max_values_per_tally': max_values,
             'script_results':script_results, 'calculation': selected_calculation or result, 'notebook': notebook, 'stage_artifacts': artifacts,
             'professional_acceptance': False,
-            'note': '按步骤保存输入与产物；未定义计分的例题只返回其实际计算量。'}
+            'note': '每个tally只返回前max_values个统计值，values_truncated/total_values/returned_values标明预览范围；完整数据保存在StatePoint中，绘图不使用截断预览。按步骤保存输入与产物；未定义计分的例题只返回其实际计算量。'}
