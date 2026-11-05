@@ -42,6 +42,13 @@ try {
   assert.match(await page.locator('#operations').innerText(),/cat VERSION/);
   await shot('01b-running-version');
   await page.goto(url('toolkit-usage.html'));
+  await page.locator('#start a[href="deployment.html#mcp-service"]').click();await anchor('mcp-service');
+  assert.match(await page.locator('#mcp-service').innerText(),/mcp\/start.sh/);
+  assert.match(await page.locator('#mcp-service').innerText(),/服务启动并发现工具后/);
+  await page.goto(url('toolkit-usage.html#failure'));
+  await page.locator('#failure a[href="deployment.html#connection-troubleshooting"]').click();await anchor('connection-troubleshooting');
+  assert.match(await page.locator('#connection-troubleshooting').innerText(),/check-mcp.ps1/);
+  await page.goto(url('toolkit-usage.html'));
   assert.doesNotMatch(await page.locator('#start').innerText(),/两条完整流程待按本手册实测/);
   await page.locator('.jump a[href="#assembly"]').click();await anchor('assembly');
   assert.match(await page.locator('#assembly').innerText(),/openmc_create_model/);
@@ -60,6 +67,9 @@ try {
   await page.locator('#core details > summary').click();
   assert.match(await page.locator('#core details').innerText(),/不复用组件编号/);
   await page.goto(url('toolkit-usage.html#check'));await anchor('check');
+  assert.match(await page.locator('#check').innerText(),/job.json/);
+  assert.match(await page.locator('#check').innerText(),/input_files/);
+  assert.match(await page.locator('#check').innerText(),/未保留预览就不能补证/);
   await page.locator('#check details > summary').click();
   assert.match(await page.locator('#check').innerText(),/assert_allclose/);await shot('03-data-crosscheck');
   await page.locator('#check a[href="project-records.html#reproduction-reference"]').click();await anchor('reproduction-reference');
@@ -99,6 +109,11 @@ try {
   assert.match(await page.locator('#cad').innerText(),/scale_factor/);
   await page.goto(url('toolkit-usage.html#maintenance'));
   assert.match(await page.locator('main').innerText(),/mc_job_id=/);
+  await page.goto(url('toolkit-usage.html#windows-cleanup'));await anchor('windows-cleanup');
+  assert.match(await page.locator('#windows-cleanup').innerText(),/wsl -d \$mcDistro --cd \$mcPackageLinux -- bash/);
+  assert.match(await page.locator('#windows-cleanup').innerText(),/--workspace \$mcWorkspaceLinux/);
+  assert.match(await page.locator('#windows-cleanup').innerText(),/不能用本机WSL清理远程服务器/);
+  await shot('04d-windows-cleanup');
   journeys.push('existing model: import/dependencies -> discovered parameter copy -> common compute -> artifacts/cleanup');
   // Administrator: installation/optional runtime -> MCP -> DSH -> usage.
   await page.locator('.sidebar nav a[href="deployment.html"]').click();
