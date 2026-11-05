@@ -13,9 +13,11 @@ const documentPath = path.join(root, 'docs/toolkit.html');
 const original = await fs.readFile(documentPath, 'utf8');
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 const definitions = [
-  ['toolkit-architecture.svg', '图1 · 工作过程与模块职责'],
-  ['toolkit-inputs.svg', '图2 · 图1的M1模型准备展开'],
-  ['toolkit-sequence.svg', '图3 · M1—M3计算与结果调用时序'],
+  ['toolkit-architecture.svg', '图1 · 总体架构'],
+  ['toolkit-inputs.svg', '图2 · M1参数与输入生成'],
+  ['toolkit-jobs.svg', '图3 · M2本地实现与HPC设计'],
+  ['toolkit-results.svg', '图4 · M3结果与产物'],
+  ['toolkit-sequence.svg', '图5 · 模块调用与后台进程时序'],
 ];
 const {chromium} = await import(process.env.MC_PLAYWRIGHT_MODULE || 'playwright');
 const browser = await chromium.launch({headless:true,
@@ -86,5 +88,5 @@ try {
     htmlSha256:sha256(html),stylesEmbedded:true,diagramCount:diagrams.length,diagrams,
     note:'Documentation rasterization only; no model, CAD conversion or OpenMC calculation.'};
   await fs.writeFile(path.join(output,'receipt.json'),JSON.stringify(receipt,null,2)+'\n');
-  process.stdout.write('已更新toolkit.html：3张PNG与样式内嵌；SVG源保留。\n');
+  process.stdout.write('已更新toolkit.html：'+diagrams.length+'张PNG与样式内嵌；SVG源保留。\n');
 } finally {await browser.close();}

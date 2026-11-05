@@ -1,0 +1,60 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MC工具包使用说明</title><style>:root{color-scheme:dark;--bg:#111820;--panel:#18232e;--ink:#e6edf4;--muted:#9eafbf;--line:#344353;--accent:#77d7c6}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.75 system-ui,"Microsoft YaHei",sans-serif}main{max-width:1100px;margin:auto;padding:32px 32px 48px}nav{display:flex;gap:12px 25px;flex-wrap:wrap;padding-bottom:20px;border-bottom:1px solid var(--line);font-size:14px}a{color:var(--accent);text-underline-offset:4px}a:focus-visible,button:focus-visible{outline:3px solid #f6cc72;outline-offset:4px}.eyebrow{color:var(--accent);font-size:13px;letter-spacing:.08em;margin-top:30px}h1{font-size:32px;line-height:1.35;margin:10px 0 16px}h2{font-size:22px;margin:30px 0 12px}.lead{font-size:18px;max-width:930px}.minor,footer{color:var(--muted);font-size:14px}.flow{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);padding:18px 22px;border-radius:8px;margin-top:24px}.flow b{color:var(--accent)}table{width:100%;border-collapse:collapse}th,td{padding:13px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line);font-size:15px}th{background:var(--panel);font-weight:650}td:first-child{width:18%;font-weight:650}td:last-child{width:35%;color:var(--muted)}.table-wrap{overflow-x:auto}.note{background:var(--panel);border-left:3px solid var(--accent);padding:16px 18px;margin:24px 0}footer{border-top:1px solid var(--line);margin-top:30px;padding-top:18px}code{font:13px/1.6 ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:var(--panel);padding:2px 4px}pre{background:var(--panel);padding:16px 20px;border:1px solid var(--line);overflow:auto;border-radius:6px}pre code{background:none;padding:0;white-space:pre}li{margin:8px 0}blockquote{border-left:3px solid var(--accent);margin:20px 0;padding:4px 18px;color:var(--muted)}@media(max-width:700px){main{padding:22px 18px 36px}h1{font-size:26px}.lead{font-size:16px}th,td{font-size:13px;padding:9px 8px}td:first-child{width:23%}td:last-child{width:31%}}@media print{:root{color-scheme:light;--bg:#fff;--panel:#f0f3f4;--ink:#16232c;--muted:#4b606e;--line:#cbd5db;--accent:#12675e}main{padding:0}nav{display:none}}
+
+main{max-width:1160px}.jump{display:flex;flex-wrap:wrap;gap:8px 22px;margin:24px 0}section[id]{scroll-margin-top:28px}h3{font-size:18px}.table-wrap{margin:18px 0}</style></head><body><main><nav><a href="index.html">手册首页</a><a href="toolkit.html">架构设计</a><a href="compute.html">完整计算</a><a href="cad.html">CAD计算</a><a href="reference.html">工具参数</a></nav><p class="eyebrow">面向使用者 · 软件基线0.11.1 · 2026-11-05</p><h1>MC工具包使用说明</h1><p class="lead">本包帮助使用者把OpenMC模型接入、参数研究、计算执行和结果整理连成可复查的流程。你提供物理模型和判断依据，OpenMC求解；工具包保存每次提交的输入与设置，管理长计算，并把同一结果选择整理成数据、图和报告。可直接用CLI，也可通过标准MCP交给平台调用。</p><div class="flow"><span>准备模型</span>→<span>预览与校核</span>→<span>命名提交、查询终态</span>→<span>选择结果、取用产物</span></div><p class="minor">本页帮助选择操作路线和理解结果；模块机制、执行后端和扩展位置见<a href="toolkit.html">架构设计</a>。</p><div class="jump"><a href="#capabilities">能做什么</a><a href="#using">怎样使用</a><a href="#results">怎样看结果</a><a href="#files">文件与位置</a><a href="#guide">适用范围</a></div><section id="capabilities" aria-labelledby="capabilities-title"><h2 id="capabilities-title">1．能帮助完成哪些工作</h2>
+<div class="table-wrap"><table><thead><tr><th>你的工作</th><th>工具包提供的操作</th><th>你仍需明确的内容</th></tr></thead><tbody>
+<tr><td>沿用已有模型</td><td>导入原生XML及依赖，预览、校核并保存副本；已有建模程序可继续用。</td><td>程序先导出OpenMC输入；核数据、外部文件和模型适用性要具备。</td></tr>
+<tr><td>比较多组参数</td><td>发现可调整项，创建参数副本并回显差异；命名提交、串行扫描、按作业比较输入与结果。</td><td>研究参数的物理意义、允许范围，以及是否还要联动修改其他条件。</td></tr>
+<tr><td>使用CAD几何</td><td>检查STEP实体、换算长度并转换H5M；补齐材料、源与边界后交给OpenMC。</td><td>CAD只提供几何；实体材料映射、源、计分与几何质量须有依据。</td></tr>
+<tr><td>分析和交接结果</td><td>选择计分、核素与过滤箱，保留均值和标准差；输出图、完整所选数据和同源报告。</td><td>计分是否合适、统计是否充分，以及如何换算为目标工况或作专业比较。</td></tr>
+</tbody></table></div>
+<p>这些操作把常用的文件组织和交接规则固定下来：修改有副本，计算有编号，失败有记录，图和报告能追到原始统计。原生XML、HDF5及CSV仍可用OpenMC或自己的程序继续处理。建模可表达范围、自动改参范围和结果接口范围分别明确，不把接口封装等同于OpenMC全部API。</p>
+</section><section id="using" aria-labelledby="using-title"><h2 id="using-title">2．怎样开始，以及怎样带入自己的模型</h2>
+<p>先按<a href="env.html">部署说明</a>准备Linux/WSL环境。在完整源码包根目录运行 <code>./quickstart.sh</code>；已有基础环境只补CAD可用 <code>--cad-only</code>。按自己的任务选入口：已有模型按下方步骤导入；初次体验OpenMC按<a href="compute.html">公开例题的完整计算步骤</a>操作；需要CAD再运行 <code>mcp/.venv/bin/python examples/cad_case_demo.py</code>，核对STEP到数据、图与报告的交接。CAD示例的固定输入、物理设置和选项含义见<a href="cad.html#demo">示例说明</a>，不把示例条件套到自己的工程几何。</p>
+<p>已有模型时，把自己程序导出的XML及本地依赖放入 <code>workspace/incoming/model/</code>，再按下面的目录创建独立工作副本：</p>
+<pre><code>./mc.sh call openmc_import_model '{"source_dir":"incoming/model","target_dir":"cases/model"}'
+./mc.sh call openmc_preview_input '{"case_dir":"cases/model"}'
+./mc.sh call openmc_validate_inputs '{"case_dir":"cases/model","api_check":true}'
+./mc.sh call openmc_submit_job '{"case_dir":"cases/model","name":"模型研究","threads":1}'</code></pre>
+<p>公开官方例题也可作为学习和运行检查的起点，目录与分步骤操作见<a href="official-examples.html">官方例题说明</a>；专业基准对比仍需适用模型、参考结果和比较判据。接下来的状态查询和结果读取使用返回的真实 <code>job_id</code>。若要改参，先发现参数并创建新副本；若要空间/能量分布，提交前先定义对应tally。完整参数示例、失败时怎样继续及实际命令见<a href="domain-workflows.html">模型操作指南</a>与<a href="compute.html">一次完整计算</a>。</p>
+<p>通过MCP使用时启动 <code>./mcp/start.sh</code>，把服务地址和需要的鉴权交给宿主；宿主通过工具发现取得同一套参数说明，无须逐个配置函数。CLI与MCP共享业务实现。宿主的自然语言理解、工具选择和图像展示能力需要单独验证，配置连接不等于已完成任意自然语言任务。连接方式见<a href="mcp.html">标准MCP说明</a>和<a href="dsh.html">Windows DSH接入</a>。</p>
+<p>日常先用存储报告查看占用，清理只在预览后执行并保留需要复查的记录。输入快照能固定模型文件，跨环境复现仍要一起记录引擎、核数据、随机种子、运行设置和线程条件；不承诺仅靠同一文件名就得到相同数值。</p>
+</section><section id="results" aria-labelledby="results-title"><h2 id="results-title">3．选择哪一份结果，图中的数怎样解释</h2>
+<p>OpenMC产生数值，工具提取和组织数值。先读结果清单，再明确 <code>tally_id</code>（哪项统计）、<code>score</code>（通量/反应率等量）、<code>nuclide</code>（总量或核素）和 <code>filter_selection</code>（哪些分箱）。多个候选时应显式选择，避免默认首项与你的问题不同。固定源计算通常没有keff，不能把空值当故障或零。</p>
+<div class="table-wrap"><table><thead><tr><th>结果层次</th><th>拿来做什么</th><th>完整性与限制</th></tr></thead><tbody>
+<tr><td>接口预览</td><td>快速看keff、计分、形状及部分均值/标准差。</td><td>受max_values等限制，返回截断标记；默认作业汇总CSV也可能来自预览，不能一概当全量。</td></tr>
+<tr><td>完整所选数据</td><td>明确选择后得到配套CSV/JSON，继续用Python、表格或专业程序分析。</td><td>通用所选曲线、数据和所选报告同源；正文最多预览20点，所选数据文件保留全部所选点。绘图点数超限须缩小选择，不静默截断。</td></tr>
+<tr><td>原始StatePoint</td><td>保留更深入分析所需的求解输出，用官方API重新读取。</td><td>不等同于轻量预览或一张图；大计分仍需评估读取内存。</td></tr>
+</tbody></table></div>
+<p><strong>横轴决定图能说明什么。</strong>单能量过滤图用eV区间的算术中点，保留上下界；计分仍是bin积分量，没有自动除以能宽。多过滤器通用图使用展平分箱序号，不是空间距离。空间关系应看规则网格热图；多层三维网格选层、带能量过滤选箱，不能不说明条件就投影。</p>
+<p><strong>统计误差和归一化须一起看。</strong><code>std_dev</code>是OpenMC对均值统计不确定度的估计（标准误），不是空间各格分布的离散程度，也不自动等于95%置信区间；非有限值保留为空并提示，不补零。图表没有自动追加功率、实际源强或体积归一化。k逐批图可辅助观察统计过程，不能单凭曲线平缓宣布收敛。</p>
+<p>例如公开全堆模型加8×8×1网格flux计分，得到64格均值与误差：热图回答“所选计分在空间上怎样分布”，完整数据用于复核与后续归一化，报告说明输入与选择。它不能在没有功率和归一化条件时直接称为实际功率分布。CAD示例也遵循同一结果处理链，详见<a href="cad.html#results">16格示例结果说明</a>。</p>
+</section><section id="files" aria-labelledby="files-title"><h2 id="files-title">4．文件分别做什么，本包处理到哪一步</h2>
+<h3>准备计算时的输入</h3>
+<div class="table-wrap"><table><thead><tr><th>文件</th><th>科学用途</th><th>本包的处理</th></tr></thead><tbody>
+<tr><td>model.xml；或geometry/materials/settings/tallies.xml</td><td>几何、材料、运行设置与计分定义。</td><td>导入、预览、受支持改参及分层校核；生成模型经官方Python API导出。</td></tr>
+<tr><td>model-spec.json / build_model.py</td><td>结构化建模依据及独立重建。</td><td>组合建模时保留；不表示全部OpenMC属性都能由spec表达。</td></tr>
+<tr><td>.step / .stp → dagmc.h5m</td><td>CAD实体及其DAGMC网格几何。</td><td>检查实体、按明确缩放/标签转换并读回；H5M是MOAB/HDF5几何输入。</td></tr>
+<tr><td>cross_sections.xml + 核数据.h5</td><td>核素、温度等相互作用数据索引与实际数据。</td><td>初始化或指定库，检查相应索引并注入运行；复制索引不等于数据库已搬移。</td></tr>
+<tr><td>燃耗链XML + 燃耗配置</td><td>衰变/反应链、功率与时间步。</td><td>供受支持燃耗作业使用；材料体积和实际链文件仍需准备。</td></tr>
+</tbody></table></div>
+<h3>OpenMC原始输出</h3>
+<div class="table-wrap"><table><thead><tr><th>文件</th><th>用来查看什么</th><th>直接分析、保留还是外部处理</th></tr></thead><tbody>
+<tr><td>statepoint.N.h5</td><td>keff、tally均值/标准差、维度与过滤条件。</td><td>通用结果读取的主要依据，使用官方StatePoint API；入口是本包成功作业，不是任意HDF5文件。</td></tr>
+<tr><td>summary.h5 / source.h5等</td><td>几何材料辅助快照、源分布；源库也可能是模型输入。</td><td>若产生则可保留/列清单；可核对声明依赖，但没有独立通用Summary/源库分析工具。</td></tr>
+<tr><td>tallies.out</td><td>人可读的计分文本。</td><td>若产生则保留供查看；通用结果提取选用StatePoint，不以ASCII文本解析为主。</td></tr>
+<tr><td>solver.log / worker.log</td><td>运行过程、进度与错误。</td><td>用于状态和有限诊断；日志尾部不是最终统计结果，截断会标注。</td></tr>
+<tr><td>几何PNG / PPM等</td><td>检查输入模型外形或切片。</td><td>绘图作业与切片入口；不是通量分布，也不证明无重叠或物理正确。切片与自动边界推断有适用范围。</td></tr>
+<tr><td>depletion_results.h5</td><td>时间序列的燃耗计算结果。</td><td>读取时间、keff及U235/U238/Pu239/Pu241等当前支持项；不是通用解析全部HDF5结构。</td></tr>
+</tbody></table></div>
+<h3>用于分析和交接的整理产物</h3>
+<div class="table-wrap"><table><thead><tr><th>格式</th><th>适合什么用途</th><th>打开或继续使用时注意</th></tr></thead><tbody>
+<tr><td>PNG / SVG</td><td>看结果曲线、误差或空间热图；SVG便于矢量排版。</td><td>留意坐标、计分选择和归一化说明。几何图与计算结果图要区分。</td></tr>
+<tr><td>CSV / JSON</td><td>二次数值分析与自动处理。</td><td>显式选择后的完整数据包含所选值、误差与坐标/来源；默认汇总可能截断。</td></tr>
+<tr><td>Markdown / DOCX / PDF / DOC</td><td>阅读、编辑、交流报告。</td><td>所选报告沿用通用曲线的同一数据，网格热图是独立产物；MD图片用同目录相对链接，DOCX嵌图，PDF/DOC需Office转换。正文预览不替代完整数据。</td></tr>
+<tr><td>job.json / runtime.json / mc-case.json</td><td>回查名称、状态、输入、配置和来源。</td><td>这是工具包管理记录，不能当物理结果；同一job_id把它们与求解文件关联。</td></tr>
+</tbody></table></div>
+<p>文件存于<strong>服务端</strong>，默认记录目录为 <code>workspace/.mc-jobs/&lt;job_id&gt;/</code>，其中 <code>work/</code>保存提交副本和原始输出。以工具返回的 <code>server_path</code>为准；MCP返回数据或路径不等于已下载到客户端。部分PNG可随调用预览，网格热图主要返回文件位置，能否内联显示还取决于宿主。异机文件取回目前需另行安排；同机Windows可经WSL共享路径打开，见<a href="dsh.html#artifacts">产物与清理</a>。</p>
+</section><section id="guide" aria-labelledby="guide-title"><h2 id="guide-title">5．运行范围与依赖</h2>
+<p>接口由MCP服务与CLI共用注册表和Schema校验；OpenMC 0.16.0的Python API用于建模、解析和读原始结果，可执行程序用于求解。CAD分支额外使用CadQuery、cad_to_dagmc和网格组件；Matplotlib绘图，DOCX生成与Office转换负责报告输出。核数据独立于软件安装。这些组件在初始化时准备，不要求科研用户把它们都装到同一个Python环境。</p>
+<p>当前执行器面向本地Linux/WSL进程，尚无Slurm/HPC适配；组合建模和自动改参只覆盖已公布范围，CAD复杂件与统计/物理适用性仍需实际模型验证。官方原文检索不是完整专业知识库，宿主编排也不等同于微调模型生成。使用这些范围判断适合接入的任务，具体条件见对应操作页。</p>
+</section><footer>详细命令与参数见<a href="compute.html">计算步骤</a>、<a href="domain-workflows.html">自有模型</a>、<a href="mcp.html">标准MCP</a>；模块实现见<a href="toolkit.html">架构设计</a>。</footer></main></body></html>

@@ -29,6 +29,8 @@ export async function checkStandaloneToolkit(browser, root, out) {
     });
     try {
       await page.goto(allowedDocument,{waitUntil:'load'});
+      // Detail diagrams are intentionally folded for developer overview reading.
+      await page.locator('details').evaluateAll(nodes=>nodes.forEach(node=>{node.open=true;}));
       const images=await page.locator('.diagram img').evaluateAll(nodes=>nodes.map(img=>({
         complete:img.complete,width:img.naturalWidth,height:img.naturalHeight,
         embedded:img.src.startsWith('data:image/png;base64,')})));
@@ -36,13 +38,13 @@ export async function checkStandaloneToolkit(browser, root, out) {
         background:getComputedStyle(document.body).backgroundColor}));
       const filename=name+'-top.png';await page.screenshot({path:path.join(out,filename)});screenshots.push(filename);
       if(name==='embedded') {
-        assert.equal(images.length,3,'Copied architecture HTML must retain its three diagrams.');
+        assert.equal(images.length,5,'Copied architecture must retain overview, M1, M2, M3 and process diagrams.');
         assert.ok(images.every(img=>img.complete&&img.width>0&&img.height>0&&img.embedded),
           'Each diagram must decode from an embedded PNG without assets.');
         assert.equal(theme.colorScheme,'dark','The copied HTML must retain its theme without a stylesheet file.');
         assert.notEqual(theme.background,'rgba(0, 0, 0, 0)');assert.notEqual(theme.background,'rgb(255, 255, 255)');
-        assert.equal(await page.locator('.diagram-title').count(),3);
-        for(let index=0;index<3;index++) {
+        assert.equal(await page.locator('.diagram-title').count(),5);
+        for(let index=0;index<5;index++) {
           const name='embedded-diagram-'+(index+1)+'.png';
           await page.locator('.diagram').nth(index).screenshot({path:path.join(out,name)});screenshots.push(name);
         }
@@ -65,7 +67,7 @@ export async function checkStandaloneToolkit(browser, root, out) {
         return source?tag.replace(/\bsrc="[^"]*"/,'src="'+source[1]+'"'):tag;
       });
     const baseline=await inspect('external-assets',external);
-    assert.equal(baseline.images.length,3);
+    assert.equal(baseline.images.length,5);
     assert.ok(baseline.images.every(img=>img.width===0),
       'The external-asset control must reproduce missing diagrams under the same restrictions.');
     assert.ok(baseline.blockedRequests.some(request=>request.type==='image'));
