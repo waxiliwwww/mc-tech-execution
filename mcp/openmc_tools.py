@@ -69,9 +69,17 @@ def create_model(case_dir: str, template: str = 'synthetic-mgxs', particles: int
             'fine_tuned_model_used': False}
 
 
-def _semantic_index(cfg: dict):
+def _semantic_index(cfg: dict, directory: Path | None = None, root=None):
     """按运行时同一解析顺序定位生效的截面索引；返回(路径, 来源)或(None, 原因)。"""
     import os
+    # An explicit model index takes precedence, just as ensure_for_model/OpenMC do.
+    if root is not None and directory is not None:
+        source = root.findtext('.//cross_sections')
+        if source:
+            path = Path(source)
+            path = path if path.is_absolute() else directory / path
+            if path.is_file():return path, 'model_materials_cross_sections'
+            return None, '模型声明的cross_sections不存在：' + str(path)
     configured = cfg.get('cross_sections')
     if configured:
         path = Path(configured)
@@ -177,7 +185,7 @@ def _check_materials(root, problems: list) -> int:
         temperature = material.get('temperature')
         if temperature is not None:
             try:
-                if not float(temperature) > 0:
+                if not math.isfinite(float(temperature)) or not float(temperature) > 0:
                     raise ValueError
             except ValueError:
                 problems.append({'kind': 'temperature', 'severity': 'error',
@@ -212,10 +220,10 @@ def _check_materials(root, problems: list) -> int:
                              'location': f'material {label} density',
                              'detail': f'value{raw!r}缺失或不能解析为数值'})
             continue
-        if not value > 0:
+        if not math.isfinite(value) or not value > 0:
             problems.append({'kind': 'density_value', 'severity': 'error',
                              'location': f'material {label} density',
-                             'detail': '密度须为正；引擎0.16.0实测装载即拒绝非正值'
+                             'detail': '密度须为正的有限值；引擎0.16.0实测装载即拒绝非正值'
                                        '（Need to specify a positive density）'})
     return count
 
@@ -247,9 +255,9 @@ def _semantic_summary(directory: Path, inspected: list, cfg: dict) -> dict:
     else:
         material_section['skipped_reason'] = ('多群模式材料体系不同，材料级检查未覆盖'
                                               if multi_group else '存在macroscopic（多群）材料')
-    tallies_root = root if single.exists() else None
+    tallies_root = root.find('tallies') if single.exists() else None
     tally_count = definition_count = reference_count = 0
-    if tallies_root is None and 'tallies.xml' in inspected and (directory / 'tallies.xml').is_file():
+    if not single.exists() and tallies_root is None and 'tallies.xml' in inspected and (directory / 'tallies.xml').is_file():
         try:
             tallies_root = ET.parse(directory / 'tallies.xml').getroot()
         except (ET.ParseError, OSError):
@@ -306,7 +314,7 @@ def _semantic_summary(directory: Path, inspected: list, cfg: dict) -> dict:
                 nuclides.append((label, node.get('name') or ''))
             for node in material.iter('sab'):
                 sabs.append((label, node.get('name') or ''))
-        index, source = _semantic_index(cfg)
+        index, source = _semantic_index(cfg, directory, root)
         if index is None:
             nuclide_section['skipped_reason'] = source
         else:

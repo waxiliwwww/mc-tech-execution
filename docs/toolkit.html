@@ -10,7 +10,7 @@ details{border:1px solid var(--line);background:var(--panel);padding:14px 20px;m
 </style></head><body><main>
 <nav><a href="index.html">手册首页</a><a href="toolkit-usage.html">使用说明</a><a href="domain-workflows.html">模型操作</a><a href="cad.html">CAD操作</a><a href="reference.html">工具参数</a></nav>
 <p class="eyebrow">面向开发者 · 实现基线0.11.1 · 2026-11-05</p><h1>MC工具包架构设计</h1>
-<p class="lead">本包在OpenMC之上组织模型输入、计算作业和结果分析。CLI与MCP共用领域实现，宿主负责自然语言编排；本包负责模型和文件交接、后台计算及可追查的产物。下面从总图展开各模块，说明常见任务怎样落实到源码与运行过程。</p>
+<p class="minor"><a href="capabilities.html">能力范围：生成、接入、修改与解析</a> · <a href="reproduce.html">公开模型复现：组件与全堆的完整MCP/DSH步骤</a></p><p class="lead">本包在OpenMC之上组织模型输入、计算作业和结果分析。CLI与MCP共用领域实现，宿主负责自然语言编排；本包负责模型和文件交接、后台计算及可追查的产物。下面从总图展开各模块，说明常见任务怎样落实到源码与运行过程。</p>
 <p class="minor">当前执行后端为Linux/WSL本地进程。HPC部分是接入设计，尚未实现。本文解释系统机制；具体命令与结果阅读见<a href="toolkit-usage.html">使用说明</a>。</p>
 <div class="jump"><a href="#architecture">总体架构</a><a href="#scenarios">常见场景</a><a href="#inputs">M1模型准备</a><a href="#jobs">M2作业管理</a><a href="#results">M3结果分析</a><a href="#developer">运行与扩展</a></div>
 <section id="architecture" aria-labelledby="architecture-title"><h2 id="architecture-title">1．总体架构</h2>

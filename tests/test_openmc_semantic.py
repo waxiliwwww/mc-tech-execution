@@ -140,6 +140,37 @@ class SemanticValidation(unittest.TestCase):
         # 静态检查照常执行：负密度仍被报出
         self.assertIn('density_value', self.kinds(value))
 
+    def test_integrated_model_filter_definitions_match_references(self):
+        mats=materials_xml([KNOWN_NUCLIDE])
+        tallies=tallies_xml('<filter id="1" type="energy"><bins>0 1 10</bins></filter>','1')
+        (self.case/'model.xml').write_text('<model>'+mats+'<geometry/><settings/>'+tallies+'</model>')
+        value=self.semantic()
+        self.assertTrue(value['ok'],value['problems'])
+        self.assertEqual(value['tally_section']['filter_definitions'],1)
+
+    def test_nonfinite_material_values_are_rejected(self):
+        for number in ('inf','-inf','nan'):
+            with self.subTest(value=number):
+                self.write_materials([KNOWN_NUCLIDE],density=f'<density value="{number}" units="g/cc"/>',temperature=number)
+                value=self.semantic()
+                self.assertIn('density_value',self.kinds(value))
+                self.assertIn('temperature',self.kinds(value))
+
+    def test_model_cross_sections_precedes_deployment_and_missing_does_not_fallback(self):
+        custom=self.case/'local-xs.xml'
+        custom.write_text(f'<cross_sections><library type="neutron" materials="{KNOWN_NUCLIDE}" path="x.h5"/></cross_sections>')
+        self.write_materials([KNOWN_NUCLIDE])
+        mats=self.case/'materials.xml'
+        text=mats.read_text().replace('<materials>','<materials><cross_sections>local-xs.xml</cross_sections>')
+        mats.write_text(text)
+        value=self.semantic()
+        self.assertTrue(value['ok'],value)
+        self.assertEqual(value['index_source'],'model_materials_cross_sections')
+        custom.unlink()
+        value=self.semantic()
+        self.assertFalse(value['complete'])
+        self.assertIn('模型声明',value['nuclide_availability']['skipped_reason'])
+
     # ---- 密度/温度（第二刀） ----
 
     def test_negative_density_reported_with_engine_evidence_note(self):

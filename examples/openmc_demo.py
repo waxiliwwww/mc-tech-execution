@@ -15,6 +15,10 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 
 
+class ToolCallError(RuntimeError):
+    """The tool returned an explicit error, rather than losing its response."""
+
+
 def error_text(error):
     nested = getattr(error, 'exceptions', None)
     return '; '.join(error_text(child) for child in nested) if nested else str(error)
@@ -33,7 +37,7 @@ async def client(url):
                 async def call(name, arguments):
                     result = await session.call_tool(name, arguments)
                     if result.isError:
-                        raise RuntimeError(result.content[0].text)
+                        raise ToolCallError(result.content[0].text)
                     return result.structuredContent or json.loads(result.content[0].text)
                 yield call
     else:
@@ -42,7 +46,7 @@ async def client(url):
                 [sys.executable, str(ROOT / 'mcp/cli.py'), 'call', name, json.dumps(arguments)],
                 capture_output=True, text=True, timeout=180)
             if result.returncode:
-                raise RuntimeError(result.stderr.strip())
+                raise ToolCallError(result.stderr.strip())
             return json.loads(result.stdout)
         yield call
 

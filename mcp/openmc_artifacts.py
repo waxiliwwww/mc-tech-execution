@@ -20,6 +20,10 @@ def list_artifacts(kind: str, identifier: str) -> dict:
                     'scan-*.png', 'scan-*.svg', 'scan-*.json', 'scan-*.csv'):
         paths.extend(target.glob(pattern))
     if kind == 'job':
+        for prefix in ('mesh', 'convergence'):
+            for suffix in ('png', 'svg', 'json', 'csv'):
+                paths.extend(target.glob(f'{prefix}-*.{suffix}'))
+    if kind == 'job':
         for name in record.get('output_files', {}):
             path = target / 'work' / name
             if not path.resolve().is_relative_to((target / 'work').resolve()):raise Error('产物记录路径无效')

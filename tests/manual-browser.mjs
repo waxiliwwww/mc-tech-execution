@@ -180,14 +180,34 @@ try {
   await page.locator('#openmc_read_example_results > summary').click();
   assert.match(await page.locator('#openmc_read_example_results').innerText(),/calculation_id/);
   await shot('08c-stage-selection');
+  await page.goto(url('capabilities.html'));
+  assert.match(await page.locator('h1').innerText(),/能力范围/);
+  assert.match(await page.locator('#scope').innerText(),/二维RectLattice/);
+  assert.match(await page.locator('#validation').innerText(),/complete/);
+  await page.locator('#adoption details > summary').click();
+  assert.match(await page.locator('#adoption details').innerText(),/StatePoint/);
+  await shot('08d-capability-scope');
+  await page.locator('nav a[href="reproduce.html"]').click();
+  assert.match(await page.locator('h1').innerText(),/复现手册/);
+  await page.locator('.jump a[href="#assembly"]').click();
+  assert.ok(await page.locator('#assembly h2').evaluate(e=>e.getBoundingClientRect().top>=0));
+  assert.match(await page.locator('#assembly').innerText(),/289/);
+  await shot('08e-component-reproduction');
+  await page.locator('#core details > summary').click();
+  assert.match(await page.locator('#core details').innerText(),/core-lattice/);
+  await page.locator('.jump a[href="#check"]').click();
+  assert.match(await page.locator('#check').innerText(),/原生计分/);
+  await page.locator('#check details > summary').click();
+  assert.match(await page.locator('#check details').innerText(),/assert_allclose/);
+  await shot('08f-result-crosscheck');
   await page.setViewportSize({width:390,height:844});
-  for(const name of ['index.html','compute.html','inputs.html','mcp.html','reference.html','official-examples.html','domain-workflows.html','development-plan.html','development-details.html','dsh.html','toolkit.html','toolkit-usage.html','cad.html','expert-trial.html']) {
+  for(const name of ['index.html','compute.html','inputs.html','mcp.html','reference.html','official-examples.html','domain-workflows.html','development-plan.html','development-details.html','dsh.html','toolkit.html','toolkit-usage.html','cad.html','expert-trial.html','capabilities.html','reproduce.html']) {
     await page.goto(url(name));
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal page overflow: '+name);
   }
   await page.goto(url('index.html'));await shot('09-mobile');
   assert.deepEqual(problems,[]);assert.deepEqual(remoteRequests,[]);
   const standalone = await checkStandaloneToolkit(browser,root,path.join(out,'standalone-toolkit'));
-  await fs.writeFile(path.join(out,'receipt.json'),JSON.stringify({passed:true,pages:14,problems,remoteRequests,screenshots,standaloneToolkit:standalone.passed,entry:url('index.html'),checks:['offline file navigation','demo explanation disclosure','exact command copy/selection fallback','source/model layers','composable model instructions','two-week interface plan','separate user manual and developer design navigation','five embedded architecture diagrams and original SVG navigation','folded core details and nested deep-link reveal','scientific-result and file-format reading sections','single-file copied toolkit without any asset access','CAD setup and tool-flow navigation','own program disclosure','search/no-match','deep-link reveals schema','mobile no page overflow']},null,2));
+  await fs.writeFile(path.join(out,'receipt.json'),JSON.stringify({passed:true,pages:16,problems,remoteRequests,screenshots,standaloneToolkit:standalone.passed,entry:url('index.html'),checks:['offline file navigation','demo explanation disclosure','exact command copy/selection fallback','source/model layers','composable model instructions','two-week interface plan','separate user manual and developer design navigation','five embedded architecture diagrams and original SVG navigation','folded core details and nested deep-link reveal','scientific-result and file-format reading sections','single-file copied toolkit without any asset access','CAD setup and tool-flow navigation','own program disclosure','search/no-match','deep-link reveals schema','mobile no page overflow']},null,2));
   process.stdout.write('HTML browser checks passed; screenshots: '+out+'\n');
 } finally {await browser.close();}

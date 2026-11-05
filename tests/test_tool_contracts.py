@@ -20,6 +20,13 @@ from tools import TOOLS, prepare_tools
 class ToolContracts(unittest.TestCase):
     def tool(self, name):return next(t for t in TOOLS if t['name'] == name)
 
+    def test_particle_filter_bins_follow_particle_names_not_numeric_bins(self):
+        validator=Draft202012Validator(self.tool('openmc_define_tally')['inputSchema'])
+        base={'case_dir':'case','scores':['flux']}
+        self.assertTrue(validator.is_valid({**base,'filters':[{'type':'particle','bins':['neutron']}]}))
+        self.assertFalse(validator.is_valid({**base,'filters':[{'type':'particle','bins':[1]}]}))
+        self.assertFalse(validator.is_valid({**base,'filters':[{'type':'energy','bins':['neutron']}]}))
+
     def test_discoverable_parameters_have_meaning_and_valid_default_annotations(self):
         for tool in TOOLS:
             for name, field in tool['inputSchema'].get('properties', {}).items():

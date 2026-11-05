@@ -2673,7 +2673,14 @@
           &quot;bins&quot;: {
             &quot;type&quot;: &quot;array&quot;,
             &quot;items&quot;: {
-              &quot;type&quot;: &quot;number&quot;
+              &quot;anyOf&quot;: [
+                {
+                  &quot;type&quot;: &quot;number&quot;
+                },
+                {
+                  &quot;type&quot;: &quot;string&quot;
+                }
+              ]
             }
           },
           &quot;dimension&quot;: {
@@ -2704,7 +2711,41 @@
             &quot;type&quot;: &quot;integer&quot;,
             &quot;minimum&quot;: 1
           }
-        }
+        },
+        &quot;allOf&quot;: [
+          {
+            &quot;if&quot;: {
+              &quot;properties&quot;: {
+                &quot;type&quot;: {
+                  &quot;const&quot;: &quot;particle&quot;
+                }
+              }
+            },
+            &quot;then&quot;: {
+              &quot;properties&quot;: {
+                &quot;bins&quot;: {
+                  &quot;items&quot;: {
+                    &quot;enum&quot;: [
+                      &quot;neutron&quot;,
+                      &quot;photon&quot;,
+                      &quot;electron&quot;,
+                      &quot;positron&quot;
+                    ]
+                  }
+                }
+              }
+            },
+            &quot;else&quot;: {
+              &quot;properties&quot;: {
+                &quot;bins&quot;: {
+                  &quot;items&quot;: {
+                    &quot;type&quot;: &quot;number&quot;
+                  }
+                }
+              }
+            }
+          }
+        ]
       },
       &quot;description&quot;: &quot;可选过滤列表，每项{type, ...}：energy（bins为eV分界，≥2且递增）、material（bins为材料编号）、particle（bins为neutron/photon/electron/positron）、mesh（dimension/lower_left/upper_right，可选mesh_id）；同一tally最多一个mesh。&quot;
     },

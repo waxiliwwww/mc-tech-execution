@@ -6,6 +6,8 @@
 
 使用者先看 [MC工具包使用说明](docs/toolkit-usage.html)：选择操作路线、理解结果和文件，再进入具体步骤。开发者看 [MC工具包架构设计](docs/toolkit.html)：简洁总图、常见场景与M1/M2/M3展开机制；接口、格式和源码细节可展开查阅，HPC设计与已有实现分别标明。
 
+先查 [能力范围](docs/capabilities.html)：区分能生成、能接入、能修改和能解析的功能；[公开模型复现手册](docs/reproduce.html) 提供官方17×17组件和简化全堆的逐步MCP/DSH流程、输入来源、产物及数据核对。完整运行按本轮安排留待用户实测。
+
 专家技术试用按 [专家试用清单](docs/expert-trial.html) 准备：由我们在自有Linux服务器部署，专家连接，按同一模型核对输入、计算、结果与异常；不代替合同验收。
 
 项目执行或进展评审先看 [合同功能—中文操作—代码工具进展对照](docs/project-progress.html)：在同一张直接展开的表内，按两批15项功能列中文操作与代码名、输入输出、合同开发及验收期限、已测范围和缺口，列出实际操作与合同功能的对应关系。它是内部进展入口，不是合同验收结论。
@@ -21,7 +23,7 @@
 - [查工具参数](docs/reference.html)：与实际 MCP Schema 同源，按需搜索，无需通读。
 - [环境与部署](docs/env.html)：当前构建串与实测版本、核数据位置、哪些能力来自编译选项而非代码、换机三步探测、跨环境比对的复现前提。
 
-源码版本 0.11.1，适配 OpenMC 0.16.0；服务端使用 Linux/WSL。首次按手册准备环境，升级已有旧环境时可用 `./quickstart.sh --openmc-prefix .runtime/openmc-official` 在本包内另建完整SDK并保留旧环境；运行数据默认保存在本包 `workspace/`，图和报告返回服务端绝对路径，当前不自动下载。
+源码版本 0.11.2，适配 OpenMC 0.16.0；服务端使用 Linux/WSL。首次按手册准备环境，升级已有旧环境时可用 `./quickstart.sh --openmc-prefix .runtime/openmc-official` 在本包内另建完整SDK并保留旧环境；运行数据默认保存在本包 `workspace/`，图和报告返回服务端绝对路径，当前不自动下载。
 
 工具包也可安装使用：在完整源码目录执行 `pip install -e .` 后得到 `mc-agent-tools`（工具直调，等同 `./mc.sh`）与 `mc-agent-tools-serve`（启动 MCP 服务）；依赖只认 `mcp/requirements.txt` 一处。独立wheel只包含接口代码，基础建模/计算需显式设置运行配置和工作区；官方例题、知识库和部署资产仍使用完整源码包，不能以wheel工具发现成功代替完整部署验证。服务端另提供 3 个只读资源：参数规格、官方例题清单、最近工具调用记录。源码运行与安装运行走同一套实现，测试见 `tests/`，CI 在 `.github/workflows/verify.yml`。
 
