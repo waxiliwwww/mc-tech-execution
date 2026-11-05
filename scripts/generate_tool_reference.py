@@ -11,6 +11,26 @@ sys.path.insert(0, str(ROOT / 'mcp'))
 from tools import TOOLS
 
 
+RETURN_NOTES = {
+    'openmc_environment': [
+        ['expected_version / api_version / executable_version_output', 'OpenMC引擎的预期/API/可执行程序版本，不是工具包服务版本。'],
+        ['version_matches', 'OpenMC可执行程序版本匹配；不能证明连接的MCP服务已加载最新代码。服务启动版本见MCP初始化serverInfo.version或管理员查询/health.version，当前本工具未直接返回它。'],
+    ],
+    'openmc_list_artifacts': [
+        ['sha256', '当前文件的SHA256；记录这次取得的文件版本，不代表专业物理验证。'],
+        ['matches_recorded_output = true', '存在作业保存的输出指纹，当前文件与其一致。'],
+        ['matches_recorded_output = false', '存在保存的输出指纹但当前文件不一致；保留现场，停止据此沿用原结果。'],
+        ['matches_recorded_output = null', '没有保存的基线可对照，不等于校验失败，也不表示已校验通过。派生图、报告和results.json通常为null，仍需核对来源、数据和当前sha256。'],
+    ],
+    'openmc_validate_inputs': [
+        ['geometry.checked / completed', '仅请求geometry_check时出现geometry分支；先确认实际检查且完成，未启用、跳过或超时均不能记通过。'],
+        ['geometry.ok / returncode / overlapping_cells', '本次抽样ok=true、returncode=0且overlapping_cells=[]表示未发现重叠；不证明全模型无重叠。ok=false看reason/log_tail，ok=null表示没有完成判定。'],
+        ['geometry.settings_adjusted', '几何检查在临时副本中最多2批、inactive归零、单线程；此字段列设置差异，不修改原输入，也不是按正式采样设置运行。'],
+        ['geometry.overlap_check_summary.low_check', '有值时cells为低于min_checks阈值的栅元数量；null表示未解析到提示，不可直接当作零个低覆盖栅元。摘要可能为空，cells明细最多200条。'],
+    ],
+}
+
+
 def implementation(tool):
     if 'function' in tool:
         try:
@@ -73,6 +93,8 @@ def generate(definitions=None):
             lines.append(table(['关键返回字段', '含义'], [[key, field.get('description', '见 Schema')]
                                                        for key, field in output['properties'].items()]))
             lines.append('<p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>')
+        if name in RETURN_NOTES:
+            lines.append(table(['判读字段', '含义与继续条件'], RETURN_NOTES[name]))
         for title, value in [('完整输入 Schema：嵌套参数、枚举与范围', schema), ('输出 Schema', output)]:
             lines.extend(['<details><summary>' + title + '</summary><pre><code>',
                           escape(json.dumps(value, ensure_ascii=False, indent=2)), '</code></pre></details>'])

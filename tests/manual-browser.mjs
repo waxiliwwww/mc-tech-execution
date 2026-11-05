@@ -34,7 +34,15 @@ try {
   assert.match(await page.locator('#capability-matrix').innerText(),/二维RectLattice/);
   assert.match(await page.locator('#capability-matrix').innerText(),/原生三维RectLattice/);
   await page.goto(url('index.html'));await shot('01-overview');
-  await page.locator('.sidebar nav a[href="toolkit-usage.html"]').click();
+  await page.locator('a[href="toolkit-usage.html#service-version"]').click({timeout:3000});
+  assert.match(await page.locator('#service-version').innerText(),/VERSION/);
+  assert.match(await page.locator('#service-version').innerText(),/未直接返回服务版本/);
+  await page.locator('#service-version a[href="deployment.html#operations"]').click();await anchor('operations');
+  assert.match(await page.locator('#operations').innerText(),/serverInfo.version/);
+  assert.match(await page.locator('#operations').innerText(),/cat VERSION/);
+  await shot('01b-running-version');
+  await page.goto(url('toolkit-usage.html'));
+  assert.doesNotMatch(await page.locator('#start').innerText(),/两条完整流程待按本手册实测/);
   await page.locator('.jump a[href="#assembly"]').click();await anchor('assembly');
   assert.match(await page.locator('#assembly').innerText(),/openmc_create_model/);
   assert.match(await page.locator('#assembly').innerText(),/openmc_define_tally/);
@@ -43,6 +51,8 @@ try {
   assert.match(await page.locator('#assembly').innerText(),/manifest_complete=true/);
   assert.match(await page.locator('#assembly').innerText(),/完整字典比较/);
   assert.match(await page.locator('#assembly').innerText(),/selection_mode/);
+  assert.match(await page.locator('#assembly').innerText(),/RUN_TAG/);
+  assert.doesNotMatch(await page.locator('#assembly').innerText(),/assembly-001/);
   await shot('02-component-workflow');
   await page.locator('.jump a[href="#core"]').click();await anchor('core');
   assert.match(await page.locator('#core').innerText(),/64/);
@@ -52,6 +62,16 @@ try {
   await page.goto(url('toolkit-usage.html#check'));await anchor('check');
   await page.locator('#check details > summary').click();
   assert.match(await page.locator('#check').innerText(),/assert_allclose/);await shot('03-data-crosscheck');
+  await page.locator('#check a[href="project-records.html#reproduction-reference"]').click();await anchor('reproduction-reference');
+  assert.match(await page.locator('#reproduction-reference').innerText(),/1.17112/);
+  assert.match(await page.locator('#reproduction-reference').innerText(),/0.93804/);
+  assert.match(await page.locator('#reproduction-reference').innerText(),/观测记录，不是验收阈值/);
+  assert.match(await page.locator('#reproduction-reference').innerText(),/seed=1/);
+  await shot('03b-conditional-reference');
+  await page.goto(url('reference.html#openmc_list_artifacts'));await anchor('openmc_list_artifacts');
+  assert.match(await page.locator('#openmc_list_artifacts').innerText(),/matches_recorded_output = null/);
+  assert.match(await page.locator('#openmc_list_artifacts').innerText(),/没有保存的基线可对照/);
+  await shot('03c-artifact-integrity');
   journeys.push('new user: scope -> assembly/core workflow -> native data/chart/report checks');
   // Existing-model reader: no need to reconstruct the input from an example ID.
   await page.goto(url('toolkit-usage.html#existing'));await anchor('existing');
@@ -67,6 +87,10 @@ try {
   assert.match(await page.locator('#view').innerText(),/原算例的XML/);
   assert.doesNotMatch(await page.locator('#view').innerText(),/这个“查看”会改写/);
   await shot('04b-geometry-isolation');
+  await page.locator('#view a[href="#geometry-check"]').click();await anchor('geometry-check');
+  assert.match(await page.locator('#geometry-check').innerText(),/overlapping_cells/);
+  assert.match(await page.locator('#geometry-check').innerText(),/不能直接当作0个/);
+  await shot('04c-geometry-judgement');
   await page.goto(url('official-examples.html'));
   assert.match(await page.locator('main').innerText(),/returned_values/);
   assert.doesNotMatch(await page.locator('main').innerText(),/不做数值截断/);

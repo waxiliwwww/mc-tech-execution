@@ -1,5 +1,66 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MC项目资料</title><link rel="stylesheet" href="assets/manual.css"><script src="assets/manual.js" defer></script></head><body><a class="sr-only" href="#content">跳到正文</a><aside class="sidebar"><a class="brand" href="index.html">MC工具包<br>使用与开发手册</a><p class="edition">OpenMC 0.16.0 · 工具包0.11.5</p><nav aria-label="文档导航"><a href="index.html">工具包总览</a><a href="toolkit-usage.html">使用手册</a><a href="deployment.html">部署与接入</a><a href="toolkit.html">架构设计</a><a href="reference.html">接口参考</a></nav><p class="minor">按任务阅读，参数按需查询。<br>可在本地离线打开。<br><a href="project-records.html">项目资料与验证记录</a></p></aside><main id="content"><h1>MC项目资料</h1><p class="lead">项目执行、历史验证和工程依据的查阅入口；使用与部署请从主手册开始。</p><section id="execution"><h2>项目执行资料</h2><ul><li><a href="project-progress.html">合同功能、工具与期限对照</a></li><li><a href="development-plan.html">近期交付总览</a>及<a href="development-details.html">实施明细</a></li><li><a href="expert-trial.html">专家试用准备、记录与判定清单</a></li><li><a href="%E9%AA%8C%E6%94%B6%E5%AF%BC%E5%90%91%E5%BC%80%E5%8F%91%E8%AE%A1%E5%88%92.md">开发计划</a>、<a href="%E6%B5%8B%E8%AF%95%E4%B8%8E%E9%AA%8C%E6%94%B6%E8%AF%B4%E6%98%8E.md">工程测试与验收说明</a></li></ul><p>以上用于项目沟通和执行，不作为下游学习工具包的前置阅读。</p></section><section id="validation"><h2>当前验证范围与资料来源</h2><p>2026-11-05收到第三方DSH三条真实试用反馈；对应落盘记录与后续有限修复见<a href="project-progress.html#trial-20261105">本轮试用记录</a>。0.11.5修复已做代码级检查和既有StatePoint隔离回放，原8770实例没有由本轮重启，托管模板没有启用。</p><p>软件基线0.11.2。0.11.2功能修复时的代码级选测61项及当时16页文档浏览器检查通过；它们不代表两个官方模型的本轮OpenMC计算、DSH自然语言流程或目标服务器部署通过。用户已决定后续按使用手册统一实测，未新增模型预算。</p><p>功能修复证据在artifacts/runs/20261105-capability-reproduction/，文档整合检查另存artifacts/runs/20261105-docs-consolidation/。历史例题实跑记录见<a href="official-examples.html#coverage">官方例题记录</a>，指定业务模型与专业判据仍独立确认。</p><details id="source-audit"><summary>技术指引与PromptMC核查资料</summary><p>覆盖矩阵按当前源码核对。历史已有例题记录与本次改动检查分别保存；本轮按用户安排不执行OpenMC、DSH模型或目标服务器部署。<a href="toolkit-usage.html#assembly">复现手册</a>是待执行步骤，尚无本轮两个模型运行成功结论。</p><details><summary>源码、公开依据与范围核查方法</summary><ul>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MC项目资料</title><link rel="stylesheet" href="assets/manual.css"><script src="assets/manual.js" defer></script></head><body><a class="sr-only" href="#content">跳到正文</a><aside class="sidebar"><a class="brand" href="index.html">MC工具包<br>使用与开发手册</a><p class="edition">OpenMC 0.16.0 · 工具包0.11.5</p><nav aria-label="文档导航"><a href="index.html">工具包总览</a><a href="toolkit-usage.html">使用手册</a><a href="deployment.html">部署与接入</a><a href="toolkit.html">架构设计</a><a href="reference.html">接口参考</a></nav><p class="minor">按任务阅读，参数按需查询。<br>可在本地离线打开。<br><a href="project-records.html">项目资料与验证记录</a></p></aside><main id="content"><h1>MC项目资料</h1><p class="lead">项目执行、历史验证和工程依据的查阅入口；使用与部署请从主手册开始。</p><section id="execution"><h2>项目执行资料</h2><ul><li><a href="project-progress.html">合同功能、工具与期限对照</a></li><li><a href="development-plan.html">近期交付总览</a>及<a href="development-details.html">实施明细</a></li><li><a href="expert-trial.html">专家试用准备、记录与判定清单</a></li><li><a href="%E9%AA%8C%E6%94%B6%E5%AF%BC%E5%90%91%E5%BC%80%E5%8F%91%E8%AE%A1%E5%88%92.md">开发计划</a>、<a href="%E6%B5%8B%E8%AF%95%E4%B8%8E%E9%AA%8C%E6%94%B6%E8%AF%B4%E6%98%8E.md">工程测试与验收说明</a></li></ul><p>以上用于项目沟通和执行，不作为下游学习工具包的前置阅读。</p></section><section id="validation"><h2>当前验证范围与历史记录</h2><p>已有第三方按现行手册完成组件和简化全堆的DSH完整流程、同作业数据核对、目录重名负向用例及一次概率几何检查。下面<a href="#reproduction-reference">工程复现记录</a>列实际条件和证据，不代表本次第三方复测未覆盖的官方阶段流程、CAD、燃耗、扫描、PDF/DOC、远程文件交付或整体验收全部通过；这些能力的历史验证范围另看<a href="project-progress.html">项目进展</a>。</p><details><summary>早期验证阶段：0.11.2—0.11.5修复时的记录</summary><p>以下保留当时状态，不能当作当前仍未实测或服务尚未重启的结论；后续第三方试用见本页工程复现记录。</p><p>2026-11-05收到第三方DSH三条真实试用反馈；对应落盘记录与后续有限修复见<a href="project-progress.html#trial-20261105">本轮试用记录</a>。0.11.3/0.11.4修复阶段做过既有StatePoint隔离回放；0.11.5修复阶段核对的是输入预览与原提交快照。各次源码修复没有自行重启原服务，后续重启和宿主实跑见工程复现记录；托管模板未在这些修复中启用。</p><p>软件基线0.11.2。0.11.2功能修复时的代码级选测61项及当时16页文档浏览器检查通过；它们不代表两个官方模型的本轮OpenMC计算、DSH自然语言流程或目标服务器部署通过。用户已决定后续按使用手册统一实测，未新增模型预算。</p><p>功能修复证据在artifacts/runs/20261105-capability-reproduction/，文档整合检查另存artifacts/runs/20261105-docs-consolidation/。历史例题实跑记录见<a href="official-examples.html#coverage">官方例题记录</a>，指定业务模型与专业判据仍独立确认。</p><section id="reproduction-reference"><h2>工程复现记录：组件与简化全堆</h2><p>来源为2026-11-05第三方DSH按手册实跑报告；本轮另只读核对了两份completed作业、实际settings和results.json。完整DSH操作过程由试用者提供，未在本轮重跑。</p><p>共同条件：工具包运行版本0.11.5（据试用者核对）；OpenMC 0.16.0；particles=1000、batches=12、inactive=2、seed=1、threads=1；核数据库标识official-endfb-vii.1。模板分别为assembly-17x17和core-lattice，网格分别17×17×1和8×8×1。</p><div class="table-wrap"><table><thead><tr><th>模型</th><th>源环境输入目录与作业ID</th><th>历史k估计 ± 标准差（5位小数）</th><th>网格点数 / 零均值格</th></tr></thead><tbody><tr><td>17×17组件</td><td><code>reproduction/assembly-retest-001</code><br><code>55967dec8ae84f0eabd283cc8b4a72f5</code></td><td>1.17112 ± 0.00833</td><td>289 / 0</td></tr><tr><td>21×21简化全堆</td><td><code>reproduction/core-retest-001</code><br><code>6d95307ed8084bfea15204875b20e89b</code></td><td>0.93804 ± 0.01313</td><td>64 / 16</td></tr></tbody></table></div><p><strong>这是观测记录，不是验收阈值。</strong>先完成同作业内的原生数据/图表/报告一致性核对，再对照此表。跨次比较需核对输入指纹、统计设置、种子、核数据文件、引擎构建和线程环境；同名核数据库或相同seed不充分，当前表也未固化所有硬件/构建细节。条件一致时可检查是否复现相同显示值；有差异先定位原因，不能据此直接判工具错误或物理精度不合格，也不自设容差。</p><p>这些源作业位于原服务workspace/.mc-jobs/，新部署包不自带其运行目录；表内数值和下方指纹可离线查，原始StatePoint、日志与报告需从源环境归档交接。若无原数据或环境条件不明确，应记“历史数值不可直接比较”，仍可执行<a href="toolkit-usage.html#check">单次作业的数据核对</a>。</p><details><summary>核对过的实际设置、输入指纹与原始数值</summary><pre><code>[
+  {
+    &quot;model&quot;: &quot;17×17组件&quot;,
+    &quot;job_id&quot;: &quot;55967dec8ae84f0eabd283cc8b4a72f5&quot;,
+    &quot;case_dir&quot;: &quot;reproduction/assembly-retest-001&quot;,
+    &quot;state&quot;: &quot;completed&quot;,
+    &quot;openmc&quot;: &quot;0.16.0&quot;,
+    &quot;library&quot;: &quot;official-endfb-vii.1&quot;,
+    &quot;threads&quot;: 1,
+    &quot;settings&quot;: {
+      &quot;particles&quot;: 1000,
+      &quot;batches&quot;: 12,
+      &quot;inactive&quot;: 2,
+      &quot;seed&quot;: 1
+    },
+    &quot;keff&quot;: {
+      &quot;mean&quot;: 1.1711242164950637,
+      &quot;std_dev&quot;: 0.00833189284922465
+    },
+    &quot;points&quot;: 289,
+    &quot;zero_bins&quot;: 0,
+    &quot;input_hashes&quot;: {
+      &quot;tallies.xml&quot;: &quot;4ef31b7900b0e986af6f560c05c0fa24ed18a20623e5d399f2b93f71ec421179&quot;,
+      &quot;plots.xml&quot;: &quot;49e95cbd61fcd4521ddc7c63fb617287629c3049faaadbb6f2e4e4386871e3b2&quot;,
+      &quot;mc-case.json&quot;: &quot;5e57baa5424fb3adb7452a982d145cc883031c07963e22d1e06daad22a2fdf7d&quot;,
+      &quot;settings.xml&quot;: &quot;99cb5278b5af24228f21cf462408d57d914bb03ab007030a21afa3f8fbb60475&quot;,
+      &quot;geometry.xml&quot;: &quot;c4119623b482d09413595afeec53759ea78de15d1050d89148ebfd80ed75de90&quot;,
+      &quot;materials.xml&quot;: &quot;5a0aadca71e62331d5bc68916480f3af2b78800cadfaa6b35e112ee217c1ed4e&quot;
+    },
+    &quot;statepoint_sha256&quot;: &quot;9d3e9cd8f1a384be58cdf2b69b1751b967079d0bd8cca2b65a2f640e6c6d87d4&quot;
+  },
+  {
+    &quot;model&quot;: &quot;21×21简化全堆&quot;,
+    &quot;job_id&quot;: &quot;6d95307ed8084bfea15204875b20e89b&quot;,
+    &quot;case_dir&quot;: &quot;reproduction/core-retest-001&quot;,
+    &quot;state&quot;: &quot;completed&quot;,
+    &quot;openmc&quot;: &quot;0.16.0&quot;,
+    &quot;library&quot;: &quot;official-endfb-vii.1&quot;,
+    &quot;threads&quot;: 1,
+    &quot;settings&quot;: {
+      &quot;particles&quot;: 1000,
+      &quot;batches&quot;: 12,
+      &quot;inactive&quot;: 2,
+      &quot;seed&quot;: 1
+    },
+    &quot;keff&quot;: {
+      &quot;mean&quot;: 0.9380406029753046,
+      &quot;std_dev&quot;: 0.013130655361883879
+    },
+    &quot;points&quot;: 64,
+    &quot;zero_bins&quot;: 16,
+    &quot;input_hashes&quot;: {
+      &quot;tallies.xml&quot;: &quot;def9bab3d438ba13b11b39e86077526aa77a665b3c7edfe9863f600b1b6bdee9&quot;,
+      &quot;plots.xml&quot;: &quot;e5a5d8659a812d536a0b5d8340ef49a491ce0ba429ae2446524db843f5ac7afd&quot;,
+      &quot;mc-case.json&quot;: &quot;fa5915606e9435344748984176fca880c1af485be961945ff9e984d7ee0c1b55&quot;,
+      &quot;settings.xml&quot;: &quot;cc99f3c17989a71f65700a9b224ddb25106de42e2faf8b8f8c6e4c6a3552fcec&quot;,
+      &quot;geometry.xml&quot;: &quot;b73fbb093fbe95639354190f8c7cdbbba229f648431898b23dcde13c9fd2da9e&quot;,
+      &quot;materials.xml&quot;: &quot;c7e7b90ebdde1279d440c22a15c92329edc1c3a61dbc7b6ed7a1a8d19ffc88fd&quot;
+    },
+    &quot;statepoint_sha256&quot;: &quot;361136aea5c16099e3def3e6cf11097a1060446980319d245238911d41d0b2f3&quot;
+  }
+]</code></pre></details></section><details id="source-audit"><summary>技术指引与PromptMC核查资料</summary><p>覆盖矩阵按当前源码核对。历史已有例题记录与本次改动检查分别保存；早期能力审计阶段按用户安排未执行新的OpenMC、DSH模型或目标服务器部署；此后第三方按手册实跑的范围见<a href="#reproduction-reference">工程复现记录</a>。</p><details><summary>源码、公开依据与范围核查方法</summary><ul>
 <li>生成字段：<a href="../mcp/openmc_model_spec.py">openmc_model_spec.py</a>；修改白名单：<a href="../mcp/openmc_parameters.py">openmc_parameters.py</a>；模板与读取：<a href="../mcp/openmc_worker.py">openmc_worker.py</a>。</li>
 <li>校验：<a href="../mcp/tools.py">MCP Schema</a>、<a href="../mcp/openmc_tools.py">validate_inputs</a>；结果/格式：<a href="../mcp/openmc_visuals.py">openmc_visuals.py</a>、<a href="../mcp/openmc_artifacts.py">产物清单</a>。</li>
 <li><a href="https://docs.openmc.org/en/v0.16.0/pythonapi/index.html">OpenMC 0.16官方API目录</a>用于核对功能面；<a href="https://github.com/openmc-dev/openmc/blob/v0.16.0/openmc/examples.py">官方模型工厂源码</a>用于核对组件和全堆来源。</li>
@@ -12,7 +73,7 @@ MC_TEST_CAD_CONFIG="$PWD/config/openmc.local.json" \
   mcp/.venv/bin/python -m unittest discover -s tests -p 'test_openmc_cad_real.py' -v
 # 仅重导已有成功作业，使用返回的真实服务端作业绝对目录；需报告转换依赖：
 MC_TEST_REPORT_JOB='/真实工作区/.mc-jobs/真实job_id' \
-  mcp/.venv/bin/python -m unittest discover -s tests -p 'test_report_metadata_replay_real.py' -v</code></pre><p>报告复验只读取/重导已有结果，不重复求解；原生结果和图/报告的科学判断仍按实际模型和参考确认。</p></details><details id="historical-core"><summary>历史简化全堆工程记录</summary><p>历史简化全堆作业<code>d5e646736f8e4c0eb197e5d58cc3ff8f</code>使用<code>demos/dsh-core-e1fb3244</code>、2线程，保留了<code>statepoint.12.h5</code>等文件；这是既有短算工程证据，不是本次部署或专业结论。</p></details></section><section id="hosts"><h2>宿主历史联调</h2><p>Windows DSH Desktop历史已连接并请求工具定义，完整自然语言任务待验证；原模型配置保留。Helix历史已执行检索和原文读取，两条完整自然语言任务未通过，按用户决定不追加预算。以上是已有记录，不等于当前运行实例状态。</p></section><details id="environment-history"><summary>环境记录：原2026-11-02、0.7.0本机核查及后续补记</summary><p>保留原记录供追溯，其中“本轮”等指原记录时期；不将其改成现阶段部署成功声明。通用现行部署方法以部署与接入为准。</p><h2 id="env-now"><span class="step">01 / 现状</span><br>当前实际装的是什么</h2><div class="table-wrap"><table><thead><tr><th>项</th><th>实测值</th></tr></thead><tbody>
+  mcp/.venv/bin/python -m unittest discover -s tests -p 'test_report_metadata_replay_real.py' -v</code></pre><p>报告复验只读取/重导已有结果，不重复求解；原生结果和图/报告的科学判断仍按实际模型和参考确认。</p></details><details id="historical-core"><summary>历史简化全堆工程记录</summary><p>历史简化全堆作业<code>d5e646736f8e4c0eb197e5d58cc3ff8f</code>使用<code>demos/dsh-core-e1fb3244</code>、2线程，保留了<code>statepoint.12.h5</code>等文件；这是既有短算工程证据，不是本次部署或专业结论。</p></details></details></section><section id="hosts"><h2>宿主历史联调</h2><p>Windows DSH Desktop历史已连接并请求工具定义，完整自然语言任务待验证；原模型配置保留。Helix历史已执行检索和原文读取，两条完整自然语言任务未通过，按用户决定不追加预算。以上是已有记录，不等于当前运行实例状态。</p></section><details id="environment-history"><summary>环境记录：原2026-11-02、0.7.0本机核查及后续补记</summary><p>保留原记录供追溯，其中“本轮”等指原记录时期；不将其改成现阶段部署成功声明。通用现行部署方法以部署与接入为准。</p><h2 id="env-now"><span class="step">01 / 现状</span><br>当前实际装的是什么</h2><div class="table-wrap"><table><thead><tr><th>项</th><th>实测值</th></tr></thead><tbody>
 <tr><td>conda 包与构建</td><td><code>openmc-0.16.0-dagmc_nompi_py312h63f0379_103</code></td></tr>
 <tr><td>求解器</td><td>OpenMC 0.16.0，Commit hash <code>617d35a5063c57796b43428bc401e627d2011046</code></td></tr>
 <tr><td>Python API</td><td>0.16.0，<code>openmc.lib</code> 可导入</td></tr>
