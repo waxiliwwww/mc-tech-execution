@@ -382,11 +382,11 @@ async def serve(config, log):
                  connectionFile=str(config.connection_file), eventLogFile=str(log.path), heartbeatIntervalMs=HEARTBEAT_SECONDS * 1000)
         print(f"{config.name} {config.version} · MCP 已就绪", flush=True)
         print("─" * 44, flush=True)
-        print(f"地址    {config.url}", flush=True)
-        print("传输    streamable-http", flush=True)
-        print(f"鉴权    {'Bearer（Authorization 头）' if config.token else '未启用'}", flush=True)
-        print(f"工具    {len(TOOLS)}", flush=True)
-        print(f"事件日志：{log.path}", flush=True)
+        print(f"MCP 地址：{config.url}", flush=True)
+        print("传输协议：Streamable HTTP", flush=True)
+        print(f"鉴权方式：{'Bearer（Authorization 头）' if config.token else '无'}", flush=True)
+        print(f"内置工具：{len(TOOLS)} 个", flush=True)
+        print(f"事件日志路径：{log.path}", flush=True)
         beat = asyncio.create_task(heartbeat(log, time.monotonic()))
         await server_task
     finally:

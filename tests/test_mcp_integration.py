@@ -161,7 +161,7 @@ class ProjectIntegration(unittest.IsolatedAsyncioTestCase):
                 tools = (await session.list_tools()).tools
         self.log.seek(0)
         event_path = next(Path(line.split("：", 1)[1].strip()) for line in self.log
-                          if line.startswith("事件日志："))
+                          if line.startswith("事件日志路径："))
         events = [json.loads(line) for line in event_path.read_text().splitlines()]
         discovery = [event for event in events if event["event"] == "tools.listed"]
         self.assertEqual(len(discovery), 1)
