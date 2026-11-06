@@ -33,7 +33,9 @@ class ProjectIntegration(unittest.IsolatedAsyncioTestCase):
             port = listener.getsockname()[1]
         self.url = f"http://127.0.0.1:{port}/mcp"
         self.config = self.directory / "service.json"
-        self.config.write_text(json.dumps({"host": "127.0.0.1", "port": port, "path": "/mcp", "name": "mc-integration", "version": "0.1.0", "clientName": "mc"}))
+        self.version_file = self.directory / "VERSION"
+        self.version_file.write_text("0.1.0\n")
+        self.config.write_text(json.dumps({"host": "127.0.0.1", "port": port, "path": "/mcp", "name": "mc-integration", "versionFile": "VERSION", "clientName": "mc"}))
         self.registry = self.directory / "registry.json"
         self.registry.write_text(json.dumps([{"name": "mc", "transport": "streamable-http", "url": self.url}]))
         self.env = {k: v for k, v in os.environ.items() if not k.startswith(("MCP_", "MC_", "HARNESS_"))}
@@ -79,6 +81,29 @@ class ProjectIntegration(unittest.IsolatedAsyncioTestCase):
 
     async def plan(self):
         return self.data(await self.call("preview_repair", {"path": "input.txt", "old_text": "-1", "new_text": "100"}))["plan_id"]
+
+    async def test_environment_reports_running_service_version_even_after_version_file_changes(self):
+        # A release copied over a live service must not masquerade as restarted.
+        self.version_file.write_text("9.9.9\n")
+        async with streamablehttp_client(self.url) as (read, write, _):
+            async with ClientSession(read, write) as session:
+                init = await session.initialize()
+                result = self.data(await session.call_tool("openmc_environment", {}))
+        with urllib.request.urlopen(self.url.replace("/mcp", "/health")) as response:
+            health = json.load(response)
+        with urllib.request.urlopen(self.url.replace("/mcp", "/info")) as response:
+            info = json.load(response)
+        self.assertEqual(result["service"], {"name": "mc-integration", "version": "0.1.0",
+                                              "version_source": "mcp_server_startup"})
+        self.assertEqual(result["service"]["version"], health["version"])
+        self.assertEqual(result["service"]["version"], info["service"]["version"])
+        self.assertEqual(result["service"]["version"], init.serverInfo.version)
+        self.assertNotEqual(result["service"]["version"], result["expected_version"])
+        # CLI is independent and must not claim to have contacted that MCP server.
+        direct = subprocess.run([sys.executable, str(ROOT / "mcp/cli.py"), "call", "openmc_environment", "{}"],
+                                env=self.env, capture_output=True, text=True, timeout=40)
+        self.assertEqual(direct.returncode, 0, direct.stderr)
+        self.assertNotIn("service", json.loads(direct.stdout))
 
     async def test_resources_are_advertised_and_readable(self):
         async with streamablehttp_client(self.url) as (read, write, _):

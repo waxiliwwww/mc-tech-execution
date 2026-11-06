@@ -105,7 +105,7 @@ RESULTS = {
     'search_knowledge': 'matches包含source、行号、原文与出处；未命中为空，不编造解释。',
     'list_cases': 'cases列出例题ID、来源与准备条件；条目存在不表示已运行。',
     'get_case': 'case与runnable描述能否准备例题；execution_status=not_run不代表计算已完成。',
-    'openmc_environment': '分别检查API、求解器和版本；workspace给出服务端绝对工作区，核数据条件另行核对。',
+    'openmc_environment': 'MCP调用读取service.version（服务启动版本，与/health同源），与包内VERSION核对；version_matches只检查OpenMC。CLI不返回在线服务身份。workspace为服务端绝对工作区；cross_sections_env_set仅检查环境变量，实际核数据须继续模型校核。',
     'openmc_create_model': 'case_dir是新输入目录；files相对该目录；后续先校核再提交。',
     'openmc_prepare_example': 'case_dir是新例题输入；execution_status=not_run表示尚未计算，故障练习预期首次失败。',
     'openmc_validate_inputs': 'structure_valid/problems描述结构检查。仅请求api_check且结构通过时返回openmc_api解析结果；未请求或结构失败时该字段缺席，API解析失败作为工具错误返回。请求semantic_check时返回semantic节：ok（无error级问题）、complete（是否全部检查已执行）、problems统一定位清单（kind/severity/location/detail）、missing_nuclides/nuclide_availability/material_section/tally_section分节状态；跳过时checked=false并给skipped_reason。静态检查不表示物理正确。请求geometry_check时返回geometry节：ok（本次抽样未发现重叠且零退出）、overlapping_cells明细、overlap_check_summary逐单元检查次数、settings_adjusted削减记录、elapsed_seconds与log_tail；引擎缺失/结构未过/超时分别以skipped_reason或completed=false如实报告。概率性检查——通过不能证明无重叠。validation_level相应追加+static_semantics/+openmc_geometry_debug层。',

@@ -14,7 +14,9 @@ from tools import TOOLS
 RETURN_NOTES = {
     'openmc_environment': [
         ['expected_version / api_version / executable_version_output', 'OpenMC引擎的预期/API/可执行程序版本，不是工具包服务版本。'],
-        ['version_matches', 'OpenMC可执行程序版本匹配；不能证明连接的MCP服务已加载最新代码。服务启动版本见MCP初始化serverInfo.version或管理员查询/health.version，当前本工具未直接返回它。'],
+        ['version_matches', '只检查OpenMC可执行程序版本，不是工具包服务版本；MCP调用读取service.version，与包内VERSION对照。'],
+        ['service.name / service.version / service.version_source', 'MCP调用由服务端加入启动时固定的服务名、版本及mcp_server_startup来源，与握手和/health同源；不会随磁盘VERSION更新。CLI直接调用没有此字段，不能据此判断在线服务。'],
+        ['cross_sections_configured / cross_sections_env_set', '均表示OPENMC_CROSS_SECTIONS环境变量是否设置，不是核数据可用性判据。false可以使用nuclear_data指示的受管候选索引；index_exists仍不证明数据齐备，先核对模型核素/热散射名称与索引匹配；静态语义不检查HDF5文件完整性，由部署者按生效索引另核对。'],
     ],
     'openmc_list_artifacts': [
         ['sha256', '当前文件的SHA256；记录这次取得的文件版本，不代表专业物理验证。'],

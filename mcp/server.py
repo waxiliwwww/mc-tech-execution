@@ -250,6 +250,11 @@ def create_app(config, log, tools=None):
             if name not in registry:
                 raise ToolExecutionError("Unknown tool; call tools/list to discover supported tools.")
             result = await execute_tool(registry[name], arguments)
+            if name == 'openmc_environment':
+                # Bind the MCP observation to this server's startup identity, not
+                # a VERSION file that may have changed while it was running.
+                result = {**result, "service": {"name": config.name, "version": config.version,
+                                                "version_source": "mcp_server_startup"}}
             with contextlib.suppress(Exception):
                 log.emit("INFO", "tool.executed", name=name, arguments=parameters)
             if name in ('openmc_plot_results', 'openmc_plot_scan') and result.get('path', '').endswith('.png'):

@@ -261,10 +261,10 @@
 <details class="tool" id="openmc_environment"><summary>openmc_environment
 <span class="tool-purpose">检查OpenMC运行时、API与可执行程序版本；安装成功不代表专业计算验收。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>无参数</td><td>object</td><td>—</td><td>空对象</td><td>不接受额外参数</td><td>{}</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>分别检查API、求解器和版本；workspace给出服务端绝对工作区，核数据条件另行核对。</p>
+<h3>返回怎么看</h3><p>MCP调用读取service.version（服务启动版本，与/health同源），与包内VERSION核对；version_matches只检查OpenMC。CLI不返回在线服务身份。workspace为服务端绝对工作区；cross_sections_env_set仅检查环境变量，实际核数据须继续模型校核。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>workspace</td><td>服务端绝对数据根；工作区相对路径以它为基准。</td></tr><tr><td>cross_sections_env_set</td><td>当前进程是否设置OPENMC_CROSS_SECTIONS；false不代表模型或受管核数据库不可用。旧cross_sections_configured保持此含义。</td></tr><tr><td>nuclear_data</td><td>部署候选库/source/index_path/index_exists；未校验模型所需全部文件，模型显式索引可覆盖。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
-<div class="table-wrap"><table><thead><tr><th>判读字段</th><th>含义与继续条件</th></tr></thead><tbody><tr><td>expected_version / api_version / executable_version_output</td><td>OpenMC引擎的预期/API/可执行程序版本，不是工具包服务版本。</td></tr><tr><td>version_matches</td><td>OpenMC可执行程序版本匹配；不能证明连接的MCP服务已加载最新代码。服务启动版本见MCP初始化serverInfo.version或管理员查询/health.version，当前本工具未直接返回它。</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>判读字段</th><th>含义与继续条件</th></tr></thead><tbody><tr><td>expected_version / api_version / executable_version_output</td><td>OpenMC引擎的预期/API/可执行程序版本，不是工具包服务版本。</td></tr><tr><td>version_matches</td><td>只检查OpenMC可执行程序版本，不是工具包服务版本；MCP调用读取service.version，与包内VERSION对照。</td></tr><tr><td>service.name / service.version / service.version_source</td><td>MCP调用由服务端加入启动时固定的服务名、版本及mcp_server_startup来源，与握手和/health同源；不会随磁盘VERSION更新。CLI直接调用没有此字段，不能据此判断在线服务。</td></tr><tr><td>cross_sections_configured / cross_sections_env_set</td><td>均表示OPENMC_CROSS_SECTIONS环境变量是否设置，不是核数据可用性判据。false可以使用nuclear_data指示的受管候选索引；index_exists仍不证明数据齐备，先核对模型核素/热散射名称与索引匹配；静态语义不检查HDF5文件完整性，由部署者按生效索引另核对。</td></tr></tbody></table></div>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
@@ -276,7 +276,7 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;分别检查API、求解器和版本；workspace给出服务端绝对工作区，核数据条件另行核对。&quot;,
+  &quot;description&quot;: &quot;MCP调用读取service.version（服务启动版本，与/health同源），与包内VERSION核对；version_matches只检查OpenMC。CLI不返回在线服务身份。workspace为服务端绝对工作区；cross_sections_env_set仅检查环境变量，实际核数据须继续模型校核。&quot;,
   &quot;properties&quot;: {
     &quot;workspace&quot;: {
       &quot;description&quot;: &quot;服务端绝对数据根；工作区相对路径以它为基准。&quot;

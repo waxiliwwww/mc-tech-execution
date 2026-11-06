@@ -63,6 +63,17 @@ class Manual(unittest.TestCase):
             tool=next(t for t in TOOLS if t['name']==name)
             self.assertEqual(actual,set(tool['inputSchema']['properties']))
 
+    def test_quick_start_points_to_actual_tools_and_full_walkthrough(self):
+        import sys
+        sys.path.insert(0,str(ROOT/'mcp'))
+        from tools import TOOLS
+        source=(ROOT/'docs/index.html').read_text()
+        names=re.findall(r'data-primary-tool="([^"]+)"',source)
+        self.assertEqual(len(names),12)
+        self.assertEqual(len(set(names)),12)
+        self.assertTrue(set(names)<={t['name'] for t in TOOLS})
+        self.assertIn('toolkit-usage.html#assembly',source)
+
     def test_user_schema_text_is_escaped_without_loss(self):
         spec=importlib.util.spec_from_file_location('mc_reference_escape',ROOT/'scripts/generate_tool_reference.py')
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
