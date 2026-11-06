@@ -1,40 +1,39 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MC工具包使用手册</title><link rel="stylesheet" href="assets/manual.css"><script src="assets/manual.js" defer></script></head><body><a class="sr-only" href="#content">跳到正文</a><aside class="sidebar"><a class="brand" href="index.html">MC工具包<br>使用与开发手册</a><p class="edition">OpenMC 0.16.0 · 工具包0.11.9</p><nav aria-label="文档导航"><a href="index.html">工具包总览</a><a href="toolkit-usage.html" aria-current="page">使用手册</a><a href="deployment.html">部署与接入</a><a href="toolkit.html">架构设计</a><a href="reference.html">接口参考</a></nav><p class="minor">按任务阅读，参数按需查询。<br>可在本地离线打开。<br><a href="project-records.html">项目资料与验证记录</a></p></aside><main id="content"><h1>MC工具包使用手册</h1><p class="lead">从一份明确的输入出发，完成校核、计算、读取、绘图与报告；换模型时复用同一条流程。</p><div class="jump"><a href="#start">使用前准备</a><a href="#assembly">组件完整流程</a><a href="#core">换成全堆</a><a href="#quick-read">3分钟版</a><a href="#own-models">用自己的模型</a><a href="#input-generation">输入参数生成</a><a href="#results">读懂结果</a><a href="#advanced">其他任务</a><a href="#failure">异常与清理</a></div><section id="quick-read"><h2>先读这一页（3分钟）</h2>
-<p>这个包不替你决定物理参数。它做的是：把你给的参数变成 OpenMC 能跑的输入，管住“输入→作业→结果”这条链路，并把每一步的结果留成可追溯的记录。</p>
-<div class="table-wrap"><table><thead><tr><th>你现在有什么</th><th>走哪条路</th></tr></thead><tbody>
-<tr><td>已经有 OpenMC 的 XML</td><td><code>openmc_import_model</code> 导入，再预览/校核</td></tr>
-<tr><td>没有 XML，想用材料、几何、源、计分建一个</td><td><code>openmc_build_model</code> 写一个 JSON（<a href="#input-generation">4.1–4.3</a>）</td></tr>
-<tr><td>只想先跑通一次</td><td>按<a href="#assembly">第2节</a>的组件流程走一遍</td></tr>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MC工具包使用手册</title><link rel="stylesheet" href="assets/manual.css"><script src="assets/manual.js" defer></script></head><body><a class="sr-only" href="#content">跳到正文</a><aside class="sidebar"><a class="brand" href="index.html">MC工具包<br>使用与开发手册</a><p class="edition">OpenMC 0.16.0 · 工具包0.11.9</p><nav aria-label="文档导航"><a href="index.html">工具包总览</a><a href="toolkit-usage.html" aria-current="page">使用手册</a><a href="deployment.html">部署与接入</a><a href="toolkit.html">架构设计</a><a href="reference.html">接口参考</a></nav><p class="minor">按任务阅读，参数按需查询。<br>可在本地离线打开。<br><a href="project-records.html">项目资料与验证记录</a></p></aside><main id="content"><h1>MC工具包使用手册</h1><p class="lead">从一份明确的输入出发，完成校核、计算、读取、绘图与报告；换模型时复用同一条流程。</p><div class="jump"><a href="#start">使用前准备</a><a href="#assembly">组件完整流程</a><a href="#core">换成全堆</a><a href="#quick-read">工具包做什么</a><a href="#own-models">用自己的模型</a><a href="#input-generation">输入参数生成</a><a href="#results">读懂结果</a><a href="#advanced">其他任务</a><a href="#failure">异常与清理</a></div><section id="quick-read"><h2>这个工具包做什么</h2>
+<p>把输入参数转成 OpenMC 输入，提交计算，取回结果。材料、几何、源和计分由使用者提供；工具不推断富集度、材料成分或堆芯设计。</p>
+<div class="table-wrap"><table><thead><tr><th>手上的输入</th><th>入口</th></tr></thead><tbody>
+<tr><td>已有 OpenMC XML</td><td><code>openmc_import_model</code> 导入，然后预览、校核</td></tr>
+<tr><td>没有 XML，用参数新建</td><td><code>openmc_build_model</code> 写 model-spec（<a href="#input-generation">4.1 到 4.3</a>）</td></tr>
+<tr><td>先跑通一次</td><td>按<a href="#assembly">第2节</a>做组件计算</td></tr>
 </tbody></table></div>
-<p>四个词先记住：<code>case_dir</code> 是模型目录；<code>job_id</code> 是一次计算；<code>tally</code> 是要统计的量；<code>instance</code> 是官方例题实例。其余名词遇到再查。</p>
-<p>正常顺序只有四步：<strong>准备输入 → 校验 → 提交 → 读结果</strong>。不需要先读完整本手册。</p><p><strong>怎么读：</strong>第一次先看这一页，再照着<a href="#assembly">第2节</a>做一遍；卡住时再跳到对应章节查，不要从头逐字读。</p>
-<p><strong>两条读法：</strong>第一次用，按“本页 → 第2节 → 第4节”走；已经熟悉 OpenMC，直接展开下面的“熟手速查”，或跳到 <a href="#input-more">4.5</a> 和接口参考。</p>
-<details><summary>熟手速查：命令链与关键约束（展开）</summary>
-<pre class="command"><code># 已有 XML：导入
+<p>下文用四个术语：<code>case_dir</code> 是模型目录，<code>job_id</code> 是一次计算，<code>tally</code> 是计分，<code>instance</code> 是官方例题实例。</p>
+<p>已有 OpenMC 经验，可以直接用下面的命令；字段和限制见第4节。</p>
+<details><summary>命令链（展开）</summary>
+<pre class="command"><code># 导入已有 XML
 ./mc.sh call openmc_import_model '{"source_dir":"inbox/my-model","target_dir":"cases/my-model"}'
 
-# 没有 XML：用 spec 一条命令建好并跑完
+# 用 model-spec 建好并跑完
 mcp/.venv/bin/python examples/model_workflow.py --spec my-spec.json --case-dir cases/my-model
 
-# 或手工逐段
+# 分步执行
 ./mc.sh call openmc_preview_input '{"case_dir":"cases/my-model"}'
 ./mc.sh call openmc_validate_inputs '{"case_dir":"cases/my-model","api_check":true,"semantic_check":true}'
 ./mc.sh call openmc_submit_job '{"case_dir":"cases/my-model","name":"trial","threads":1}'
 ./mc.sh call openmc_job_status '{"job_id":"JOB_ID"}'
 ./mc.sh call openmc_read_results '{"job_id":"JOB_ID"}'
 ./mc.sh call openmc_export_report '{"job_id":"JOB_ID"}'</code></pre>
-<p>关键约束：长度cm、能量eV、温度K；ID显式且引用必须存在；面只有x/y/z平面、x/y/z圆柱、球；格架只有二维矩形；不支持六角、CAD进spec、任意Python；不写tally就没有结果；生成成功不等于物理正确。</p>
+<p>长度用 cm，能量用 eV，温度用 K。ID 由调用方指定，引用必须存在。面支持 x/y/z 平面、x/y/z 圆柱和球；格架只支持二维矩形。六角栅格、CAD 和任意 Python 不能写进 model-spec。计分不定义就没有结果。</p>
 </details>
 </section>
-<section id="start"><h2>1．使用前准备</h2><p>计算运行在Linux服务器或WSL。先由管理员按<a href="deployment.html#setup">部署说明</a>准备环境；通过DSH使用时，先完成<a href="deployment.html#dsh">连接与工具发现</a>。以下工具均以服务器工作区为文件基准，客户端文件不会自动上传。尚未启动服务时，先到<a href="deployment.html#mcp-service">启动标准MCP服务</a>；工具已列出但调用失败，直接按<a href="deployment.html#connection-troubleshooting">Windows连接诊断</a>检查，不以工具列表代替在线状态。</p><p id="service-version"><strong>先确认所连接服务的版本：</strong>将本包VERSION与服务实际运行版本对照，不一致先按部署说明更新/重启正确实例，核对后再计算。方法见<a href="deployment.html#operations">运行版本核对</a>。MCP调用<code>openmc_environment</code>读取<code>service.version</code>，它是当前服务启动版本，与/health和握手同源；<code>version_matches</code>只针对OpenMC。缺少service字段表示未取得这项证明，先核对部署版本；Windows也可按部署页直接查询/health，无须一概交管理员。CLI直接调用不代表某个在线MCP服务，不返回service字段。</p><p>先调用<code>openmc_environment</code>，确认<code>api_available</code>、<code>executable_available</code>、<code>version_matches</code>为true，并记住workspace。<code>cross_sections_configured</code>和<code>cross_sections_env_set</code>只检查环境变量；false不单独阻断，也不能单独放行。连续能模型先核对<code>nuclear_data.source/index_path/index_exists</code>候选索引，再在2.2核对模型核素/S(a,b)与索引的语义匹配。该静态检查不证明索引引用的HDF5文件存在、可读或内容正确；数据文件完整性由部署者按生效索引另行核对，无法确认就记未验证，不把index_exists=true或complete=true当全库齐备。模型显式索引可覆盖部署候选，合成多群模型则使用其自带数据。详见<a href="deployment.html#nuclear-data">核数据选择</a>。通过DSH时另按<a href="deployment.html#dsh">参数定义刷新步骤</a>检查当前会话。本文默认一次一个任务、1线程；目录、材料、几何、源和计分分别决定“在哪算、算什么、统计什么”。</p><p><strong>复现状态：</strong>已有第三方按本手册完成组件、全堆及同作业内的数据核对，记录见<a href="project-records.html#reproduction-reference">工程复现记录</a>。这不预填你在新机器、新部署上的结果；仍须保存自己的输入、编号和核对记录。1000粒子/12批/2非活跃批是工程练习设置，专业计算需另行确定采样与收敛条件。</p><p>查其他官方例题时推荐openmc_list_official_examples传group="api"、limit=10、summary=true；按返回next_offset继续，详情用openmc_get_official_example。count是筛选总数，returned_count是本页条数，不能将分页首屏当成全部例题。</p></section><section id="assembly"><h2>2．用官方17×17组件完成一次计算</h2><p class="minor"><strong>熟手速查：</strong><code>create_model</code> → <code>define_tally</code> → <code>preview_input</code> → <code>validate_inputs</code> → <code>submit_job</code> → <code>job_status</code> → <code>read_results</code> → <code>export_report</code>。第一次用按 2.1–2.4 逐步做。</p><p><strong>研究对象：</strong>OpenMC内置<code>openmc.examples.pwr_assembly()</code>，使用官方组件几何与材料。我们适配生成输入，新增规则网格flux计分并覆盖采样设置。它不是甲方指定组件，也不是未修改的官方完整统计计算。</p>
-<p><strong>先理解四个输入：</strong>case_dir是服务器工作区内的新模型目录；particles=1000是每代粒子数；batches=12是总批数；inactive=2是前两批不计入活跃统计。本次仅有10个活跃批，便于学习接口，专家计算需自行确定采样与收敛条件。</p>
-<h3>2.1 新建输入，追加明确要计算的量</h3><p><strong>先选本次唯一标识：</strong>例如当前日期时间加4位随机字符，作为<code>RUN_TAG</code>。将下文所有RUN_TAG统一替换成你选定的实际字符串；它是手册占位符，工具不会自动替换。组件和全堆用各自的新目录，后续步骤沿用实际返回的case_dir；遇到重名停下换新标识，不删除或复用旧目录。</p><p><strong>创建模型 openmc_create_model</strong></p><pre><code>{
+<section id="start"><h2>1．使用前准备</h2><p>计算运行在Linux服务器或WSL。先由管理员按<a href="deployment.html#setup">部署说明</a>准备环境；通过DSH使用时，先完成<a href="deployment.html#dsh">连接与工具发现</a>。以下工具均以服务器工作区为文件基准，客户端文件不会自动上传。尚未启动服务时，先到<a href="deployment.html#mcp-service">启动标准MCP服务</a>；工具已列出但调用失败，直接按<a href="deployment.html#connection-troubleshooting">Windows连接诊断</a>检查，不以工具列表代替在线状态。</p><p id="service-version"><strong>先确认所连接服务的版本：</strong>将本包VERSION与服务实际运行版本对照，不一致先按部署说明更新/重启正确实例，核对后再计算。方法见<a href="deployment.html#operations">运行版本核对</a>。MCP调用<code>openmc_environment</code>读取<code>service.version</code>，它是当前服务启动版本，与/health和握手同源；<code>version_matches</code>只针对OpenMC。缺少service字段表示未取得这项证明，先核对部署版本；Windows也可按部署页直接查询/health，无须一概交管理员。CLI直接调用不代表某个在线MCP服务，不返回service字段。</p><p>先调用<code>openmc_environment</code>，确认<code>api_available</code>、<code>executable_available</code>、<code>version_matches</code>为true，并记住workspace。<code>cross_sections_configured</code>和<code>cross_sections_env_set</code>只检查环境变量；false不单独阻断，也不能单独放行。连续能模型先核对<code>nuclear_data.source/index_path/index_exists</code>候选索引，再在2.2核对模型核素/S(a,b)与索引的语义匹配。该静态检查不证明索引引用的HDF5文件存在、可读或内容正确；数据文件完整性由部署者按生效索引另行核对，无法确认就记未验证，不把index_exists=true或complete=true当全库齐备。模型显式索引可覆盖部署候选，合成多群模型则使用其自带数据。详见<a href="deployment.html#nuclear-data">核数据选择</a>。通过DSH时另按<a href="deployment.html#dsh">参数定义刷新步骤</a>检查当前会话。本文默认一次一个任务、1线程；目录、材料、几何、源和计分分别决定“在哪算、算什么、统计什么”。</p><p><strong>复现状态：</strong>已有第三方按本手册完成组件、全堆及同作业内的数据核对，记录见<a href="project-records.html#reproduction-reference">工程复现记录</a>。这不预填你在新机器、新部署上的结果；仍须保存自己的输入、编号和核对记录。1000粒子/12批/2非活跃批是工程练习设置，专业计算需另行确定采样与收敛条件。</p><p>查其他官方例题时推荐openmc_list_official_examples传group="api"、limit=10、summary=true；按返回next_offset继续，详情用openmc_get_official_example。count是筛选总数，returned_count是本页条数，不能将分页首屏当成全部例题。</p></section><section id="assembly"><h2>2．用官方17×17组件完成一次计算</h2><p class="minor"><strong>已有 OpenMC 经验：</strong><code>create_model</code> → <code>define_tally</code> → <code>preview_input</code> → <code>validate_inputs</code> → <code>submit_job</code> → <code>job_status</code> → <code>read_results</code> → <code>export_report</code>。第一次使用按 2.1–2.4 做。</p><p>本例使用 OpenMC 内置的 <code>openmc.examples.pwr_assembly()</code>，几何和材料来自官方组件。输入由工具适配生成，增加规则网格 flux 计分，并覆盖采样设置。这是公开示例，不是甲方组件；输入经过适配，不是未修改的官方完整统计计算。</p>
+<p>四个参数：<code>case_dir</code> 是服务器工作区里的新模型目录；<code>particles=1000</code> 是每代粒子数；<code>batches=12</code> 是总批数；<code>inactive=2</code> 是前两批不计入统计。这里只有10个活跃批，用于练习接口；正式计算要另定采样和收敛条件。</p>
+<h3>2.1 新建输入，追加明确要计算的量</h3><p>先给本次计算取一个唯一标识，例如日期时间加 4 位随机字符，作为 <code>RUN_TAG</code>。下文出现的 RUN_TAG 都要替换成这个字符串；工具不会自动替换。组件和全堆各用新目录，后续步骤沿用返回的 <code>case_dir</code>。目录重名就换标识，不要删除或复用旧目录。</p><p><strong>创建模型 openmc_create_model</strong></p><pre><code>{
   "case_dir": "reproduction/assembly-RUN_TAG",
   "template": "assembly-17x17",
   "particles": 1000,
   "batches": 12,
   "inactive": 2
-}</code></pre><p>目录已存在就停下，保留旧输入，改用新的后缀。成功后记录返回的case_dir。模型内容来自包内官方工厂适配，不是DSH现场编写物理算法。</p><p id="assembly-tally"><strong>定义计分 openmc_define_tally</strong></p><pre><code>{
+}</code></pre><p>目录已存在就停下，保留旧输入，换一个新的后缀。成功后记录返回的 <code>case_dir</code>。模型由包内官方工厂适配生成，不是 DSH 现场编写的物理算法。</p><p id="assembly-tally"><strong>定义计分 openmc_define_tally</strong></p><pre><code>{
   "case_dir": "reproduction/assembly-RUN_TAG",
   "name": "assembly central slice flux",
   "scores": ["flux"],
@@ -86,7 +85,7 @@ mcp/.venv/bin/python examples/model_workflow.py --spec my-spec.json --case-dir c
 }</code></pre><p>保留selection_mode、selection、points、chart、series_json和series_csv；应为selected、同一T/flux/total/空筛选、289点。报告引用的是完整所选曲线，不会自动嵌入前一张网格热图；热图作为独立产物一起交付。Markdown无需Office；PDF等需另配转换环境。</p><p><strong>列产物 openmc_list_artifacts</strong></p><pre><code>{
   "kind": "job",
   "identifier": "J"
-}</code></pre><p>记录directory和每个artifact.server_path，下一节按这些真实文件核对。不要用DSH当前目录猜测.mc-jobs的位置。<code>matches_recorded_output</code>为<code>true</code>表示当前SHA256与作业保存的输出指纹一致；<code>false</code>表示有记录且不一致，应保留现场、停止据此沿用原结果；<code>null</code>表示没有保存的基线可对照，不等于失败。派生图、报告和results.json通常为null，仍应保留当前sha256并按第5节核对数据及来源。指纹一致不代表物理正确。</p></section><section id="core"><h2>3．沿同一流程换成简化全堆</h2><p class="minor"><strong>熟手速查：</strong>同一条链，只把 <code>create_model</code> 的模板换成 <code>core-lattice</code>，tally 换成 8×8 中心切片；作业名、job_id、tally_id 都重新记录。第一次用按下面替换表逐步做。</p><p>只在组件流程完成后开始，避免同时计算。模型来自<code>openmc.examples.pwr_core()</code>，官方21×21格架基准。它包含多层结构和不同材料，是比单棒更适合观察接入范围的公开例子；当前低统计和8×8网格仍是工程练习。少量粒子、少量活跃批次下，逐批k和最终估计可能明显波动；不能仅凭某次k估计或逐批波动区间就认定正常、异常或准确率达标。需要检查源收敛和有效统计量，并在受控条件下增加采样、重复运行、对照可靠参考；本手册不为该例预设物理正确区间。</p>
+}</code></pre><p>记录directory和每个artifact.server_path，下一节按这些真实文件核对。不要用DSH当前目录猜测.mc-jobs的位置。<code>matches_recorded_output</code>为<code>true</code>表示当前SHA256与作业保存的输出指纹一致；<code>false</code>表示有记录且不一致，应保留现场、停止据此沿用原结果；<code>null</code>表示没有保存的基线可对照，不等于失败。派生图、报告和results.json通常为null，仍应保留当前sha256并按第5节核对数据及来源。指纹一致不代表物理正确。</p></section><section id="core"><h2>3．沿同一流程换成简化全堆</h2><p class="minor"><strong>已有 OpenMC 经验：</strong>同一条链，只把 <code>create_model</code> 的模板换成 <code>core-lattice</code>，tally 换成 8×8 中心切片；作业名、job_id、tally_id 都重新记录。第一次使用按下面的替换表做。</p><p>组件流程跑通后再做这一步，避免同时提交两个计算。模型来自 <code>openmc.examples.pwr_core()</code>，是官方 21×21 格架基准。它有多层结构和多种材料，比单棒更适合观察接入范围；当前低统计和 8×8 网格仍是工程练习。粒子数和活跃批少时，逐批 k 和最终估计会波动；不能只凭一次 k 或逐批波动判断正常、异常或准确率达标。要检查源收敛和有效统计量，在受控条件下增加采样、重复运行，并对照可靠参考。本手册不为本例预设物理正确区间。</p>
 <div class="table-wrap"><table><thead><tr><th>位置</th><th>组件参数</th><th>全堆替换值</th></tr></thead><tbody><tr><th>create_model</th><td>assembly-17x17</td><td>template=core-lattice；case_dir=reproduction/core-RUN_TAG；采样仍1000/12/2</td></tr><tr><th>define_tally</th><td>17×17×1，宽21.42cm</td><td>8×8×1；lower_left=[-200,-200,-1]；upper_right=[200,200,1]；name=core central slice flux</td></tr><tr><th>作业和选择</th><td>组件任务名与J/T</td><td>新名称“全堆公开模型试用-001”，记录全堆自己的J/T；不可沿用组件编号</td></tr><tr><th>核对点数</th><td>289</td><td>64；这只是中心层粗网格，不是全堆每个组件的功率分布</td></tr></tbody></table></div>
 <p>逐步调用顺序及停止规则与例一相同：创建→追加计分→预览/校核→提交/终态→读取→热图/曲线/所选报告→产物。全堆资源与用时可能更高，超时保留原作业；不能通过增加资源无限重试。</p>
 <details><summary>可直接交给DSH的任务说明（两条分别发送）</summary><pre><code>仅通过mc服务的MCP工具做组件例题，不调用Shell代替工具，不安装软件。
@@ -106,15 +105,9 @@ particles=1000、batches=12、inactive=2、threads=1。
 新增core central slice flux计分，网格[8,8,1]，范围[-200,-200,-1]到[200,200,1]。
 其余检查与停止条件沿用组件流程，任务名使用“全堆公开模型试用-”加本次唯一标识。
 这次必须保存自己的case_dir、job_id、tally_id，不复用组件编号；期望64个计分点。
-一次只提交一个任务，输出完整产物位置及限制，不能把中心切片解释为全堆功率分布。</code></pre><p>DSH没有按任务要求调用时，记录偏离步骤和原始返回；人工补操作要单独记录。</p></details></section><section id="own-models"><h2>4．换成自己的输入</h2><p>这一节回答三个问题：模型从哪来、参数怎么写、写完怎么确认。已经熟悉 OpenMC 的人，直接用上面的“熟手速查”，或跳到<a href="#input-more">4.5</a>；第一次用，按<a href="#input-generation">4.1</a>→<a href="#input-example">4.3</a>走一遍，字段表需要时再展开。</p>
-<h3 id="input-generation">4.1 先选路线（30秒）</h3>
-<p>大多数情况只有两种：</p>
-<div class="table-wrap"><table><thead><tr><th>你的情况</th><th>用哪个工具</th><th>你需要准备</th></tr></thead><tbody>
-<tr><td>已经有 OpenMC 的 XML</td><td><code>openmc_import_model</code></td><td>一个放 XML 和依赖的目录</td></tr>
-<tr><td>没有 XML，想用参数建</td><td><code>openmc_build_model</code></td><td>一个 JSON，写清材料、几何、源、计分</td></tr>
-</tbody></table></div>
-<p>其余三种先不用记：固定模板适合跑通流程；CAD 适合已有 STEP；改参适合已有模型只改密度/温度/源强。<strong>它们都不是“自动做物理设计”。</strong></p>
-<details><summary>展开：五条路线完整对照</summary>
+一次只提交一个任务，输出完整产物位置及限制，不能把中心切片解释为全堆功率分布。</code></pre><p>DSH没有按任务要求调用时，记录偏离步骤和原始返回；人工补操作要单独记录。</p></details></section><section id="own-models"><h2>4．换成自己的输入</h2><p>模型来源有两种：已有 XML 就导入；没有 XML 就用 model-spec 写 JSON。已有模型只改密度、温度、面系数或源强时，用参数发现和副本，见4.5。下面给出路线、JSON 格式和 3×2 组件的完整流程。</p>
+<h3 id="input-generation">4.1 选路线</h3>
+<p>已有 OpenMC XML，用 <code>openmc_import_model</code> 导入。没有 XML，用 <code>openmc_build_model</code> 写 model-spec。已有模型只改密度、温度、面系数或源强，用 <code>openmc_list_parameters</code> 发现可改项，再用 <code>openmc_prepare_case</code> 建副本。固定模板和 CAD 各有单独入口。</p>
 <div class="table-wrap"><table><thead><tr><th>路线</th><th>什么时候用</th><th>工具</th><th>边界</th></tr></thead><tbody>
 <tr><td>固定模板</td><td>先跑通流程，或要一个官方/示例几何</td><td><code>openmc_create_model</code></td><td>几何固定，只开放统计设置</td></tr>
 <tr><td>model-spec</td><td>自己给材料、几何、源、计分</td><td><code>openmc_build_model</code></td><td>受控 CSG：平面/圆柱/球、宇宙、二维矩形格架；不支持六角/CAD/任意 Python</td></tr>
@@ -122,11 +115,10 @@ particles=1000、batches=12、inactive=2、threads=1。
 <tr><td>CAD</td><td>已有 STEP，需要 DAGMC</td><td><code>openmc_convert_cad</code>、<code>openmc_build_dagmc_model</code></td><td>材料标签、缩放、网格质量需人工确认</td></tr>
 <tr><td>已有模型改参</td><td>只改密度、温度、部分面系数、源强</td><td><code>openmc_list_parameters</code>、<code>openmc_prepare_case</code></td><td>只接受发现接口返回的键；不改拓扑</td></tr>
 </tbody></table></div>
-</details>
+<p>导入和 model-spec 最常用。</p>
 
-<h3 id="input-spec">4.2 用 JSON 描述模型</h3>
-<p>把模型想成三张清单：<strong>材料</strong>、<strong>几何</strong>、<strong>怎么算</strong>。JSON 就是这三张清单，工具负责检查并变成 XML。长度用 cm，能量用 eV，温度用 K。</p>
-<p>先看一个完整、能跑的最小例子：一个半径 8 cm 的 U235 球，300 粒子 × 20 批，统计通量。</p>
+<h3 id="input-spec">4.2 model-spec 的写法</h3>
+<p>model-spec 是一个 JSON，描述材料、面、栅元、运行设置和计分。工具检查字段并导出 XML。长度用 cm，能量用 eV，温度用 K。下面是一个可运行的球模型：半径 8 cm，300 粒子、20 批、5 个非活跃批，统计通量。</p>
 <pre><code>{
   "schema_version": "1",
   "name": "u235-sphere",
@@ -145,17 +137,17 @@ particles=1000、batches=12、inactive=2、threads=1。
                "inactive": 5, "source": {"type": "point", "point": [0, 0, 0]}},
   "tallies": [{"id": 1, "scores": ["flux"]}]
 }</code></pre>
-<p>逐块看：</p>
+<p>字段含义：</p>
 <ul>
-<li><code>materials</code>：每个材料一个编号、密度、核素和份额。工具不自动算 UO₂ 化学式，也不推断富集度；<code>U235</code>/<code>U238</code>/<code>O16</code> 的份额要你给。</li>
-<li><code>surfaces</code>：只支持三种平面、三种圆柱和球；<code>region</code>里的 <code>-1</code> 表示“1 号面的内部”。</li>
-<li><code>cells</code>：用面围出区域，<code>fill</code> 决定里面填材料、宇宙、格架还是真空。</li>
-<li><code>settings</code>：算多少粒子、多少批、源在哪。本征值模式至少留 2 个活跃批。</li>
-<li><code>tallies</code>：要统计什么；<strong>不写就没有结果</strong>。这里统计通量。</li>
+<li><code>materials</code>：材料编号、密度、核素和份额。UO₂ 的氧份额和 U235 富集度要自己写，工具不推断。</li>
+<li><code>surfaces</code>：面。支持 x/y/z 平面、x/y/z 圆柱和球；<code>region: "-1"</code> 表示 1 号面内部。</li>
+<li><code>cells</code>：用面围出区域，<code>fill</code> 指定材料、宇宙、格架或真空。</li>
+<li><code>settings</code>：粒子数、批数、非活跃批数和源。本征值模式至少两个活跃批。</li>
+<li><code>tallies</code>：统计量。不写 tallies 就没有结果。</li>
 </ul>
-<p>所有编号都是你定的，引用必须存在；多写一个字段会被拒绝，不会静默忽略。</p>
-<details><summary>展开：model-spec 字段速查表</summary>
-<p>下表是导航，完整 Schema 以 <code>openmc_model_capabilities</code> 返回的 <code>spec_schema</code> 为准。</p>
+<p>编号由调用方指定，引用必须存在。未知字段会被拒绝。</p>
+<details><summary>字段表（展开）</summary>
+<p>完整 Schema 以 <code>openmc_model_capabilities</code> 返回的 <code>spec_schema</code> 为准。</p>
 <div class="table-wrap"><table><thead><tr><th>对象</th><th>必填</th><th>可选/约束</th><th>落成什么</th></tr></thead><tbody>
 <tr><td>顶层</td><td><code>schema_version</code>=<code>"1"</code>、<code>name</code>、<code>materials</code>、<code>surfaces</code>、<code>cells</code>、<code>root_universe</code>、<code>settings</code></td><td><code>lattices</code>、<code>tallies</code>；根宇宙必须含栅元；不接受额外字段</td><td>整份模型</td></tr>
 <tr><td>materials</td><td><code>id</code>、<code>name</code>、<code>density</code>、<code>density_unit</code>、<code>percent_type</code>、<code>nuclides[{name,fraction}]</code></td><td><code>temperature</code>(K)、<code>sab[]</code>、<code>depletable</code>、<code>volume</code>(cm³)；密度&gt;0；单位<code>g/cm3|atom/b-cm|atom/cm3</code>；份额口径<code>ao|wo</code></td><td><code>materials.xml</code></td></tr>
@@ -167,27 +159,32 @@ particles=1000、batches=12、inactive=2、threads=1。
 </tbody></table></div>
 </details>
 
-<h3 id="input-example">4.3 跟着做：3×2 组件</h3>
-<p>不跳步，从需求走到能提交的目录。</p>
-<ol>
-<li><strong>需求</strong>：3×2 组件，栅距 1.2 cm，燃料/水布局，外边界反射，统计通量。</li>
-<li><strong>写 JSON</strong>：复制 <code>examples/model-specs/rectangular-assembly.json</code>。关键只有四处：<code>materials</code> 写燃料和水；<code>surfaces</code> 写六个外平面；<code>cells</code> 写燃料棒/水栅元；<code>lattices</code> 写两行三列：<code>[[1,2,1],[2,1,1]]</code>，<code>pitch=[1.2,1.2]</code>。计分写 <code>scores=["flux"]</code> 加一个 mesh 过滤。</li>
-<li><strong>生成</strong>：<pre class="command"><code>mcp/.venv/bin/python - &lt;&lt;'PY'
+<h3 id="input-example">4.3 3×2 组件</h3>
+<p>以 <code>examples/model-specs/rectangular-assembly.json</code> 为例。组件 3×2，栅距 1.2 cm，燃料和水交替，外边界反射，统计通量。</p>
+<p>JSON 中的关键字段：<code>materials</code> 写燃料和水；<code>surfaces</code> 写六个外平面；<code>cells</code> 写燃料棒和水栅元；<code>lattices</code> 写 <code>[[1,2,1],[2,1,1]]</code>，<code>pitch=[1.2,1.2]</code>。计分写 <code>scores=["flux"]</code>，加一个 mesh 过滤。</p>
+<p>生成：</p>
+<pre class="command"><code>mcp/.venv/bin/python - &lt;&lt;'PY'
 import json, subprocess, sys
 from pathlib import Path
 spec = json.loads(Path('examples/model-specs/rectangular-assembly.json').read_text())
 subprocess.run([sys.executable, 'mcp/cli.py', 'call', 'openmc_build_model',
                 json.dumps({'case_dir': 'cases/my-assembly', 'spec': spec})], check=True)
-PY</code></pre></li>
-<li><strong>确认</strong>：先看返回的 <code>case_dir</code>、<code>materials.xml/geometry.xml/settings.xml/tallies.xml</code>、<code>model-spec.json</code>、<code>build_model.py</code>、<code>mc-case.json</code>；再看 <code>api_parsed=true</code> 和材料/栅元/格架/计分数量；最后跑预览和校核，看问题清单是否为空。<pre class="command"><code>./mc.sh call openmc_preview_input '{"case_dir":"cases/my-assembly"}'
-./mc.sh call openmc_validate_inputs '{"case_dir":"cases/my-assembly","api_check":true,"semantic_check":true}'</code></pre></li>
-<li><strong>常见错误</strong>：<code>region</code> 引用了不存在的面，会报“面引用不存在”；多写字段会报“不支持的字段”；材料缺密度会报“缺少必需字段”。这些都在提交前挡住，不会等到 OpenMC 启动才失败。</li>
-</ol>
-<p>生成成功只说明 XML 已由 OpenMC API 写出并读回，<strong>不说明物理正确</strong>。密度、尺寸、富集度、边界是否合理，仍要人确认。</p>
+PY</code></pre>
+<p>返回后检查：</p>
+<ul>
+<li><code>case_dir</code> 下有 <code>materials.xml</code>、<code>geometry.xml</code>、<code>settings.xml</code>、<code>tallies.xml</code>；</li>
+<li>目录里有 <code>model-spec.json</code>、<code>build_model.py</code>、<code>mc-case.json</code>；</li>
+<li><code>api_parsed=true</code>，材料、栅元、格架和计分数量与输入一致；</li>
+<li>预览和校核返回的问题清单为空。</li>
+</ul>
+<pre class="command"><code>./mc.sh call openmc_preview_input '{"case_dir":"cases/my-assembly"}'
+./mc.sh call openmc_validate_inputs '{"case_dir":"cases/my-assembly","api_check":true,"semantic_check":true}'</code></pre>
+<p>常见错误：<code>region</code> 引用不存在的面，会报“面引用不存在”；多写字段会报“不支持的字段”；材料缺密度会报“缺少必需字段”。这些错误在提交前报出，不会等到 OpenMC 启动。</p>
+<p>生成成功表示 XML 已由 OpenMC API 写出并读回；它不说明物理正确。这些检查覆盖结构和引用，密度、尺寸、富集度和边界是否符合物理设计，需要使用者判断。</p>
 
-<h3 id="input-coverage">4.4 能做到哪，做不到哪</h3>
-<p>一句话：<strong>常规压水堆的栅元、矩形组件、矩形堆芯能直接建；六角栅格、CAD、复杂源、复杂计分不行，走别的路线。</strong></p>
-<details><summary>展开：支持矩阵</summary>
+<h3 id="input-coverage">4.4 支持范围</h3>
+<p>常规压水堆栅元、矩形组件和矩形堆芯可以直接建。六角栅格、CAD、复杂源和复杂计分不在 model-spec 内，需要原生 XML、CAD 或自定义源路线。</p>
+<details><summary>支持矩阵（展开）</summary>
 <div class="table-wrap"><table><thead><tr><th>已知用途</th><th>spec直接支持</th><th>说明/替代</th></tr></thead><tbody>
 <tr><td>压水堆栅元（圆柱/球、显式材料、点/盒源）</td><td>是</td><td>最常见的新建场景</td></tr>
 <tr><td>17×17矩形组件</td><td>是</td><td>二维矩形格架</td></tr>
@@ -201,9 +198,10 @@ PY</code></pre></li>
 <tr><td>复杂tally</td><td>部分</td><td>只有energy/material/mesh过滤</td></tr>
 </tbody></table></div>
 </details>
-<p>这些比例只能按类别粗估：直接支持约3–4类，部分支持约3类，不支持约2–3类；折合“直接覆盖”约40–50%，算上替代路线约70%。按全部OpenMC模型没有可信样本，不能给单一百分比；官方48个例题也不是按spec能力抽样，不能用完成数反推建模范围。</p>
+<p>按用途类别估计，直接支持约3–4类，部分支持约3类，不支持约2–3类；折合直接覆盖约40–50%，算上替代路线约70%。这是工程估计，不是按全部 OpenMC 模型抽样得到的比例。官方48个例题也不能用来反推覆盖率。</p>
 
-<h3 id="input-more">4.5 需要时再看：导入、改参、完整脚本</h3>
+<h3 id="input-more">4.5 导入、改参与完整脚本</h3>
+<p>已有模型、改参或批处理时看这一节。</p>
 <details id="parameter-layers"><summary>脚本选项、工具参数和模型字段有什么区别</summary><div class="table-wrap"><table><thead><tr><th>层次</th><th>控制什么</th></tr></thead><tbody><tr><td>示例脚本选项</td><td>如--particles，只控制该脚本已开放的配置，不是模型能力全集。</td></tr><tr><td>工具调用参数</td><td>case_dir、threads、tally_id描述在哪份输入上做什么操作，MCP与CLI用同一Schema。</td></tr><tr><td>模型描述字段</td><td>材料、几何、源、计分等由spec或原生输入表达；自动改参仅接受openmc_list_parameters实际返回的键。</td></tr></tbody></table></div><p>例如新建模型的particles=1000会形成运行设置；对已有模型修改时使用parameters={"settings.particles":1000}。动作、字段含义与单位要分别看，不能用猜测的键名代替能力发现。</p></details><details id="existing"><summary>已有原生OpenMC模型：文件、依赖与导入</summary><p>把XML及本地依赖放入服务端工作区的一个专用目录，例如 <code>inbox/my-model/</code>，再调用：</p><pre class="command"><code>./mc.sh call openmc_import_model '{"source_dir":"inbox/my-model","target_dir":"cases/my-model"}'
 ./mc.sh call openmc_list_parameters '{"case_dir":"cases/my-model"}'
 ./mc.sh call openmc_preview_input '{"case_dir":"cases/my-model"}'</code></pre><p>导入会复制原始输入、检查文件与依赖并通过官方API读回，然后发布新副本；原输入不变，也不会按生成器Schema重建陌生模型。<code>api_check=false</code> 只关闭API解析，不表示模型可计算。</p><div class="table-wrap"><table><thead><tr><th>输入情况</th><th>处理与需要你注意的事</th></tr></thead><tbody><tr><td>原生合法模型 / 更复杂几何</td><td>可导入范围比新建模型Schema宽；是否能运行还取决于引擎编译、核数据和模型本身，可自动改参范围另由发现接口给出。</td></tr><tr><td>相对路径依赖</td><td>文件须整理进源目录，随目录复制；<code>../</code>、符号链接和特殊文件拒绝。不要把旧计算记录混入输入目录。</td></tr><tr><td>绝对路径与核数据索引</td><td>绝对文件要求在服务器存在，返回依赖清单并标为不可直接搬移；复制了截面索引也不等于已核验/复制它引用的全部核数据。</td></tr><tr><td>编译源 / 自定义输出目录</td><td>当前导入拒绝compiled source及非默认output.path，分别需要管理员审查、原生产物路径适配；不会静默删除或改写这些设置。</td></tr><tr><td>原工具包私有marker</td><td>导入会重置未审定来源，不继承“已验证”声明；燃耗配置需用专用配置接口重新配置。</td></tr></tbody></table></div><details id="import-sample"><summary>先练习导入一份已知输入，再换成自己的文件</summary><p>没有现成XML时，用包内官方组件生成一份输入，只用于练习接入。选本次唯一的<code>RUN_TAG</code>（如日期时间加4位随机字符），统一替换下面三个参数中的占位符；目录重名就换新标识，不覆盖旧目录。MCP按顺序调用：</p><p><strong>1．生成源文件 openmc_create_model</strong></p><pre><code>{"case_dir":"inbox/assembly-import-RUN_TAG","template":"assembly-17x17","particles":1000,"batches":12,"inactive":2}</code></pre><p><strong>2．导入新副本 openmc_import_model</strong></p><pre><code>{"source_dir":"inbox/assembly-import-RUN_TAG","target_dir":"cases/assembly-import-RUN_TAG"}</code></pre><p>记录返回的case_dir（即target_dir），核对files中的文件名/指纹、dependencies中的依赖，以及validation.openmc_api.api_parsed=true。结构/API失败就停止；导入成功不等于已经计算。</p><p><strong>3．从导入副本继续：</strong>打开<a href="#assembly-tally">组件教程的“定义计分”</a>，将case_dir换成刚返回的导入目录，其余计分参数不变；然后沿2.2预览/校核、2.3提交/终态、2.4结果和产物完成流程。保留新返回的tally_id和job_id，不沿用原例题编号。</p><p>换成自己的模型时，省去第1步，由模型提供者把XML和依赖放到服务器工作区的inbox子目录，再用第2步导入。依赖规则见上表；计分按自己的问题和实际几何定义，不照抄组件网格。已有的<a href="../examples/model_workflow.py">model_workflow.py</a>支持<code>--source-dir</code>串联同一流程，参数见<code>--help</code>。<a href="project-records.html#native-import-reference">历史实测与可复核测试入口</a>另列，不预填你本次的结果。</p></details><details id="python-export"><summary>可选：已有Python建模程序时怎样接入</summary><p>已有Python建模程序：先在安装OpenMC的环境运行它，导出 <code>model.xml</code> 或几何、材料、设置、计分分文件。导出步骤由你或部署管理员执行；MCP导入工具不执行随输入提供的Python或本地动态库。</p></details></details><details id="build"><summary>按自然语言或结构化条件建立新模型</summary><p>结构化生成与原生接入的区别、支持字段范围见<a href="index.html#scope">总览能力范围</a>；执行所需完整Schema由openmc_model_capabilities返回。</p><p>先调用能力发现（<code>openmc_model_capabilities</code>），取得与实际执行同源的 <code>spec_schema</code>。长度是cm、能量是eV、温度是K；核素份额的 <code>ao/wo</code> 由调用者明确指定，工具不推断富集度、材料成分或专业设计。</p><pre class="command"><code>./mc.sh call openmc_model_capabilities '{}'</code></pre><p>随包 <a href="../examples/model-specs/rectangular-assembly.json">rectangular-assembly.json</a> 是显式组成的3×2异构格架输入，四个燃料棒位置和两个水位置，六个通量网格箱；它用于解释布局与接口，不是甲方组件或已核验的堆设计。<a href="../examples/model-specs/fixed-source-water.json">fixed-source-water.json</a> 展示另一种固定源水球输入。可以换材料、数量、区域、格架排列、源与计分，不需要增加例题ID。</p><p>先只生成并检查输入，以下代码把JSON文件作为数据传给工具，不把它当代码执行：</p><pre class="command"><code>mcp/.venv/bin/python - &lt;&lt;'PY'
