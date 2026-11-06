@@ -4,7 +4,8 @@
 
 - 保留included，说明官方目录静态状态、历史验证与甲方本部署实例执行的区别。
 - 补已有模型导入的完整操作衔接、随包材料和历史证据入口；补热图实际字段与异常章节的修复练习直达链接。
-- 仅文档与发行标识更新，不改工具实现、模型配置或现有运行服务，不新增远程下载。
+- 交付前onboarding修复：启动横幅补版本、URL、DSH客户端配置、connection.json和下一步；quickstart检查并补装Eigen头文件；openmc_example_status与openmc_job_status增加human_summary。修复两个C++自定义源compile失败，复测5/5。
+- 新增官方例题MCP复测记录（46完成/2取消/0失败）和onboarding自测；其余文档与发行标识同步。未重新打包，本轮按仓库链接交付。
 
 ## 0.11.8 — 2026-11-06
 

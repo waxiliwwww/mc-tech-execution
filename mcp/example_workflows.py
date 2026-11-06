@@ -143,7 +143,13 @@ def _example_status_once(instance_id: str) -> dict:
     public['scope'] = definition(value['example_id']).get('scope','included')
     public['runtime_summary'] = {k: value.get('runtime', {}).get(k)
                                 for k in ('expected_version', 'nuclear_data_library')}
-    return {**public, 'case_server_path': str(path_in_workspace(value['case_dir'])),
+    if next_step is None:
+        summary = f"{value['state']}：全部 {len(pipeline)} 步完成，可读取结果"
+    else:
+        summary = (f"{value['state']}：已完成 {len(completed)}/{len(pipeline)} 步；"
+                   f"下一步 {next_step['name']}（{next_step['id']}）")
+    return {'human_summary': summary, **public,
+            'case_server_path': str(path_in_workspace(value['case_dir'])),
             'steps_available': pipeline, 'professional_acceptance': False,
             'next': None if next_step is None else {'tool': 'openmc_run_example_step',
                    'arguments': {'instance_id': instance_id, 'step': next_step['id']}}}

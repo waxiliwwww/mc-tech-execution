@@ -339,7 +339,22 @@ def status(job_id: str) -> dict:
     result['input_files'] = sorted(value.get('input_files', {}))
     result['input_hashes'] = dict(value.get('input_files', {}))
     result['files'] = sorted(value.get('output_files', {}))
-    return result
+    progress = result.get('progress') or {}
+    k = progress.get('keff_combined') or progress.get('keff_average')
+    if value['state'] == 'completed':
+        has_k = (isinstance(k, dict) and k.get('mean') is not None
+                 and k.get('std_dev') is not None)
+        result['human_summary'] = (f"已完成；k={k['mean']:.5f}±{k['std_dev']:.5f}"
+                                   if has_k else '已完成；该作业无k结果')
+    elif value['state'] == 'failed':
+        result['human_summary'] = f"失败；exit_code={value.get('exit_code')}；查看 log_tail"
+    elif value['state'] == 'cancelled':
+        result['human_summary'] = '已取消；已完成作业不会重新执行'
+    elif progress.get('percent') is not None:
+        result['human_summary'] = f"{value['state']}：{progress['percent']:.1f}%"
+    else:
+        result['human_summary'] = value['state']
+    return {'human_summary': result.pop('human_summary'), **result}
 
 
 def cancel(job_id: str) -> dict:

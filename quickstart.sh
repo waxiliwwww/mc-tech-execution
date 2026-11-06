@@ -4,6 +4,7 @@ set -euo pipefail
 mc_quick_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$mc_quick_root"
 mc_quick_prefix="$mc_quick_root/.runtime/openmc"
+mc_quick_mamba="$mc_quick_root/.runtime/install/bin/micromamba"
 mc_quick_office=1
 mc_quick_cad=1
 mc_quick_cad_only=0
@@ -53,6 +54,16 @@ if [[ ! -x "$mc_quick_prefix/bin/openmc" || ! -x "$mc_quick_prefix/bin/python" ]
 else
   printf '[2/5] 检查已有OpenMC环境...\n'
 fi
+if [[ ! -d "$mc_quick_prefix/include/eigen3" ]]; then
+  if [[ -x "$mc_quick_mamba" ]]; then
+    printf '[2/5] 补装 Eigen 头文件（C++ 自定义源编译需要）...\n'
+    "$mc_quick_mamba" --no-rc -r "$mc_quick_root/.runtime/mamba-root" install -y -p "$mc_quick_prefix" eigen=3.4
+  fi
+fi
+[[ -d "$mc_quick_prefix/include/eigen3" ]] || {
+  printf 'OpenMC 环境缺少 Eigen 头文件（%s/include/eigen3）。C++ 自定义源编译会失败；请在环境中安装 eigen=3.4，或用默认 quickstart 重新准备。\n' "$mc_quick_prefix" >&2
+  exit 1
+}
 python3 mcp/configure_openmc.py --prefix "$mc_quick_prefix"
 printf '[3/5] 准备图表/报告Python依赖...\n'
 "$mc_quick_prefix/bin/python" -m pip install --disable-pip-version-check -r config/report-requirements.txt
@@ -97,4 +108,10 @@ else
   printf '[5/5] 按选项跳过Office准备；PDF/DOC须另行配置，DOCX无需转换组件。\n'
 fi
 ./mc.sh call openmc_environment
-printf '\n环境准备完成。请用浏览器打开：\n  %s/docs/index.html\n逐步计算：docs/compute.html（输入、改参目的、校核、计算与产物）\n快速例题：\n  mcp/.venv/bin/python examples/public_case_demo.py\n例题参数及预期见 docs/index.html#demo-options；首次准备需软件源网络。\n' "$mc_quick_root"
+printf '\n环境准备完成。下一步：\n'
+printf '  1) 启动 MCP 服务（前台保持运行）：./mcp/start.sh\n'
+printf '     启动输出会给出地址、版本、DSH 客户端配置片段和 connection.json 路径。\n'
+printf '  2) 按输出中的配置把 MCP 接到 DSH；接入细节见 docs/deployment.html#dsh。\n'
+printf '  3) 在 DSH 中先调用 mcp__mc__openmc_environment，再试一句：\n'
+printf '     “用 MCP 跑官方例题 source-pincell，新目录 cases/my-trial/pincell，按 next_step 逐步执行并读结果。”\n'
+printf '\n文档入口：%s/docs/index.html\n逐步计算：docs/compute.html\n快速例题：mcp/.venv/bin/python examples/public_case_demo.py\n' "$mc_quick_root"
