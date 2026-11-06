@@ -35,7 +35,7 @@ curl -s http://127.0.0.1:8770/health
 
 确认 `status=ok`、`version=0.11.9`；`openmc_environment` 的 `executable_available`、`api_available`、`version_matches` 应为 true。
 
-启动输出本身应给出足够信息：版本、MCP URL、可粘贴到 DSH `cordis.patch.yml` 的客户端配置、`connection.json` 路径和下一步。0.11.9 的 `./mcp/start.sh` 已按此输出；若只看到“已启动”而没有地址/配置，先核对启动的是不是当前版本。
+启动输出本身应给出足够信息：版本、MCP URL、传输与鉴权、`connection.json` 路径、工具清单和下一步。宿主配置按各自格式填写，DSH 示例在部署页。0.11.9 的 `./mcp/start.sh` 已按此输出；若只看到“已启动”而没有地址/传输信息，先核对启动的是不是当前版本。
 
 C++ 自定义源还需要 `include/eigen3`。`quickstart.sh` 会检查并在缺失时补装 `eigen=3.4`；若用 `--openmc-prefix` 指向自备环境，需要自行保证该目录存在，否则 `compile` 会失败。
 
@@ -215,7 +215,7 @@ CMake Error in CMakeLists.txt:
 | 环节 | 验证动作 | 人实际看到的信息 | 结论 |
 | --- | --- | --- | --- |
 | 环境 | `quickstart.sh` 增加 `include/eigen3` 检查；缺失时补装 `eigen=3.4` | 补装后两例 C++ 自定义源 5/5 | 通过；首跑失败已修复 |
-| 启动 MCP | `./mcp/start.sh` | `v0.11.9`、URL、可粘贴的 DSH `cordis.patch.yml` 片段、`connection.json`、55 个工具、下一步、事件日志 | 通过；不再只有一句“已启动” |
+| 启动 MCP | `./mcp/start.sh` | `v0.11.9`、URL、传输与鉴权、`connection.json`、55 个工具、下一步、事件日志 | 通过；不再只有一句“已启动” |
 | 客户端连接 | `examples/mcp_client.py --url ... --tool openmc_environment`；重启后从 DSH 调 `openmc_environment` | 工具返回 `service.version=0.11.9`、OpenMC 0.16.0、API/可执行程序可用、核数据库状态 | 通过 |
 | 自己的参数文件 | 把 `workspace/cases/user-trial/sphere-params.json` 交给智能体，`openmc_build_model` 生成 `cases/user-trial/sphere-001` | 生成摘要、XML 哈希、材料/栅元/tally 数量、`api_parsed=true`、`professional_acceptance=false`、重建命令 | 通过 |
 | 校验 | `openmc_validate_inputs` 同时开 API/语义/几何检查 | 结构、语义、核素可用性、几何重叠 0、elapsed 秒数、明确“通过不等于物理正确” | 通过 |
