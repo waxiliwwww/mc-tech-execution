@@ -98,6 +98,18 @@ try {
   await page.goto(url('toolkit-usage.html#existing'));await anchor('existing');
   assert.match(await page.locator('#existing').innerText(),/openmc_import_model/);
   assert.match(await page.locator('#existing').innerText(),/不会静默删除/);
+  await page.locator('#import-sample > summary').click();
+  assert.match(await page.locator('#import-sample').innerText(),/source_dir/);
+  assert.match(await page.locator('#import-sample').innerText(),/RUN_TAG/);
+  await page.locator('#import-sample a[href="project-records.html#native-import-reference"]').click();await anchor('native-import-reference');
+  assert.match(await page.locator('#native-import-reference').innerText(),/744870c98d07402fbb23c8e4d711c068/);
+  assert.match(await page.locator('#native-import-reference').innerText(),/不随源码包分发/);
+  await shot('04a-import-evidence');
+  await page.locator('#native-import-reference a[href="toolkit-usage.html#import-sample"]').click();await anchor('import-sample');
+  await page.locator('#import-sample a[href="#assembly-tally"]').click();await anchor('assembly-tally');
+  assert.match(await page.locator('#assembly-tally').innerText(),/openmc_define_tally/);
+  await page.goto(url('toolkit-usage.html#existing'));await anchor('existing');
+
   assert.equal(await page.locator('#python-export').getAttribute('open'),null);
   await page.goto(url('toolkit-usage.html#parameters'));await anchor('parameters');
   assert.match(await page.locator('#parameters').innerText(),/openmc_validate_inputs/);
@@ -112,7 +124,13 @@ try {
   assert.match(await page.locator('#geometry-check').innerText(),/overlapping_cells/);
   assert.match(await page.locator('#geometry-check').innerText(),/不能直接当作0个/);
   await shot('04c-geometry-judgement');
-  await page.goto(url('official-examples.html'));
+  await page.goto(url('official-examples.html#catalog-status'));await anchor('catalog-status');
+  assert.match(await page.locator('#catalog-status').innerText(),/scope=included/);
+  assert.match(await page.locator('#catalog-status').innerText(),/静态适配说明和占位状态/);
+  assert.match(await page.locator('#catalog-status').innerText(),/本部署未验证/);
+  await shot('04e-official-status');
+  await page.locator('#catalog-status a[href="#coverage"]').click();await anchor('coverage');
+
   assert.match(await page.locator('main').innerText(),/returned_values/);
   assert.doesNotMatch(await page.locator('main').innerText(),/不做数值截断/);
   await page.goto(url('toolkit-usage.html#cad'));await anchor('cad');
@@ -162,6 +180,16 @@ try {
   await page.goto(url('deployment.html#artifact-delivery'));await anchor('artifact-delivery');
   assert.match(await page.locator('#artifact-delivery').innerText(),/SCP\/SFTP/);
   await shot('05c-artifact-delivery');
+  await page.goto(url('toolkit-usage.html#mesh-fields'));await anchor('mesh-fields');
+  assert.match(await page.locator('#mesh-fields').innerText(),/x_edges/);
+  assert.match(await page.locator('#mesh-fields').innerText(),/y_edges/);
+  assert.match(await page.locator('#mesh-fields').innerText(),/values_json/);
+  await shot('05c-mesh-fields');
+  await page.goto(url('toolkit-usage.html#failure'));
+  await page.locator('#failure a[href="#repair"]').click();await anchor('repair');
+  assert.match(await page.locator('#repair').innerText(),/repair_demo.py/);
+  assert.match(await page.locator('#repair').innerText(),/确认/);
+  await shot('05c-repair-entry');
   await page.goto(url('toolkit-usage.html#results'));
   assert.match(await page.locator('#results').innerText(),/zero_bins/);
   await page.goto(url('project-progress.html#trial-20261105'));await anchor('trial-20261105');
