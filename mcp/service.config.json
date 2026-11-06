@@ -2,7 +2,7 @@
   "host": "127.0.0.1",
   "port": 8770,
   "path": "/mcp",
-  "name": "mc-agent-tools",
+  "name": "openmc-forge",
   "versionFile": "../VERSION",
-  "clientName": "mc"
+  "clientName": "openmc-forge"
 }

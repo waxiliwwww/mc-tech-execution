@@ -110,8 +110,8 @@ fi
 ./mc.sh call openmc_environment
 printf '\n环境准备完成。下一步：\n'
 printf '  1) 启动 MCP 服务（前台保持运行）：./mcp/start.sh\n'
-printf '     启动输出会给出地址、版本、DSH 客户端配置片段和 connection.json 路径。\n'
-printf '  2) 按输出中的配置把 MCP 接到 DSH；接入细节见 docs/deployment.html#dsh。\n'
-printf '  3) 在 DSH 中先调用 mcp__mc__openmc_environment，再试一句：\n'
+printf '     启动输出会给出地址、版本、传输/鉴权和 connection.json 路径。\n'
+printf '  2) 按宿主要求填写 URL、传输和认证，把 MCP 接到 DSH 或其他客户端；接入示例见 docs/deployment.html#handoff。\n'
+printf '  3) 在 DSH 中先调用 mcp__openmc-forge__openmc_environment，再试一句：\n'
 printf '     “用 MCP 跑官方例题 source-pincell，新目录 cases/my-trial/pincell，按 next_step 逐步执行并读结果。”\n'
 printf '\n文档入口：%s/docs/index.html\n逐步计算：docs/compute.html\n快速例题：mcp/.venv/bin/python examples/public_case_demo.py\n' "$mc_quick_root"

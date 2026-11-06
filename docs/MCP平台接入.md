@@ -49,10 +49,10 @@ Codex版本和模型对工具的审批、图像显示及调用规划行为可能
 在DSH的插件列表中加入下列条目；这只是插件条目，不替代其完整模型/账号配置：
 
 ```yaml
-- id: mc-tools
+- id: mcp-openmc-forge
   name: '@deepseek-ai/dsh-mcp-client'
   config:
-    serverName: mc
+    serverName: openmc-forge
     transport: streamable-http
     url: http://127.0.0.1:8770/mcp
     failOnStartupError: true
