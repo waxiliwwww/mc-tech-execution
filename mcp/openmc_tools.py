@@ -550,6 +550,7 @@ def _geometry_check(directory: Path, cfg: dict) -> dict:
             tail = ((exc.stdout or '') if isinstance(exc.stdout, str) else '') + \
                    ((exc.stderr or '') if isinstance(exc.stderr, str) else '')
             return {'checked': True, 'completed': False, 'ok': None,
+                    'probabilistic': True, 'does_not_prove_no_overlap': True,
                     'reason': f'几何检查超时（>{timeout}秒）；大算例请改用geometry-debug作业模式提交',
                     'elapsed_seconds': round(time.monotonic() - started, 3),
                     'log_tail': tail[-2000:],
@@ -575,6 +576,7 @@ def _geometry_check(directory: Path, cfg: dict) -> dict:
             summary = {'cells': rows[:200], 'low_check': low}
         ok = completed.returncode == 0 and not overlaps
         result = {'checked': True, 'completed': True, 'ok': ok,
+                  'probabilistic': True, 'does_not_prove_no_overlap': True,
                   'returncode': completed.returncode,
                   'overlapping_cells': overlaps, 'overlap_check_summary': summary,
                   'settings_adjusted': adjusted or None, 'elapsed_seconds': elapsed,
@@ -652,7 +654,12 @@ def submit_job(case_dir: str, mode: str = 'run', threads: int = 1, name: str | N
     runtime = environment()
     if not runtime['executable_available'] or not runtime['version_matches']:
         raise Error('OpenMC可执行程序不可用或版本不符；先调用openmc_environment并按部署文档修正')
-    return jobs.submit(case_dir, mode, threads, name=name)
+    from openmc_model_spec import declarative_integrity
+    integrity = declarative_integrity(path_in_workspace(case_dir))
+    submitted = jobs.submit(case_dir, mode, threads, name=name, _input_integrity=integrity)
+    if integrity is not None:
+        submitted['input_integrity'] = integrity
+    return submitted
 
 
 def verified_result(job_id: str):

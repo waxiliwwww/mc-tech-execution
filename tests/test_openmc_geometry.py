@@ -101,12 +101,16 @@ class GeometryCheck(unittest.TestCase):
         self.assertEqual(geometry['overlapping_cells'], [{'cells': [2, 1], 'universe': 0}])
         self.assertIn('+openmc_geometry_debug', value['validation_level'])
         self.assertIn('概率', geometry['note'])
+        self.assertTrue(geometry['probabilistic'])
+        self.assertTrue(geometry['does_not_prove_no_overlap'])
         self.assertIn('Overlapping cells', geometry['log_tail'])
 
     def test_clean_run_parses_summary_and_adjusts_settings(self):
         value = self.run_check('clean')
         geometry = value['geometry']
         self.assertTrue(geometry['ok'], geometry['log_tail'])
+        self.assertTrue(geometry['probabilistic'])
+        self.assertTrue(geometry['does_not_prove_no_overlap'])
         self.assertEqual(geometry['overlap_check_summary']['cells'],
                          [{'cell': 1, 'checks': 1234}, {'cell': 2, 'checks': 1188}])
         self.assertEqual(geometry['overlap_check_summary']['low_check'],

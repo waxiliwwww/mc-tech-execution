@@ -209,6 +209,31 @@ class ProjectIntegration(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(recovered['state'], 'failed')
         self.assertEqual(recovered['exit_code'], 7)
 
+    async def test_submit_reports_declarative_integrity(self):
+        case = self.workspace / 'declarative'; case.mkdir()
+        xml = {'materials.xml': '<materials/>', 'geometry.xml': '<geometry/>',
+               'settings.xml': '<settings/>'}
+        for name, text in xml.items():
+            (case / name).write_text(text)
+        spec = '{}'
+        (case / 'model-spec.json').write_text(spec)
+        marker = {'data_kind': 'user_supplied_unverified',
+                  'generation_method': 'declarative_public_python_api',
+                  'model_spec_sha256': __import__('hashlib').sha256(spec.encode()).hexdigest(),
+                  'model_xml_sha256': {name: __import__('hashlib').sha256(text.encode()).hexdigest()
+                                       for name, text in xml.items()}}
+        (case / 'mc-case.json').write_text(json.dumps(marker))
+        submitted = self.data(await self.call('openmc_submit_job', {'case_dir': 'declarative'}))
+        self.assertIn('input_integrity', submitted)
+        self.assertTrue(submitted['input_integrity']['consistent'])
+        for _ in range(80):
+            status = self.data(await self.call('openmc_job_status', {'job_id': submitted['job_id']}))
+            if status['state'] in ('failed', 'completed', 'interrupted'):
+                break
+            await asyncio.sleep(.05)
+        self.assertIn(status['state'], ('failed', 'completed', 'interrupted'))
+        self.assertTrue(status['input_integrity']['consistent'])
+
     async def test_openmc_bad_xml_returns_problem_list_without_computing(self):
         case = self.workspace / 'case'; case.mkdir()
         (case / 'geometry.xml').write_text('<geometry>')

@@ -1,5 +1,6 @@
 """User-visible spec rejection and transactional publish, without a solver."""
 import copy
+import hashlib
 import json
 import math
 import os
@@ -12,7 +13,7 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'mcp'))
 import business
-from openmc_model_spec import MODEL_SCHEMA,validate_spec
+from openmc_model_spec import MODEL_SCHEMA,validate_spec,model_assumptions,declarative_integrity
 import openmc_model_tools as tools
 from jsonschema import Draft202012Validator
 
@@ -44,6 +45,34 @@ class ModelSpec(unittest.TestCase):
         c=tools.model_capabilities();c['spec_schema']['required'].append('evil')
         self.assertNotIn('evil',tools.model_capabilities()['spec_schema']['required'])
         self.assertEqual(tools.model_capabilities()['spec_schema'],tools.MODEL_TOOLS[1]['inputSchema']['properties']['spec'])
+
+    def test_optional_defaults_are_reported_not_silent(self):
+        s=specimen()
+        s['materials'][0].pop('temperature',None)
+        s['surfaces'][0].pop('boundary',None)
+        s['settings'].pop('seed',None)
+        s['settings']['source'].pop('energy_ev',None)
+        s['settings']['source'].pop('strength',None)
+        notes=chr(10).join(model_assumptions(s))
+        for phrase in ('temperature','boundary','energy_ev','strength','seed'):
+            self.assertIn(phrase,notes)
+
+    def test_declarative_integrity_reports_drift_without_raising(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            case=Path(tmp)
+            (case/'model-spec.json').write_text('{}',encoding='utf-8')
+            (case/'model.xml').write_text('<model/>',encoding='utf-8')
+            marker={'generation_method':'declarative_public_python_api',
+                    'model_spec_sha256':hashlib.sha256(b'{}').hexdigest(),
+                    'model_xml_sha256':{'model.xml':hashlib.sha256(b'<model/>').hexdigest()}}
+            (case/'mc-case.json').write_text(json.dumps(marker),encoding='utf-8')
+            self.assertIsNone(declarative_integrity(case/'nope'))
+            self.assertTrue(declarative_integrity(case)['consistent'])
+            (case/'model.xml').write_text('<model><changed/></model>',encoding='utf-8')
+            drifted=declarative_integrity(case)
+            self.assertFalse(drifted['consistent'])
+            self.assertEqual(drifted['changed_files'],['model.xml'])
+            self.assertTrue(drifted['note'])
 
     def test_failed_build_and_racing_target_preserve_existing_input(self):
         with tempfile.TemporaryDirectory() as tmp,patch.object(business,'WORKSPACE',Path(tmp)):

@@ -40,7 +40,7 @@ details{border:1px solid var(--line);background:var(--panel);padding:14px 20px;m
 <p><strong>M1.2 包内Python生成。</strong><code>openmc_model_capabilities</code>公开建模Schema；宿主或直接调用方传入明确的spec，<code>openmc_build_model</code>校验类型、ID引用与结构，再由安装包中的可信构建器创建OpenMC材料、几何、设置和计分对象，导出XML并读回。spec路线另存<code>model-spec.json</code>、包内构建器副本<code>build_model.py</code>与来源指纹，供重建使用。固定模板也是包内Python生成，但不保证具有上述spec/源码产物；模板中的物理假设需明确选用。</p>
 <p><strong>M1.3 CAD几何适配。</strong>CadQuery检查STEP实体，调用方明确长度缩放和材料标签，cad_to_dagmc经网格组件生成MOAB/HDF5格式的H5M；DAGMCUniverse再结合材料、源和设置组装<code>model.xml</code>。当前组装采用本征值、点源与真空包围，是受支持的建模方式，不是从CAD推断工程边界。转换产物产生与引擎读回成功分别记录，须查看<code>engine_read</code>；不能把有H5M文件当成模型可算。</p>
 <details id="python-entry"><summary>可选接入：已经有专业Python建模脚本</summary><p>已有OpenMC建模程序的专业用户，可以在自己的受控环境先导出XML，再按M1.1导入。这是沿用既有代码的可选方式，不是普通用户必须提供的输入；当前导入工具不执行任意上传脚本。生成模型时随附的<code>build_model.py</code>则来自工具包，两者含义不同。</p></details>
-<p id="model-handoff"><strong>最后怎样交给M2：</strong>生成或导入成功返回<code>case_dir</code>，其中有模型XML、声明依赖和来源记录；spec路线还有参数与重建源码。调用方先查看预览、处理校核问题，需要时创建参数副本，再向<code>openmc_submit_job</code>传模型目录、任务名和线程数。M2复制这次输入、记录指纹和job_id后启动后台计算；M1生成输入不会自动求解。当前没有“用户必须已预览”的强制提交凭证。</p>
+<p id="model-handoff"><strong>最后怎样交给M2：</strong>生成或导入成功返回<code>case_dir</code>，其中有模型XML、声明依赖和来源记录；spec路线还有参数与重建源码。调用方先查看预览、处理校核问题，需要时创建参数副本，再向<code>openmc_submit_job</code>传模型目录、任务名和线程数。M2复制这次输入、记录指纹和job_id后启动后台计算；M1生成输入不会自动求解。当前没有“用户必须已预览”的强制提交凭证。对声明式模型，提交返回的<code>input_integrity</code>会报告<code>mc-case.json</code>指纹与当前XML/spec是否一致；不一致只提示、不自动拦截，结果不能当作原声明模型的原始产物。</p>
 <h3>参数依据、新建范围与可改范围</h3>
 <div class="table-wrap"><table><thead><tr><th>参数来源</th><th>实现与作用</th><th>边界</th></tr></thead><tbody>
 <tr><td>用户、支持文件 / 已选模板</td><td>提供尺寸、布局、材料、边界、源等已知条件，以及需要统计的物理量。</td><td>数值须有来源；缺少的专业条件需补充或确认，不能把格式默认值当成科学依据。</td></tr>

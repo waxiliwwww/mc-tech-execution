@@ -195,6 +195,78 @@ def validate_spec(spec):
     return spec
 
 
+def model_assumptions(spec):
+    """List defaults that the builder will apply when optional fields are absent.
+
+    These are not physics recommendations. They make silent format defaults visible
+    to the caller so the host can ask for confirmation instead of presenting them
+    as user-supplied values.
+    """
+    notes = []
+    for material in spec.get('materials', []):
+        if 'temperature' not in material:
+            notes.append(f"材料 {material['id']} 未指定 temperature：使用 OpenMC 默认温度")
+    for surface in spec.get('surfaces', []):
+        if 'boundary' not in surface:
+            notes.append(f"面 {surface['id']} 未指定 boundary：使用 transmission")
+    settings = spec.get('settings', {})
+    source = settings.get('source', {})
+    if 'energy_ev' not in source:
+        notes.append('源未指定 energy_ev：使用 OpenMC 默认源能谱')
+    if 'strength' not in source:
+        notes.append('源未指定 strength：使用 1.0')
+    if 'seed' not in settings:
+        notes.append('settings.seed 未指定：使用 1')
+    if 'generations_per_batch' not in settings:
+        notes.append('settings.generations_per_batch 未指定：使用 1')
+    return notes
+
+
+def declarative_integrity(directory=None):
+    """Report whether a declarative model still matches its mc-case fingerprints.
+
+    This is deliberately non-blocking: native imports and legitimate post-build
+    edits (for example openmc_define_tally) use the same case directory. The
+    caller must not describe a drifted run as the original declared model.
+    """
+    directory = Path(directory) if directory is not None else Path.cwd()
+    marker_path = directory / 'mc-case.json'
+    if not marker_path.is_file():
+        return None
+    try:
+        marker = json.loads(marker_path.read_text(encoding='utf-8'))
+    except (OSError, ValueError) as exc:
+        return {'declared_model': True, 'consistent': False,
+                'reason': 'mc-case.json无法读取或解析：' + type(exc).__name__,
+                'note': '无法确认声明式模型指纹；结果不能视为原声明模型产物。'}
+    if marker.get('generation_method') != 'declarative_public_python_api':
+        return None
+    expected = marker.get('model_xml_sha256') or {}
+    actual = {path.name: digest(path) for path in directory.glob('*.xml')}
+    changed = sorted(name for name in expected if name in actual and actual[name] != expected[name])
+    missing = sorted(set(expected) - set(actual))
+    extra = sorted(set(actual) - set(expected))
+    spec_path = directory / 'model-spec.json'
+    spec_changed = (not spec_path.is_file()
+                    or digest(spec_path) != marker.get('model_spec_sha256'))
+    consistent = bool(expected) and not changed and not missing and not extra and not spec_changed
+    reasons = []
+    if changed:
+        reasons.append('已修改：' + ','.join(changed))
+    if missing:
+        reasons.append('已缺失：' + ','.join(missing))
+    if extra:
+        reasons.append('新增：' + ','.join(extra))
+    if spec_changed:
+        reasons.append('model-spec.json已修改或缺失')
+    return {'declared_model': True, 'consistent': consistent,
+            'changed_files': changed, 'missing_files': missing, 'extra_files': extra,
+            'model_spec_changed': spec_changed,
+            'reason': '；'.join(reasons) if reasons else None,
+            'note': ('声明式模型XML与model-spec哈希一致。' if consistent else
+                     '声明式模型已漂移；本次提交仍可执行，但结果不能视为该声明的原始产物；'
+                     '建议从model-spec重建，或用openmc_import_model重新导入为原生模型。')}
+
 def build(spec):
     """Create inputs in cwd using public OpenMC APIs, then parse the actual output."""
     validate_spec(spec)
@@ -250,12 +322,15 @@ def build(spec):
     # Bind retained source to the actual generated XML. Rebuilding edited specs
     # intentionally refreshes these fingerprints; parameter updates check first.
     save_json(Path('model-spec.json'),spec)
+    assumptions=model_assumptions(spec)
     marker=model_metadata(Path('.'))
+    marker['assumptions']=assumptions
     save_json(Path('mc-case.json'),marker)
     return {'model_spec_sha256':marker['model_spec_sha256'],'model_xml_sha256':marker['model_xml_sha256'],
             'builder_source_sha256':marker['builder_source_sha256'],
             'openmc_version':openmc.__version__, 'materials':len(parsed.materials),'cells':len(parsed.geometry.get_all_cells()),
             'lattices':len(parsed.geometry.get_all_lattices()),'tallies':len(parsed.tallies),'api_parsed':True,
+            'assumptions':assumptions,
             'files':[p.name for p in Path('.').glob('*.xml')]}
 
 

@@ -173,7 +173,7 @@ def list_jobs(name: str | None = None, state: str | None = None, limit: int = 50
 def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | None = None,
            _internal: bool = False, _job_id: str | None = None, _expected_inputs: dict | None = None,
            _example_workflow: dict | None = None, _preserve_outputs: bool = False,
-           name: str | None = None) -> dict:
+           name: str | None = None, _input_integrity: dict | None = None) -> dict:
     name = checked_name(name)
     if not sys.platform.startswith('linux'):
         raise Error('本地持久作业目前支持Linux/WSL；其他系统请在Linux服务器部署MCP')
@@ -217,6 +217,8 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
               'work_dir': relative(copied), 'input_files': input_files, 'disk_admission': disk_admission}
     if _example_workflow is not None:
         record['example_workflow'] = _example_workflow
+    if _input_integrity is not None:
+        record['input_integrity'] = _input_integrity
     atomic_json(directory / 'job.json', record)
     spawn_worker(directory, 'openmc_jobs.py', job_id)
     return {'job_id': job_id, 'name': name, 'state': read(directory)['state'],
@@ -333,7 +335,8 @@ def status(job_id: str) -> dict:
             log.seek(max(0, log_path.stat().st_size - 4000))
             tail = log.read().decode('utf-8', errors='replace')
     result = {key: value[key] for key in ('job_id', 'name', 'state', 'mode', 'case_dir', 'submitted_at',
-              'started_at', 'finished_at', 'exit_code', 'error', 'provenance', 'log_truncated', 'process_cleanup', 'cancel_requested') if key in value}
+              'started_at', 'finished_at', 'exit_code', 'error', 'provenance', 'log_truncated',
+              'process_cleanup', 'cancel_requested', 'input_integrity') if key in value}
     result['log_tail'] = tail
     result['progress'] = _progress(directory, value)
     result['input_files'] = sorted(value.get('input_files', {}))

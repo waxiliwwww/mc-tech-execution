@@ -2,6 +2,10 @@
 
 ## 0.11.9 — 2026-11-06
 
+- 声明式模型提交返回 `input_integrity`，报告 `mc-case.json` 指纹与当前 XML/spec 是否一致；不一致只提示、不自动拦截。
+- `openmc_build_model` 返回 `assumptions`，列出省略字段实际采用的默认值，避免把默认值当成用户给定。
+- 几何检查结果增加 `probabilistic` 与 `does_not_prove_no_overlap` 标志，减少把抽样通过当成无重叠证明。
+
 - 保留included，说明官方目录静态状态、历史验证与甲方本部署实例执行的区别。
 - 补已有模型导入的完整操作衔接、随包材料和历史证据入口；补热图实际字段与异常章节的修复练习直达链接。
 - 交付前onboarding修复：启动横幅补版本、URL、传输/鉴权；DSH配置移到文档作为宿主示例，不在启动输出写死；quickstart检查并补装Eigen头文件；openmc_example_status与openmc_job_status增加human_summary。修复两个C++自定义源compile失败，复测5/5。

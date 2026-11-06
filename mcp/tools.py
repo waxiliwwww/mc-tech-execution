@@ -67,7 +67,7 @@ TOOLS += [
     {"name": "openmc_validate_inputs", "description": "检查输入XML结构及基础参数，可选公开API模型解析、静态语义校验（密度/温度/核素/tally filter）与几何重叠检查（openmc -g在临时副本上削减批次运行，概率性结论如实标注）。各层通过不代表物理正确。",
      "inputSchema": schema({"case_dir": TEXT, "api_check": {"type": "boolean"}, "semantic_check": {"type": "boolean"}, "geometry_check": {"type": "boolean"}}, ["case_dir"]),
      "outputSchema": OUTPUT, "function": validate_inputs},
-    {"name": "openmc_submit_job", "description": "快照输入后提交本地OpenMC计算/绘图/几何调试，立即返回作业编号；随后查询终态与产物。Linux/WSL运行，不代表提交即完成。",
+    {"name": "openmc_submit_job", "description": "快照输入后提交本地OpenMC计算/绘图/几何调试，立即返回作业编号；随后查询终态与产物。声明式模型会在input_integrity中报告mc-case指纹是否与当前XML/spec一致；不一致只提示、不自动拦截。Linux/WSL运行，不代表提交即完成。",
      "inputSchema": schema({"case_dir": TEXT, "mode": {"type": "string", "enum": ["run", "plot", "geometry-debug", "deplete"]},
                             "threads": {"type": "integer", "minimum": 1, "maximum": 64},
                             "name": {"type": "string", "minLength": 1, "maxLength": 120, "description": "可选用户任务名，最多120字符，拒绝控制符；名称可重复，身份仍为job_id，可用openmc_list_jobs按精确名称查询。"}}, ["case_dir"]),
@@ -177,7 +177,7 @@ TOOLS += [
 ]
 # CAD→DAGMC转换（RF002工具层封装）：转换在独立cadenv子进程执行，业务层仍不装openmc/cadquery。
 TOOLS += [
-    {"name": "openmc_inspect_step", "description": "读取工作区内STEP文件，返回实体数、包围盒与单位提示，用于确定转换所需material_tags数量。仅解析CAD结构，不作单位换算或物理判定；需部署配置cad_python_command。",
+    {"name": "openmc_inspect_step", "description": "读取工作区内STEP文件，返回实体数、包围盒与单位提示，用于确定转换所需material_tags数量。只检查，不转换；转换用openmc_convert_cad，组装DAGMC模型用openmc_build_dagmc_model。仅解析CAD结构，不作单位换算或物理判定；需部署配置cad_python_command。",
      "inputSchema": schema({"step_path": {**TEXT, "description": "工作区内STEP文件相对路径（.step/.stp）；须先置于MC_WORKSPACE，不接受客户端绝对路径。"}}, ['step_path']),
      "outputSchema": OUTPUT, "function": inspect_cad_step},
     {"name": "openmc_convert_cad", "description": "把工作区内STEP转换为DAGMC几何（dagmc.h5m）放入新算例目录，并由DAGMC版OpenMC API读回包围盒。产物未经专业校验：材料标签映射、缩放单位（STEP常为毫米、OpenMC为厘米）与网格质量需人工确认；运行计算还需生成模型XML。不覆盖已有目录。",
@@ -194,7 +194,7 @@ TOOLS += [
          "implicit_complement_material_tag": {"type": "string", "minLength": 1, "description": "可选：为模型外部隐式补集区域指派该材料标签（常设graveyard/真空标签以减少粒子丢失）；省略不生成补集区域。"}},
          ['step_path', 'target_dir', 'material_tags']),
      "outputSchema": OUTPUT, "function": convert_cad, "annotations": WRITE},
-    {"name": "openmc_build_dagmc_model", "description": "为已转换的DAGMC算例组装模型XML（材料/设置/源及真空包围），DAGMC文件名写相对路径便于随算例搬移；材料标签须与转换时一致，密度/组成/源位置与网格质量需业务确认。不覆盖已有XML，不重做转换。",
+    {"name": "openmc_build_dagmc_model", "description": "为已转换的DAGMC算例组装模型XML（材料/设置/源及真空包围），不是从STEP做装配或转换；DAGMC文件名写相对路径便于随算例搬移；材料标签须与转换时一致，密度/组成/源位置与网格质量需业务确认。不覆盖已有XML，不重做转换。",
      "inputSchema": schema({"case_dir": TEXT,
                             "materials": {"type": "array", "minItems": 1, "items": {"type": "object",
                                 "required": ["name", "density", "units"],
