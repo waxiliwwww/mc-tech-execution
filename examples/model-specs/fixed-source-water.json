@@ -1,5 +1,5 @@
 {
-  "schema_version": "1",
+  "schema_version": "2",
   "name": "custom fixed-source water sphere",
   "materials": [
     {
@@ -34,7 +34,11 @@
     {
       "id": 1,
       "universe": 0,
-      "region": "-1",
+      "region": {
+        "op": "halfspace",
+        "surface": 1,
+        "side": "negative"
+      },
       "fill": {
         "type": "material",
         "id": 2

@@ -120,7 +120,7 @@ particles=1000、batches=12、inactive=2、threads=1。
 <h3 id="input-spec">4.2 model-spec 的写法</h3>
 <p>model-spec 是一个 JSON，描述材料、面、栅元、运行设置和计分。工具检查字段并导出 XML。长度用 cm，能量用 eV，温度用 K。下面是一个可运行的球模型：半径 8 cm，300 粒子、20 批、5 个非活跃批，统计通量。</p>
 <pre><code>{
-  "schema_version": "1",
+  "schema_version": "2",
   "name": "u235-sphere",
   "materials": [
     {"id": 1, "name": "HEU", "density": 18.7, "density_unit": "g/cm3",
@@ -130,7 +130,9 @@ particles=1000、batches=12、inactive=2、threads=1。
     {"id": 1, "type": "sphere", "boundary": "vacuum", "parameters": {"r": 8}}
   ],
   "cells": [
-    {"id": 1, "universe": 0, "region": "-1", "fill": {"type": "material", "id": 1}}
+    {"id": 1, "universe": 0,
+     "region": {"op": "halfspace", "surface": 1, "side": "negative"},
+     "fill": {"type": "material", "id": 1}}
   ],
   "root_universe": 0,
   "settings": {"run_mode": "eigenvalue", "particles": 300, "batches": 20,
@@ -140,24 +142,26 @@ particles=1000、batches=12、inactive=2、threads=1。
 <p>字段含义：</p>
 <ul>
 <li><code>materials</code>：材料编号、密度、核素和份额。UO₂ 的氧份额和 U235 富集度要自己写，工具不推断。</li>
-<li><code>surfaces</code>：面。支持 x/y/z 平面、x/y/z 圆柱和球；<code>region: "-1"</code> 表示 1 号面内部。</li>
+<li><code>surfaces</code>：面。支持 x/y/z 平面、x/y/z 圆柱和球；<code>region</code> 是类型化布尔树：<code>{"op":"halfspace","surface":1,"side":"negative"}</code> 表示 1 号面内部；并、交、补分别用 <code>union</code>、<code>intersection</code>、<code>complement</code>。</li>
 <li><code>cells</code>：用面围出区域，<code>fill</code> 指定材料、宇宙、格架或真空。</li>
 <li><code>settings</code>：粒子数、批数、非活跃批数和源。本征值模式至少两个活跃批。</li>
 <li><code>tallies</code>：统计量。不写 tallies 就没有结果。</li>
 </ul>
-<p>编号由调用方指定，引用必须存在。未知字段会被拒绝。</p>
+<p>编号由调用方指定，引用必须存在。未知字段会被拒绝。只被根宇宙直接栅元使用一次的外边界面必须显式设 <code>vacuum</code>/<code>reflective</code>/<code>white</code>，不能留空或设 <code>transmission</code>；专家确需透射边界时，在 <code>validation.overrides</code> 写带 <code>reason</code> 和 <code>scope</code> 的 <code>outer_boundary_transmission</code> 覆盖，报告会保留该 tag。没有 OpenMC 时，可在算例目录运行 <code>python3 build_model.py --validate</code>，只校验 <code>model-spec.json</code>，不生成 XML；默认 <code>--backend auto</code> 优先 Pydantic，缺失时自动使用标准库 fallback。能力发现的 <code>validation_backend</code> 是 MCP 服务端输入校验后端；构建结果另报 <code>builder_validation_backend</code>，表示 OpenMC 运行时实际使用的后端，两者可能不同，按字段分别追溯，不混为一个。</p>
 <details><summary>字段表（展开）</summary>
 <p>完整 Schema 以 <code>openmc_model_capabilities</code> 返回的 <code>spec_schema</code> 为准。</p>
 <div class="table-wrap"><table><thead><tr><th>对象</th><th>必填</th><th>可选/约束</th><th>落成什么</th></tr></thead><tbody>
-<tr><td>顶层</td><td><code>schema_version</code>=<code>"1"</code>、<code>name</code>、<code>materials</code>、<code>surfaces</code>、<code>cells</code>、<code>root_universe</code>、<code>settings</code></td><td><code>lattices</code>、<code>tallies</code>；根宇宙必须含栅元；不接受额外字段</td><td>整份模型</td></tr>
+<tr><td>顶层</td><td><code>schema_version</code>=<code>"2"</code>、<code>name</code>、<code>materials</code>、<code>surfaces</code>、<code>cells</code>、<code>root_universe</code>、<code>settings</code></td><td><code>lattices</code>、<code>tallies</code>；根宇宙必须含栅元；不接受额外字段</td><td>整份模型</td></tr>
 <tr><td>materials</td><td><code>id</code>、<code>name</code>、<code>density</code>、<code>density_unit</code>、<code>percent_type</code>、<code>nuclides[{name,fraction}]</code></td><td><code>temperature</code>(K)、<code>sab[]</code>、<code>depletable</code>、<code>volume</code>(cm³)；密度&gt;0；单位<code>g/cm3|atom/b-cm|atom/cm3</code>；份额口径<code>ao|wo</code></td><td><code>materials.xml</code></td></tr>
-<tr><td>surfaces</td><td><code>id</code>、<code>type</code>、<code>parameters</code></td><td><code>boundary</code>（默认transmission）；类型仅x/y/z平面、x/y/z圆柱、球；平面给x0/y0/z0，圆柱/球给r</td><td><code>geometry.xml</code></td></tr>
+<tr><td>surfaces</td><td><code>id</code>、<code>type</code>、<code>parameters</code></td><td><code>boundary</code>（内部面默认transmission；根宇宙外边界面必须显式vacuum/reflective/white）；类型仅x/y/z平面、x/y/z圆柱、球；平面给x0/y0/z0，圆柱/球给r</td><td><code>geometry.xml</code></td></tr>
 <tr><td>cells</td><td><code>id</code>、<code>universe</code>、<code>region</code>、<code>fill</code></td><td><code>name</code>；region只接受面编号与空格/交、<code>|</code>并、<code>~</code>补、括号；fill为material/universe/lattice/void</td><td><code>geometry.xml</code></td></tr>
 <tr><td>lattices</td><td><code>id</code>、<code>lower_left</code>、<code>pitch</code>、<code>universes</code></td><td><code>outer</code>；仅二维矩形；节距&gt;0；每行等长；所有格架必须被引用</td><td><code>geometry.xml</code></td></tr>
 <tr><td>settings</td><td><code>run_mode</code>、<code>particles</code>、<code>batches</code>、<code>inactive</code>、<code>source</code></td><td><code>generations_per_batch</code>、<code>seed</code>；batches-inactive≥2；固定源inactive=0；source为点或盒，可带strength/energy_ev</td><td><code>settings.xml</code></td></tr>
 <tr><td>tallies</td><td><code>id</code>、<code>scores</code></td><td><code>name</code>、<code>nuclides</code>、<code>filters</code>；过滤仅energy/material/mesh；能量边界须递增；同类过滤不可重复；组合值不超过100万</td><td><code>tallies.xml</code></td></tr>
+<tr><td>validation</td><td>—</td><td><code>overrides[]</code>：<code>code</code>、必填<code>reason</code>、<code>scope</code>；当前只接受<code>outer_boundary_transmission</code>，其余错误不可覆盖</td><td>不生成 XML；写入构建结果/来源 tag</td></tr>
 </tbody></table></div>
 </details>
+<p>专家覆盖示例：<code>{"validation":{"overrides":[{"code":"outer_boundary_transmission","reason":"固定源逃逸测试","scope":"run"}]}}</code>。覆盖只放宽这一条边界规则，类型、引用和结构错误仍不可覆盖；构建结果、<code>mc-case.json</code> 与作业 provenance 都会带 <code>validation</code> tag。</p>
 
 <h3 id="input-example">4.3 3×2 组件</h3>
 <p>以 <code>examples/model-specs/rectangular-assembly.json</code> 为例。组件 3×2，栅距 1.2 cm，燃料和水交替，外边界反射，统计通量。</p>
@@ -173,7 +177,7 @@ PY</code></pre>
 <p>返回后检查：</p>
 <ul>
 <li><code>case_dir</code> 下有 <code>materials.xml</code>、<code>geometry.xml</code>、<code>settings.xml</code>、<code>tallies.xml</code>；</li>
-<li>目录里有 <code>model-spec.json</code>、<code>build_model.py</code>、<code>mc-case.json</code>；</li>
+<li>目录里有 <code>model-spec.json</code>、<code>build_model.py</code>、<code>model_validation/</code>、<code>mc-case.json</code>；带着校验包才能独立重建和 <code>--validate</code>；</li>
 <li><code>api_parsed=true</code>，材料、栅元、格架和计分数量与输入一致；</li>
 <li>预览和校核返回的问题清单为空。</li>
 </ul>
@@ -212,7 +216,7 @@ subprocess.run([sys.executable, 'mcp/cli.py', 'call', 'openmc_build_model',
     json.dumps({'case_dir':'cases/my-assembly', 'spec':spec})], check=True)
 PY
 ./mc.sh call openmc_preview_input '{"case_dir":"cases/my-assembly"}'
-./mc.sh call openmc_validate_inputs '{"case_dir":"cases/my-assembly","api_check":true,"semantic_check":true}'</code></pre><p>得到分离XML、model-spec.json和build_model.py；后者与描述文件可在装有OpenMC的独立空目录重建输入。API读回不判断专业适用性。若需要几何抽样检查，另明确启用geometry_check=true，它会在临时副本执行低批次输运并消耗计算资源。</p></details><details id="parameters"><summary>发现参数、创建修改副本，再重算比较</summary><p>组合示例的材料编号2在JSON中明确是水，初始密度0.7 g/cm³。因此将 <code>materials.2.density</code> 设为0.8，是改变冷却剂密度；它不是随便改某个数字，也不是对真实工况的推荐。</p><pre class="command"><code>./mc.sh call openmc_list_parameters '{"case_dir":"cases/my-assembly"}'
+./mc.sh call openmc_validate_inputs '{"case_dir":"cases/my-assembly","api_check":true,"semantic_check":true}'</code></pre><p>得到分离XML、model-spec.json和build_model.py；后者与描述文件及 <code>model_validation/</code> 可在装有OpenMC的独立空目录重建输入；Pydantic 缺失时校验包自动走标准库 fallback。API读回不判断专业适用性。若需要几何抽样检查，另明确启用geometry_check=true，它会在临时副本执行低批次输运并消耗计算资源。</p></details><details id="parameters"><summary>发现参数、创建修改副本，再重算比较</summary><p>组合示例的材料编号2在JSON中明确是水，初始密度0.7 g/cm³。因此将 <code>materials.2.density</code> 设为0.8，是改变冷却剂密度；它不是随便改某个数字，也不是对真实工况的推荐。</p><pre class="command"><code>./mc.sh call openmc_list_parameters '{"case_dir":"cases/my-assembly"}'
 ./mc.sh call openmc_prepare_case '{"case_dir":"cases/my-assembly","target_dir":"cases/my-assembly-denser","parameters":{"materials.2.density":0.8}}'
 ./mc.sh call openmc_preview_input '{"case_dir":"cases/my-assembly-denser"}'
 ./mc.sh call openmc_validate_inputs '{"case_dir":"cases/my-assembly-denser","api_check":true,"semantic_check":true}'
@@ -227,7 +231,7 @@ PY
 <tr><td>原始StatePoint</td><td>保留更深入分析所需的求解输出，用官方API重新读取。</td><td>不等同于轻量预览或一张图；大计分仍需评估读取内存。</td></tr>
 </tbody></table></div><p><strong>横轴决定图能说明什么。</strong>单能量过滤图用eV区间的算术中点，保留上下界；计分仍是bin积分量，没有自动除以能宽。多过滤器通用图使用展平分箱序号，不是空间距离。空间关系应看规则网格热图；多层三维网格选层、带能量过滤选箱，不能不说明条件就投影。</p><p id="mesh-fields"><strong>空间图的实际字段：</strong><code>openmc_plot_mesh</code>返回的<code>image</code>是图片文件名，以<code>server_path</code>定位服务端图片；<code>values_json</code>/<code>values_csv</code>指向配套数值文件。热图JSON的<code>x_edges</code>/<code>y_edges</code>是所选切片的网格边界（cm），格心由相邻边界的平均值得到；<code>values[j][i]</code>对应CSV的(i,j)，仍按本节和下方核对步骤解释。文件路径不是下载URL，甲方自有服务器上的文件按<a href="deployment.html#artifact-delivery">现有交付方式</a>取回。</p><p><strong>统计误差和归一化须一起看。</strong><code>std_dev</code>是OpenMC对均值统计不确定度的估计（标准误），不是空间各格分布的离散程度，也不自动等于95%置信区间；非有限值保留为空并提示，不补零。图表没有自动追加功率、实际源强或体积归一化。k逐批图可辅助观察统计过程，不能单凭曲线平缓宣布收敛。进度中的<code>entropy_latest=null</code>只表示未取得可用的该项观测，不能据此判失败或已收敛。这两条低统计练习只核对工程流程；专业计算的源收敛、有效统计量及误差要求须由使用者明确，本手册不把某个粒子数或批次数作为通用充分条件。</p><p></p><p>低统计下，网格的均值可能恰为0。热图对这些格子加×并返回zero_bins和提示；它们仍保留0，非有限缺失值仍为空。单凭0不能断言物理量严格为0，也不能确认没有径迹贡献；需结合计分定义、区域和采样判断。x标记不改变归一化或置信度。</p></section><details id="files"><summary>文件格式、原始结果与整理产物各是什么</summary><h3>准备计算时的输入</h3><div class="table-wrap"><table><thead><tr><th>文件</th><th>科学用途</th><th>本包的处理</th></tr></thead><tbody>
 <tr><td>model.xml；或geometry/materials/settings/tallies.xml</td><td>几何、材料、运行设置与计分定义。</td><td>导入、预览、受支持改参及分层校核；生成模型经官方Python API导出。</td></tr>
-<tr><td>model-spec.json / build_model.py</td><td>结构化建模依据及独立重建。</td><td>组合建模时保留；不表示全部OpenMC属性都能由spec表达。</td></tr>
+<tr><td>model-spec.json / build_model.py / model_validation/</td><td>结构化建模依据、独立重建及可移植校验；不把校验通过当物理正确。</td><td>组合建模时保留；不表示全部OpenMC属性都能由spec表达。</td></tr>
 <tr><td>.step / .stp → dagmc.h5m</td><td>CAD实体及其DAGMC网格几何。</td><td>检查实体、按明确缩放/标签转换并读回；H5M是MOAB/HDF5几何输入。</td></tr>
 <tr><td>cross_sections.xml + 核数据.h5</td><td>核素、温度等相互作用数据索引与实际数据。</td><td>初始化或指定库，检查相应索引并注入运行；复制索引不等于数据库已搬移。</td></tr>
 <tr><td>燃耗链XML + 燃耗配置</td><td>衰变/反应链、功率与时间步。</td><td>供受支持燃耗作业使用；材料体积和实际链文件仍需准备。</td></tr>

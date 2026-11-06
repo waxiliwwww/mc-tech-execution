@@ -1,5 +1,5 @@
 {
-  "schema_version": "1",
+  "schema_version": "2",
   "name": "custom asymmetric 3 by 2 assembly",
   "materials": [
     {
@@ -109,7 +109,41 @@
     {
       "id": 1,
       "universe": 0,
-      "region": "1 -2 3 -4 5 -6",
+      "region": {
+        "op": "intersection",
+        "items": [
+          {
+            "op": "halfspace",
+            "surface": 1,
+            "side": "positive"
+          },
+          {
+            "op": "halfspace",
+            "surface": 2,
+            "side": "negative"
+          },
+          {
+            "op": "halfspace",
+            "surface": 3,
+            "side": "positive"
+          },
+          {
+            "op": "halfspace",
+            "surface": 4,
+            "side": "negative"
+          },
+          {
+            "op": "halfspace",
+            "surface": 5,
+            "side": "positive"
+          },
+          {
+            "op": "halfspace",
+            "surface": 6,
+            "side": "negative"
+          }
+        ]
+      },
       "fill": {
         "type": "lattice",
         "id": 10
@@ -118,7 +152,11 @@
     {
       "id": 2,
       "universe": 1,
-      "region": "-7",
+      "region": {
+        "op": "halfspace",
+        "surface": 7,
+        "side": "negative"
+      },
       "fill": {
         "type": "material",
         "id": 1
@@ -127,7 +165,11 @@
     {
       "id": 3,
       "universe": 1,
-      "region": "7",
+      "region": {
+        "op": "halfspace",
+        "surface": 7,
+        "side": "positive"
+      },
       "fill": {
         "type": "material",
         "id": 2
@@ -136,7 +178,11 @@
     {
       "id": 4,
       "universe": 2,
-      "region": "-8",
+      "region": {
+        "op": "halfspace",
+        "surface": 8,
+        "side": "negative"
+      },
       "fill": {
         "type": "material",
         "id": 2

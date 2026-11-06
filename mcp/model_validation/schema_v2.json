@@ -1,0 +1,1329 @@
+{
+  "$defs": {
+    "BoxSource": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "box",
+          "title": "Type",
+          "type": "string"
+        },
+        "lower_left": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Lower Left",
+          "type": "array"
+        },
+        "upper_right": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Upper Right",
+          "type": "array"
+        },
+        "strength": {
+          "default": null,
+          "exclusiveMinimum": 0,
+          "title": "Strength",
+          "type": "number"
+        },
+        "energy_ev": {
+          "default": null,
+          "exclusiveMinimum": 0,
+          "title": "Energy Ev",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "lower_left",
+        "upper_right"
+      ],
+      "title": "BoxSource",
+      "type": "object"
+    },
+    "Cell": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "name": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Name",
+          "type": "string"
+        },
+        "universe": {
+          "minimum": 0,
+          "title": "Universe",
+          "type": "integer"
+        },
+        "region": {
+          "discriminator": {
+            "mapping": {
+              "complement": "#/$defs/RegionComplement",
+              "halfspace": "#/$defs/HalfSpace",
+              "intersection": "#/$defs/RegionIntersection",
+              "union": "#/$defs/RegionUnion"
+            },
+            "propertyName": "op"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/HalfSpace"
+            },
+            {
+              "$ref": "#/$defs/RegionIntersection"
+            },
+            {
+              "$ref": "#/$defs/RegionUnion"
+            },
+            {
+              "$ref": "#/$defs/RegionComplement"
+            }
+          ],
+          "title": "Region"
+        },
+        "fill": {
+          "discriminator": {
+            "mapping": {
+              "lattice": "#/$defs/RefFill",
+              "material": "#/$defs/RefFill",
+              "universe": "#/$defs/RefFill",
+              "void": "#/$defs/VoidFill"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/VoidFill"
+            },
+            {
+              "$ref": "#/$defs/RefFill"
+            }
+          ],
+          "title": "Fill"
+        }
+      },
+      "required": [
+        "id",
+        "universe",
+        "region",
+        "fill"
+      ],
+      "title": "Cell",
+      "type": "object"
+    },
+    "EnergyFilter": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "energy",
+          "title": "Type",
+          "type": "string"
+        },
+        "bins": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 10000,
+          "minItems": 1,
+          "title": "Bins",
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "bins"
+      ],
+      "title": "EnergyFilter",
+      "type": "object"
+    },
+    "HalfSpace": {
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "halfspace",
+          "title": "Op",
+          "type": "string"
+        },
+        "surface": {
+          "minimum": 1,
+          "title": "Surface",
+          "type": "integer"
+        },
+        "side": {
+          "enum": [
+            "negative",
+            "positive"
+          ],
+          "title": "Side",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "surface",
+        "side"
+      ],
+      "title": "HalfSpace",
+      "type": "object"
+    },
+    "Lattice": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "name": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Name",
+          "type": "string"
+        },
+        "lower_left": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Lower Left",
+          "type": "array"
+        },
+        "pitch": {
+          "items": {
+            "exclusiveMinimum": 0,
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Pitch",
+          "type": "array"
+        },
+        "universes": {
+          "items": {
+            "items": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": "array"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "title": "Universes",
+          "type": "array"
+        },
+        "outer": {
+          "default": null,
+          "minimum": 0,
+          "title": "Outer",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "lower_left",
+        "pitch",
+        "universes"
+      ],
+      "title": "Lattice",
+      "type": "object"
+    },
+    "Material": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "name": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Name",
+          "type": "string"
+        },
+        "density": {
+          "exclusiveMinimum": 0,
+          "title": "Density",
+          "type": "number"
+        },
+        "density_unit": {
+          "enum": [
+            "g/cm3",
+            "atom/b-cm",
+            "atom/cm3"
+          ],
+          "title": "Density Unit",
+          "type": "string"
+        },
+        "percent_type": {
+          "enum": [
+            "ao",
+            "wo"
+          ],
+          "title": "Percent Type",
+          "type": "string"
+        },
+        "nuclides": {
+          "items": {
+            "$ref": "#/$defs/Nuclide"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "title": "Nuclides",
+          "type": "array"
+        },
+        "temperature": {
+          "default": null,
+          "exclusiveMinimum": 0,
+          "title": "Temperature",
+          "type": "number"
+        },
+        "sab": {
+          "items": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Sab",
+          "type": "array"
+        },
+        "depletable": {
+          "default": false,
+          "title": "Depletable",
+          "type": "boolean"
+        },
+        "volume": {
+          "default": null,
+          "exclusiveMinimum": 0,
+          "title": "Volume",
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "density",
+        "density_unit",
+        "percent_type",
+        "nuclides"
+      ],
+      "title": "Material",
+      "type": "object"
+    },
+    "MaterialFilter": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "material",
+          "title": "Type",
+          "type": "string"
+        },
+        "bins": {
+          "items": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxItems": 10000,
+          "minItems": 1,
+          "title": "Bins",
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "bins"
+      ],
+      "title": "MaterialFilter",
+      "type": "object"
+    },
+    "MeshFilter": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "mesh",
+          "title": "Type",
+          "type": "string"
+        },
+        "dimension": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Dimension",
+          "type": "array"
+        },
+        "lower_left": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Lower Left",
+          "type": "array"
+        },
+        "upper_right": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Upper Right",
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "dimension",
+        "lower_left",
+        "upper_right"
+      ],
+      "title": "MeshFilter",
+      "type": "object"
+    },
+    "Nuclide": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "fraction": {
+          "exclusiveMinimum": 0,
+          "title": "Fraction",
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "fraction"
+      ],
+      "title": "Nuclide",
+      "type": "object"
+    },
+    "Override": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "const": "outer_boundary_transmission",
+          "title": "Code",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "scope": {
+          "default": "run",
+          "enum": [
+            "run",
+            "build",
+            "scan"
+          ],
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "reason"
+      ],
+      "title": "Override",
+      "type": "object"
+    },
+    "PointSource": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "point",
+          "title": "Type",
+          "type": "string"
+        },
+        "point": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Point",
+          "type": "array"
+        },
+        "strength": {
+          "default": null,
+          "exclusiveMinimum": 0,
+          "title": "Strength",
+          "type": "number"
+        },
+        "energy_ev": {
+          "default": null,
+          "exclusiveMinimum": 0,
+          "title": "Energy Ev",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "point"
+      ],
+      "title": "PointSource",
+      "type": "object"
+    },
+    "RefFill": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "material",
+            "universe",
+            "lattice"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "title": "RefFill",
+      "type": "object"
+    },
+    "RegionComplement": {
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "complement",
+          "title": "Op",
+          "type": "string"
+        },
+        "item": {
+          "discriminator": {
+            "mapping": {
+              "complement": "#/$defs/RegionComplement",
+              "halfspace": "#/$defs/HalfSpace",
+              "intersection": "#/$defs/RegionIntersection",
+              "union": "#/$defs/RegionUnion"
+            },
+            "propertyName": "op"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/HalfSpace"
+            },
+            {
+              "$ref": "#/$defs/RegionIntersection"
+            },
+            {
+              "$ref": "#/$defs/RegionUnion"
+            },
+            {
+              "$ref": "#/$defs/RegionComplement"
+            }
+          ],
+          "title": "Item"
+        }
+      },
+      "required": [
+        "op",
+        "item"
+      ],
+      "title": "RegionComplement",
+      "type": "object"
+    },
+    "RegionIntersection": {
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "intersection",
+          "title": "Op",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "complement": "#/$defs/RegionComplement",
+                "halfspace": "#/$defs/HalfSpace",
+                "intersection": "#/$defs/RegionIntersection",
+                "union": "#/$defs/RegionUnion"
+              },
+              "propertyName": "op"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/HalfSpace"
+              },
+              {
+                "$ref": "#/$defs/RegionIntersection"
+              },
+              {
+                "$ref": "#/$defs/RegionUnion"
+              },
+              {
+                "$ref": "#/$defs/RegionComplement"
+              }
+            ]
+          },
+          "minItems": 1,
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "op",
+        "items"
+      ],
+      "title": "RegionIntersection",
+      "type": "object"
+    },
+    "RegionUnion": {
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "union",
+          "title": "Op",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "complement": "#/$defs/RegionComplement",
+                "halfspace": "#/$defs/HalfSpace",
+                "intersection": "#/$defs/RegionIntersection",
+                "union": "#/$defs/RegionUnion"
+              },
+              "propertyName": "op"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/HalfSpace"
+              },
+              {
+                "$ref": "#/$defs/RegionIntersection"
+              },
+              {
+                "$ref": "#/$defs/RegionUnion"
+              },
+              {
+                "$ref": "#/$defs/RegionComplement"
+              }
+            ]
+          },
+          "minItems": 1,
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "op",
+        "items"
+      ],
+      "title": "RegionUnion",
+      "type": "object"
+    },
+    "Settings": {
+      "additionalProperties": false,
+      "properties": {
+        "run_mode": {
+          "enum": [
+            "eigenvalue",
+            "fixed source"
+          ],
+          "title": "Run Mode",
+          "type": "string"
+        },
+        "particles": {
+          "maximum": 100000000,
+          "minimum": 1,
+          "title": "Particles",
+          "type": "integer"
+        },
+        "batches": {
+          "maximum": 1000000,
+          "minimum": 2,
+          "title": "Batches",
+          "type": "integer"
+        },
+        "inactive": {
+          "minimum": 0,
+          "title": "Inactive",
+          "type": "integer"
+        },
+        "generations_per_batch": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Generations Per Batch",
+          "type": "integer"
+        },
+        "seed": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "source": {
+          "discriminator": {
+            "mapping": {
+              "box": "#/$defs/BoxSource",
+              "point": "#/$defs/PointSource"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/PointSource"
+            },
+            {
+              "$ref": "#/$defs/BoxSource"
+            }
+          ],
+          "title": "Source"
+        }
+      },
+      "required": [
+        "run_mode",
+        "particles",
+        "batches",
+        "inactive",
+        "source"
+      ],
+      "title": "Settings",
+      "type": "object"
+    },
+    "Sphere": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "boundary": {
+          "default": "transmission",
+          "enum": [
+            "transmission",
+            "vacuum",
+            "reflective",
+            "white"
+          ],
+          "title": "Boundary",
+          "type": "string"
+        },
+        "type": {
+          "const": "sphere",
+          "title": "Type",
+          "type": "string"
+        },
+        "parameters": {
+          "$ref": "#/$defs/SphereParameters"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "parameters"
+      ],
+      "title": "Sphere",
+      "type": "object"
+    },
+    "SphereParameters": {
+      "additionalProperties": false,
+      "properties": {
+        "x0": {
+          "default": 0,
+          "title": "X0",
+          "type": "number"
+        },
+        "y0": {
+          "default": 0,
+          "title": "Y0",
+          "type": "number"
+        },
+        "z0": {
+          "default": 0,
+          "title": "Z0",
+          "type": "number"
+        },
+        "r": {
+          "exclusiveMinimum": 0,
+          "title": "R",
+          "type": "number"
+        }
+      },
+      "required": [
+        "r"
+      ],
+      "title": "SphereParameters",
+      "type": "object"
+    },
+    "Tally": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "name": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Name",
+          "type": "string"
+        },
+        "scores": {
+          "items": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Scores",
+          "type": "array"
+        },
+        "nuclides": {
+          "default": null,
+          "items": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "title": "Nuclides",
+          "type": "array"
+        },
+        "filters": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "energy": "#/$defs/EnergyFilter",
+                "material": "#/$defs/MaterialFilter",
+                "mesh": "#/$defs/MeshFilter"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/EnergyFilter"
+              },
+              {
+                "$ref": "#/$defs/MaterialFilter"
+              },
+              {
+                "$ref": "#/$defs/MeshFilter"
+              }
+            ]
+          },
+          "maxItems": 8,
+          "title": "Filters",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "scores"
+      ],
+      "title": "Tally",
+      "type": "object"
+    },
+    "Validation": {
+      "additionalProperties": false,
+      "properties": {
+        "overrides": {
+          "items": {
+            "$ref": "#/$defs/Override"
+          },
+          "title": "Overrides",
+          "type": "array"
+        }
+      },
+      "title": "Validation",
+      "type": "object"
+    },
+    "VoidFill": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "void",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "VoidFill",
+      "type": "object"
+    },
+    "XCylinder": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "boundary": {
+          "default": "transmission",
+          "enum": [
+            "transmission",
+            "vacuum",
+            "reflective",
+            "white"
+          ],
+          "title": "Boundary",
+          "type": "string"
+        },
+        "type": {
+          "const": "x-cylinder",
+          "title": "Type",
+          "type": "string"
+        },
+        "parameters": {
+          "$ref": "#/$defs/XCylinderParameters"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "parameters"
+      ],
+      "title": "XCylinder",
+      "type": "object"
+    },
+    "XCylinderParameters": {
+      "additionalProperties": false,
+      "properties": {
+        "y0": {
+          "default": 0,
+          "title": "Y0",
+          "type": "number"
+        },
+        "z0": {
+          "default": 0,
+          "title": "Z0",
+          "type": "number"
+        },
+        "r": {
+          "exclusiveMinimum": 0,
+          "title": "R",
+          "type": "number"
+        }
+      },
+      "required": [
+        "r"
+      ],
+      "title": "XCylinderParameters",
+      "type": "object"
+    },
+    "XPlane": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "boundary": {
+          "default": "transmission",
+          "enum": [
+            "transmission",
+            "vacuum",
+            "reflective",
+            "white"
+          ],
+          "title": "Boundary",
+          "type": "string"
+        },
+        "type": {
+          "const": "x-plane",
+          "title": "Type",
+          "type": "string"
+        },
+        "parameters": {
+          "$ref": "#/$defs/XPlaneParameters"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "parameters"
+      ],
+      "title": "XPlane",
+      "type": "object"
+    },
+    "XPlaneParameters": {
+      "additionalProperties": false,
+      "properties": {
+        "x0": {
+          "title": "X0",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x0"
+      ],
+      "title": "XPlaneParameters",
+      "type": "object"
+    },
+    "YCylinder": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "boundary": {
+          "default": "transmission",
+          "enum": [
+            "transmission",
+            "vacuum",
+            "reflective",
+            "white"
+          ],
+          "title": "Boundary",
+          "type": "string"
+        },
+        "type": {
+          "const": "y-cylinder",
+          "title": "Type",
+          "type": "string"
+        },
+        "parameters": {
+          "$ref": "#/$defs/YCylinderParameters"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "parameters"
+      ],
+      "title": "YCylinder",
+      "type": "object"
+    },
+    "YCylinderParameters": {
+      "additionalProperties": false,
+      "properties": {
+        "x0": {
+          "default": 0,
+          "title": "X0",
+          "type": "number"
+        },
+        "z0": {
+          "default": 0,
+          "title": "Z0",
+          "type": "number"
+        },
+        "r": {
+          "exclusiveMinimum": 0,
+          "title": "R",
+          "type": "number"
+        }
+      },
+      "required": [
+        "r"
+      ],
+      "title": "YCylinderParameters",
+      "type": "object"
+    },
+    "YPlane": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "boundary": {
+          "default": "transmission",
+          "enum": [
+            "transmission",
+            "vacuum",
+            "reflective",
+            "white"
+          ],
+          "title": "Boundary",
+          "type": "string"
+        },
+        "type": {
+          "const": "y-plane",
+          "title": "Type",
+          "type": "string"
+        },
+        "parameters": {
+          "$ref": "#/$defs/YPlaneParameters"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "parameters"
+      ],
+      "title": "YPlane",
+      "type": "object"
+    },
+    "YPlaneParameters": {
+      "additionalProperties": false,
+      "properties": {
+        "y0": {
+          "title": "Y0",
+          "type": "number"
+        }
+      },
+      "required": [
+        "y0"
+      ],
+      "title": "YPlaneParameters",
+      "type": "object"
+    },
+    "ZCylinder": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "boundary": {
+          "default": "transmission",
+          "enum": [
+            "transmission",
+            "vacuum",
+            "reflective",
+            "white"
+          ],
+          "title": "Boundary",
+          "type": "string"
+        },
+        "type": {
+          "const": "z-cylinder",
+          "title": "Type",
+          "type": "string"
+        },
+        "parameters": {
+          "$ref": "#/$defs/ZCylinderParameters"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "parameters"
+      ],
+      "title": "ZCylinder",
+      "type": "object"
+    },
+    "ZCylinderParameters": {
+      "additionalProperties": false,
+      "properties": {
+        "x0": {
+          "default": 0,
+          "title": "X0",
+          "type": "number"
+        },
+        "y0": {
+          "default": 0,
+          "title": "Y0",
+          "type": "number"
+        },
+        "r": {
+          "exclusiveMinimum": 0,
+          "title": "R",
+          "type": "number"
+        }
+      },
+      "required": [
+        "r"
+      ],
+      "title": "ZCylinderParameters",
+      "type": "object"
+    },
+    "ZPlane": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "boundary": {
+          "default": "transmission",
+          "enum": [
+            "transmission",
+            "vacuum",
+            "reflective",
+            "white"
+          ],
+          "title": "Boundary",
+          "type": "string"
+        },
+        "type": {
+          "const": "z-plane",
+          "title": "Type",
+          "type": "string"
+        },
+        "parameters": {
+          "$ref": "#/$defs/ZPlaneParameters"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "parameters"
+      ],
+      "title": "ZPlane",
+      "type": "object"
+    },
+    "ZPlaneParameters": {
+      "additionalProperties": false,
+      "properties": {
+        "z0": {
+          "title": "Z0",
+          "type": "number"
+        }
+      },
+      "required": [
+        "z0"
+      ],
+      "title": "ZPlaneParameters",
+      "type": "object"
+    }
+  },
+  "$id": "https://mc-agent-tools.local/model-spec/v2.json",
+  "additionalProperties": false,
+  "description": "OpenMC model-spec/v2；组合模型，不执行调用方Python；专业适用性需另行确认。",
+  "properties": {
+    "schema_version": {
+      "const": "2",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "name": {
+      "default": "",
+      "maxLength": 200,
+      "title": "Name",
+      "type": "string"
+    },
+    "materials": {
+      "items": {
+        "$ref": "#/$defs/Material"
+      },
+      "maxItems": 1000,
+      "minItems": 1,
+      "title": "Materials",
+      "type": "array"
+    },
+    "surfaces": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "sphere": "#/$defs/Sphere",
+            "x-cylinder": "#/$defs/XCylinder",
+            "x-plane": "#/$defs/XPlane",
+            "y-cylinder": "#/$defs/YCylinder",
+            "y-plane": "#/$defs/YPlane",
+            "z-cylinder": "#/$defs/ZCylinder",
+            "z-plane": "#/$defs/ZPlane"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/XPlane"
+          },
+          {
+            "$ref": "#/$defs/YPlane"
+          },
+          {
+            "$ref": "#/$defs/ZPlane"
+          },
+          {
+            "$ref": "#/$defs/XCylinder"
+          },
+          {
+            "$ref": "#/$defs/YCylinder"
+          },
+          {
+            "$ref": "#/$defs/ZCylinder"
+          },
+          {
+            "$ref": "#/$defs/Sphere"
+          }
+        ]
+      },
+      "maxItems": 10000,
+      "minItems": 1,
+      "title": "Surfaces",
+      "type": "array"
+    },
+    "cells": {
+      "items": {
+        "$ref": "#/$defs/Cell"
+      },
+      "maxItems": 10000,
+      "minItems": 1,
+      "title": "Cells",
+      "type": "array"
+    },
+    "lattices": {
+      "items": {
+        "$ref": "#/$defs/Lattice"
+      },
+      "maxItems": 100,
+      "title": "Lattices",
+      "type": "array"
+    },
+    "root_universe": {
+      "minimum": 0,
+      "title": "Root Universe",
+      "type": "integer"
+    },
+    "settings": {
+      "$ref": "#/$defs/Settings"
+    },
+    "tallies": {
+      "items": {
+        "$ref": "#/$defs/Tally"
+      },
+      "maxItems": 100,
+      "title": "Tallies",
+      "type": "array"
+    },
+    "validation": {
+      "$ref": "#/$defs/Validation",
+      "default": null
+    }
+  },
+  "required": [
+    "schema_version",
+    "materials",
+    "surfaces",
+    "cells",
+    "root_universe",
+    "settings"
+  ],
+  "title": "ModelSpec",
+  "type": "object"
+}

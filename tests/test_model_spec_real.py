@@ -19,6 +19,11 @@ from openmc_model_spec import validate_spec
 RUNTIME=os.environ.get('MC_TEST_OPENMC_CONFIG')
 
 
+def copy_builder(source, target):
+    shutil.copyfile(source/'openmc_model_spec.py', target/'build_model.py')
+    shutil.copytree(source/'model_validation', target/'model_validation', dirs_exist_ok=True)
+
+
 @unittest.skipUnless(RUNTIME,'MC_TEST_OPENMC_CONFIG启用真实组合模型生成/运行')
 class ModelSpecReal(unittest.TestCase):
     def test_changed_layout_builds_relocates_and_computes(self):
@@ -34,7 +39,7 @@ class ModelSpecReal(unittest.TestCase):
             s['tallies'][0]['filters'][0].update(dimension=[2,3,1],lower_left=[-1.2,-1.8,-5],upper_right=[1.2,1.8,5])
             s['materials'][0]['nuclides'][0]['fraction']=0.06
             validate_spec(s)
-            (d/'model-spec.json').write_text(json.dumps(s));shutil.copy(ROOT/'mcp/openmc_model_spec.py',d/'build_model.py')
+            (d/'model-spec.json').write_text(json.dumps(s));copy_builder(ROOT/'mcp',d)
             generated=subprocess.run([python,'build_model.py'],cwd=d,capture_output=True,text=True,timeout=60)
             self.assertEqual(generated.returncode,0,generated.stderr)
             # Confirm axes against the original declaration, not flattened output order.
@@ -49,6 +54,7 @@ print(json.dumps({'rows':[[int(u.id) for u in row] for row in l.universes],'pitc
             self.assertAlmostEqual(read['nuclides']['O16']/read['nuclides']['U238'],2.0/0.95,places=12)
             moved=d/'relocated';moved.mkdir()
             for name in ('build_model.py','model-spec.json'):shutil.copy(d/name,moved/name)
+            shutil.copytree(d/'model_validation',moved/'model_validation')
             rerun=subprocess.run([python,'build_model.py'],cwd=moved,capture_output=True,text=True,timeout=60)
             self.assertEqual(rerun.returncode,0,rerun.stderr)
             for name in ('geometry.xml','materials.xml','settings.xml','tallies.xml'):
@@ -100,6 +106,7 @@ for name,digest in marker['model_xml_sha256'].items():assert hashlib.sha256((roo
 # Rebuild only from exported source and spec in a relocated directory.
 rebuild=root/'relocated';rebuild.mkdir()
 for name in ('model-spec.json','build_model.py'):shutil.copy(root/name,rebuild/name)
+for name in ('model_validation',):shutil.copytree(root/name,rebuild/name)
 import subprocess,sys
 p=subprocess.run([sys.executable,'build_model.py'],cwd=rebuild,capture_output=True,text=True)
 assert p.returncode==0,p.stderr

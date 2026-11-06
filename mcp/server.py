@@ -28,6 +28,7 @@ from starlette.responses import JSONResponse
 import uvicorn
 
 from adapters import ToolExecutionError, execute_tool, public_tool, validate_registry
+from business import MCInputError
 import resources
 from tools import TOOLS
 
@@ -272,7 +273,7 @@ def create_app(config, log, tools=None):
             with contextlib.suppress(Exception):
                 log.emit("WARNING", "tool.failed", name=name if name in registry else "unknown",
                          code=type(error).__name__, arguments=parameters)
-            message = str(error) if isinstance(error, ToolExecutionError) else "Business function failed; inspect the business implementation."
+            message = str(error) if isinstance(error, (ToolExecutionError, MCInputError)) else "Business function failed; inspect the business implementation."
             return CallToolResult(isError=True, content=[TextContent(type="text", text=message)])
 
     @server.list_resources()

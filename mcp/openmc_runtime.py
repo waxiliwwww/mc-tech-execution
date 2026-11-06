@@ -102,10 +102,16 @@ def provenance(directory: Path, cfg: dict | None = None) -> dict:
             raise Error("算例说明不能是符号链接")
         try:
             data = json.loads(marker.read_text(encoding='utf-8'))
-            return {'data_kind': data['data_kind'], 'template': data.get('template'),
-                    'execution_kind': 'mock_process_fixture' if cfg['data_kind'] == 'mock_process_fixture' else 'openmc_runtime',
-                    'professional_acceptance': False, 'note': data.get('note', ''),
-                    **{key: data[key] for key in ('source_url', 'source_sha256') if key in data}}
+            provenance = {'data_kind': data['data_kind'], 'template': data.get('template'),
+                          'execution_kind': 'mock_process_fixture' if cfg['data_kind'] == 'mock_process_fixture' else 'openmc_runtime',
+                          'professional_acceptance': False, 'note': data.get('note', ''),
+                          **{key: data[key] for key in ('source_url', 'source_sha256') if key in data}}
+            # Validation tags travel with the job, not only with the build result.
+            if data.get('schema_version') is not None:
+                provenance['model_spec_schema_version'] = data['schema_version']
+            if data.get('validation') is not None:
+                provenance['validation'] = data['validation']
+            return provenance
         except (OSError, ValueError, KeyError) as exc:
             raise Error("算例来源说明损坏：mc-case.json") from exc
     return {'data_kind': cfg['data_kind'],

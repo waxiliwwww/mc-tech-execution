@@ -1,5 +1,16 @@
 # 变更记录
 
+## 未发布
+
+- 声明式输入升级为 `model-spec/v2`：`region` 使用 `halfspace`/`intersection`/`union`/`complement` 类型树，不再接受 v1 字符串表达式；无 v1 兼容层。变更同时更新 `openmc_build_model`、能力发现、随包示例和使用文档。
+- 参数校验拆成独立 `model_validation` 包：优先 Pydantic 严格模型，Pydantic 不可导入时自动使用纯标准库 fallback；真实校验失败不会静默改用另一后端。静态 schema 带 `$id`，可独立校验，也可随算例复制。
+- 专家覆盖以显式 tag 记录：当前只允许 `outer_boundary_transmission`，必须给出 `reason` 与 `scope`；未触发的覆盖保留 warning，构建结果、`mc-case.json` 和作业 provenance 都携带 `validation` 报告。
+- 根宇宙外边界 anti-hang 保留：只被一个根宇宙直接栅元使用的面视为外边界，`boundary` 不得为 `transmission`，须显式 `vacuum`/`reflective`/`white`，或使用上述覆盖。该规则是近似判定，不证明栅元覆盖或无重叠。
+- 随算例复制的 `build_model.py` 与 `model_validation/` 增加 `--validate`：无 OpenMC 环境可只校验 `model-spec.json`，默认 `auto` 后端并返回 assumptions、overrides；Pydantic 缺失时仍可用标准库 fallback。
+- 新增 5 条每次独立启动真实 MCP 服务的 model-spec/v2 用例，按场景拆到 `tests/model_validation_mcp/`，一个用例一个文件：2 条正例、2 条反例、1 条外边界覆盖边界例；文件头写明功能/类别/前置/操作/预期/不证明，均经实际 MCP 协议调用 `openmc_model_capabilities`、`openmc_build_model` 或 `openmc_preview_input`，检查拒绝原因、无残留目标目录、构建产物与覆盖 tag。
+- MCP 工具失败时透传经审阅的 `MCInputError` 文本（不泄露原始输出），使参数错误在宿主侧可见、可操作。
+- `openmc_model_capabilities` 增加校验后端作用域和构建器后端策略；`openmc_build_model` 分别返回服务端校验后端与构建器实际后端，避免把 OpenMC runtime 的 fallback 冒充服务端 Pydantic。
+
 ## 0.11.9 — 2026-11-06
 
 - 声明式模型提交返回 `input_integrity`，报告 `mc-case.json` 指纹与当前 XML/spec 是否一致；不一致只提示、不自动拦截。
