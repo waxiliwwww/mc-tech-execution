@@ -380,20 +380,13 @@ async def serve(config, log):
         started = True
         log.emit("INFO", "server.started", url=config.url, transport="streamable-http", authentication=config.authentication,
                  connectionFile=str(config.connection_file), eventLogFile=str(log.path), heartbeatIntervalMs=HEARTBEAT_SECONDS * 1000)
-        print(f"MCP 已启动 · {config.name} · v{config.version} · streamable-http · 鉴权{'已启用' if config.token else '未启用'}", flush=True)
-        print(f"地址：{config.url}", flush=True)
-        print("客户端连接参数：", flush=True)
-        print("  transport: streamable-http", flush=True)
-        print(f"  url: {config.url}", flush=True)
-        if config.token:
-            print("  auth: Bearer（在 Authorization 头携带令牌，启动输出不打印令牌）", flush=True)
-        else:
-            print("  auth: 无", flush=True)
-        print(f"连接信息：{config.connection_file}", flush=True)
-        print(f"工具（{len(TOOLS)}）：{', '.join(tool['name'] for tool in TOOLS)}", flush=True)
+        print(f"{config.name} {config.version} · MCP 已就绪", flush=True)
+        print("─" * 44, flush=True)
+        print(f"地址    {config.url}", flush=True)
+        print("传输    streamable-http", flush=True)
+        print(f"鉴权    {'Bearer（Authorization 头）' if config.token else '未启用'}", flush=True)
+        print(f"工具    {len(TOOLS)}", flush=True)
         print(f"事件日志：{log.path}", flush=True)
-        print("接入：任意支持 MCP Streamable HTTP 的客户端都可连接；DSH、Codex、Helix 等按各自配置填写 URL、传输和认证。宿主示例见 docs/deployment.html#handoff。", flush=True)
-        print("下一步：连接后先列出工具，调用 openmc_environment 检查环境；工具名按宿主的命名空间显示。", flush=True)
         beat = asyncio.create_task(heartbeat(log, time.monotonic()))
         await server_task
     finally:

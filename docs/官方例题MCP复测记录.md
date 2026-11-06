@@ -35,7 +35,7 @@ curl -s http://127.0.0.1:8770/health
 
 确认 `status=ok`、`version=0.11.9`；`openmc_environment` 的 `executable_available`、`api_available`、`version_matches` 应为 true。
 
-启动输出本身应给出足够信息：版本、MCP URL、传输与鉴权、`connection.json` 路径、工具清单和下一步。宿主配置按各自格式填写，DSH 示例在部署页。0.11.9 的 `./mcp/start.sh` 已按此输出；若只看到“已启动”而没有地址/传输信息，先核对启动的是不是当前版本。
+启动输出只保留服务名与版本、MCP URL、传输、鉴权、工具数量和事件日志路径；`connection.json`和宿主示例查文档。0.11.9 的 `./mcp/start.sh` 已按此输出；若没有地址/传输信息，先核对启动的是不是当前版本。
 
 C++ 自定义源还需要 `include/eigen3`。`quickstart.sh` 会检查并在缺失时补装 `eigen=3.4`；若用 `--openmc-prefix` 指向自备环境，需要自行保证该目录存在，否则 `compile` 会失败。
 
@@ -223,6 +223,6 @@ CMake Error in CMakeLists.txt:
 | 结果与报告 | `openmc_read_results`、`openmc_export_report` | keff/tally、StatePoint 路径与 SHA256、report.md/图/CSV/JSON 的服务端路径 | 通过 |
 | 导入已有 XML | `openmc_import_model` 导入同一套 XML 到新目录 | 文件清单、依赖、结构/API 校验、原目录未修改 | 通过 |
 
-本轮新增/修改的人机信息：启动横幅补版本、URL、DSH 配置、连接文件和下一步；`openmc_example_status` 与 `openmc_job_status` 增加首字段 `human_summary`（例如“已完成 3/5 步；下一步 …”），让智能体和人都能先看结论再决定是否展开大字段。
+本轮新增/修改的人机信息：启动横幅精简为版本、URL、传输/鉴权和工具数量；`openmc_example_status` 与 `openmc_job_status` 增加首字段 `human_summary`（例如“已完成 3/5 步；下一步 …”），让智能体和人都能先看结论再决定是否展开大字段。
 
 仍未验证或不能由本轮证明的：全新机器上从零跑 `quickstart.sh` 的完整网络安装；在真实 DSH GUI 里手工粘贴配置（本轮用已连接的 DSH 会话和标准客户端验证）；集群调度器/HPC 提交；远程 TLS/Bearer 网关。它们按部署环境另行验收。
