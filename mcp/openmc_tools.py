@@ -14,6 +14,7 @@ import subprocess
 import xml.etree.ElementTree as ET
 
 import openmc_jobs as jobs
+import openmc_scores
 from openmc_runtime import (ROOT, Error, api, atomic_json, command, config, path_in_workspace,
                             provenance, relative, workspace, file_location)
 
@@ -259,7 +260,7 @@ def _semantic_summary(directory: Path, inspected: list, cfg: dict) -> dict:
         material_section['skipped_reason'] = ('多群模式材料体系不同，材料级检查未覆盖'
                                               if multi_group else '存在macroscopic（多群）材料')
     tallies_root = root.find('tallies') if single.exists() else None
-    tally_count = definition_count = reference_count = 0
+    tally_count = definition_count = reference_count = score_count = 0
     if not single.exists() and tallies_root is None and 'tallies.xml' in inspected and (directory / 'tallies.xml').is_file():
         try:
             tallies_root = ET.parse(directory / 'tallies.xml').getroot()
@@ -302,8 +303,22 @@ def _semantic_summary(directory: Path, inspected: list, cfg: dict) -> dict:
                         problems.append({'kind': 'filter_reference', 'severity': 'error',
                                          'location': f'tally {label}',
                                          'detail': f'引用的filter id={token}未在tallies顶层定义'})
+            tokens = []
+            for node in tally.findall('scores'):
+                tokens.extend((node.text or '').split())
+            if tokens:
+                score_count += len(tokens)
+                unknown_scores, score_hints = openmc_scores.check(tokens)
+                for name in unknown_scores:
+                    close = score_hints.get(name) or []
+                    problems.append({'kind': 'invalid_score', 'severity': 'error',
+                                     'location': f'tally {label}',
+                                     'detail': 'score ' + name + ' 不在OpenMC可识别列表'
+                                               + ('（最接近：' + '/'.join(close) + '）' if close else '')
+                                               + '；引擎读取tallies.xml时会以Unknown reaction name终止'})
     tally_section = {'performed': tallies_root is not None, 'tallies': tally_count,
-                     'filter_definitions': definition_count, 'filter_references': reference_count}
+                     'filter_definitions': definition_count, 'filter_references': reference_count,
+                     'scores_checked': score_count, 'score_catalog': openmc_scores.describe()}
     nuclide_section = {'checked': False}
     missing_nuclides = missing_sab = []
     index_source = None
@@ -484,6 +499,42 @@ GEOMETRY_CHECK_MAX_BATCHES = 2
 GEOMETRY_OVERLAP_ERROR = re.compile(r'Overlapping cells detected:\s*([\d,\s]+?)\s*on universe\s+(\d+)')
 GEOMETRY_LOW_CHECKS = re.compile(r'There were (\d+) cells with less than (\d+) overlap checks')
 GEOMETRY_SUMMARY_ROW = re.compile(r'^\s*(\d+)\s+(\d+)\s*$')
+GEOMETRY_DATA_ATTRIBUTES = ('filename', 'materials', 'path', 'file', 'cross_sections')
+# 数据文件引用有两种写法：属性（<library materials="x.h5"/>、<dagmc_universe filename>）
+# 与元素文本（<cross_sections>x.h5</cross_sections>）。只扫属性会漏掉多群算例。
+GEOMETRY_DATA_ELEMENTS = ('cross_sections', 'library')
+
+
+def _data_reference(container: Path, text: str, found: list, missing: list):
+    text = (text or '').strip()
+    if not text or Path(text).is_absolute():
+        return
+    if (container / text).is_file():
+        if text not in found:
+            found.append(text)
+    elif text.lower().endswith(('.h5', '.hdf5', '.h5m')):
+        if text not in missing:
+            missing.append(text)
+
+
+def _referenced_data_files(directory: Path, names: list) -> tuple[list, list]:
+    """算例内被XML引用的相对数据文件（多群h5、DAGMC h5m等）。
+    几何检查在临时副本上跑引擎，副本少了这些文件，引擎会在读数据阶段失败
+    （实测：ERROR: Cross section HDF5 file 'synthetic-mgxs.h5' does not exist），
+    而旧实现把这种失败记成 ok=false，看起来像“几何有问题”。"""
+    found, missing = [], []
+    for name in names:
+        try:
+            root = ET.parse(directory / name).getroot()
+        except (ET.ParseError, OSError):
+            continue
+        for node in root.iter():
+            for attribute, value in node.attrib.items():
+                if attribute in GEOMETRY_DATA_ATTRIBUTES:
+                    _data_reference(directory, value, found, missing)
+            if str(node.tag) in GEOMETRY_DATA_ELEMENTS:
+                _data_reference(directory, node.text, found, missing)
+    return found, missing
 
 
 def _geometry_check(directory: Path, cfg: dict) -> dict:
@@ -510,9 +561,18 @@ def _geometry_check(directory: Path, cfg: dict) -> dict:
     for name in names:
         if (directory / name).is_symlink():
             return {'checked': False, 'skipped_reason': f'{name}是符号链接，几何检查拒绝执行'}
+    data_files, missing_data = _referenced_data_files(directory, names)
+    if missing_data:
+        return {'checked': False,
+                'skipped_reason': '算例引用的数据文件缺失，几何检查未启动：' + '、'.join(missing_data),
+                'missing_data_files': missing_data,
+                'note': '缺数据文件不等于几何有问题；补齐数据后重试。'}
+    for name in data_files:
+        if (directory / name).is_symlink():
+            return {'checked': False, 'skipped_reason': f'{name}是符号链接，几何检查拒绝执行'}
     tmp = Path(tempfile.mkdtemp(prefix='mc-geomcheck-', dir=str(directory.parent)))
     try:
-        for name in names:
+        for name in names + data_files:
             shutil.copy2(directory / name, tmp / name)
         settings_name = 'model.xml' if 'model.xml' in names else 'settings.xml'
         tree = ET.parse(tmp / settings_name)
@@ -584,7 +644,18 @@ def _geometry_check(directory: Path, cfg: dict) -> dict:
                   'note': 'openmc -g概率性重叠检查（临时副本、批次削减至≤2、inactive归零、单线程）；'
                           '通过不能证明无重叠，仅表示给定抽样下未发现。'}
         if completed.returncode != 0 and not overlaps:
-            result['reason'] = '几何检查非零退出但未解析出重叠明细；见log_tail（可能是其他输入错误）'
+            text = stdout + '\n' + stderr
+            data_failure = next((marker for marker in
+                                 ('Cross section HDF5 file', 'No macroscopic data',
+                                  'Could not find', 'No cross sections found')
+                                 if marker in text), None)
+            if data_failure:
+                result.update(completed=False, ok=None,
+                              reason='几何检查未能启动：引擎在读取数据阶段失败（' + data_failure
+                                     + '）；这不是几何重叠结论，见log_tail',
+                              engine_started=False)
+            else:
+                result['reason'] = '几何检查非零退出但未解析出重叠明细；见log_tail（可能是其他输入错误）'
         return result
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -692,6 +763,60 @@ def verified_result(job_id: str):
     return directory, record, point
 
 
+ADEQUACY_PREVIEW = 0.01
+ADEQUACY_ENGINEERING = 0.001
+
+
+def statistical_adequacy(keff, data) -> dict:
+    """统计充分性的工程分级（只看k的相对σ与活批数）。
+    不是收敛检验：不检测源收敛、欠采样、系统误差，也不能当专业验收。"""
+    if not isinstance(keff, dict) or keff.get('mean') is None:
+        return {'grade': 'not_applicable',
+                'reason': '该作业没有k结果（固定源/绘图作业）或均值不可用'}
+    mean, sigma = keff.get('mean'), keff.get('std_dev')
+    if sigma is None or isinstance(sigma, bool) or not isinstance(sigma, (int, float)) or sigma != sigma:
+        return {'grade': 'unusable', 'mean': mean, 'std_dev': None,
+                'reason': 'k有均值但无标准差；不能判断统计充分性，也不能用于方案比较',
+                'note': '先核对StatePoint的k_combined与日志RESULTS节，再决定是否重算。'}
+    relative = abs(float(sigma) / float(mean)) if mean else None
+    grade = ('low_statistics_preview' if relative > ADEQUACY_PREVIEW else
+             'engineering_estimate' if relative > ADEQUACY_ENGINEERING else 'converged_indicator')
+    return {'grade': grade, 'mean': float(mean), 'std_dev': float(sigma),
+            'relative_std_dev': round(relative, 6), 'realizations': data.get('realizations'),
+            'thresholds': {'low_statistics_preview': '相对σ>1%',
+                           'engineering_estimate': '0.1%<相对σ<=1%',
+                           'converged_indicator': '相对σ<=0.1%'},
+            'note': '按k相对σ的工程分级，只决定“能否当结论引用”；不构成收敛检验，'
+                    '不检测源收敛、欠采样与系统误差，也不代表专业验收。'}
+
+
+def _statepoint_context(directory: Path, record: dict, point: Path) -> dict:
+    """标注读到的是哪一个StatePoint：燃耗作业有多个时间步，末步不等于初始状态。"""
+    work = directory / 'work'
+    present = sorted((p.name for p in work.glob('statepoint.*.h5') if p.is_file()),
+                     key=lambda name: int(name.split('.')[1]) if name.split('.')[1].isdigit() else -1)
+    index = present.index(point.name) + 1 if point.name in present else None
+    context = {'statepoint': point.name, 'statepoint_index': index, 'statepoints_present': len(present)}
+    spec = {}
+    marker = directory / 'mc-case.json'
+    if marker.is_file():
+        try:
+            spec = json.loads(marker.read_text(encoding='utf-8')).get('depletion') or {}
+        except (OSError, ValueError):
+            spec = {}
+    if record.get('mode') == 'deplete' or spec:
+        context['depletion'] = {
+            'steps_configured': len(spec.get('timesteps') or []) if spec else None,
+            'step_index': index, 'is_last_step': index == len(present),
+            'note': ('燃耗作业有多个时间步StatePoint：本结果只对应第' + str(index) + '个（共'
+                     + str(len(present)) + '个），不是初始状态，也不代表整条燃耗序列；'
+                     '逐时间步与燃耗深度请用openmc_read_depletion。')}
+    elif len(present) > 1:
+        context['note'] = ('算例有' + str(len(present)) + '个StatePoint；本结果对应'
+                           + point.name + '，不是第一个。')
+    return context
+
+
 def read_results(job_id: str, max_values: int = 1000) -> dict:
     if type(max_values) is not int or not 1 <= max_values <= 10000:
         raise Error('max_values须为1..10000')
@@ -701,6 +826,8 @@ def read_results(job_id: str, max_values: int = 1000) -> dict:
     data = api('results', directory / 'work', {'statepoint': point.name, 'max_values': max_values}, cfg)
     data.update(job_id=job_id, provenance=status['provenance'],
                 statepoint=relative(point), statepoint_sha256=hashlib.sha256(point.read_bytes()).hexdigest(),
+                statepoint_context=_statepoint_context(directory, record, point),
+                statistical_adequacy=statistical_adequacy(data.get('keff'), data),
                 professional_acceptance=False)
     atomic_json(directory / 'results.json', data)
     return data
@@ -811,7 +938,7 @@ def _tally_comparison(job_a, job_b, max_values):
             entries.append(entry)
             continue
         problem_bins = []
-        compared = within = outside = non_finite = 0
+        compared = within = outside = non_finite = zero_counted = 0
         max_abs_diff = None
         for index, (mean_a, std_a, mean_b, std_b) in enumerate(
                 zip(one['mean'], one['std_dev'], two['mean'], two['std_dev'])):
@@ -822,8 +949,17 @@ def _tally_comparison(job_a, job_b, max_values):
                                          'std_dev_a': std_a, 'std_dev_b': std_b,
                                          'non_finite': True})
                 continue
-            compared += 1
             diff = mean_b - mean_a
+            if (mean_a == 0 and std_a == 0) or (mean_b == 0 and std_b == 0):
+                zero_counted += 1
+                if len(problem_bins) < 50:
+                    problem_bins.append({'index': index, 'mean_a': mean_a, 'mean_b': mean_b,
+                                         'std_dev_a': std_a, 'std_dev_b': std_b,
+                                         'zero_count': True,
+                                         'note': '零计数bin：一侧均值为0且σ=0，没有可比较的统计不确定性；'
+                                                 '不参与2σ判决（否则任何非零差异都成了“多倍σ”）'})
+                continue
+            compared += 1
             sigma = (std_a ** 2 + std_b ** 2) ** 0.5
             ok = abs(diff) <= 2 * sigma if sigma > 0 else diff == 0
             within += int(ok)
@@ -836,9 +972,10 @@ def _tally_comparison(job_a, job_b, max_values):
                                      'difference': diff, 'combined_std_dev': sigma,
                                      'within_2sigma': False})
         entry.update(bins_compared=compared, within_2sigma=within, outside_2sigma=outside,
+                     zero_count_bins=zero_counted,
                      non_finite_bins=non_finite, max_abs_diff=max_abs_diff,
                      problem_bins=problem_bins,
-                     problem_bins_truncated=(outside + non_finite) > len(problem_bins))
+                     problem_bins_truncated=(outside + zero_counted + non_finite) > len(problem_bins))
         entries.append(entry)
     return {'performed': True, 'max_values': max_values, 'by_id': entries,
             'only_in_a': sorted(set(tallies_a) - set(tallies_b)),
@@ -849,11 +986,35 @@ def _tally_comparison(job_a, job_b, max_values):
                 'bins_compared': sum(entry.get('bins_compared', 0) for entry in entries),
                 'within_2sigma': sum(entry.get('within_2sigma', 0) for entry in entries),
                 'outside_2sigma': sum(entry.get('outside_2sigma', 0) for entry in entries),
+                'zero_count_bins': sum(entry.get('zero_count_bins', 0) for entry in entries),
                 'non_finite_bins': sum(entry.get('non_finite_bins', 0) for entry in entries)},
             'warnings': sorted(set(data_a.get('warnings', [])) | set(data_b.get('warnings', []))),
             'note': '两倍σ判据按两作业独立假设合成（|差值|≤2σ_合成），为工程参考，不构成统计显著性判定；'
+                    '零计数bin（一侧均值0且σ=0）单列zero_count_bins且不参与判决；'
                     '截断时仅对比前max_values个bin并如实标记；非有限bin不替换为0；问题bin至多列50条。'
                     '完整数据在各作业results.json。'}
+
+
+def _statepoint_keff(job_id: str) -> dict | None:
+    """经已验证StatePoint（与read_results同一条选择路径）取k，失败返回None。
+    日志里的Combined k行可能是 -nan，而StatePoint的k_combined是好的——旧实现只读日志，
+    于是两个都“已完成”的作业被拒绝比较k。max_values=2只为取k，不搬运全部tally值。"""
+    try:
+        directory, record, point = verified_result(job_id)
+    except Error:
+        return None
+    try:
+        data = api('results', directory / 'work',
+                   {'statepoint': point.name, 'max_values': 2}, record['runtime'])
+    except Error:
+        return None
+    keff = data.get('keff') or None
+    if not isinstance(keff, dict) or keff.get('mean') is None:
+        return None
+    return {'mean': keff['mean'], 'std_dev': keff.get('std_dev'),
+            'source': keff.get('source') or 'statepoint:k_combined',
+            'statepoint': point.name,
+            **({'fallback_from': keff['fallback_from']} if keff.get('fallback_from') else {})}
 
 
 def compare_jobs(job_a: str, job_b: str, compare_tallies: bool = False,
@@ -864,8 +1025,12 @@ def compare_jobs(job_a: str, job_b: str, compare_tallies: bool = False,
     sides = {}
     for label, job_id in (('a', job_a), ('b', job_b)):
         status = jobs.status(job_id)
-        record = jobs.read(jobs.job_directory(job_id))
+        directory = jobs.job_directory(job_id)
+        record = jobs.read(directory)
         progress = status.get('progress') or {}
+        candidates = {'statepoint': _statepoint_keff(job_id),
+                      'log_combined': progress.get('keff_combined'),
+                      'log_average': progress.get('keff_average')}
         sides[label] = {'job_id': job_id, 'state': status['state'],
                         'mode': record.get('mode'), 'case_dir': record.get('case_dir'),
                         'threads': record.get('threads'),
@@ -874,6 +1039,7 @@ def compare_jobs(job_a: str, job_b: str, compare_tallies: bool = False,
                         'inactive': progress.get('inactive'),
                         'elapsed_seconds': progress.get('elapsed_seconds'),
                         'keff_combined': progress.get('keff_combined'),
+                        'keff_candidates': {source: value for source, value in candidates.items() if value},
                         'input_files': record.get('input_files', {}),
                         'output_count': len(record.get('output_files', {}))}
     a, b = sides['a'], sides['b']
@@ -883,15 +1049,31 @@ def compare_jobs(job_a: str, job_b: str, compare_tallies: bool = False,
     differing = sorted(n for n in names
                        if n in a['input_files'] and n in b['input_files']
                        and a['input_files'][n] != b['input_files'][n])
-    keff_a, keff_b = a['keff_combined'], b['keff_combined']
-    keff = {'a': keff_a, 'b': keff_b}
+    def keff_side(label):
+        candidates = sides[label]['keff_candidates']
+        for source in ('statepoint', 'log_combined', 'log_average'):
+            value = candidates.get(source)
+            if isinstance(value, dict) and value.get('mean') is not None:
+                return {**value, 'source': value.get('source') or source}
+        return None
+
+    keff_a, keff_b = keff_side('a'), keff_side('b')
+    keff = {'a': keff_a, 'b': keff_b,
+            'source': {'a': (keff_a or {}).get('source'), 'b': (keff_b or {}).get('source')}}
     if keff_a and keff_b:
-        keff.update(
-            difference=round(keff_b['mean'] - keff_a['mean'], 6),
-            combined_std_dev=round((keff_a['std_dev'] ** 2 + keff_b['std_dev'] ** 2) ** 0.5, 6),
-            note='difference=b-a；combined_std_dev按两作业独立假设合成，仅为工程参考，不构成统计显著性判定。')
+        difference = round(keff_b['mean'] - keff_a['mean'], 6)
+        keff['difference'] = difference
+        if keff_a.get('std_dev') is not None and keff_b.get('std_dev') is not None:
+            combined = (keff_a['std_dev'] ** 2 + keff_b['std_dev'] ** 2) ** 0.5
+            keff.update(combined_std_dev=round(combined, 6),
+                        within_2sigma_engineering=bool(abs(difference) <= 2 * combined),
+                        note='difference=b-a；k优先取StatePoint（日志Combined行仅作fallback，来源见source）；'
+                             'combined_std_dev按两作业独立假设合成，仅为工程参考，不构成统计显著性判定。')
+        else:
+            keff['note'] = ('difference=b-a；至少一方无标准差，因此不给2σ工程判据。来源见source。')
     else:
-        keff['note'] = '至少一方无Combined k（未完成、固定源、日志无RESULTS节或数值异常如NaN）；不作差值。'
+        keff['note'] = ('至少一方无可用k（未完成、固定源、无StatePoint且日志无RESULTS节，'
+                        '或数值异常如NaN）；不作差值。')
     comparison = {
         'inputs': {'identical': identical, 'differing': differing,
                    'only_in_a': sorted(set(a['input_files']) - set(b['input_files'])),
@@ -974,6 +1156,15 @@ def define_tally(case_dir: str, scores: list, filters: list | None = None,
     if (not isinstance(scores, list) or not scores
             or any(not isinstance(item, str) or not item.strip() for item in scores)):
         raise Error('scores须为非空字符串列表，如["flux"]')
+    unknown, hints = openmc_scores.check(scores)
+    if unknown:
+        parts = []
+        for name in unknown:
+            close = hints.get(name) or []
+            parts.append(name + ('（最接近：' + '/'.join(close) + '）' if close else ''))
+        raise Error('score不在OpenMC可识别列表：' + '；'.join(parts)
+                    + '；合法示例：flux / fission / absorption / heating / (n,gamma)；'
+                      '名单来源见openmc_scores.describe()')
     normalised = _tally_filters(filters)
     if name is not None and (not isinstance(name, str) or not name.strip() or len(name) > 80):
         raise Error('name须为非空字符串（不超过80字符）或省略')

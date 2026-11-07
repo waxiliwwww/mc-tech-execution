@@ -312,6 +312,14 @@ def _progress(directory: Path, value: dict) -> dict:
                                      + '）；不提供keff_combined，请检查该作业是否正常收敛。')
     if value.get('state') == 'completed' and progress['percent'] is None and mode == 'eigenvalue':
         progress['percent'] = 100.0
+    # 标注k的出处：同一作业的k在status/read_results/plot_convergence三处口径不同，
+    # 不标来源时用户无法判断该信哪一个。
+    if progress.get('keff_combined'):
+        progress['keff_source'] = 'solver.log:RESULTS:Combined k'
+    elif progress.get('keff_average'):
+        progress['keff_source'] = 'solver.log:批次表Average（非Combined，末批波动更大）'
+    else:
+        progress['keff_source'] = None
     return progress
 
 

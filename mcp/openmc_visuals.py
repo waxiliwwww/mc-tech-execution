@@ -242,7 +242,12 @@ def draw_mesh(series, path: Path, params):
     _set_font(params)
     zero_mask = np.isfinite(series['values']) & (series['values'] == 0)
     zero_bins = int(np.count_nonzero(zero_mask))
-    zero_note = '本次统计均值为0；单凭该值不能判断物理量严格为0或断言没有径迹贡献。'
+    zero_note = ('有' + str(int(zero_bins)) + '/' + str(int(zero_mask.size))
+                 + '个网格箱的统计均值为0；这只表示本次抽样该箱没有计分，'
+                   '不能判断物理量严格为0或断言没有径迹贡献。')
+    if zero_bins and zero_bins == zero_mask.size:
+        zero_note = ('全部' + str(int(zero_bins)) + '个网格箱的统计均值为0；'
+                     '先核对源位置、网格范围与计分选择，不要把这张图当作物理结论。')
     figure, axes = plt.subplots(figsize=(7.2, 5.6), constrained_layout=True)
     try:
         image = axes.pcolormesh(series['x_edges'], series['y_edges'], series['values'], shading='flat',
@@ -322,16 +327,31 @@ def plot_convergence(params):
     active = generations[n_inactive:]
     if active.size == 0:
         raise ValueError('没有活跃批次的逐批k可绘制')
+    warnings = []
+    finite = np.isfinite(active)
+    if not finite.all():
+        warnings.append('逐批k含' + str(int((~finite).sum())) + '个非有限值批次；曲线在该处断开，未替换为0或删点。')
     counts = np.arange(1, active.size + 1)
     cumulative = np.cumsum(active) / counts
     stderr = np.array([np.std(active[:i], ddof=1) / np.sqrt(i) if i > 1 else np.nan for i in counts])
-    series = {'x': [int(n_inactive + i) for i in counts], 'mean': [float(v) for v in cumulative],
+    combined_block = None
+    if combined is not None:
+        mean_value, sigma_value = float(combined[0]), float(combined[1])
+        if np.isfinite(mean_value) and np.isfinite(sigma_value):
+            combined_block = {'mean': mean_value, 'std_dev': sigma_value}
+        else:
+            warnings.append('StatePoint的k_combined含非有限值（mean=' + repr(mean_value)
+                            + '，std_dev=' + repr(sigma_value)
+                            + '）；不标combined线，逐批收敛带与JSON/CSV仍完整导出。')
+    series = {'x': [int(n_inactive + i) for i in counts],
+              'mean': [None if not np.isfinite(v) else float(v) for v in cumulative],
               'stderr': [None if not np.isfinite(v) else float(v) for v in stderr],
               'x_label': params.get('x_label') or 'Batch index (active batches)',
               'y_label': params.get('y_label') or 'k-eff (cumulative mean)',
               'title': params.get('title') or 'k-effective convergence',
-              'combined': None if combined is None else {'mean': float(combined[0]), 'std_dev': float(combined[1])},
-              'n_inactive': n_inactive, 'n_batches': n_batches}
+              'combined': combined_block,
+              'n_inactive': n_inactive, 'n_batches': n_batches,
+              'warnings': warnings}
     return draw_convergence(series, Path(params['filename']), params)
 
 
@@ -350,7 +370,7 @@ def draw_convergence(series, path: Path, params):
     import matplotlib.pyplot as plt
     import numpy as np
     _set_font(params)
-    mean = np.asarray(series['mean'], dtype=float)
+    mean = np.asarray([np.nan if v is None else float(v) for v in series['mean']], dtype=float)
     stderr = np.asarray([np.nan if v is None else float(v) for v in series['stderr']], dtype=float)
     x = np.asarray(series['x'], dtype=float)
     figure, axes = plt.subplots(figsize=(8, 4.6), constrained_layout=True)

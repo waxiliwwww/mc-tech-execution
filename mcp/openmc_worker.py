@@ -7,6 +7,7 @@ import math
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -49,6 +50,61 @@ def filter_summary(item):
                  'CellFilter': '栅元编号', 'UniverseFilter': '宇宙编号'}[kind]
         description = label + '：' + '、'.join(str(v) for v in preview) + ('…' if count > 20 else '')
     return {'type': kind, 'description': description, 'bin_count': count, 'parameters': parameters}
+
+
+def _generation_keff(point):
+    """k_combined/std含非有限值时，用逐批k的合并估计兜底。
+    与openmc_plot_convergence同口径（活跃批均值±标准误），避免同一作业的k在两处不一致。"""
+    import numpy as np
+    generations = np.asarray(getattr(point, 'k_generation', None), dtype=float).flatten()
+    if generations.size == 0:
+        return None
+    inactive = int(getattr(point, 'n_inactive', 0) or 0)
+    active = generations[inactive:]
+    active = active[np.isfinite(active)]
+    if active.size == 0:
+        return None
+    stderr = float(np.std(active, ddof=1) / np.sqrt(active.size)) if active.size > 1 else None
+    return {'mean': float(np.mean(active)), 'std_dev': stderr,
+            'source': 'statepoint:k_generation', 'batches_used': int(active.size),
+            'note': 'k_combined/std不可用，改用逐批k合并估计；与openmc_plot_convergence同口径。'}
+
+
+def _render_with_engine(here: Path, plot, params: dict, scratch, target: Path):
+    """引擎直接读原XML出图：复制算例XML与依赖数据进scratch，写plots.xml后运行openmc --plot。
+    用于SDK单文件导出丢宏观截面引用的多群算例。返回(是否成功, 失败原因)。"""
+    try:
+        import openmc
+        # 独立子目录：SDK路径已经在scratch写了model.xml，引擎优先读它，
+        # 那份单文件模型正好丢了<macroscopic>，会把同一个错误再犯一遍。
+        folder = Path(scratch) / 'engine'
+        folder.mkdir(parents=True, exist_ok=True)
+        for path in sorted(here.glob('*.xml')):
+            if path.name != 'plots.xml':
+                shutil.copy2(path, folder / path.name)
+        for pattern in ('*.h5', '*.hdf5', '*.h5m'):
+            for path in sorted(here.glob(pattern)):
+                shutil.copy2(path, folder / path.name)
+        openmc.Plots([plot]).export_to_xml(str(folder / 'plots.xml'))
+        executable = params['_openmc_exec']
+        command = ([str(executable)] if isinstance(executable, str)
+                   else [str(item) for item in executable]) + ['--plot']
+        completed = subprocess.run(command, cwd=str(folder), capture_output=True, text=True,
+                                   timeout=300)
+        if completed.returncode != 0:
+            tail = (completed.stderr or completed.stdout or '').strip().splitlines()
+            return False, ('引擎退出码' + str(completed.returncode) + '：'
+                           + (tail[-1][:200] if tail else '无输出'))
+        images = sorted(folder.glob('plot_*.png'))
+        if not images:
+            return False, '引擎退出码0但未生成plot_*.png'
+        data = images[0].read_bytes()
+        if data[:8] != b'\x89PNG\r\n\x1a\n':
+            return False, '生成的plot文件不是PNG'
+        target.write_bytes(data)
+        return True, None
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        return False, type(exc).__name__ + '：' + str(exc)[:200]
 
 
 def execute(action: str, params: dict) -> dict:
@@ -236,7 +292,10 @@ def execute(action: str, params: dict) -> dict:
             fuel.set_density('g/cm3', 10.4)
             fuel.add_nuclide('U235', 0.0495, 'wo')
             fuel.add_nuclide('U238', 0.9505, 'wo')
-            fuel.add_nuclide('O16', 0.1184, 'wo')
+            # 化学计量：O的质量份额按U质量折算出O/U=2（旧值0.1184对应O/U=1.76，与材料名不符）。
+            moles_u = 0.0495 / 235.043930 + 0.9505 / 238.050788
+            oxygen = round(2.0 * moles_u * 15.994915 / (0.0495 + 0.9505), 4)
+            fuel.add_nuclide('O16', oxygen, 'wo')
             clad = openmc.Material(name='Fe-15Cr steel (public parameters)')
             clad.set_density('g/cm3', 7.7)
             clad.add_element('Fe', 0.85, 'wo')
@@ -261,12 +320,29 @@ def execute(action: str, params: dict) -> dict:
             lattice.outer = coolant_universe
             prism = openmc.model.HexagonalPrism(edge_length=pitch / np.sqrt(3.0), orientation='y',
                                                 boundary_type='reflective')
+            # HexLattice外径=环数×栅距；正六边形内切圆半径=边长×√3/2。
+            # 旧实现直接给了"一个栅距"大小的棱柱，7根棒里6根的栅元中心落在反射边界外，
+            # 实际只算了1根棒且不报错——这里按环数推导，并显式核对。
+            rings = len(lattice.universes)
+            outer_radius = rings * pitch
+            edge = 2.0 * outer_radius / np.sqrt(3.0)
+            prism = openmc.model.HexagonalPrism(edge_length=edge, orientation='y',
+                                                boundary_type='reflective')
+            inradius = edge * np.sqrt(3.0) / 2.0
+            if inradius + 1e-9 < outer_radius:
+                raise ValueError('六角边界内切圆半径小于栅格外径，栅元会被裁掉')
             geometry = openmc.Geometry([openmc.Cell(fill=lattice, region=-prism)])
             materials = openmc.Materials([fuel, clad, coolant])
             settings = openmc.Settings()
             model = openmc.Model(geometry, materials, settings)
+            plot = openmc.Plot()
+            plot.width = (2.2 * outer_radius, 2.2 * outer_radius)
+            plot.pixels = (400, 400)
+            plot.color_by = 'material'
+            model.plots = openmc.Plots([plot])
             data_kind = 'public_parameters_self_test'
-            note = ('公开参数六角栅格自测模型（7根钠冷燃料棒，HexLattice+反射六角棱柱）；'
+            note = ('公开参数六角栅格自测模型（7根钠冷燃料棒，HexLattice+反射六角棱柱，'
+                    '棱柱按栅格外径推导：内切圆半径=' + format(outer_radius, '.4g') + 'cm）；'
                     '不是甲方组件参数，未作专业准确率验收。')
         else:
             raise ValueError('Unsupported template')
@@ -289,9 +365,17 @@ def execute(action: str, params: dict) -> dict:
             tree.getroot().find('cross_sections').text = 'synthetic-mgxs.h5' if template == 'synthetic-mgxs' else 'mgxs.h5'
             tree.write('materials.xml', encoding='utf-8', xml_declaration=True)
         lattices = model.geometry.get_all_lattices()
-        lattice_detail = [{'type': type(value).__name__,
-                           'shape': [int(v) for v in getattr(value, 'shape', []) or []]}
-                          for value in lattices.values()]
+        lattice_detail = []
+        for value in lattices.values():
+            entry = {'type': type(value).__name__}
+            if hasattr(value, 'num_rings'):
+                entry.update(n_rings=int(value.num_rings),
+                             n_axial=int(getattr(value, 'num_axial', 1) or 1),
+                             orientation=getattr(value, 'orientation', None),
+                             pitch=[float(v) for v in np.atleast_1d(value.pitch)])
+            else:
+                entry['shape'] = [int(v) for v in getattr(value, 'shape', []) or []]
+            lattice_detail.append(entry)
         marker = {'template': template, 'data_kind': data_kind, 'openmc_version': openmc.__version__,
                   'professional_acceptance': False, 'note': note}
         if lattice_detail:
@@ -311,7 +395,7 @@ def execute(action: str, params: dict) -> dict:
     if action == 'results':
         limit = params.get('max_values', 1000)
         warnings = []
-        def values(array, cap=limit):
+        def values(array, cap=limit, scope='tally'):
             flat = np.asarray(array).flatten()
             result = []
             for number in flat[:cap]:
@@ -319,7 +403,7 @@ def execute(action: str, params: dict) -> dict:
                     result.append(float(number))
                 else:
                     result.append(None)
-                    warning = '统计量包含非有限值；保留为空，未替换为0；需检查统计条件。'
+                    warning = scope + '：统计量包含非有限值；保留为空，未替换为0；需检查统计条件。'
                     if warning not in warnings:
                         warnings.append(warning)
             return result
@@ -334,10 +418,17 @@ def execute(action: str, params: dict) -> dict:
                                 'std_dev': values(tally.std_dev), 'values_truncated': tally.mean.size > limit,
                                 'total_values': int(tally.mean.size), 'returned_values': min(int(tally.mean.size), limit),
                                 'normalization': 'OpenMC原始计分归一化；未换算为工程功率或实际源强。'})
-            keff_values = values([keff.nominal_value, keff.std_dev], cap=2) if keff is not None else None
+            keff_values = values([keff.nominal_value, keff.std_dev], cap=2, scope='keff') if keff is not None else None
+            keff_block = None if keff is None else {'mean': keff_values[0], 'std_dev': keff_values[1],
+                                                    'source': 'statepoint:k_combined'}
+            if keff_block is not None and (keff_block['mean'] is None or keff_block['std_dev'] is None):
+                fallback = _generation_keff(point)
+                if fallback:
+                    fallback['fallback_from'] = 'statepoint的k_combined/std含非有限值'
+                    keff_block = fallback
             return {'openmc_version': list(point.version), 'run_mode': point.run_mode,
                     'particles': point.n_particles, 'realizations': point.n_realizations,
-                    'keff': None if keff is None else {'mean': keff_values[0], 'std_dev': keff_values[1]},
+                    'keff': keff_block,
                     'tallies': tallies, 'max_values_per_tally': limit, 'warnings': warnings}
     if action == 'inspect-h5m':
         universe = openmc.DAGMCUniverse(params['filename'])
@@ -436,16 +527,32 @@ def execute(action: str, params: dict) -> dict:
         if model.materials.cross_sections:
             model.materials.cross_sections = str((here / model.materials.cross_sections).resolve())
         with tempfile.TemporaryDirectory(prefix='mc-view-') as scratch:
-            isolated = openmc.Model(model.geometry, model.materials, model.settings)
-            isolated.export_to_model_xml(Path(scratch) / 'model.xml')
-            image = plot.to_ipython_image(openmc_exec=params['_openmc_exec'], cwd=scratch)
-            data = getattr(image, 'data', None)
-            if not isinstance(data, (bytes, bytearray)) or data[:8] != b'\x89PNG\r\n\x1a\n':
-                raise ValueError('渲染完成但未得到PNG数据')
-            target.write_bytes(bytes(data))
+            try:
+                isolated = openmc.Model(model.geometry, model.materials, model.settings)
+                isolated.export_to_model_xml(Path(scratch) / 'model.xml')
+                image = plot.to_ipython_image(openmc_exec=params['_openmc_exec'], cwd=scratch)
+                data = getattr(image, 'data', None)
+                if not isinstance(data, (bytes, bytearray)) or data[:8] != b'\x89PNG\r\n\x1a\n':
+                    raise ValueError('渲染完成但未得到PNG数据')
+                target.write_bytes(bytes(data))
+                method, fallback_note = 'python_api_export', None
+            except Exception as first_error:
+                # 多群算例经SDK单文件导出会丢掉<macroscopic>，引擎随即以
+                # 'No macroscopic data or nuclides specified on material 1' 中止。
+                # 改为把原XML与依赖数据复制进scratch，让引擎自己读plots.xml出图。
+                detail = str(first_error).strip().splitlines()[0][:160] if str(first_error).strip() else type(first_error).__name__
+                rendered, engine_detail = _render_with_engine(here, plot, params, scratch, target)
+                if rendered:
+                    method = 'engine_native_plot_xml'
+                    fallback_note = ('SDK导出渲染失败（' + type(first_error).__name__ + '：' + detail
+                                     + '），已改用引擎直接读原XML出图。')
+                else:
+                    raise ValueError('切片图渲染失败；SDK路径：' + detail
+                                     + '；引擎直接绘图：' + (engine_detail or '未知原因')) from first_error
         width = plot.width
         origin = plot.origin
         return {'image': filename, 'basis': basis, 'pixels': pixels, 'color_by': color_by,
+                'render_method': method,
                 'width': [float(v) for v in width],
                 'origin': [float(v) for v in origin],
                 'width_source': 'user' if supplied_width is not None else 'geometry_bounding_box',
@@ -453,7 +560,8 @@ def execute(action: str, params: dict) -> dict:
                 'input_files_modified': False,
                 'materials': len(model.materials),
                 'cells': len(model.geometry.get_all_cells()),
-                'note': '切片图由OpenMC引擎绘制；宽度/原点单位cm，显示范围以返回的width/origin为准。'}
+                'note': '切片图由OpenMC引擎绘制；宽度/原点单位cm，显示范围以返回的width/origin为准。'
+                        + ('（' + fallback_note + '）' if fallback_note else '')}
     if action == 'depletion-results':
         import xml.etree.ElementTree as ET
         from openmc.deplete import Results as DepletionResults
@@ -523,6 +631,21 @@ def execute(action: str, params: dict) -> dict:
         from pathlib import Path as _Path
         tallies_path = _Path('tallies.xml')
         model_path = _Path('model.xml')
+        # 引擎侧的score校验：未知score会在输运时以“Unknown reaction name”终止，
+        # 这里提前用与引擎同一份命名表拒绝，避免把错误推迟到计算阶段。
+        from openmc.data import REACTION_MT
+        base_scores = {'flux', 'total', 'scatter', 'absorption', 'fission', 'nu-fission',
+                       'kappa-fission', 'heating', 'damage-energy', 'current', 'events',
+                       'inverse-velocity', 'delayed-nu-fission', 'prompt-nu-fission', 'decay-rate'}
+        accepted = set(REACTION_MT) | base_scores
+        invalid = [str(s) for s in params['scores'] if str(s) not in accepted]
+        if invalid:
+            import difflib
+            hints = []
+            for name in invalid:
+                close = difflib.get_close_matches(name, sorted(accepted), n=3, cutoff=0.6)
+                hints.append(name + ('（最接近：' + '/'.join(close) + '）' if close else ''))
+            raise ValueError('score不在OpenMC可识别列表：' + '；'.join(hints))
         model = openmc.Model.from_model_xml(str(model_path)) if model_path.is_file() else None
         tallies = (model.tallies if model is not None else
                    openmc.Tallies.from_xml(str(tallies_path)) if tallies_path.is_file() else openmc.Tallies())

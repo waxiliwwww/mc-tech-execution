@@ -54,5 +54,37 @@
     "status": "seed_rule_pending_domain_review",
     "reference": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/troubleshoot.rst",
     "updated_at": "2026-11-04"
+  },
+  {
+    "pattern": "unknown reaction name|invalid score|unknown score",
+    "category": "invalid_score",
+    "suggestion": "核对tally的<scores>拼写：引擎把每个score映射为反应道，未知名会直接终止输运。合法名称清单见config/score-names.json（如flux、fission、absorption、heating、(n,gamma)），可用openmc_define_tally或openmc_validate_inputs在提交前发现；不自动替换计分量。",
+    "status": "documented_input_check",
+    "reference": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/io_formats/tallies.rst",
+    "updated_at": "2026-11-07"
+  },
+  {
+    "pattern": "no cross sections found|cross sections (are )?missing|unable to (load|initialize) cross sections",
+    "category": "missing_cross_sections",
+    "suggestion": "引擎没找到可用截面：核对OPENMC_CROSS_SECTIONS/材料库路径与核数据版本。多群算例另需materials.xml引用的h5文件与算例同目录；几何检查在临时副本上运行，缺数据会被判为引擎未能启动，不能当几何结论。",
+    "status": "rule_hint_pending_domain_review",
+    "reference": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/materials.rst",
+    "updated_at": "2026-11-07"
+  },
+  {
+    "pattern": "source (point|site).*not (inside|in)|no cell (was )?found (for|at) (the )?(source|point)|unable to find cell",
+    "category": "source_outside_geometry",
+    "suggestion": "源点落在未填充/未定义区域：核对source坐标、单位（OpenMC为cm）与几何边界，不靠加大拒绝上限绕过。用openmc_view_geometry看切片位置，用几何检查排除重叠。",
+    "status": "rule_hint_pending_domain_review",
+    "reference": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/io_formats/settings.rst",
+    "updated_at": "2026-11-07"
+  },
+  {
+    "pattern": "dagmc|h5m|moab",
+    "category": "dagmc_geometry",
+    "suggestion": "DAGMC/h5m相关失败：核对dagmc.h5m是否随算例、材料标签是否与转换时一致、缩放单位（STEP多为毫米，OpenMC为厘米）。转换成功只说明能读回包围盒，不代表几何或材料正确。",
+    "status": "rule_hint_pending_domain_review",
+    "reference": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/geometry.rst",
+    "updated_at": "2026-11-07"
   }
 ]

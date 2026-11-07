@@ -220,9 +220,15 @@ class SemanticValidation(unittest.TestCase):
             references='1 2 3')
         value = self.semantic()
         self.assertTrue(value['ok'], value['problems'])
-        self.assertEqual(value['tally_section'],
-                         {'performed': True, 'tallies': 1,
-                          'filter_definitions': 3, 'filter_references': 3})
+        section = value['tally_section']
+        self.assertEqual({key: section[key] for key in
+                          ('performed', 'tallies', 'filter_definitions',
+                           'filter_references', 'scores_checked')},
+                         {'performed': True, 'tallies': 1, 'filter_definitions': 3,
+                          'filter_references': 3, 'scores_checked': 1})
+        self.assertTrue(section['score_catalog']['checked'])
+        self.assertEqual(section['score_catalog']['source'], 'config/score-names.json')
+        self.assertGreater(section['score_catalog']['accepted_scores'], 100)
 
     def test_unknown_filter_type_reported(self):
         self.write_materials([KNOWN_NUCLIDE])

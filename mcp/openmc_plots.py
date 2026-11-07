@@ -81,10 +81,14 @@ def plot_convergence(job_id: str, format: str = 'png', title: str | None = None,
 
 def plot_scan(scan_id: str, x_parameter: str, metric: str = 'keff', fixed: dict | None = None,
               tally_id: int | None = None, score: str | None = None, nuclide: str | None = None,
-              filter_selection: list | None = None, bin_index: int = 0, format: str = 'png', title: str | None = None) -> dict:
+              filter_selection: list | None = None, bin_index: int = 0, format: str = 'png',
+              title: str | None = None, x_label: str | None = None, y_label: str | None = None) -> dict:
     import openmc_scan as scans
     from openmc_tools import verified_result
     options('line', format, title)
+    for axis, value in (('x_label', x_label), ('y_label', y_label)):
+        if value is not None and (not isinstance(value, str) or not value.strip() or len(value) > 200):
+            raise Error(axis + '须为不超过200字的非空文本或省略')
     record = scans.status(scan_id)
     if record['state'] not in scans.TERMINAL:raise Error('扫描仍在运行；等待终态后绘图')
     if x_parameter not in record['axes']:raise Error('x_parameter不是此扫描的参数维度')
@@ -116,8 +120,8 @@ def plot_scan(scan_id: str, x_parameter: str, metric: str = 'keff', fixed: dict 
     if metric == 'tally' and selected is None:raise Error('没有可用的成功计分结果，不能生成扫描曲线')
     specification = next(p for p in jobs.read(target)['parameter_specs'] if p['name'] == x_parameter)
     series = {'x': [row['parameters'][x_parameter] for row in rows], 'mean': mean, 'std_dev': std,
-              'x_label': x_parameter + ' [' + specification['unit'] + ']',
-              'y_label': 'keff (dimensionless)' if metric == 'keff' else selected['y_label'],
+              'x_label': x_label or (x_parameter + ' [' + specification['unit'] + ']'),
+              'y_label': y_label or ('keff (dimensionless)' if metric == 'keff' else selected['y_label']),
               'title': 'Statistical setting comparison' if specification['category'] == 'statistical_setting' else 'Parameter scan',
               'fixed': fixed, 'metric': metric, 'bin_index': bin_index, 'sources': sources,
               'selection': None if selected is None else {k: selected[k] for k in ('tally_id', 'score', 'nuclide', 'filter_selection')},
