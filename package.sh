@@ -10,7 +10,7 @@ lock=(out/'.package.lock').open('a')
 try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
 except BlockingIOError:raise SystemExit('已有打包进程运行；本次未发布，请等待后重试')
 excluded={'node_modules','.venv','__pycache__','dist','logs','artifacts','.git','.mc-plans','.mc-backups'}
-allowed={'README.md','.gitignore','.gitattributes','CHANGELOG.md','VERSION','pyproject.toml','.github','mc.sh','quickstart.sh','cleanup.sh','create-mcp.sh','package.sh','verify.sh','setup-example-sources.sh','scripts','deploy','mcp','harness','docs','config','knowledge','workspace','vendor','tests','examples'}
+allowed={'README.md','.gitignore','.gitattributes','CHANGELOG.md','VERSION','pyproject.toml','.github','mc.sh','quickstart.sh','cleanup.sh','create-mcp.sh','package.sh','verify.sh','setup-example-sources.sh','scripts','deploy','mcp','harness','docs','config','knowledge','fixtures','workspace','vendor','tests','examples'}
 files=[]
 for path in sorted(root.rglob('*')):
     rel=path.relative_to(root)

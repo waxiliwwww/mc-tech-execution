@@ -47,6 +47,25 @@ class PackageDelivery(unittest.TestCase):
         before={str(p.relative_to(self.root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in self.root.rglob('*') if p.is_file()}
         result=self.verify();self.assertEqual(result.returncode,0,result.stderr);self.assertIn('校验成功',result.stdout)
         self.assertEqual(before,{str(p.relative_to(self.root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in self.root.rglob('*') if p.is_file()})
+    def test_registered_fault_input_and_log_assets_are_shipped(self):
+        # The registry is the consumer contract, independently of packager roots.
+        shutil.copy2(ROOT/'config/fault-samples.json',self.root/'config/fault-samples.json')
+        shutil.copytree(ROOT/'fixtures/faults',self.root/'fixtures/faults')
+        result=self.package();self.assertEqual(result.returncode,0,result.stderr)
+        registry=json.loads((self.root/'config/fault-samples.json').read_text())
+        with tarfile.open(self.archive) as archive:
+            names=set(archive.getnames())
+            for sample in registry:
+                relative=Path('fixtures/faults')/(sample.get('directory') or sample['log'])
+                path=self.root/relative
+                files=list(path.glob('*')) if path.is_dir() else [path]
+                self.assertTrue(files, sample['id'])
+                for file in files:
+                    if file.is_file():
+                        member='mc-tech-execution/'+file.relative_to(self.root).as_posix()
+                        self.assertIn(member,names,sample['id'])
+                        self.assertEqual(archive.extractfile(member).read(),file.read_bytes())
+
     def test_missing_specific_checksum_does_not_fall_back_to_generic_alias(self):
         self.sha.unlink();result=self.verify()
         self.assertNotEqual(result.returncode,0);self.assertIn('缺少对应摘要',result.stderr)
