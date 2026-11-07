@@ -1,4 +1,4 @@
-"""Pydantic model for model-spec/v2; loaded only when Pydantic is present."""
+"""Pydantic model for the declarative model input; loaded only when Pydantic is present."""
 from __future__ import annotations
 
 from typing import Annotated, Literal, Union as TUnion
@@ -252,8 +252,7 @@ class Validation(Strict):
 
 class ModelSpec(Strict):
     model_config = ConfigDict(extra='forbid', strict=True, allow_inf_nan=False,
-                            json_schema_extra={'description': 'OpenMC model-spec/v2；组合模型，不执行调用方Python；专业适用性需另行确认。', '$id': 'https://mc-agent-tools.local/model-spec/v2.json'})
-    schema_version: Literal['2']
+                            json_schema_extra={'description': 'OpenMC 声明式模型输入；组合模型，不执行调用方Python；专业适用性需另行确认。', '$id': 'https://mc-agent-tools.local/model-spec.json'})
     name: Name = ''
     materials: list[Material] = Field(min_length=1, max_length=1000)
     surfaces: list[SurfaceNode] = Field(min_length=1, max_length=10000)

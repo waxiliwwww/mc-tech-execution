@@ -1,10 +1,10 @@
-"""Versioned declarative OpenMC input; no user code execution or inferred physics.
+"""Declarative OpenMC input; no user code execution or inferred physics.
 
-This is model-spec/v2. The v2 region is a typed tree and there is no string
-region compatibility. Validation lives in the sibling ``model_validation``
-package: Pydantic is used when importable, otherwise the stdlib fallback.
-The builder and package can be copied together next to model-spec.json.
-All coordinates are centimetres, energies eV and temperatures K.
+The region is a typed tree; callers do not select or declare a schema version.
+Validation lives in the sibling ``model_validation`` package: Pydantic is used
+when importable, otherwise the stdlib fallback. The builder and package can be
+copied together next to model-spec.json. All coordinates are centimetres,
+energies eV and temperatures K.
 """
 from __future__ import annotations
 
@@ -17,10 +17,10 @@ import json
 from pathlib import Path
 
 try:
-    from model_validation import (MODEL_SCHEMA, SCHEMA_VERSION, ValidationError,
+    from model_validation import (MODEL_SCHEMA, ValidationError,
                                   region_surface_ids, region_to_string, validate_spec, validation_report)
 except ImportError:  # installed as mc_agent_tools.openmc_model_spec
-    from .model_validation import (MODEL_SCHEMA, SCHEMA_VERSION, ValidationError,
+    from .model_validation import (MODEL_SCHEMA, ValidationError,
                                    region_surface_ids, region_to_string, validate_spec, validation_report)
 
 
@@ -213,7 +213,7 @@ def model_metadata(directory):
     import openmc
     return {'data_kind': 'user_supplied_unverified',
             'generation_method': 'declarative_public_python_api',
-            'openmc_version': openmc.__version__, 'schema_version': SCHEMA_VERSION,
+            'openmc_version': openmc.__version__,
             'builder_source_sha256': digest(Path(__file__).resolve()),
             'model_spec_sha256': digest(directory / 'model-spec.json'),
             'model_xml_sha256': {p.name: digest(p) for p in directory.glob('*.xml')},
@@ -300,7 +300,7 @@ def rebuild_parameters(parameters):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description='Validate or build an OpenMC model-spec/v2.')
+    parser = argparse.ArgumentParser(description='Validate or build an OpenMC declarative model.')
     parser.add_argument('--validate', action='store_true', help='只校验 model-spec.json，不导入 OpenMC')
     parser.add_argument('--backend', choices=['auto', 'pydantic', 'fallback'], default='auto',
                         help='校验后端；auto优先Pydantic，缺失时使用标准库fallback')
@@ -312,7 +312,7 @@ if __name__ == '__main__':
         except ValidationError as exc:
             print(json.dumps({'valid': False, 'error': str(exc)}, ensure_ascii=False, indent=2))
             raise SystemExit(1)
-        print(json.dumps({'valid': True, 'schema_version': spec['schema_version'],
+        print(json.dumps({'valid': True,
                           'backend': report['backend'], 'assumptions': model_assumptions(spec),
                           'overrides': report['overrides']}, ensure_ascii=False, indent=2))
     else:

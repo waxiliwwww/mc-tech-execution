@@ -107,8 +107,6 @@ def provenance(directory: Path, cfg: dict | None = None) -> dict:
                           'professional_acceptance': False, 'note': data.get('note', ''),
                           **{key: data[key] for key in ('source_url', 'source_sha256') if key in data}}
             # Validation tags travel with the job, not only with the build result.
-            if data.get('schema_version') is not None:
-                provenance['model_spec_schema_version'] = data['schema_version']
             if data.get('validation') is not None:
                 provenance['validation'] = data['validation']
             return provenance

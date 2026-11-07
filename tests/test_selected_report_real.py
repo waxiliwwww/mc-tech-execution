@@ -129,6 +129,11 @@ with openmc.StatePoint(sys.argv[1],autolink=False) as p:
                 self.assertIn(True,matches,'PDF嵌图必须保持所选图的原始像素')
             elif format=='doc':
                 with olefile.OleFileIO(path) as ole:self.assertTrue(ole.exists('WordDocument'))
+        first = self.call('openmc_export_report', {'job_id':self.job,'format':'markdown',**selection})
+        second = self.call('openmc_export_report', {'job_id':self.job,'format':'markdown',**selection})
+        self.assertEqual(second['chart'],first['chart'])
+        self.assertEqual(second['path'],first['path'])
+        self.assertEqual(second['series_json'],first['series_json'])
         old = {p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in self.record.glob('report.*') if p.suffix!='.lock'}
         error = self.call('openmc_export_report', {'job_id':self.job,'format':'pdf','tally_id':2,'score':'absent'},False)
         self.assertIn('score或nuclide不存在',error)

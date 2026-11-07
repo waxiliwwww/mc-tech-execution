@@ -2,7 +2,7 @@
 
 测试功能
 --------
-`openmc_model_capabilities` 的 schema/校验后端发现；`openmc_build_model` 的 model-spec/v2 输入门禁、OpenMC Python API XML 导出与 `validation` tag 持久化。
+`openmc_model_capabilities` 的 schema/校验后端发现；`openmc_build_model` 的声明式模型输入门禁、OpenMC Python API XML 导出与 `validation` tag 持久化。
 
 类别
 ----
@@ -18,7 +18,7 @@
 
 预期
 ----
-能力发现返回 schema v2、服务端校验后端和构建器后端策略；构建结果分别列出服务端校验后端与构建器实际后端，二者不混用；构建成功并通过 API 读回；`files` 等于落盘重建集（含 `build_model.py`、`model-spec.json`、`model_validation/`），`xml_files` 为四个 XML；`mc-case.json` 带 schema v2 与 validation。
+能力发现返回参数 schema、服务端校验后端和构建器后端策略；构建结果分别列出服务端校验后端与构建器实际后端，二者不混用；构建成功并通过 API 读回；`files` 等于落盘重建集（含 `build_model.py`、`model-spec.json`、`model_validation/`），`xml_files` 为四个 XML；`mc-case.json` 带 validation。
 
 不证明
 ------
@@ -37,7 +37,6 @@ except ImportError:  # direct discovery from this directory
 class TestPositiveMinimalSphere(RealMCPCase):
     async def test_minimal_sphere_builds_through_mcp(self):
         capabilities = self.data(await self.call("openmc_model_capabilities", {}))
-        self.assertEqual(capabilities["schema_version"], "2")
         self.assertIn(capabilities["validation_backend"], ("pydantic", "fallback"))
         self.assertEqual(capabilities["builder_validation_backend_policy"],
                          "pydantic_if_available_else_fallback")
@@ -48,7 +47,6 @@ class TestPositiveMinimalSphere(RealMCPCase):
         built = self.data(await self.call("openmc_build_model",
                                           {"case_dir": "cases/minimal-sphere", "spec": spec}))
         self.assertTrue(built["api_parsed"])
-        self.assertEqual(built["validation"]["schema_version"], "2")
         # MCP server and OpenMC Python may have different importable backends;
         # the builder must report the one it actually used.
         self.assertIn(built["validation"]["backend"], ("pydantic", "fallback"))
@@ -63,9 +61,8 @@ class TestPositiveMinimalSphere(RealMCPCase):
                          {"materials.xml", "geometry.xml", "settings.xml", "tallies.xml"})
         self.assertIn("build_model.py", built["files"])
         self.assertIn("model-spec.json", built["files"])
-        self.assertIn("model_validation/schema_v2.json", built["files"])
+        self.assertIn("model_validation/schema.json", built["files"])
         self.assertTrue((target / "build_model.py").is_file())
-        self.assertTrue((target / "model_validation/schema_v2.json").is_file())
+        self.assertTrue((target / "model_validation/schema.json").is_file())
         marker = json.loads((target / "mc-case.json").read_text(encoding="utf-8"))
-        self.assertEqual(marker["schema_version"], "2")
         self.assertEqual(marker["validation"]["backend"], built["validation"]["backend"])

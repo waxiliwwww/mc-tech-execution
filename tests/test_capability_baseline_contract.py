@@ -42,7 +42,7 @@ class CapabilityBaselineContract(unittest.TestCase):
                               {'offline', 'real_mcp', 'real_openmc', 'offline_and_real'})
 
     def test_supported_capabilities_are_not_dropped(self):
-        required = {'model_spec_v2_build', 'fixed_source_and_eigenvalue',
+        required = {'declarative_model_build', 'fixed_source_and_eigenvalue',
                     'custom_rectangular_lattice', 'native_model_import', 'scan',
                     'selected_report_export', 'geometry_preview', 'dagmc', 'depletion',
                     'official_examples', 'job_k_summary'}
@@ -67,16 +67,3 @@ class CapabilityBaselineContract(unittest.TestCase):
                 if item['kind'] in {'contract_removal', 'whitelist', 'required_field'}:
                     self.assertTrue(item.get('user_decision'))
                     self.assertTrue(item.get('migration') or item.get('override'))
-
-    def test_v1_removal_is_recorded_as_a_real_narrowing(self):
-        by_id = {item['id']: item for item in self.value['restrictions']}
-        self.assertIn('v1_region_removed', by_id)
-        removed = by_id['v1_region_removed']
-        self.assertEqual(removed['kind'], 'contract_removal')
-        self.assertEqual(removed['capability'], 'model_spec_v2_build')
-        self.assertTrue(removed['user_decision'])
-        self.assertIn('真实能力收窄', removed['impact'])
-
-
-if __name__ == '__main__':
-    unittest.main()

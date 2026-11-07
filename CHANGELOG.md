@@ -1,14 +1,22 @@
 # 变更记录
 
+## 0.12.0 — 2026-11-07
+
+- 模型输入不再声明或暴露 schema 版本；仓库删除旧格式专用测试、兼容说明、能力限制和发布门禁项，随包示例、schema 和文档统一为当前声明式格式。
+- D4：例题步骤的公开 `case_dir` 统一指向用户准备的算例目录，不再混入 `.mc-jobs/<job>/work`；作业工作目录另以 `job_case_dir` 保留。
+- D6：绘图和报告输出名改为基于作业、选择和格式的确定性哈希；同一选择重复导出复用同一组图片，不再无限新增文件。
+- D7：网格热图增加低统计告警（相对标准差过高或不可计算的分箱计数），并写入 JSON/CSV；热图本身仍不是专业判据。
+- N3：报告正文预览优先显示非零分箱并保留原分箱编号，完整值仍在 CSV/JSON；不再让前 20 个零箱占满表格。
+- 新增/更新回归测试覆盖上述各项；删除旧格式 MCP 反例和测试说明。
+
 ## 0.11.11 — 2026-11-07
 
 - `openmc_job_status` 的摘要 k 不再在 Combined k 为 `-nan` 时取批次表 Average：新增 RESULTS 的 Collision/Track-length/Absorption 估计解析，按 Absorption→Collision→Track-length→Average 回退并标 `keff_source`；新增回归测试构造 `Combined=-nan` 的真实日志。
 - `statistical_adequacy` 不再只看 σ：同时检查活跃/非活跃批次数，默认 200×10/inactive 2 会降级为 `low_statistics_preview` 并保留 `downgraded_from`；不拒绝低统计作业，只防把它标成工程结论。
 - `openmc_build_model` 的 `files` 改为磁盘上重建所需的全集（XML、`build_model.py`、`model-spec.json`、`model_validation/` 等），并单列 `xml_files`；真实 MCP 用例同步按磁盘核对。
 - `openmc_import_model` 不再复制生成的 `views/`；新增导入回归测试。
-- 测试体系落到发布门禁：`config/capability-baseline.json` + `tests/test_capability_baseline_contract.py` 记录已支持能力与真实收窄（v1 region 删除）；`config/release-critical.txt` + `scripts/check-release-evidence.py` + `./verify.sh --release` 拒绝关键真实用例 skip/缺失。`AGENTS.md` 与 `docs/测试与验收说明.md` 补四层测试、能力基线和发布判据。
+- 测试体系落到发布门禁：`config/capability-baseline.json` + `tests/test_capability_baseline_contract.py` 记录已支持能力与输入契约的真实收窄；`config/release-critical.txt` + `scripts/check-release-evidence.py` + `./verify.sh --release` 拒绝关键真实用例 skip/缺失。`AGENTS.md` 与 `docs/测试与验收说明.md` 补四层测试、能力基线和发布判据。
 - 修正过期测试：删除 `tests/test_manual_real.py`（旧 `compute.html` 的 `data-run` 教学块已随手册整合消失，保留只会测一个兼容跳转）；新增 `tests/test_manual_compute_redirect.py` 守旧章节入口；`test_downstream_real` 的扫描统计断言接受有限值与“不可用”两种真实输出。重新生成 `docs/reference.html`。
-- 本轮未修：D4 例题步骤 `case_dir` 语义混用、D6 重复导出图像新增、D7 网格热图低统计告警；L1–L5/N1–N4 仍按原报告保留。
 
 
 ## 0.11.10 — 2026-11-07
@@ -25,12 +33,12 @@
 - `config/error-rules.json` 补 `invalid_score`、`missing_cross_sections`、`source_outside_geometry`、`dagmc_geometry` 四类，供 `openmc_diagnose_job` 命中上述引擎中止。
 - 新增6个测试文件（一个场景一个文件，文件头写明功能/类别/前置/输入/预期/不证明）：score名单与拒绝路径、零计数bin判决、k来源与统计分析、几何检查数据依赖、hex模板几何与化学计量、多群几何切片与连续能对照；真实OpenMC用例由 `MC_TEST_OPENMC_CONFIG` 门控，未设置时skip。全套 451 项运行、98 项跳过、无失败。
 - 本轮未改：DAGMC固定源、产物远程下载、本机模型上传、`apply_repair` 确认令牌、Notebook结果筛选、参数层暴露栅格几何量；服务进程与磁盘代码漂移只按部署文档提示核对（本部署实测为旧进程加载新代码，非 schema 声明缺陷）。
-- 声明式输入升级为 `model-spec/v2`：`region` 使用 `halfspace`/`intersection`/`union`/`complement` 类型树，不再接受 v1 字符串表达式；无 v1 兼容层。变更同时更新 `openmc_build_model`、能力发现、随包示例和使用文档。
+- 声明式输入统一为类型化 `region`（`halfspace`/`intersection`/`union`/`complement`），不保留字符串表达式兼容层；变更同时更新 `openmc_build_model`、能力发现、随包示例和使用文档。
 - 参数校验拆成独立 `model_validation` 包：优先 Pydantic 严格模型，Pydantic 不可导入时自动使用纯标准库 fallback；真实校验失败不会静默改用另一后端。静态 schema 带 `$id`，可独立校验，也可随算例复制。
 - 专家覆盖以显式 tag 记录：当前只允许 `outer_boundary_transmission`，必须给出 `reason` 与 `scope`；未触发的覆盖保留 warning，构建结果、`mc-case.json` 和作业 provenance 都携带 `validation` 报告。
 - 根宇宙外边界 anti-hang 保留：只被一个根宇宙直接栅元使用的面视为外边界，`boundary` 不得为 `transmission`，须显式 `vacuum`/`reflective`/`white`，或使用上述覆盖。该规则是近似判定，不证明栅元覆盖或无重叠。
 - 随算例复制的 `build_model.py` 与 `model_validation/` 增加 `--validate`：无 OpenMC 环境可只校验 `model-spec.json`，默认 `auto` 后端并返回 assumptions、overrides；Pydantic 缺失时仍可用标准库 fallback。
-- 新增 5 条每次独立启动真实 MCP 服务的 model-spec/v2 用例，按场景拆到 `tests/model_validation_mcp/`，一个用例一个文件：2 条正例、2 条反例、1 条外边界覆盖边界例；文件头写明功能/类别/前置/操作/预期/不证明，均经实际 MCP 协议调用 `openmc_model_capabilities`、`openmc_build_model` 或 `openmc_preview_input`，检查拒绝原因、无残留目标目录、构建产物与覆盖 tag。
+- 新增 4 条每次独立启动真实 MCP 服务的声明式模型用例，按场景拆到 `tests/model_validation_mcp/`，一个用例一个文件：2 条正例、1 条反例、1 条外边界覆盖边界例；文件头写明功能/类别/前置/操作/预期/不证明，均经实际 MCP 协议调用 `openmc_model_capabilities`、`openmc_build_model` 或 `openmc_preview_input`，检查拒绝原因、无残留目标目录、构建产物与覆盖 tag。
 - MCP 工具失败时透传经审阅的 `MCInputError` 文本（不泄露原始输出），使参数错误在宿主侧可见、可操作。
 - `openmc_model_capabilities` 增加校验后端作用域和构建器后端策略；`openmc_build_model` 分别返回服务端校验后端与构建器实际后端，避免把 OpenMC runtime 的 fallback 冒充服务端 Pydantic。
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 from pathlib import Path
 
 
@@ -234,6 +235,31 @@ def plot_mesh(params):
         return draw_mesh(series, Path(params['filename']), params)
 
 
+def mesh_statistics(values, errors, threshold=0.1):
+    """Count zero and low-statistics mesh bins without giving a physics verdict."""
+    total = zero = low = missing_error = 0
+    maximum = None
+    for value_row, error_row in zip(values, errors):
+        for value, error in zip(value_row, error_row):
+            total += 1
+            if not math.isfinite(value):
+                continue
+            if value == 0:
+                zero += 1
+                continue
+            if not math.isfinite(error):
+                missing_error += 1
+                low += 1
+                continue
+            relative = abs(error / value)
+            maximum = relative if maximum is None else max(maximum, relative)
+            if relative > threshold:
+                low += 1
+    return {'total_cells': total, 'zero_bins': zero, 'low_statistics_bins': low,
+            'missing_error_bins': missing_error, 'relative_std_threshold': threshold,
+            'max_relative_std': maximum}
+
+
 def draw_mesh(series, path: Path, params):
     import matplotlib
     matplotlib.use('Agg')
@@ -242,12 +268,22 @@ def draw_mesh(series, path: Path, params):
     _set_font(params)
     zero_mask = np.isfinite(series['values']) & (series['values'] == 0)
     zero_bins = int(np.count_nonzero(zero_mask))
+    statistics = mesh_statistics(series['values'], series['errors'])
+    low_bins = statistics['low_statistics_bins']
     zero_note = ('有' + str(int(zero_bins)) + '/' + str(int(zero_mask.size))
                  + '个网格箱的统计均值为0；这只表示本次抽样该箱没有计分，'
                    '不能判断物理量严格为0或断言没有径迹贡献。')
     if zero_bins and zero_bins == zero_mask.size:
         zero_note = ('全部' + str(int(zero_bins)) + '个网格箱的统计均值为0；'
                      '先核对源位置、网格范围与计分选择，不要把这张图当作物理结论。')
+    low_note = None
+    if low_bins:
+        maximum = statistics['max_relative_std']
+        maximum_text = '不可计算' if maximum is None else format(maximum, '.3g')
+        low_note = ('有' + str(int(low_bins)) + '个非零网格箱的相对标准差超过'
+                    + format(statistics['relative_std_threshold'], '.0%')
+                    + '（最大相对标准差' + maximum_text + '）；这表示本次抽样统计不足，'
+                      '不是物理结论；请增加粒子/批次、合并分箱或缩小区间后再解读。')
     figure, axes = plt.subplots(figsize=(7.2, 5.6), constrained_layout=True)
     try:
         image = axes.pcolormesh(series['x_edges'], series['y_edges'], series['values'], shading='flat',
@@ -279,6 +315,10 @@ def draw_mesh(series, path: Path, params):
     values_path = path.with_suffix('.json')
     values_path.write_text(json.dumps({'tally_id': series['tally_id'], 'mesh_id': series['mesh_id'], 'dimension': series['dimension'],
                                        'zero_bins': zero_bins, 'zero_bin_note': zero_note if zero_bins else None,
+                                       'low_statistics_bins': low_bins,
+                                       'low_statistics_threshold': statistics['relative_std_threshold'],
+                                       'max_relative_std': statistics['max_relative_std'],
+                                       'mesh_statistics': statistics,
                                        'level': series.get('level'), 'score': series['score'],
                                        'nuclide': series.get('nuclide'),
                                        'energy_label': series.get('energy_label'),
@@ -294,21 +334,32 @@ def draw_mesh(series, path: Path, params):
     csv_path = path.with_suffix('.csv')
     with csv_path.open('w', newline='', encoding='utf-8') as output:
         writer = csv.writer(output)
-        writer.writerow(['i', 'j', 'x_center', 'y_center', 'value', 'std_dev', 'mesh_id', 'level', 'score'])
+        writer.writerow(['i', 'j', 'x_center', 'y_center', 'value', 'std_dev', 'relative_std',
+                         'low_statistics', 'mesh_id', 'level', 'score'])
         nx, ny = series['dimension'][0], series['dimension'][1]
         for j in range(ny):
             for i in range(nx):
                 value = series['values'][j, i]
                 error = series['errors'][j, i]
+                relative = (abs(float(error / value))
+                            if np.isfinite(value) and value != 0 and np.isfinite(error) else None)
+                low = (0 if not np.isfinite(value) or value == 0 else
+                       int(relative is None or relative > statistics['relative_std_threshold']))
                 writer.writerow([i, j,
                                  0.5 * (series['x_edges'][i] + series['x_edges'][i + 1]),
                                  0.5 * (series['y_edges'][j] + series['y_edges'][j + 1]),
                                  '' if not np.isfinite(value) else format(float(value), '.9g'),
                                  '' if not np.isfinite(error) else format(float(error), '.9g'),
+                                 '' if relative is None else format(relative, '.9g'),
+                                 low,
                                  series['mesh_id'], series.get('level'), series['score']])
     return {'image': path.name, 'values_json': values_path.name, 'values_csv': csv_path.name,
             'tally_id': series['tally_id'], 'score': series['score'], 'nuclide': series.get('nuclide'), 'zero_bins': zero_bins,
-            'warnings': [zero_note] if zero_bins else [],
+            'low_statistics_bins': low_bins,
+            'low_statistics_threshold': statistics['relative_std_threshold'],
+            'max_relative_std': statistics['max_relative_std'],
+            'mesh_statistics': statistics,
+            'warnings': [note for note in (zero_note if zero_bins else None, low_note) if note],
             'cells': int(series['dimension'][0] * series['dimension'][1]),
             'mesh': {'id': series['mesh_id'], 'dimension': series['dimension'], 'level': series.get('level')}}
 
@@ -444,8 +495,17 @@ def metadata_parameters(metadata):
 
 def selected_report_rows(series, limit):
     def number(value):return '不可用' if value is None else format(value, '.9g')
+    total = len(series['mean'])
+    nonzero = [index for index, mean in enumerate(series['mean']) if mean not in (None, 0)]
+    if nonzero:
+        order = nonzero[:limit]
+        if len(order) < limit:
+            order += [index for index in range(total) if index not in order][:limit-len(order)]
+    else:
+        order = list(range(min(limit, total)))
     rows = []
-    for index, (mean, std) in enumerate(zip(series['mean'][:limit], series['std_dev'][:limit])):
+    for index in order:
+        mean, std = series['mean'][index], series['std_dev'][index]
         coordinate = (f"[{number(series['x_lower'][index])}, {number(series['x_upper'][index])}] eV"
                       if 'x_lower' in series else f"bin {index}")
         rows.append([f"tally {series['tally_id']} / {series['score']}",
@@ -512,6 +572,8 @@ def render_docx(params):
             for values in rows:
                 for cell, text in zip(table.add_row().cells, values):cell.text = text
             document.add_paragraph(f"所选数据预览：{len(rows)}/{len(series['mean'])}点；完整均值、标准差与分箱区间见上述CSV/JSON，不因正文预览限制丢弃。")
+            if any(value not in (None, 0) for value in series['mean']) and len(rows) < len(series['mean']):
+                document.add_paragraph('正文预览优先显示非零箱；其余箱的值仍在完整CSV/JSON中，不据此判断物理为零。')
         for tally_index, tally in enumerate(data.get('tallies', [])):
             rows = list(zip(tally['mean'], tally['std_dev']))
             count_scores = len(tally['scores']); count_nuclides = len(tally['nuclides'])

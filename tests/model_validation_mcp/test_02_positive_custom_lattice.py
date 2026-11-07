@@ -2,7 +2,7 @@
 
 测试功能
 --------
-`openmc_build_model` 对调用方修改后的 v2 模型（矩形格架排布、材料密度、seed）的构建；`openmc_preview_input` 对产物约束和 manifest 的只读检查。
+`openmc_build_model` 对调用方修改后的声明式模型（矩形格架排布、材料密度、seed）的构建；`openmc_preview_input` 对产物约束和 manifest 的只读检查。
 
 类别
 ----
@@ -37,7 +37,7 @@ except ImportError:  # direct discovery from this directory
 class TestPositiveCustomLattice(RealMCPCase):
     async def test_custom_lattice_builds_and_previews(self):
         spec = self.example("rectangular-assembly.json")
-        spec["name"] = "MCP caller custom v2 lattice layout"
+        spec["name"] = "MCP caller custom lattice layout"
         spec["lattices"][0]["universes"] = [[2, 1, 2], [1, 1, 2]]
         spec["materials"][1]["density"] = 0.82
         spec["settings"]["seed"] = 71
@@ -54,5 +54,5 @@ class TestPositiveCustomLattice(RealMCPCase):
         self.assertTrue(preview["manifest_complete"])
         self.assertEqual(preview["problems"], [])
         self.assertIn("geometry.xml", preview["input_hashes"])
-        self.assertIn("model_validation/schema_v2.json",
+        self.assertIn("model_validation/schema.json",
                       {item["name"] for item in preview["files"]})

@@ -1,4 +1,4 @@
-"""Small stdlib JSON-Schema validator for model-spec/v2.
+"""Small stdlib JSON-Schema validator for the declarative model input.
 
 It implements the subset emitted by the Pydantic model (types, refs, oneOf,
 anyOf, allOf, const, enum, bounds, arrays and objects). It intentionally does

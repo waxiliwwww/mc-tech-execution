@@ -54,11 +54,17 @@ class OfficialWorkflowReal(unittest.TestCase):
 
     def test_order_duplicate_submission_and_snapshot_integrity_before_real_calculation(self):
         x=self.call('openmc_prepare_official_example',{'example_id':'source-pincell-multigroup','case_dir':'cases/pin','parameters':{'particles':400,'batches':20,'inactive':2}});i=x['instance_id']
+        self.assertEqual(x['case_dir'],'cases/pin')
         self.assertIn('顺序无效',self.call('openmc_run_example_step',{'instance_id':i,'step':'compute'},False))
         with ThreadPoolExecutor(max_workers=2) as pool:
             jobs=list(pool.map(lambda _:self.call('openmc_run_example_step',{'instance_id':i,'step':'prepare'}),range(2)))
         self.assertEqual(len({x['job_id'] for x in jobs}),1)
-        ready=self.wait(i,'prepare');self.assertEqual(self.call('openmc_run_example_step',{'instance_id':i,'step':'prepare'})['job_id'],jobs[0]['job_id'])
+        self.assertEqual(jobs[0]['case_dir'],'cases/pin')
+        self.assertEqual(jobs[0]['job_case_dir'],'.mc-jobs/'+jobs[0]['job_id']+'/work')
+        ready=self.wait(i,'prepare')
+        self.assertNotIn('current_case_dir',ready)
+        self.assertTrue(all(step['case_dir']=='cases/pin' for step in ready['steps'].values()))
+        self.assertEqual(ready['steps']['prepare']['job_case_dir'],jobs[0]['job_case_dir']);self.assertEqual(self.call('openmc_run_example_step',{'instance_id':i,'step':'prepare'})['job_id'],jobs[0]['job_id'])
         p=self.workspace/'.mc-jobs'/jobs[0]['job_id']/'work/settings.xml';original=p.read_bytes();p.write_bytes(original+b'\n<!-- changed -->')
         before={p.name for p in (self.workspace/'.mc-jobs').iterdir()}
         self.assertIn('已改变',self.call('openmc_run_example_step',{'instance_id':i,'step':'data'},False));self.assertEqual(before,{p.name for p in (self.workspace/'.mc-jobs').iterdir()})
@@ -66,6 +72,7 @@ class OfficialWorkflowReal(unittest.TestCase):
         for step in ['data','compute']:
             self.call('openmc_run_example_step',{'instance_id':i,'step':step});ready=self.wait(i,step)
         self.assertEqual(ready['state'],'completed')
+        self.assertTrue(all(step['case_dir']=='cases/pin' for step in ready['steps'].values()))
         result=self.call('openmc_read_example_results',{'instance_id':i});self.assertEqual(result['calculation']['particles'],400)
         self.assertEqual({t['id'] for t in result['calculation']['tallies']},{1,2})
         self.assertTrue(Path(result['calculation']['statepoint_server_path']).is_file())

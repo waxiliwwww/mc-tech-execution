@@ -1211,15 +1211,10 @@
       "type": "object"
     }
   },
-  "$id": "https://mc-agent-tools.local/model-spec/v2.json",
+  "$id": "https://mc-agent-tools.local/model-spec.json",
   "additionalProperties": false,
-  "description": "OpenMC model-spec/v2；组合模型，不执行调用方Python；专业适用性需另行确认。",
+  "description": "OpenMC 声明式模型输入；组合模型，不执行调用方Python；专业适用性需另行确认。",
   "properties": {
-    "schema_version": {
-      "const": "2",
-      "title": "Schema Version",
-      "type": "string"
-    },
     "name": {
       "default": "",
       "maxLength": 200,
@@ -1317,7 +1312,6 @@
     }
   },
   "required": [
-    "schema_version",
     "materials",
     "surfaces",
     "cells",

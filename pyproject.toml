@@ -26,4 +26,4 @@ dependencies = { file = ["mcp/requirements.txt"] }
 
 [tool.setuptools.package-data]
 mc_agent_tools = ["service.config.json", "requirements.txt", "UPSTREAM.json", "README.md"]
-"mc_agent_tools.model_validation" = ["schema_v2.json"]
+"mc_agent_tools.model_validation" = ["schema.json"]

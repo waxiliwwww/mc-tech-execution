@@ -1,4 +1,4 @@
-"""Transactional model-spec adapter shared by direct CLI and standard MCP."""
+"""Transactional declarative-model adapter shared by direct CLI and standard MCP."""
 from __future__ import annotations
 from copy import deepcopy
 import hashlib
@@ -16,7 +16,7 @@ from openmc_runtime import Error, ROOT, api, atomic_json, config, file_location,
 
 
 def model_capabilities() -> dict:
-    return {'schema_version':'2','validation_backend':available_backend(),
+    return {'validation_backend':available_backend(),
             'validation_backend_scope':'MCP server input validation; the standalone builder may use fallback when its OpenMC Python lacks Pydantic',
             'builder_validation_backend_policy':'pydantic_if_available_else_fallback',
             'max_tally_values':1000000,'spec_schema':deepcopy(MODEL_SCHEMA),
@@ -74,10 +74,10 @@ def build_model(case_dir: str, spec: dict) -> dict:
 
 
 MODEL_TOOLS=[
-    {'name':'openmc_model_capabilities','description':'发现 model-spec/v2 受控组合建模范围、校验后端和完整参数schema；不是OpenMC全部API覆盖声明。',
+    {'name':'openmc_model_capabilities','description':'发现声明式模型输入的受控组合建模范围、校验后端和完整参数schema；不是OpenMC全部API覆盖声明。',
      'inputSchema':{'type':'object','properties':{},'additionalProperties':False},'outputSchema':{'type':'object'},'function':model_capabilities,
      'annotations':{'readOnlyHint':True,'idempotentHint':True,'openWorldHint':False}},
-    {'name':'openmc_build_model','description':'按 model-spec/v2 组合新模型，经OpenMC Python API导出XML并读回；保留可重跑Python源码与校验包。无任意代码执行，不代表物理正确或微调生成。',
+    {'name':'openmc_build_model','description':'按声明式模型输入组合新模型，经OpenMC Python API导出XML并读回；保留可重跑Python源码与校验包。无任意代码执行，不代表物理正确或微调生成。',
      'inputSchema':{'type':'object','properties':{
          'case_dir':{'type':'string','description':'MC_WORKSPACE内新算例相对目录；拒绝覆盖、越界和符号链接。'},
          'spec':deepcopy(MODEL_SCHEMA)},'required':['case_dir','spec'],'additionalProperties':False},

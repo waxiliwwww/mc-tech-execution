@@ -99,6 +99,19 @@ def _read(directory: Path) -> dict:
     return json.loads((directory / 'example.json').read_text())
 
 
+def _step_view(instance_case_dir, status):
+    """Keep the public step case_dir on the user's case, not the job work copy."""
+    view = dict(status)
+    work_dir = view.pop('work_dir', None)
+    source_case = view.pop('case_dir', None)
+    if source_case and source_case != instance_case_dir:
+        work_dir = source_case
+    view['case_dir'] = instance_case_dir
+    if work_dir and work_dir != instance_case_dir:
+        view['job_case_dir'] = work_dir
+    return view
+
+
 def example_status(instance_id: str, wait_seconds: int = 0) -> dict:
     import time
     if type(wait_seconds) is not int or not 0 <= wait_seconds <= 30:
@@ -117,9 +130,12 @@ def _example_status_once(instance_id: str) -> dict:
         value = _read(directory)
         for step, item in value['steps'].items():
             try:
-                item.update(jobs.status(item['job_id']))
+                current = jobs.status(item['job_id'])
+                item.update(current)
+                item.update(_step_view(value['case_dir'], current))
             except Error:
-                item.update(state='interrupted', error='步骤提交记录不完整；保留预留编号，不自动重复执行。')
+                item.update(state='interrupted', error='步骤提交记录不完整，保留预留编号，不自动重复执行。')
+                item.update(_step_view(value['case_dir'], {}))
         completed = [s['id'] for s in describe(value['example_id'])['steps']
                      if value['steps'].get(s['id'], {}).get('state') == 'completed']
         pipeline = describe(value['example_id'])['steps']
@@ -169,7 +185,7 @@ def run_example_step(instance_id: str, step: str, threads: int = 1) -> dict:
             except Error:
                 current = {'job_id': existing['job_id'], 'state': 'interrupted',
                            'error': '步骤提交记录不完整；不自动重提。'}
-            return {'instance_id': instance_id, 'step': step, **current, 'reused': True,
+            return {'instance_id': instance_id, 'step': step, **_step_view(value['case_dir'], current), 'reused': True,
                     'note': '保留已有步骤记录，不重复提交；失败后用新实例保留原失败。'}
         if definition(value['example_id']).get('scope')=='deferred':
             raise Error('该例题已按用户决定暂缓，未提交新步骤')
@@ -212,7 +228,7 @@ def run_example_step(instance_id: str, step: str, threads: int = 1) -> dict:
                               _expected_inputs=expected, _preserve_outputs=True,
                               _runtime=value.get('runtime'))
         atomic_json(directory / 'example.json', value)
-    return {'instance_id': instance_id, 'step': step, **started, 'reused': False,
+    return {'instance_id': instance_id, 'step': step, **_step_view(value['case_dir'], started), 'reused': False,
             'next': {'tool': 'openmc_example_status', 'arguments': {'instance_id': instance_id}}}
 
 

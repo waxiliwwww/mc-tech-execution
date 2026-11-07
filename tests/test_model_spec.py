@@ -1,4 +1,4 @@
-"""User-visible v2 spec rejection and transactional publish, without a solver."""
+"""User-visible declarative spec rejection and transactional publish, without a solver."""
 import copy
 import hashlib
 import json
@@ -39,9 +39,7 @@ class ModelSpec(unittest.TestCase):
         s['settings']['source']['python']='danger()'
         with self.assertRaisesRegex(ValueError,'不支持的字段'):validate_spec(s)
 
-    def test_v1_spec_and_string_region_are_not_accepted(self):
-        s=specimen();s['schema_version']='1'
-        with self.assertRaises(ValueError):validate_spec(s)
+    def test_string_region_is_not_accepted(self):
         s=specimen();s['cells'][0]['region']='1 -2'
         with self.assertRaises(ValueError):validate_spec(s)
 
@@ -174,12 +172,11 @@ class ModelSpec(unittest.TestCase):
     def test_validation_tags_travel_with_job_provenance(self):
         with tempfile.TemporaryDirectory() as tmp:
             case=Path(tmp)
-            marker={'data_kind':'user_supplied_unverified','schema_version':'2',
+            marker={'data_kind':'user_supplied_unverified',
                     'validation':{'backend':'pydantic','overrides':[
                         {'code':'outer_boundary_transmission','reason':'test','scope':'run'}]}}
             (case/'mc-case.json').write_text(json.dumps(marker),encoding='utf-8')
             tags=provenance(case,{'data_kind':'user_supplied_unverified'})
-            self.assertEqual(tags['model_spec_schema_version'],'2')
             self.assertEqual(tags['validation']['overrides'][0]['code'],'outer_boundary_transmission')
 
     def test_build_reports_server_and_builder_backends_separately(self):

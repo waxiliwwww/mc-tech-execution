@@ -1,4 +1,4 @@
-"""MV-MCP-05：边界：外边界 transmission 与专家覆盖 tag
+"""MV-MCP-04：边界：外边界 transmission 与专家覆盖 tag
 
 测试功能
 --------

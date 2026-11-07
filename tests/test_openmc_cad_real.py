@@ -4,6 +4,7 @@
 （DAGMC版OpenMC环境）的配置文件，例如仓库的 config/openmc.local.json。
 夹具 tests/fixtures/cube.step 为 cadquery 生成的 10 mm 立方体（来源与指纹见 docs/adr/0002）。
 """
+import csv
 import json
 import os
 from pathlib import Path
@@ -196,6 +197,12 @@ print('Native StatePoint, 16 mesh values/errors/coordinates, selected report and
                               'chart': chart, 'report': report}),
             capture_output=True, timeout=60)
         self.assertEqual(checked.returncode, 0, checked.stdout + checked.stderr)
+        self.assertIn('low_statistics_bins', chart)
+        self.assertIn('warnings', chart)
+        with (business.WORKSPACE / chart['values_csv']).open() as stream:
+            headers = next(csv.reader(stream))
+        self.assertIn('relative_std', headers)
+        self.assertIn('low_statistics', headers)
 
 
 if __name__ == '__main__':

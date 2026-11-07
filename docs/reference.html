@@ -1434,7 +1434,7 @@
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_plots.py">mcp/openmc_plots.py</a>。</p></details>
 <details class="tool" id="openmc_plot_mesh"><summary>openmc_plot_mesh
-<span class="tool-purpose">把规则网格tally画成二维分布热图：从StatePoint取网格分箱值，坐标取自算例tallies.xml或model.xml的网格定义（不猜几何）；3D网格须用level指定层，带能量过滤须用energy_bin指定箱；多score须显式选择score，优先total核素，不隐式合并核素。缺数据不补0，非有限值留空。输出PNG与完整JSON/CSV，零均值加标记并返回zero_bins/警告，不作物理零判断。</span></summary>
+<span class="tool-purpose">把规则网格tally画成二维分布热图：从StatePoint取网格分箱值，坐标取自算例tallies.xml或model.xml的网格定义（不猜几何）；3D网格须用level指定层，带能量过滤须用energy_bin指定箱；多score须显式选择score，优先total核素，不隐式合并核素。缺数据不补0，非有限值留空。输出PNG与完整JSON/CSV，零均值加标记，并对相对标准差超过10%或误差不可计算的非零箱给出低统计警告；返回zero_bins/low_statistics_bins/max_relative_std，提示增加粒子/批次或合并分箱，不作物理结论。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>job_id</td><td>string</td><td>是</td><td>不可省略</td><td>计算编号，直接使用openmc_submit_job或扫描子项返回的job_id；不是目录、文件名或scan_id。查询/读取不会自动提交新计算。</td><td>—</td></tr><tr><td>tally_id</td><td>integer</td><td>否</td><td>省略时见说明</td><td>计分器ID，先从openmc_read_results返回的tallies[].id选择。省略时取StatePoint首个tally，不等于自动选择业务上正确的量；不要传null。</td><td>—</td></tr><tr><td>score</td><td>string</td><td>否</td><td>省略时见说明</td><td>计分类型，取所选tally的scores，例如flux。省略时使用首个score；不要传null，也不要为不存在的计分编造名称。</td><td>—</td></tr><tr><td>energy_bin</td><td>integer</td><td>否</td><td>省略时见说明</td><td>带能量过滤的网格tally中第几个能量箱（0起），从tally的EnergyFilter分界推出；省略则要求该tally无能量过滤。</td><td>—</td></tr><tr><td>level</td><td>integer</td><td>否</td><td>省略时见说明</td><td>三维网格的第几层（0起，沿第三个坐标方向）；省略仅允许二维网格，不静默投影。</td><td>—</td></tr><tr><td>format</td><td>string</td><td>否</td><td>&quot;png&quot;</td><td>图文件格式，png或svg；同次另存对应JSON/CSV数据。</td><td>—</td></tr><tr><td>title</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选图标题，最多200字符；省略时使用默认标题，不改变计分数据、单位或归一化。不要传null。</td><td>—</td></tr><tr><td>x_label</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选横轴标题，最多200字符；只改显示文本，不改数据坐标。</td><td>—</td></tr><tr><td>y_label</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选纵轴标题，最多200字符；只改显示文本，不改数据或单位。</td><td>—</td></tr><tr><td>colorbar_label</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选色标标题，最多200字符；省略用score名并注明未做功率归一化。</td><td>—</td></tr></tbody></table></div>
 <h3>返回怎么看</h3><p>image为热图文件；values_json/values_csv含网格坐标与全部值；mesh回显网格编号/维数/层；cells为格数；失败或缺失值留空不补0。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>job_id</td><td>计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。</td></tr><tr><td>path</td><td>相对服务端MC_WORKSPACE的产物路径；不是客户端本地路径。</td></tr><tr><td>server_path</td><td>服务端绝对文件位置；远程调用不会自动下载文件。</td></tr><tr><td>workspace</td><td>服务端绝对数据根；工作区相对路径以它为基准。</td></tr><tr><td>provenance</td><td>数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。</td></tr><tr><td>zero_bins</td><td>当前所选网格切片内均值恰为0的格数；缺失值不计入，不能据此判定物理零或无径迹。</td></tr><tr><td>warnings</td><td>统计量等不确定性提示，不能因工具调用成功而忽略。</td></tr></tbody></table></div>
@@ -2000,9 +2000,9 @@
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/example_workflows.py">mcp/example_workflows.py</a>。</p></details>
 <details class="tool" id="openmc_run_example_step"><summary>openmc_run_example_step
-<span class="tool-purpose">按实例next_step提交一个已注册步骤，返回持久作业编号。依次准备输入、核数据和计算；不允许调用方指定脚本或命令，重复调用沿用同一步记录。</span></summary>
+<span class="tool-purpose">按实例next_step提交一个已注册步骤，返回持久作业编号。依次准备输入、核数据和计算；case_dir指向用户算例，job_case_dir才是作业工作副本；不允许调用方指定脚本或命令，重复调用沿用同一步记录。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>instance_id</td><td>string</td><td>是</td><td>不可省略</td><td>准备官方例题返回的instance_id；关联该实例的各步骤和计算编号。</td><td>—</td></tr><tr><td>step</td><td>string</td><td>是</td><td>不可省略</td><td>严格使用openmc_example_status返回的next_step.id；不能跳过前置步骤。</td><td>—</td></tr><tr><td>threads</td><td>integer</td><td>否</td><td>1</td><td>该步骤使用的本地OpenMC线程数；省略为1。</td><td>—</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>按实例next_step提交一个已注册步骤，返回持久作业编号。依次准备输入、核数据和计算；不允许调用方指定脚本或命令，重复调用沿用同一步记录。</p>
+<h3>返回怎么看</h3><p>按实例next_step提交一个已注册步骤，返回持久作业编号。依次准备输入、核数据和计算；case_dir指向用户算例，job_case_dir才是作业工作副本；不允许调用方指定脚本或命令，重复调用沿用同一步记录。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
@@ -2034,14 +2034,14 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;按实例next_step提交一个已注册步骤，返回持久作业编号。依次准备输入、核数据和计算；不允许调用方指定脚本或命令，重复调用沿用同一步记录。&quot;
+  &quot;description&quot;: &quot;按实例next_step提交一个已注册步骤，返回持久作业编号。依次准备输入、核数据和计算；case_dir指向用户算例，job_case_dir才是作业工作副本；不允许调用方指定脚本或命令，重复调用沿用同一步记录。&quot;
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/example_workflows.py">mcp/example_workflows.py</a>。</p></details>
 <details class="tool" id="openmc_example_status"><summary>openmc_example_status
-<span class="tool-purpose">查询官方例题各步骤的真实状态、日志尾部、job_id和下一步；失败/取消不伪装成完成，也不自动重新提交。</span></summary>
+<span class="tool-purpose">查询官方例题各步骤的真实状态、日志尾部、job_id和下一步；步骤case_dir指向用户算例，job_case_dir为作业工作副本；失败/取消不伪装成完成，也不自动重新提交。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>instance_id</td><td>string</td><td>是</td><td>不可省略</td><td>准备官方例题返回的instance_id；关联该实例的各步骤和计算编号。</td><td>—</td></tr><tr><td>wait_seconds</td><td>integer</td><td>否</td><td>0</td><td>可选有界等待秒数，默认0立即返回；运行中可用30等待本步骤变化，减少反复轮询。到时仍运行不代表失败，不要重复提交。</td><td>—</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>查询官方例题各步骤的真实状态、日志尾部、job_id和下一步；失败/取消不伪装成完成，也不自动重新提交。</p>
+<h3>返回怎么看</h3><p>查询官方例题各步骤的真实状态、日志尾部、job_id和下一步；步骤case_dir指向用户算例，job_case_dir为作业工作副本；失败/取消不伪装成完成，也不自动重新提交。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
@@ -2068,7 +2068,7 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;查询官方例题各步骤的真实状态、日志尾部、job_id和下一步；失败/取消不伪装成完成，也不自动重新提交。&quot;
+  &quot;description&quot;: &quot;查询官方例题各步骤的真实状态、日志尾部、job_id和下一步；步骤case_dir指向用户算例，job_case_dir为作业工作副本；失败/取消不伪装成完成，也不自动重新提交。&quot;
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/example_workflows.py">mcp/example_workflows.py</a>。</p></details>
@@ -2975,9 +2975,9 @@
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_tools.py">mcp/openmc_tools.py</a>。</p></details>
 <details class="tool" id="openmc_model_capabilities"><summary>openmc_model_capabilities
-<span class="tool-purpose">发现 model-spec/v2 受控组合建模范围、校验后端和完整参数schema；不是OpenMC全部API覆盖声明。</span></summary>
+<span class="tool-purpose">发现声明式模型输入的受控组合建模范围、校验后端和完整参数schema；不是OpenMC全部API覆盖声明。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>无参数</td><td>object</td><td>—</td><td>空对象</td><td>不接受额外参数</td><td>{}</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>发现 model-spec/v2 受控组合建模范围、校验后端和完整参数schema；不是OpenMC全部API覆盖声明。</p>
+<h3>返回怎么看</h3><p>发现声明式模型输入的受控组合建模范围、校验后端和完整参数schema；不是OpenMC全部API覆盖声明。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
@@ -2988,14 +2988,14 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;发现 model-spec/v2 受控组合建模范围、校验后端和完整参数schema；不是OpenMC全部API覆盖声明。&quot;
+  &quot;description&quot;: &quot;发现声明式模型输入的受控组合建模范围、校验后端和完整参数schema；不是OpenMC全部API覆盖声明。&quot;
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_model_tools.py">mcp/openmc_model_tools.py</a>。</p></details>
 <details class="tool" id="openmc_build_model"><summary>openmc_build_model
-<span class="tool-purpose">按 model-spec/v2 组合新模型，经OpenMC Python API导出XML并读回；保留可重跑Python源码与校验包。无任意代码执行，不代表物理正确或微调生成。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>MC_WORKSPACE内新算例相对目录；拒绝覆盖、越界和符号链接。</td><td>—</td></tr><tr><td>spec</td><td>object</td><td>是</td><td>不可省略</td><td>OpenMC model-spec/v2；组合模型，不执行调用方Python；专业适用性需另行确认。</td><td>—</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>按 model-spec/v2 组合新模型，经OpenMC Python API导出XML并读回；保留可重跑Python源码与校验包。无任意代码执行，不代表物理正确或微调生成。</p>
+<span class="tool-purpose">按声明式模型输入组合新模型，经OpenMC Python API导出XML并读回；保留可重跑Python源码与校验包。无任意代码执行，不代表物理正确或微调生成。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>MC_WORKSPACE内新算例相对目录；拒绝覆盖、越界和符号链接。</td><td>—</td></tr><tr><td>spec</td><td>object</td><td>是</td><td>不可省略</td><td>OpenMC 声明式模型输入；组合模型，不执行调用方Python；专业适用性需另行确认。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>按声明式模型输入组合新模型，经OpenMC Python API导出XML并读回；保留可重跑Python源码与校验包。无任意代码执行，不代表物理正确或微调生成。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
@@ -4217,15 +4217,10 @@
           &quot;type&quot;: &quot;object&quot;
         }
       },
-      &quot;$id&quot;: &quot;https://mc-agent-tools.local/model-spec/v2.json&quot;,
+      &quot;$id&quot;: &quot;https://mc-agent-tools.local/model-spec.json&quot;,
       &quot;additionalProperties&quot;: false,
-      &quot;description&quot;: &quot;OpenMC model-spec/v2；组合模型，不执行调用方Python；专业适用性需另行确认。&quot;,
+      &quot;description&quot;: &quot;OpenMC 声明式模型输入；组合模型，不执行调用方Python；专业适用性需另行确认。&quot;,
       &quot;properties&quot;: {
-        &quot;schema_version&quot;: {
-          &quot;const&quot;: &quot;2&quot;,
-          &quot;title&quot;: &quot;Schema Version&quot;,
-          &quot;type&quot;: &quot;string&quot;
-        },
         &quot;name&quot;: {
           &quot;default&quot;: &quot;&quot;,
           &quot;maxLength&quot;: 200,
@@ -4323,7 +4318,6 @@
         }
       },
       &quot;required&quot;: [
-        &quot;schema_version&quot;,
         &quot;materials&quot;,
         &quot;surfaces&quot;,
         &quot;cells&quot;,
@@ -4344,7 +4338,7 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;按 model-spec/v2 组合新模型，经OpenMC Python API导出XML并读回；保留可重跑Python源码与校验包。无任意代码执行，不代表物理正确或微调生成。&quot;
+  &quot;description&quot;: &quot;按声明式模型输入组合新模型，经OpenMC Python API导出XML并读回；保留可重跑Python源码与校验包。无任意代码执行，不代表物理正确或微调生成。&quot;
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_model_tools.py">mcp/openmc_model_tools.py</a>。</p></details>

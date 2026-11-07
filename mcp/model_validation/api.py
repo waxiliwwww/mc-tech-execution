@@ -1,4 +1,4 @@
-"""Backend selection for model-spec/v2 validation.
+"""Backend selection for declarative model validation.
 
 Pydantic is preferred when importable. Only an ImportError falls back; a real
 validation failure is never hidden by trying a second backend.

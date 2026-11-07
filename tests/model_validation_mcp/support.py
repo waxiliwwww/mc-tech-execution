@@ -1,4 +1,4 @@
-"""Shared mechanics for the real MCP model-spec/v2 cases.
+"""Shared mechanics for the real MCP declarative-model cases.
 
 This module only starts/stops an isolated MCP server and calls public tools.
 Scenario descriptions, assertions and expected outcomes belong in each case

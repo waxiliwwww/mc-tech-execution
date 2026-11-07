@@ -1,12 +1,21 @@
 """Human-facing chart operations; selection is delegated to the official Tally API."""
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
-import uuid
 
 import openmc_jobs as jobs
 from openmc_runtime import Error, api, relative, file_location
+
+
+def output_name(prefix, payload, format):
+    """Deterministic artifact name so repeated identical plots are idempotent."""
+    if format not in ('png', 'svg'):
+        raise Error('format须为png/svg')
+    canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+    digest = hashlib.sha256(canonical.encode('utf-8')).hexdigest()[:16]
+    return prefix + '-' + digest + '.' + format
 
 
 def options(style, format, title):
@@ -20,7 +29,11 @@ def plot_results(job_id: str, tally_id: int | None = None, score: str | None = N
     from openmc_tools import verified_result
     options(style, format, title)
     target, record, point = verified_result(job_id)
-    filename = 'plot-' + uuid.uuid4().hex[:12] + '.' + format
+    filename = output_name('plot', {'job_id': job_id, 'statepoint': point.name,
+                                    'source_sha256': record['output_files'][point.name],
+                                    'tally_id': tally_id, 'score': score, 'nuclide': nuclide,
+                                    'filter_selection': filter_selection, 'style': style,
+                                    'title': title, 'format': format}, format)
     params = {'statepoint': 'work/' + point.name, 'filename': filename, 'tally_id': tally_id,
               'score': score, 'nuclide': nuclide, 'filter_selection': filter_selection,
               'style': style, 'provenance': record['provenance'], 'title': title,
@@ -45,8 +58,13 @@ def plot_mesh(job_id: str, tally_id: int | None = None, score: str | None = None
         if value is not None and (not isinstance(value, str) or len(value) > 200):
             raise Error(name + '须为不超过200字的文本或省略')
     target, record, point = verified_result(job_id)
-    filename = 'mesh-' + uuid.uuid4().hex[:12] + '.' + format
     tally_input = 'work/model.xml' if (target / 'work/model.xml').is_file() else 'work/tallies.xml'
+    filename = output_name('mesh', {'job_id': job_id, 'statepoint': point.name,
+                                    'source_sha256': record['output_files'][point.name],
+                                    'tallies_xml': tally_input, 'tally_id': tally_id,
+                                    'score': score, 'energy_bin': energy_bin, 'level': level,
+                                    'title': title, 'x_label': x_label, 'y_label': y_label,
+                                    'colorbar_label': colorbar_label, 'format': format}, format)
     params = {'statepoint': 'work/' + point.name, 'tallies_xml': tally_input, 'filename': filename,
               'tally_id': tally_id, 'score': score, 'energy_bin': energy_bin, 'level': level,
               'provenance': record['provenance'], 'title': title, 'x_label': x_label, 'y_label': y_label,
@@ -68,7 +86,11 @@ def plot_convergence(job_id: str, format: str = 'png', title: str | None = None,
         if value is not None and (not isinstance(value, str) or len(value) > 200):
             raise Error(name + '须为不超过200字的文本或省略')
     target, record, point = verified_result(job_id)
-    filename = 'convergence-' + uuid.uuid4().hex[:12] + '.' + format
+    filename = output_name('convergence', {'job_id': job_id, 'statepoint': point.name,
+                                            'source_sha256': record['output_files'][point.name],
+                                            'title': title, 'show_band': show_band,
+                                            'x_label': x_label, 'y_label': y_label,
+                                            'format': format}, format)
     params = {'statepoint': 'work/' + point.name, 'filename': filename, 'title': title,
               'show_band': show_band, 'x_label': x_label, 'y_label': y_label,
               'provenance': record['provenance'], '_font_path': record['runtime'].get('font_path')}
@@ -126,7 +148,9 @@ def plot_scan(scan_id: str, x_parameter: str, metric: str = 'keff', fixed: dict 
               'fixed': fixed, 'metric': metric, 'bin_index': bin_index, 'sources': sources,
               'selection': None if selected is None else {k: selected[k] for k in ('tally_id', 'score', 'nuclide', 'filter_selection')},
               'normalization': 'Raw OpenMC values; failed/missing calculations are gaps.'}
-    filename = 'scan-' + uuid.uuid4().hex[:12] + '.' + format
+    filename = output_name('scan', {'scan_id': scan_id, 'x_parameter': x_parameter,
+                                     'series': series, 'title': title, 'style': 'line',
+                                     'format': format}, format)
     value = api('plot-series', target, {'series': series, 'filename': filename, 'style': 'line',
                 'title': title, 'provenance': record['provenance']}, runtime)
     return {'scan_id': scan_id, **value, **file_location(target / filename),

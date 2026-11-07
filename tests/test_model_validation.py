@@ -1,4 +1,4 @@
-"""Parity checks for the v2 Pydantic and stdlib validators."""
+"""Parity checks for the Pydantic and stdlib validators."""
 import copy
 import json
 import math
@@ -26,7 +26,6 @@ def invalid_cases():
     changes=[]
     def add(name, mutate):
         value=copy.deepcopy(base);mutate(value);changes.append((name,value))
-    add('v1',lambda s:s.update(schema_version='1'))
     add('string_region',lambda s:s['cells'][0].update(region='1 -2'))
     add('bad_region_op',lambda s:s['cells'][0].update(region={'op':'bad'}))
     add('empty_region',lambda s:s['cells'][0].update(region={'op':'intersection','items':[]}))
@@ -48,8 +47,7 @@ def invalid_cases():
 
 
 class ValidationParity(unittest.TestCase):
-    def test_static_schema_is_v2_and_has_regions(self):
-        self.assertEqual(MODEL_SCHEMA['properties']['schema_version']['const'],'2')
+    def test_static_schema_has_regions(self):
         self.assertIn('HalfSpace', MODEL_SCHEMA['$defs'])
         self.assertIn('RegionIntersection', MODEL_SCHEMA['$defs'])
         self.assertIn('XPlane', MODEL_SCHEMA['$defs'])

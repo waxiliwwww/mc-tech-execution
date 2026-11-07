@@ -64,8 +64,12 @@ class ChartsReal(unittest.TestCase):
         csv_lines = (self.work / chart['values_csv']).read_text(encoding='utf-8').strip().splitlines()
         self.assertEqual(len(csv_lines), 5)  # 表头+4格
         self.assertTrue(csv_lines[0].startswith('i,j,x_center,y_center'))
+        self.assertIn('relative_std', csv_lines[0].split(','))
+        self.assertIn('low_statistics', csv_lines[0].split(','))
+        self.assertIn('low_statistics_bins', chart)
         payload = json.loads((self.work / chart['values_json']).read_text(encoding='utf-8'))
         self.assertEqual(payload['dimension'], [2, 2, 1])
+        self.assertIn('mesh_statistics', payload)
         self.assertEqual(len(payload['values']), 2)
         self.assertEqual(len(payload['values'][0]), 2)
         self.assertFalse(payload['professional_acceptance'])

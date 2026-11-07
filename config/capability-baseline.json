@@ -3,13 +3,13 @@
   "purpose": "已支持能力与已知限制的基线；发布前用 tests/test_capability_baseline_contract.py 和 verify.sh --release 检查，不允许用兜底/校验悄悄删掉合法输入。",
   "capabilities": [
     {
-      "id": "model_spec_v2_build",
+      "id": "declarative_model_build",
       "status": "supported",
       "surface": [
         "openmc_model_capabilities",
         "openmc_build_model"
       ],
-      "input": "model-spec/v2：显式材料/表面/栅元 ID、类型化 region、CSG 平面/圆柱/球、矩形格架、点/盒源",
+      "input": "声明式模型输入：显式材料/表面/栅元 ID、类型化 region、CSG 平面/圆柱/球、矩形格架、点/盒源",
       "output": "OpenMC XML、可重跑的 build_model.py、model-spec.json、model_validation/ 与 validation tag",
       "evidence": [
         "tests/model_validation_mcp/test_01_positive_minimal_sphere.py",
@@ -172,17 +172,8 @@
   ],
   "restrictions": [
     {
-      "id": "v1_region_removed",
-      "capability": "model_spec_v2_build",
-      "kind": "contract_removal",
-      "override": null,
-      "migration": "无自动兼容层；旧 v1 调用方需改为 v2 类型化 region（随包示例与 schema 已更新）",
-      "user_decision": "2026-11-06 明确不实现 v1 兼容，接受只支持 v2",
-      "impact": "旧 v1 字符串 region 输入会被拒绝；这是真实能力收窄，不是兜底修复"
-    },
-    {
       "id": "outer_boundary_transmission",
-      "capability": "model_spec_v2_build",
+      "capability": "declarative_model_build",
       "kind": "guarded",
       "override": "spec.validation.overrides[].code=outer_boundary_transmission，必须带 reason/scope",
       "migration": null,

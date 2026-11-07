@@ -1,4 +1,4 @@
-"""语义校验离线测试（v2）：统一 problems 定位清单——核素/S(a,b)可用性、密度/温度、tally filter 规则。
+"""语义校验离线测试：统一 problems 定位清单——核素/S(a,b)可用性、密度/温度、tally filter 规则。
 合法值集合与缺陷样本对照安装版 OpenMC 0.16.0 源码内省结果构造。"""
 import json
 import os
@@ -94,7 +94,7 @@ class SemanticValidation(unittest.TestCase):
     def kinds(self, value, severity='error'):
         return [p['kind'] for p in value['problems'] if p['severity'] == severity]
 
-    # ---- 核素/S(a,b) 可用性（第一刀能力，v2 形态） ----
+    # ---- 核素/S(a,b) 可用性（第一刀能力，形态） ----
 
     def test_known_nuclide_and_sab_pass_with_index_source(self):
         sab = (KNOWN_SAB,) if KNOWN_SAB else ()

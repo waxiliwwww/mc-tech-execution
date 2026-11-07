@@ -222,6 +222,7 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
     atomic_json(directory / 'job.json', record)
     spawn_worker(directory, 'openmc_jobs.py', job_id)
     return {'job_id': job_id, 'name': name, 'state': read(directory)['state'],
+            'case_dir': case_dir, 'work_dir': relative(copied),
             'provenance': record['provenance'], 'next': '使用openmc_job_status查询，提交不等于计算完成。'}
 
 
@@ -379,7 +380,7 @@ def status(job_id: str) -> dict:
         with log_path.open('rb') as log:
             log.seek(max(0, log_path.stat().st_size - 4000))
             tail = log.read().decode('utf-8', errors='replace')
-    result = {key: value[key] for key in ('job_id', 'name', 'state', 'mode', 'case_dir', 'submitted_at',
+    result = {key: value[key] for key in ('job_id', 'name', 'state', 'mode', 'case_dir', 'work_dir', 'submitted_at',
               'started_at', 'finished_at', 'exit_code', 'error', 'provenance', 'log_truncated',
               'process_cleanup', 'cancel_requested', 'input_integrity') if key in value}
     result['log_tail'] = tail

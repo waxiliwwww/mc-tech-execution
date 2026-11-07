@@ -1,8 +1,9 @@
-"""Canonical model-spec/v2 contract.
+"""Canonical declarative model contract.
 
 This module is deliberately independent of Pydantic and OpenMC. It owns the
 shape-independent rules that every backend must apply: region tree conversion,
-semantic cross-field checks, and expert-override tagging.
+semantic cross-field checks, and expert-override tagging. The input is the
+current schema; callers do not select or declare a schema version.
 """
 from __future__ import annotations
 
@@ -11,15 +12,14 @@ import math
 from pathlib import Path
 from typing import NamedTuple
 
-SCHEMA_VERSION = '2'
 MAX_TALLY_VALUES = 1_000_000
 OVERRIDE_CODES = ('outer_boundary_transmission',)
 MAX_REGION_DEPTH = 80
 UNVERIFIED = ('geometry_coverage', 'physical_correctness', 'convergence')
 
-SCHEMA_PATH = Path(__file__).with_name('schema_v2.json')
+SCHEMA_PATH = Path(__file__).with_name('schema.json')
 if not SCHEMA_PATH.is_file():
-    raise RuntimeError('缺少 model_validation/schema_v2.json；无法校验 model-spec')
+    raise RuntimeError('缺少 model_validation/schema.json；无法校验模型输入')
 MODEL_SCHEMA = json.loads(SCHEMA_PATH.read_text(encoding='utf-8'))
 
 
@@ -116,7 +116,7 @@ def _region_text(node, parent=0):
 
 
 def region_to_string(data):
-    """Serialize a v2 region tree to OpenMC's expression grammar."""
+    """Serialize a typed region tree to OpenMC's expression grammar."""
     return _region_text(region_from_dict(data))
 
 
@@ -289,7 +289,6 @@ def validate_semantics(spec, backend='fallback'):
         if item['code'] not in applied_codes:
             warnings.append('覆盖未触发：' + item['code'])
     return {
-        'schema_version': SCHEMA_VERSION,
         'backend': backend,
         'overrides': applied,
         'warnings': warnings,
