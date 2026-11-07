@@ -181,6 +181,17 @@ class OfficialWorkflowReal(unittest.TestCase):
                                     self.assertLess(time.monotonic(),deadline);await asyncio.sleep(.1)
                                 self.assertEqual(state,'completed',status)
                             result=await call('openmc_read_example_results',{'instance_id':i});self.assertEqual(result['calculation']['particles'],1000)
+                            import hashlib
+                            import xml.etree.ElementTree as ET
+                            record=json.loads((self.workspace/'.mc-examples'/i/'example.json').read_text())
+                            settings=ET.parse(self.workspace/record['current_case_dir']/'settings.xml').getroot()
+                            self.assertEqual([settings.findtext(k) for k in ('particles','batches','inactive')],['1000','100','10'])
+                            self.assertEqual(record['parameters'],{})
+                            self.assertTrue(record['source_files'])
+                            for filename,expected in record['source_files'].items():
+                                self.assertEqual(hashlib.sha256((self.workspace/x['case_dir']/filename).read_bytes()).hexdigest(),expected)
+                                self.assertEqual(hashlib.sha256((self.workspace/record['current_case_dir']/filename).read_bytes()).hexdigest(),expected)
+
                             folder=ROOT/'artifacts/runs/official-examples-20261030';folder.mkdir(parents=True,exist_ok=True)
                             (folder/'standard-mcp-workflow.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
                 asyncio.run(exercise())

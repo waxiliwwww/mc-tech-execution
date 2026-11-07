@@ -232,11 +232,32 @@ except ValueError as error:
                 self.assertIn('openmc_submit_job',[tool['name'] for tool in json.loads(discovery.stdout)['tools']])
 
                 for choice in ['n','y']:
+                    before_jobs={p.name for p in (self.workspace/'.mc-jobs').iterdir()}
                     command=[sys.executable,str(ROOT/'examples/repair_demo.py'), '--json','--mcp-url',url,'--case-dir','demo-mcp-'+choice]
                     code,output,transcript,answered=terminal_run(command,env,choice)
                     self.assertTrue(answered);self.assertEqual(code,0,transcript)
                     result=json.loads(output)
                     self.assertEqual(result['outcome'],'not_applied' if choice=='n' else 'recalculation_completed')
+                    failed=result['failed_job'];plan=result['prepared']['plan']
+                    source=self.workspace/result['case']['case_dir']
+                    failed_work=self.workspace/'.mc-jobs'/failed['job_id']/'work'
+                    self.assertEqual(failed['state'],'failed')
+                    for filename,expected in failed['input_hashes'].items():
+                        self.assertEqual(hashlib.sha256((source/filename).read_bytes()).hexdigest(),expected)
+                        self.assertEqual(hashlib.sha256((failed_work/filename).read_bytes()).hexdigest(),expected)
+                    actual_new_jobs={p.name for p in (self.workspace/'.mc-jobs').iterdir()}-before_jobs
+                    expected_new_jobs={failed['job_id']}
+                    if choice=='n':
+                        self.assertIsNone(result['rerun'])
+                        current=self.call('read_repair_plan',{'plan_id':plan['plan_id']})
+                        self.assertEqual(current['state'],'proposed');self.assertTrue(current['file_unchanged'])
+                    else:
+                        self.assertEqual(result['rerun']['state'],'completed')
+                        self.assertNotEqual(result['rerun']['job_id'],failed['job_id'])
+                        expected_new_jobs.add(result['rerun']['job_id'])
+                    self.assertEqual(actual_new_jobs,expected_new_jobs)
+                    self.assertLess(transcript.index('-  <run_mode>eigenvale'),transcript.index('[y/N]'))
+
                     self.evidence('real-repair-mcp-'+choice+'.json',{'flow':result,'terminal':transcript})
             finally:server.terminate();server.wait(timeout=15)
 
