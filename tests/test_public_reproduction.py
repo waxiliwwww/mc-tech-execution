@@ -34,7 +34,7 @@ class ReproductionContract(unittest.TestCase):
             if name=='openmc_job_status':
                 self.assertEqual(json.loads(receipt.read_text())['job_id'],'a'*32)
             value = {
-                'openmc_environment':dict(api_available=True,executable_available=True,version_matches=True),
+                'openmc_environment':dict(api_available=True,executable_available=True,openmc_version_matches=True),
                 'openmc_create_model':{'case_dir':args.case_dir},
                 'openmc_define_tally':{'tally_id':73},
                 'openmc_preview_input':{'manifest_complete':True,'input_hashes':{'geometry.xml':'abc'},'files':[{'name':'geometry.xml','present':True,'sha256':'abc'}]},

@@ -1,5 +1,15 @@
 # 变更记录
 
+## 0.13.0 — 2026-11-07
+
+- 新增 `mcp/runtime_identity.py`：启动时记录 `VERSION`、`mcp/**/*.py` 指纹和启动身份；`openmc_environment`、`/info` 每次调用与磁盘现值比较，返回 `startup_version`/`current_disk_version`、`version_matches_disk`、`code_matches_disk`、`changed_files`、`restart_required`，并给出中文重启提示。CLI 的 `package` 字段明确标为调用时磁盘身份，不冒充 MCP 进程已加载版本；旧进程加载新代码不会再被“调用成功”掩盖，重启后仍需重新核对。
+- `openmc_validate_inputs` 在 API 解析前识别 OpenMC 0.16 已移除的 `<material density="...">`，给 material 名/id 和 `<density value="..." units="..."/>` 替代写法；API 解析异常不再让结构/语义已经完成的检查一起崩溃，而是返回 `openmc_api.ok=false`、异常上下文与 `+openmc_api_failed` 校验级别。
+- `openmc_scan_status` 新增相邻轴点的 `differences`：逐对给出 Δk、独立合成 σ、`within_2sigma_engineering` 与 `outside_2sigma`；判据是工程参考，不处理系统误差、相关性或统计显著性。
+- 网格 tally 预览改为 `mesh_nonzero_first`：`preview_indices` 是数据数组的 0 基扁平序号，`preview_points`/`mesh_indices` 给 0 基 `(i,j,k)`，`mesh_centers` 给格心；`filter_selection.bins` 明确只接受 OpenMC `MeshFilter` 的 1-based `[i,j,k]`，不再把扁平序号当分箱或把 mesh id 当 bins，错误直接提示三元组写法。
+- 燃耗配置新增初始重金属质量与 burnup 自洽检查：缺体积/密度/可识别核素时明确 `unavailable`，估算超过 200 MWd/kgHM 拒绝、超过 80 警告，确需高燃耗要显式 `acknowledge_extreme_burnup`；`openmc_read_depletion` 支持 `key_nuclides`，缺失核素列入 `key_nuclides_unavailable` 而不补 0。
+- `openmc_job_status` 的 k 来源标签按实际来源判定：批次表 Average 文本虽含“非Combined”，也不会被误标为 Combined k；非有限值提示不再直接断言“未收敛”。
+- 新增回归测试：启动身份/漂移、弃用 density、API 失败降级、扫描 2σ、燃耗 guard、原子密度重金属估算、真实网格 tally 与热图分箱；`config/release-critical.txt` 纳入关键用例；文档与接口参考同步字段名和边界。
+
 ## 0.12.0 — 2026-11-07
 
 - 模型输入不再声明或暴露 schema 版本；仓库删除旧格式专用测试、兼容说明、能力限制和发布门禁项，随包示例、schema 和文档统一为当前声明式格式。

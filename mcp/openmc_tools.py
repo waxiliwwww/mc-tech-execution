@@ -37,14 +37,22 @@ def environment() -> dict:
         text = (completed.stdout + completed.stderr).strip()
         result['executable_available'] = completed.returncode == 0
         result['executable_version_output'] = text[:1000]
-        result['version_matches'] = completed.returncode == 0 and cfg['expected_version'] in text
+        result['openmc_version_matches'] = completed.returncode == 0 and cfg['expected_version'] in text
     except (OSError, subprocess.TimeoutExpired) as exc:
         result['executable_error'] = type(exc).__name__ + '；请按部署文档配置OpenMC运行时'
-        result['version_matches'] = False
+        result['openmc_version_matches'] = False
     from nuclear_data import deployment_status
+    import runtime_identity
+    identity = runtime_identity.snapshot()
+    result['package'] = {'version': identity['version'],
+                         'code_fingerprint': identity['code_fingerprint'],
+                         'source': 'disk_at_call',
+                         'note': ('CLI直接读取调用时的磁盘身份；MCP服务另给service启动快照与漂移判断，'
+                                  '不能把这里的磁盘版本当成进程已加载版本。')}
     result['cross_sections_env_set'] = result['cross_sections_configured']
     result['nuclear_data'] = deployment_status(cfg)
-    result['note'] = '接口包、可执行程序和核数据分别检查；探测成功不等于物理验收。'
+    result['note'] = ('接口包、可执行程序和核数据分别检查；openmc_version_matches只针对OpenMC；'
+                      '探测成功不等于物理验收。')
     return result
 
 
@@ -195,6 +203,12 @@ def _check_materials(root, problems: list) -> int:
                 problems.append({'kind': 'temperature', 'severity': 'error',
                                  'location': f'material {label}',
                                  'detail': f'temperature属性{temperature!r}应为正的开尔文值'})
+        if material.get('density') is not None:
+            problems.append({'kind': 'removed_density_attribute', 'severity': 'error',
+                             'location': f'material {label} density',
+                             'detail': 'OpenMC 0.16 已移除 density 属性；改用 '
+                                       '<density value="..." units="..."/> 子元素。'})
+            continue
         if material.find('macroscopic') is not None:
             continue
         densities = material.findall('density')
@@ -231,6 +245,42 @@ def _check_materials(root, problems: list) -> int:
                                        '（Need to specify a positive density）'})
     return count
 
+
+
+def _removed_input_problems(path: Path) -> list[str]:
+    """Detect input syntax removed by the pinned OpenMC version before parsing.
+
+    OpenMC 0.16 no longer accepts ``<material density="...">``. The SDK raises
+    an opaque AttributeError deep in its XML reader, so callers must not have to
+    discover this by trial and error.
+    """
+    if path.name not in ('materials.xml', 'model.xml'):
+        return []
+    try:
+        root = ET.parse(path).getroot()
+    except (ET.ParseError, OSError):
+        return []  # The structure check reports parse errors with the file name.
+    problems = []
+    for material in root.iter('material'):
+        if material.get('density') is None:
+            continue
+        label = material.get('name') or ('id=' + (material.get('id') or '?'))
+        problems.append(
+            path.name + ': material ' + label + ' 使用了 OpenMC 0.16 已移除的 density 属性；'
+            '请改为子元素 <density value="..." units="..."/>（例如 '
+            '<density value="10.0" units="g/cc"/>），不要保留属性写法。')
+    return problems
+
+
+def _api_failure_context(directory: Path) -> dict:
+    removed = _removed_input_problems(directory / 'materials.xml')
+    if not removed and (directory / 'model.xml').is_file():
+        removed = _removed_input_problems(directory / 'model.xml')
+    return {'removed_inputs': removed,
+            'suggestion': ('先把输入改为当前 OpenMC 版本的写法；density 属性应改为 '
+                           '<density value="..." units="..."/> 子元素。') if removed else
+                          '检查 materials/geometry XML 是否使用当前 OpenMC 版本支持的写法；'
+                          '静态语义检查仍已执行，不能因 API 解析失败而跳过它。'}
 
 def _semantic_summary(directory: Path, inspected: list, cfg: dict) -> dict:
     """静态语义检查v2：材料密度/温度、核素/S(a,b)可用性、tally filter规则。
@@ -687,6 +737,9 @@ def validate_inputs(case_dir: str, api_check: bool = False, semantic_check: bool
             if root.tag != expected:
                 raise ValueError('根元素应为' + expected)
             inspected.append(name)
+            for removed in _removed_input_problems(path):
+                if removed not in problems:
+                    problems.append(removed)
             for tag in ('particles', 'batches', 'inactive'):
                 node = root.find('.//' + tag)
                 if node is not None and (int(node.text or '') < (0 if tag == 'inactive' else 1)):
@@ -704,9 +757,20 @@ def validate_inputs(case_dir: str, api_check: bool = False, semantic_check: bool
         if result['semantic'].get('checked'):
             level += '+static_semantics'
     if api_check and not problems:
-        result['openmc_api'] = api('validate', directory, {})
-        level = ('xml_and_openmc_model_parser'
-                 + ('+static_semantics' if '+static_semantics' in level else ''))
+        try:
+            parsed = api('validate', directory, {})
+            result['openmc_api'] = {**parsed, 'ok': True}
+        except Exception as exc:
+            context = _api_failure_context(directory)
+            result['openmc_api'] = {'ok': False, 'api_parsed': False,
+                                    'error': type(exc).__name__ + '：' + str(exc), 'context': context,
+                                    'note': 'OpenMC API 解析失败；结构检查与（若请求的）静态语义检查仍保留。'
+                                            '不要把内部异常名当成唯一诊断。'}
+            level = ('xml_structure_and_basic_settings+openmc_api_failed'
+                     + ('+static_semantics' if '+static_semantics' in level else ''))
+        else:
+            level = ('xml_and_openmc_model_parser'
+                     + ('+static_semantics' if '+static_semantics' in level else ''))
     if geometry_check:
         if problems:
             result['geometry'] = {'checked': False, 'skipped_reason': '结构检查未通过，未做几何检查'}
@@ -723,7 +787,7 @@ def submit_job(case_dir: str, mode: str = 'run', threads: int = 1, name: str | N
     if not validation['structure_valid']:
         raise Error('输入结构检查失败：' + '; '.join(validation['problems']))
     runtime = environment()
-    if not runtime['executable_available'] or not runtime['version_matches']:
+    if not runtime['executable_available'] or not runtime['openmc_version_matches']:
         raise Error('OpenMC可执行程序不可用或版本不符；先调用openmc_environment并按部署文档修正')
     from openmc_model_spec import declarative_integrity
     integrity = declarative_integrity(path_in_workspace(case_dir))
@@ -867,6 +931,17 @@ def read_results(job_id: str, max_values: int = 1000) -> dict:
     status = jobs.status(job_id)
     cfg = jobs.read(directory)['runtime']
     data = api('results', directory / 'work', {'statepoint': point.name, 'max_values': max_values}, cfg)
+    warnings = list(data.get('warnings') or [])
+    for tally in data.get('tallies', []):
+        if tally.get('preview_policy') == 'mesh_nonzero_first':
+            if tally.get('zero_values'):
+                warnings.append(f"tally {tally['id']}：正文预览优先非零网格箱，零值箱"
+                                f"{tally['zero_values']}个；零估计不等于物理零，完整数据见StatePoint/CSV。")
+            if tally.get('values_truncated'):
+                warnings.append(f"tally {tally['id']}：网格tally共{tally['total_values']}值，"
+                                f"预览{len(tally.get('mean', []))}值；preview_indices给出实际序号，"
+                                '未展示的值不等于0。')
+    data['warnings'] = warnings
     data.update(job_id=job_id, provenance=status['provenance'],
                 statepoint=relative(point), statepoint_sha256=hashlib.sha256(point.read_bytes()).hexdigest(),
                 statepoint_context=_statepoint_context(directory, record, point),
@@ -1274,8 +1349,142 @@ def view_geometry(case_dir: str, basis: str = 'xy', origin: list | None = None,
             'note': '几何切片图仅供查看，不代表输入已通过结构/语义/几何检查，也不含任何计算结果。'}
 
 
+
+HEAVY_SYMBOLS = {'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm', 'Md', 'No', 'Lr'}
+ATOMIC_MASS = {'H1': 1.0078, 'B10': 10.0129, 'B11': 11.0093, 'O16': 15.9949,
+               'Fe56': 55.9349, 'Cr52': 51.9405, 'Ni58': 57.9353,
+               'Zr90': 89.9047, 'Zr91': 90.9056, 'Zr92': 91.9050, 'Zr94': 93.9063, 'Zr96': 95.9083,
+               'Th232': 232.0381, 'U233': 233.0396, 'U234': 234.0410, 'U235': 235.0439,
+               'U236': 236.0456, 'U238': 238.0508, 'Np237': 237.0482,
+               'Pu238': 238.0496, 'Pu239': 239.0522, 'Pu240': 240.0538, 'Pu241': 241.0568,
+               'Pu242': 242.0587, 'Am241': 241.0568, 'Cm244': 244.0627,
+               'Xe135': 134.9072, 'Sm149': 148.9172, 'Nd143': 142.9098}
+EXTREME_BURNUP_MWD_KG = 200.0
+WARN_BURNUP_MWD_KG = 80.0
+
+
+def _atomic_mass(name: str) -> float | None:
+    return ATOMIC_MASS.get(name)
+
+
+def _heavy_mass_estimate(directory: Path) -> dict:
+    """Estimate initial heavy-metal mass from explicit material volume/density.
+
+    This is deliberately an estimate: unknown nuclide masses or unsupported
+    density units are reported as unavailable rather than silently assumed.
+    """
+    path = directory / 'materials.xml'
+    if not path.is_file():
+        path = directory / 'model.xml'
+    if not path.is_file():
+        return {'available': False, 'reason': '没有materials.xml/model.xml'}
+    try:
+        root = ET.parse(path).getroot()
+    except (ET.ParseError, OSError) as exc:
+        return {'available': False, 'reason': '材料XML不可解析：' + type(exc).__name__}
+    total_g, materials = 0.0, []
+    for material in root.iter('material'):
+        if material.find('macroscopic') is not None:
+            continue
+        try:
+            volume = float(material.get('volume'))
+        except (TypeError, ValueError):
+            continue
+        density = material.find('density')
+        if density is None:
+            continue
+        try:
+            density_value = float(density.get('value'))
+        except (TypeError, ValueError):
+            continue
+        units = (density.get('units') or '').lower()
+        entries = []
+        for nucleus in material.findall('nuclide'):
+            name = nucleus.get('name') or ''
+            try:
+                fraction = float(nucleus.get('ao') if nucleus.get('ao') is not None else nucleus.get('wo'))
+            except (TypeError, ValueError):
+                continue
+            entries.append((name, fraction, 'ao' if nucleus.get('ao') is not None else 'wo'))
+        if units in ('g/cc', 'g/cm3'):
+            total_mass = density_value * volume
+            if entries:
+                weights = []
+                for name, fraction, kind in entries:
+                    mass = _atomic_mass(name)
+                    weights.append((name, fraction if kind == 'wo' else (fraction * mass if mass else 0.0)))
+                denominator = sum(weight for _, weight in weights)
+                numerator = sum(weight for name, weight in weights
+                                if ''.join(ch for ch in name if ch.isalpha()) in HEAVY_SYMBOLS)
+                if denominator > 0:
+                    heavy_fraction = numerator / denominator
+                else:
+                    heavy_fraction = 1.0
+            else:
+                heavy_fraction = 1.0
+            heavy_g = total_mass * heavy_fraction
+        elif units in ('atom/b-cm', 'atom/cm3'):
+            if not entries:
+                continue
+            scale = 1.0e24 if units == 'atom/b-cm' else 1.0
+            weights = []
+            for name, fraction, kind in entries:
+                mass = _atomic_mass(name)
+                if mass is None:
+                    continue
+                weights.append((name, fraction * mass if kind == 'ao' else fraction * mass))
+            denominator = sum(weight for _, weight in weights)
+            fraction_sum = sum(fraction for name, fraction, kind in entries
+                               if _atomic_mass(name) is not None)
+            if denominator <= 0 or fraction_sum <= 0:
+                continue
+            heavy_weight = sum(weight for name, weight in weights
+                               if ''.join(ch for ch in name if ch.isalpha()) in HEAVY_SYMBOLS)
+            # atom/b-cm -> atoms/cm3; average atom mass = sum(f*m)/sum(f).
+            average_mass_g = denominator / fraction_sum / 6.02214076e23
+            heavy_g = density_value * scale * volume * average_mass_g * (heavy_weight / denominator)
+        else:
+            continue
+        if heavy_g > 0:
+            total_g += heavy_g
+            materials.append({'id': material.get('id'), 'volume_cm3': volume,
+                              'density': density_value, 'units': units,
+                              'heavy_metal_g': heavy_g})
+    return {'available': total_g > 0, 'heavy_metal_g': total_g, 'materials': materials,
+            'source': path.name,
+            'assumption': '按材料体积、密度和核素份额估算；未做燃耗链或几何体积复核。'}
+
+
+def _depletion_guard(directory: Path, power_watts: float, timesteps: list,
+                     timestep_unit: str, acknowledge: bool) -> dict:
+    factor = {'s': 1 / 86400, 'min': 1 / 1440, 'h': 1 / 24, 'd': 1.0}[timestep_unit]
+    days = sum(float(v) for v in timesteps) * factor
+    estimate = _heavy_mass_estimate(directory)
+    if not estimate.get('available'):
+        return {'status': 'unavailable', 'reason': estimate.get('reason') or '重金属质量无法估算',
+                'note': '不能用体积/密度估算burnup；配置仍写入，但不要把功率当已验证的物理条件。'}
+    mass_kg = estimate['heavy_metal_g'] / 1000.0
+    burnup = power_watts * days / (1.0e6 * mass_kg) if mass_kg > 0 else None
+    value = {'status': 'ok', 'heavy_metal_g': round(estimate['heavy_metal_g'], 6),
+             'heavy_metal_kg': round(mass_kg, 9), 'total_days': round(days, 6),
+             'estimated_burnup_mwd_kg': round(burnup, 6) if burnup is not None else None,
+             'source': estimate.get('source'), 'assumption': estimate.get('assumption')}
+    if burnup is not None and burnup > EXTREME_BURNUP_MWD_KG and not acknowledge:
+        raise Error('燃耗配置不自洽：按初始重金属质量约' + str(round(estimate['heavy_metal_g'], 3))
+                    + ' g、连续' + str(round(days, 3)) + '天、功率' + str(power_watts)
+                    + ' W，估算burnup≈' + str(round(burnup, 3)) + ' MWd/kgHM，超过工程上限'
+                    + str(EXTREME_BURNUP_MWD_KG) + ' MWd/kgHM。请核对功率/体积/密度/时间步；'
+                    '若这是有意的高燃耗设计，传 acknowledge_extreme_burnup=true 后重试，'
+                    '该确认会写入mc-case.json。')
+    if burnup is not None and burnup > WARN_BURNUP_MWD_KG:
+        value['status'] = 'extreme'
+        value['warning'] = ('估算burnup≈' + str(round(burnup, 3)) + ' MWd/kgHM，高于常规热堆范围；'
+                            '必须核对功率、质量与时间步，不能把配置成功当成物理可行。')
+    return value
+
 def configure_depletion(case_dir: str, power_watts: float, timesteps: list,
-                        timestep_unit: str = 'd', chain_file: str | None = None) -> dict:
+                        timestep_unit: str = 'd', chain_file: str | None = None,
+                        acknowledge_extreme_burnup: bool = False) -> dict:
     """为算例写入燃耗配置（功率、时间步、单位、链文件）；提交时用mode=deplete执行。"""
     cfg = config()
     directory = path_in_workspace(case_dir)
@@ -1290,6 +1499,10 @@ def configure_depletion(case_dir: str, power_watts: float, timesteps: list,
         raise Error('timesteps须为非空正数列表（每步长度）')
     if timestep_unit not in DEPLETION_UNITS:
         raise Error('timestep_unit须为' + '/'.join(DEPLETION_UNITS) + '之一')
+    if type(acknowledge_extreme_burnup) is not bool:
+        raise Error('acknowledge_extreme_burnup须为布尔值')
+    guard = _depletion_guard(directory, float(power_watts), timesteps, timestep_unit,
+                             acknowledge_extreme_burnup)
     if chain_file is not None:
         if not isinstance(chain_file, str) or not Path(chain_file).is_file():
             raise Error('chain_file须为存在的文件路径或省略（省略用部署配置的链文件）')
@@ -1303,17 +1516,19 @@ def configure_depletion(case_dir: str, power_watts: float, timesteps: list,
     marker = directory / 'mc-case.json'
     info = json.loads(marker.read_text(encoding='utf-8')) if marker.is_file() else {'data_kind': 'user_supplied_unverified'}
     spec = {'power_watts': float(power_watts), 'timesteps': [float(v) for v in timesteps],
-            'timestep_unit': timestep_unit, 'chain_file': str(chain)}
+            'timestep_unit': timestep_unit, 'chain_file': str(chain),
+            'guard': guard}
     info.update(depletion=spec)
     marker.write_text(json.dumps(info, ensure_ascii=False, indent=2), encoding='utf-8')
     digest = hashlib.sha256(chain.read_bytes()).hexdigest()
-    return {'case_dir': case_dir, **spec, 'chain_sha256': digest, 'steps': len(timesteps),
+    return {'case_dir': case_dir, **spec, 'depletion_guard': guard,
+            'chain_sha256': digest, 'steps': len(timesteps),
             'workspace': str(workspace()), 'location': 'server',
             'provenance': provenance(directory, cfg), 'professional_acceptance': False,
             'note': '燃耗配置已写入算例；用openmc_submit_job(mode=deplete)执行，完成后用openmc_read_depletion读取。'}
 
 
-def read_depletion(job_id: str) -> dict:
+def read_depletion(job_id: str, key_nuclides: list | None = None) -> dict:
     """读取已完成燃耗作业的depletion_results.h5：逐时间步keff、燃耗估算、关键核素质量。"""
     status = jobs.status(job_id)
     if status['state'] != 'completed':
@@ -1325,7 +1540,12 @@ def read_depletion(job_id: str) -> dict:
     work = directory / 'work'
     if not (work / 'depletion_results.h5').is_file():
         raise Error('作业缺少depletion_results.h5；确认燃耗已完成')
-    value = api('depletion-results', work, {'file': 'depletion_results.h5'}, record['runtime'])
+    if key_nuclides is not None:
+        if (not isinstance(key_nuclides, list) or not key_nuclides
+                or any(not isinstance(name, str) or not name.strip() for name in key_nuclides)):
+            raise Error('key_nuclides须为非空核素名字符串列表或省略')
+    value = api('depletion-results', work, {'file': 'depletion_results.h5',
+                                            'key_nuclides': key_nuclides}, record['runtime'])
     return {'job_id': job_id, **value, 'workspace': str(workspace()), 'location': 'server',
             'provenance': record['provenance'], 'professional_acceptance': False}
 

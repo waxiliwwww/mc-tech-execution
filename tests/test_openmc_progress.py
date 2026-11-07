@@ -166,8 +166,8 @@ class JobProgress(unittest.TestCase):
         self.make_job('89' * 16, 'completed', log)
         progress = jobs.status('89' * 16)['progress']
         self.assertIsNone(progress['keff_combined'])
-        self.assertIn('不能安全解析', progress['keff_note'])
-        self.assertIn('-nan', progress['keff_note'])
+        self.assertIn('非有限值', progress['keff_note'])
+        self.assertIn('-nan', progress['keff_note']);self.assertIn('未收敛', progress['keff_note']);self.assertIn('方差为0', progress['keff_note'])
 
 
 if __name__ == '__main__':

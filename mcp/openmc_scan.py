@@ -112,7 +112,7 @@ def submit_scan(case_dir: str, axes: dict, threads: int = 1, stop_on_error: bool
     combinations = [dict(zip(axes, values)) for values in itertools.product(*axes.values())]
     specs = api('check-parameters', source, {'combinations': combinations}, cfg)['parameters']
     runtime = environment()
-    if not runtime['executable_available'] or not runtime['version_matches']:raise Error('运行时不可用或版本不符，未提交扫描')
+    if not runtime['executable_available'] or not runtime['openmc_version_matches']:raise Error('运行时不可用或版本不符，未提交扫描')
     scan_id = uuid.uuid4().hex
     root = path_in_workspace('.mc-scans', exists=False, internal=True); root.mkdir(exist_ok=True)
     target = root / scan_id; target.mkdir()
@@ -127,6 +127,56 @@ def submit_scan(case_dir: str, axes: dict, threads: int = 1, stop_on_error: bool
             'next': '查询openmc_scan_status；这是计算参数批次编号，不是智能体任务。'}
 
 
+
+def differences(record: dict) -> dict:
+    """Adjacent-axis k differences with an independent 2σ engineering check.
+
+    A scan line is not evidence of a physical trend just because its points
+    differ: with large per-point σ, sign-changing deltas are expected. This
+    keeps every adjacent pair explicit instead of hiding the comparison in a
+    plot or in a single relative-σ grade.
+    """
+    axes = list(record.get('axes') or {})
+    cases = record.get('cases') or []
+    pairs = []
+
+    def usable(case):
+        keff = case.get('keff') or {}
+        mean, sigma = keff.get('mean'), keff.get('std_dev')
+        return (case.get('state') == 'completed' and mean is not None and sigma is not None
+                and isinstance(mean, (int, float)) and isinstance(sigma, (int, float))
+                and not isinstance(mean, bool) and not isinstance(sigma, bool)
+                and math.isfinite(mean) and math.isfinite(sigma) and sigma >= 0)
+
+    unavailable = sum(1 for case in cases if not usable(case))
+    for axis in axes:
+        others = [name for name in axes if name != axis]
+        groups = {}
+        for case in cases:
+            if not usable(case):
+                continue
+            keff = case.get('keff') or {}
+            mean, sigma = keff.get('mean'), keff.get('std_dev')
+            key = tuple(case.get('parameters', {}).get(name) for name in others)
+            groups.setdefault(key, []).append((case.get('parameters', {}).get(axis), mean, sigma, case.get('index')))
+        for values in groups.values():
+            values.sort(key=lambda item: item[0])
+            for left, right in zip(values, values[1:]):
+                difference = right[1] - left[1]
+                combined = math.sqrt(left[2] ** 2 + right[2] ** 2)
+                within = abs(difference) <= 2 * combined if combined > 0 else difference == 0
+                pairs.append({'axis': axis, 'from': left[0], 'to': right[0],
+                              'from_index': left[3], 'to_index': right[3],
+                              'difference': difference, 'combined_std_dev': combined,
+                              'within_2sigma_engineering': bool(within),
+                              'note': '相邻轴点、独立σ合成；2σ为工程判据，不是统计显著性检验。'})
+    outside = sum(1 for pair in pairs if not pair['within_2sigma_engineering'])
+    return {'criterion': 'abs(delta_k) <= 2*sqrt(sigma_left^2 + sigma_right^2)',
+            'pairs': pairs, 'outside_2sigma': outside,
+            'unavailable_points': unavailable,
+            'note': ('扫描轴逐对给出Δk与合成σ；within_2sigma_engineering=false 时，'
+                     '不能仅凭该差值声称趋势或物理效应。判据不处理系统误差、源收敛或相关性。')}
+
 def status(scan_id: str) -> dict:
     target = directory(scan_id); record = jobs.read(target)
     if record['state'] not in TERMINAL and record.get('worker_pid') and jobs.identity(record['worker_pid']) != record.get('worker_identity'):
@@ -137,6 +187,7 @@ def status(scan_id: str) -> dict:
                 atomic_json(target / 'job.json', record)
     result = {key: record[key] for key in ('scan_id', 'name', 'state', 'case_dir', 'axes', 'cases', 'active_job_id', 'provenance', 'submitted_at', 'finished_at', 'error') if key in record}
     result['counts'] = {state: sum(item['state'] == state for item in record['cases']) for state in ('planned', 'preparing', 'running', 'completed', 'failed', 'cancelled', 'interrupted', 'not_run')}
+    result['differences'] = differences(record)
     return result
 
 

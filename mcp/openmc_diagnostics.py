@@ -170,7 +170,7 @@ def recheck_repair(plan_id: str, threads: int = 1):
             return {'plan_id': plan_id, 'origin_job_id': context['origin_job_id'], 'validation': validation,
                     'job': None, 'next': '校核未通过，没有提交重算；核对problems并提出新修复。'}
         runtime = environment()
-        if not runtime['executable_available'] or not runtime['version_matches']:raise Error('运行环境不符，没有提交重算')
+        if not runtime['executable_available'] or not runtime['openmc_version_matches']:raise Error('运行环境不符，没有提交重算')
         identifier = uuid.uuid4().hex
         context.update(rerun_job_id=identifier, recheck_started_at=time.time())
         business._write_json(path, plan)

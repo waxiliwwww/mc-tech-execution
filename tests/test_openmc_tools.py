@@ -254,7 +254,7 @@ class OpenMCTools(unittest.TestCase):
         case = self.root / 'workspace/dep'
         case.mkdir(parents=True)
         (case / 'materials.xml').write_text(
-            '<materials><material id="1" volume="1.0" density="10.0"></material></materials>', encoding='utf-8')
+            '<materials><material id="1" volume="1.0"><density value="10.0" units="g/cc"/></material></materials>', encoding='utf-8')
         (case / 'settings.xml').write_text('<settings><particles>10</particles><batches>2</batches>'
                                           '<inactive>0</inactive></settings>', encoding='utf-8')
         chain = self.root / 'chain.xml'

@@ -14,8 +14,11 @@ from tools import TOOLS
 RETURN_NOTES = {
     'openmc_environment': [
         ['expected_version / api_version / executable_version_output', 'OpenMC引擎的预期/API/可执行程序版本，不是工具包服务版本。'],
-        ['version_matches', '只检查OpenMC可执行程序版本，不是工具包服务版本；MCP调用读取service.version，与包内VERSION对照。'],
+        ['openmc_version_matches', '只检查OpenMC可执行程序版本，不是工具包服务版本；MCP调用读取service.version，与包内VERSION对照。'],
         ['service.name / service.version / service.version_source', 'MCP调用由服务端加入启动时固定的服务名、版本及mcp_server_startup来源，与握手和/health同源；不会随磁盘VERSION更新。CLI直接调用没有此字段，不能据此判断在线服务。'],
+        ['service.startup_version / current_disk_version / version_matches_disk', '启动快照与当前磁盘版本对照；false时不能认为旧进程已经加载新版本。'],
+        ['service.startup_code_fingerprint / current_code_fingerprint / code_matches_disk / changed_files', '启动时Python模块指纹与当前磁盘对照；只列相对包路径，不读取或回显文件内容。'],
+        ['service.restart_required / warnings', '任一版本/代码不一致时为true并给出重启提示；已经运行的旧进程不会自行获得该检测器，需重启一次。'],
         ['cross_sections_configured / cross_sections_env_set', '均表示OPENMC_CROSS_SECTIONS环境变量是否设置，不是核数据可用性判据。false可以使用nuclear_data指示的受管候选索引；index_exists仍不证明数据齐备，先核对模型核素/热散射名称与索引匹配；静态语义不检查HDF5文件完整性，由部署者按生效索引另核对。'],
     ],
     'openmc_list_artifacts': [

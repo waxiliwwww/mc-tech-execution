@@ -25,7 +25,27 @@ def selected_series(point, params):
     for selection in selections:
         matches = [f for f in tally.filters if type(f).__name__ == selection['type']]
         if len(matches) != 1 or type(matches[0]) in types:raise ValueError('filter类型不存在、重复或不唯一')
-        types.append(type(matches[0])); bins.append(tuples(selection['bins']))
+        types.append(type(matches[0]))
+        raw_bins = selection['bins']
+        if type(matches[0]).__name__ in ('MeshFilter', 'MeshBornFilter'):
+            mesh = matches[0].mesh
+            dimension = [int(v) for v in mesh.dimension]
+            while len(dimension) < 3:
+                dimension.append(1)
+            nx, ny, nz = dimension
+            cells = nx * ny * nz
+            converted = []
+            for item in raw_bins:
+                if not isinstance(item, (list, tuple)) or len(item) != 3:
+                    raise ValueError('MeshFilter的bins须为1-based [i,j,k]三元组；'
+                                     '不接受扁平序号、mesh id或其它形状，收到' + repr(item))
+                converted.append(tuple(int(v) for v in item))
+            if any(not (1 <= i <= nx and 1 <= j <= ny and 1 <= k <= nz) for i, j, k in converted):
+                raise ValueError('MeshFilter的bins超出1-based网格维度' + str(dimension)
+                                 + '；示例：[[1,1,1],[2,1,1]]')
+            bins.append(tuple(converted))
+        else:
+            bins.append(tuples(raw_bins))
     arguments = dict(scores=[score], nuclides=[nuclide], filters=types, filter_bins=bins)
     mean = tally.get_values(value='mean', **arguments).ravel()
     std = tally.get_values(value='std_dev', **arguments).ravel()
@@ -35,6 +55,44 @@ def selected_series(point, params):
             'x_label': 'Selected filter-bin index (OpenMC order: ' +
                        (' × '.join(type(f).__name__ for f in tally.filters) or 'no filters') + ')',
             'coordinate_note': 'Flattened selected-bin index; not a physical distance or energy coordinate.'}
+    if len(tally.filters) == 1 and type(tally.filters[0]).__name__ == 'MeshFilter':
+        mesh = tally.filters[0].mesh
+        if type(mesh).__name__ == 'RegularMesh':
+            dimension = [int(v) for v in mesh.dimension]
+            while len(dimension) < 3:
+                dimension.append(1)
+            cells = dimension[0] * dimension[1] * dimension[2]
+            nx, ny, nz = dimension
+            if selections:
+                try:
+                    indices = [int(v) for v in tally.get_filter_indices(
+                        filters=types, filter_bins=[bins[0]])]
+                except Exception as exc:
+                    raise ValueError('MeshFilter的bins无法映射；OpenMC的MeshFilter.bins是1-based '
+                                     '[i,j,k]三元组，例如 [{"type":"MeshFilter",'
+                                     '"bins":[[1,1,1],[2,1,1]]}]；'
+                                     '扁平序号仅作为兼容输入，范围0..' + str(cells - 1)) from exc
+            else:
+                indices = list(range(cells))
+            if any(index < 0 or index >= cells for index in indices):
+                raise ValueError('MeshFilter的bins超出范围；索引' + str(indices))
+            lower, upper = [float(v) for v in mesh.lower_left], [float(v) for v in mesh.upper_right]
+            mesh_indices, centers = [], []
+            for flat in indices:
+                k, remainder = divmod(flat, nx * ny)
+                j, i = divmod(remainder, nx)
+                mesh_indices.append([int(i), int(j), int(k)])
+                centers.append([lower[0] + (i + .5) * (upper[0] - lower[0]) / nx,
+                                lower[1] + (j + .5) * (upper[1] - lower[1]) / ny,
+                                lower[2] + (k + .5) * (upper[2] - lower[2]) / nz])
+            axis.update({'mesh_indices': mesh_indices, 'mesh_centers': centers,
+                         'mesh': {'id': int(mesh.id), 'dimension': dimension,
+                                  'lower_left': lower, 'upper_right': upper, 'unit': 'cm',
+                                  'indexing': 'data-array flat = i0 + nx*j0 + nx*ny*k0 (C order, i0 fastest)',
+                                  'filter_bin_convention': 'MeshFilter.bins and filter_selection.bins are 1-based [i,j,k]; mesh_indices below are 0-based data coordinates',
+                                  'filter_bins': [[int(i) + 1, int(j) + 1, int(k) + 1] for i, j, k in mesh_indices]},
+                         'x_label': 'Selected mesh bin (data flat index; coordinates in mesh_indices/mesh_centers)',
+                         'coordinate_note': 'Mesh cells map to 0-based (i,j,k) and centers; filter_selection and OpenMC MeshFilter.bins use 1-based [i,j,k]. Values remain raw mesh bins.'})
     # The same API indices that selected the values must select the coordinates.
     # In particular, explicit bins may be non-contiguous or requested in reverse order.
     if len(tally.filters) == 1 and type(tally.filters[0]).__name__ in ('EnergyFilter', 'EnergyoutFilter'):
@@ -506,8 +564,15 @@ def selected_report_rows(series, limit):
     rows = []
     for index in order:
         mean, std = series['mean'][index], series['std_dev'][index]
-        coordinate = (f"[{number(series['x_lower'][index])}, {number(series['x_upper'][index])}] eV"
-                      if 'x_lower' in series else f"bin {index}")
+        if 'x_lower' in series:
+            coordinate = f"[{number(series['x_lower'][index])}, {number(series['x_upper'][index])}] eV"
+        elif series.get('mesh_indices'):
+            mesh_index = series['mesh_indices'][index]
+            center = series['mesh_centers'][index]
+            coordinate = (f"mesh[{mesh_index[0]},{mesh_index[1]},{mesh_index[2]}] @ "
+                          f"({number(center[0])}, {number(center[1])}, {number(center[2])}) cm")
+        else:
+            coordinate = f"bin {index}"
         rows.append([f"tally {series['tally_id']} / {series['score']}",
                      series['nuclide'] + ' / ' + coordinate, number(mean), number(std), 'OpenMC原始归一化'])
     return rows
@@ -576,17 +641,31 @@ def render_docx(params):
                 document.add_paragraph('正文预览优先显示非零箱；其余箱的值仍在完整CSV/JSON中，不据此判断物理为零。')
         for tally_index, tally in enumerate(data.get('tallies', [])):
             rows = list(zip(tally['mean'], tally['std_dev']))
+            indices = tally.get('preview_indices') or list(range(len(rows)))
             count_scores = len(tally['scores']); count_nuclides = len(tally['nuclides'])
+            points = {point['flat_index']: point for point in (tally.get('preview_points') or [])}
             shown = min(remaining, len(rows))
-            for index, (mean, std) in enumerate(rows[:shown]):
+            for offset, (mean, std) in enumerate(rows[:shown]):
+                index = indices[offset]
                 score = tally['scores'][index % count_scores]
                 nuclide = tally['nuclides'][(index // count_scores) % count_nuclides]
                 bin_index = index // (count_scores * count_nuclides)
-                values = [f"tally {tally['id']} / {score}", f'{nuclide} / {bin_index}', number(mean), number(std), 'OpenMC原始归一化']
+                label = f'{nuclide} / bin {bin_index}'
+                point = points.get(index)
+                if point:
+                    label = (f"{nuclide} / mesh[{point['mesh_index'][0]},{point['mesh_index'][1]},"
+                             f"{point['mesh_index'][2]}] @ ({point['center'][0]:.6g},"
+                             f"{point['center'][1]:.6g},{point['center'][2]:.6g}) cm")
+                values = [f"tally {tally['id']} / {score}", label, number(mean), number(std), 'OpenMC原始归一化']
                 for cell, text in zip(table.add_row().cells, values):cell.text = text
             remaining -= shown
+            if tally.get('preview_policy') == 'mesh_nonzero_first':
+                document.add_paragraph(f"tally {tally['id']}：正文优先显示非零网格箱"
+                                       f"（零值箱{tally.get('zero_values', '?')}个，非有限值{tally.get('non_finite_values', '?')}个）；"
+                                       '其余箱仍在完整CSV/JSON中；零估计不等于物理零。')
             if tally['values_truncated'] or len(rows) > shown:
-                document.add_paragraph(f"tally {tally['id']}：报告行数有限；完整维度{tally['shape']}及截断状态见results.json，原始数据在statepoint文件。")
+                document.add_paragraph(f"tally {tally['id']}：报告行数有限；完整维度{tally['shape']}、预览序号"
+                                       f"{tally.get('preview_indices')}及截断状态见results.json，原始数据在statepoint文件。")
             if remaining <= 0:
                 omitted = data['tallies'][tally_index+1:]
                 if omitted:document.add_paragraph('报告总行数限制；未展示后续tally：' + ', '.join(str(t['id']) for t in omitted) + '。完整数据保留在StatePoint中。')

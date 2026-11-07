@@ -93,8 +93,13 @@ class ProjectIntegration(unittest.IsolatedAsyncioTestCase):
             health = json.load(response)
         with urllib.request.urlopen(self.url.replace("/mcp", "/info")) as response:
             info = json.load(response)
-        self.assertEqual(result["service"], {"name": "mc-integration", "version": "0.1.0",
-                                              "version_source": "mcp_server_startup"})
+        self.assertEqual({key: result["service"][key] for key in
+                          ("name", "version", "version_source")},
+                         {"name": "mc-integration", "version": "0.1.0",
+                          "version_source": "mcp_server_startup"})
+        self.assertFalse(result["service"]["version_matches_disk"])
+        self.assertTrue(result["service"]["restart_required"])
+        self.assertIn("重启", result["warnings"][0])
         self.assertEqual(result["service"]["version"], health["version"])
         self.assertEqual(result["service"]["version"], info["service"]["version"])
         self.assertEqual(result["service"]["version"], init.serverInfo.version)

@@ -343,9 +343,11 @@ def _progress(directory: Path, value: dict) -> dict:
         loose = PROGRESS_COMBINED_LOOSE.search(text)
         if loose:
             # NaN/异常数值不能安全进入JSON结果；如实报告行的存在与原文。
-            progress['keff_note'] = ('Combined k行存在但数值不能安全解析（原文：'
+            progress['keff_note'] = ('Combined k行含非有限值（原文：'
                                      + loose.group(1) + ' +/- ' + loose.group(2)
-                                     + '）；不提供keff_combined，请检查该作业是否正常收敛。')
+                                     + '）；不提供keff_combined。不要直接把非有限值归因于“未收敛”：'
+                                     '也可能是某个估计器方差为0或合并除零；先核对RESULTS节与StatePoint，'
+                                     '增加批次数未必修复。')
     estimates = {}
     for name, raw_mean, raw_std in PROGRESS_RESULT_ESTIMATE.findall(text):
         mean, std = _finite_progress(raw_mean), _finite_progress(raw_std)
@@ -392,10 +394,23 @@ def status(job_id: str) -> dict:
     k, summary_source = _summary_keff(progress)
     if summary_source:
         progress['keff_source'] = summary_source
+        result['keff_source'] = summary_source
     if value['state'] == 'completed':
         has_k = _usable_keff(k)
-        result['human_summary'] = (f"已完成；k={k['mean']:.5f}±{k['std_dev']:.5f}"
-                                   if has_k else '已完成；该作业无k结果')
+        if has_k:
+            source = summary_source or '未知来源'
+            if source.startswith('solver.log:RESULTS:Combined') or source.startswith('statepoint:k_combined'):
+                label = 'Combined k'
+            elif '批次表Average' in source:
+                label = '批次Average（非Combined）'
+            elif source.startswith('solver.log:RESULTS:'):
+                label = 'RESULTS估计器（非Combined）'
+            else:
+                label = '来源未标明（不能当成Combined）'
+            result['human_summary'] = (f"已完成；k={k['mean']:.5f}±{k['std_dev']:.5f}"
+                                       f"（{label}）")
+        else:
+            result['human_summary'] = '已完成；该作业无k结果；不要把无值当成k=0'
     elif value['state'] == 'failed':
         result['human_summary'] = f"失败；exit_code={value.get('exit_code')}；查看 log_tail"
     elif value['state'] == 'cancelled':

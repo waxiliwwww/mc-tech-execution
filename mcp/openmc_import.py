@@ -126,6 +126,13 @@ def import_model(source_dir: str, target_dir: str, api_check: bool = True) -> di
         validation = validate_inputs(relative(staging), api_check=api_check)
         if not validation['structure_valid']:
             raise Error('导入输入检查失败：' + '; '.join(validation['problems']))
+        if api_check and validation.get('openmc_api', {}).get('ok') is False:
+            api = validation['openmc_api']
+            context = api.get('context') or {}
+            detail = '；'.join(context.get('removed_inputs') or [])
+            raise Error('导入输入的OpenMC API解析失败：' + str(api.get('error'))
+                        + (('；定位：' + detail) if detail else '')
+                        + '；' + str(context.get('suggestion') or '检查输入与当前OpenMC版本的兼容性'))
         files = [{'name': str(p.relative_to(staging)), 'bytes': p.stat().st_size,
                   'sha256': file_hash(p)} for p in sorted(staging.rglob('*')) if p.is_file()]
         publish_directory(staging, target)

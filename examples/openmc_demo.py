@@ -56,7 +56,7 @@ async def demo(args):
     async with client(args.mcp_url) as call:
         print('1/6 检查运行环境', file=sys.stderr)
         runtime = await call('openmc_environment', {})
-        if not runtime['api_available'] or not runtime['executable_available'] or not runtime['version_matches']:
+        if not runtime['api_available'] or not runtime['executable_available'] or not runtime['openmc_version_matches']:
             raise RuntimeError('OpenMC运行环境尚未就绪：' + json.dumps(runtime, ensure_ascii=False))
         print('2/6 生成合成单群截面示例（不作专业验收）', file=sys.stderr)
         created = await call('openmc_create_model', {'case_dir': case_dir, 'template': 'synthetic-mgxs'})

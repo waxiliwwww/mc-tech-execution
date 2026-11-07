@@ -77,6 +77,8 @@ class KefSummaryFallback(unittest.TestCase):
         self.assertIn('Absorption', progress['keff_source'])
         self.assertNotIn('Track-length', progress['keff_source'])
         self.assertNotIn('Average', progress['keff_source'])
+        self.assertIn('RESULTS估计器', value['human_summary'])
+        self.assertNotIn('Combined k', value['human_summary'])
         json.dumps(value, allow_nan=False)
 
 

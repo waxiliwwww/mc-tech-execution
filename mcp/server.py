@@ -30,6 +30,7 @@ import uvicorn
 from adapters import ToolExecutionError, execute_tool, public_tool, validate_registry
 from business import MCInputError
 import resources
+import runtime_identity
 from tools import TOOLS
 
 ROOT = Path(__file__).resolve().parent
@@ -66,6 +67,7 @@ class Config:
     token: str = field(repr=False)
     connection_file: Path
     config_file: Path
+    version_file: Path | None = None
 
     @property
     def connection(self):
@@ -91,6 +93,7 @@ def load_config(env=None, defaults=None):
     if not isinstance(defaults, dict) or not {"host", "port", "path", "name", "clientName"} <= defaults.keys():
         raise ValueError("Configuration requires host, port, path, name, clientName and version/versionFile.")
     defaults = dict(defaults)
+    version_path = None
     if "versionFile" in defaults:
         if not isinstance(defaults["versionFile"], str) or not defaults["versionFile"].strip():
             raise ValueError("versionFile must be a nonempty path.")
@@ -154,7 +157,8 @@ def load_config(env=None, defaults=None):
     except ValueError as error:
         raise ValueError("publicUrl must use a reachable host, match path, and exclude credentials/query/fragment.") from error
     return Config(host, port, path, defaults["name"], defaults["version"], defaults["clientName"], url, token,
-                  resolve_path(env.get("MCP_CONNECTION_FILE", "connection.json")), config_file)
+                  resolve_path(env.get("MCP_CONNECTION_FILE", "connection.json")), config_file,
+                  version_path)
 
 
 def snapshot_arguments(arguments):
@@ -225,10 +229,22 @@ def security_settings(config):
     return TransportSecuritySettings(enable_dns_rebinding_protection=True, allowed_hosts=sorted(hosts), allowed_origins=sorted(origins))
 
 
-def create_app(config, log, tools=None):
+def create_app(config, log, tools=None, startup_identity=None):
     definitions = TOOLS if tools is None else tools
     validate_registry(definitions)
     registry = {tool["name"]: tool for tool in definitions}
+    if startup_identity is None:
+        startup_identity = runtime_identity.startup(
+            version_path=config.version_file,
+            literal_version=None if config.version_file is not None else config.version)
+        # Advertised service.version is fixed at config load; compare that value
+        # with the version file now on disk, not a second read at app creation.
+        startup_identity['version'] = config.version
+    if log:
+        with contextlib.suppress(Exception):
+            log.emit("INFO", "runtime.identity", version=startup_identity.get("version"),
+                     code_fingerprint=startup_identity.get("code_fingerprint"),
+                     files=startup_identity.get("files"))
     server = Server(config.name, version=config.version)
 
     @server.list_tools()
@@ -254,8 +270,23 @@ def create_app(config, log, tools=None):
             if name == 'openmc_environment':
                 # Bind the MCP observation to this server's startup identity, not
                 # a VERSION file that may have changed while it was running.
-                result = {**result, "service": {"name": config.name, "version": config.version,
-                                                "version_source": "mcp_server_startup"}}
+                drift = runtime_identity.check(startup_identity)
+                service = {"name": config.name, "version": config.version,
+                           "version_source": "mcp_server_startup",
+                           "startup_version": drift["startup_version"],
+                           "current_disk_version": drift["current_version"],
+                           "version_matches_disk": drift["version_matches"],
+                           "startup_code_fingerprint": drift["startup_code_fingerprint"],
+                           "current_code_fingerprint": drift["current_code_fingerprint"],
+                           "code_matches_disk": drift["code_matches"],
+                           "changed_files": drift["changed_files"],
+                           "restart_required": drift["restart_required"]}
+                result = {**result, "service": service}
+                if drift["restart_required"]:
+                    result["warnings"] = [*result.get("warnings", []), drift["message"]]
+                    if log:
+                        with contextlib.suppress(Exception):
+                            log.emit("WARNING", "runtime.drift_detected", **service)
             with contextlib.suppress(Exception):
                 log.emit("INFO", "tool.executed", name=name, arguments=parameters)
             if name in ('openmc_plot_results', 'openmc_plot_scan') and result.get('path', '').endswith('.png'):
@@ -316,6 +347,18 @@ def create_app(config, log, tools=None):
             rejected = await checker.validate_request(request)
             if rejected:
                 return await rejected(scope, receive, send)
+            drift = runtime_identity.check(startup_identity)
+            info["service"].update({
+                'startup_version': drift['startup_version'],
+                'current_disk_version': drift['current_version'],
+                'version_matches_disk': drift['version_matches'],
+                'startup_code_fingerprint': drift['startup_code_fingerprint'],
+                'current_code_fingerprint': drift['current_code_fingerprint'],
+                'code_matches_disk': drift['code_matches'],
+                'changed_files': drift['changed_files'],
+                'restart_required': drift['restart_required'],
+            })
+            info['warnings'] = [drift['message']] if drift['restart_required'] else []
             response = JSONResponse(info) if request.method == "GET" else JSONResponse({"error": "Method not allowed"}, 405)
             return await response(scope, receive, send)
         try:

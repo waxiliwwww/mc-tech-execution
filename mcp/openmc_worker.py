@@ -32,10 +32,21 @@ def filter_summary(item):
         mesh = item.mesh
         parameters = {'mesh_id': int(mesh.id), 'mesh_type': type(mesh).__name__}
         if type(mesh).__name__ == 'RegularMesh':
-            parameters.update(dimension=[int(v) for v in mesh.dimension],
+            dim = [int(v) for v in mesh.dimension]
+            while len(dim) < 3:
+                dim.append(1)
+            parameters.update(dimension=dim,
                               lower_left=[number(v) for v in mesh.lower_left],
-                              upper_right=[number(v) for v in mesh.upper_right], unit='cm')
-            description = '规则网格 ' + '×'.join(str(v) for v in parameters['dimension']) + '，坐标单位cm'
+                              upper_right=[number(v) for v in mesh.upper_right], unit='cm',
+                              bin_indexing='data-array flat = i0 + nx*j0 + nx*ny*k0 (i0 fastest); filter_selection.bins uses OpenMC MeshFilter 1-based [i,j,k]',
+                              filter_bin_convention='1-based [i,j,k]; valid i=1..nx, j=1..ny, k=1..nz',
+                              bin_range=('data 0..' + str(count - 1) + '; filter bins [1..'
+                                         + str(dim[0]) + ',1..' + str(dim[1]) + ',1..'
+                                         + str(dim[2]) + ']') if count else 'empty')
+            description = ('规则网格 ' + '×'.join(str(v) for v in dim)
+                           + '，坐标单位cm；数据数组按扁平序号0..' + str(max(count - 1, 0))
+                           + '，但filter_selection.bins要写OpenMC的1-based [i,j,k]三元组，'
+                           '不是mesh id')
     elif kind in ('EnergyFilter', 'EnergyoutFilter'):
         edges = item.values
         parameters = {'bounds_preview': [number(v) for v in edges[:20]], 'bounds_count': len(edges),
@@ -107,6 +118,70 @@ def _render_with_engine(here: Path, plot, params: dict, scratch, target: Path):
         return False, type(exc).__name__ + '：' + str(exc)[:200]
 
 
+
+
+
+def _mesh_descriptor(tally):
+    """Describe a MeshFilter and whether flat bins have direct coordinates."""
+    import numpy as np
+    found = next((item for item in tally.filters if type(item).__name__ == 'MeshFilter'), None)
+    if found is None:
+        return None
+    mesh = found.mesh
+    if type(mesh).__name__ != 'RegularMesh':
+        return {'id': int(mesh.id), 'type': type(mesh).__name__, 'coordinate_status': 'not_regular',
+                'note': 'Only regular meshes can map flat bins to (i,j,k) and centers.'}
+    dimension = [int(v) for v in mesh.dimension]
+    while len(dimension) < 3:
+        dimension.append(1)
+    nx, ny, nz = dimension
+    cells = nx * ny * nz
+    shape = [int(v) for v in np.asarray(tally.mean).shape]
+    direct = bool(shape and shape[0] == cells and all(v == 1 for v in shape[1:]))
+    return {'id': int(mesh.id), 'type': 'RegularMesh', 'dimension': dimension,
+            'lower_left': [float(v) for v in mesh.lower_left],
+            'upper_right': [float(v) for v in mesh.upper_right], 'unit': 'cm',
+            'cells': cells, 'shape': shape,
+            'indexing': ('flat = i + nx*j + nx*ny*k (C order, i fastest)' if direct else
+                         'flat index includes non-mesh filter dimensions; select one bin before mapping'),
+            'coordinate_status': 'mappable' if direct else 'not_direct'}
+
+
+def _mesh_indices(mean, limit, descriptor):
+    """Prefer nonzero finite mesh bins so a leading-zero slice is not taken for all data."""
+    import numpy as np
+    flat = np.asarray(mean, dtype=float).ravel()
+    if not descriptor or descriptor.get('coordinate_status') != 'mappable':
+        return list(range(min(flat.size, limit))), 'first_values'
+    finite = np.isfinite(flat)
+    nonzero = np.flatnonzero(finite & (flat != 0))
+    zero = np.flatnonzero(finite & (flat == 0))
+    nonfinite = np.flatnonzero(~finite)
+    order = np.concatenate((nonzero, zero, nonfinite))
+    return [int(v) for v in order[:limit]], 'mesh_nonzero_first'
+
+
+def _mesh_points(mean, std, indices, descriptor):
+    import numpy as np
+    if not descriptor or descriptor.get('coordinate_status') != 'mappable':
+        return None
+    nx, ny, nz = descriptor['dimension']
+    lower, upper = descriptor['lower_left'], descriptor['upper_right']
+    flat_mean, flat_std = np.asarray(mean).ravel(), np.asarray(std).ravel()
+    points = []
+    for index in indices:
+        k, remainder = divmod(index, nx * ny)
+        j, i = divmod(remainder, nx)
+        center = [lower[0] + (i + .5) * (upper[0] - lower[0]) / nx,
+                  lower[1] + (j + .5) * (upper[1] - lower[1]) / ny,
+                  lower[2] + (k + .5) * (upper[2] - lower[2]) / nz]
+        value, error = float(flat_mean[index]), float(flat_std[index])
+        points.append({'flat_index': int(index), 'mesh_index': [int(i), int(j), int(k)],
+                       'filter_bin': [int(i) + 1, int(j) + 1, int(k) + 1],
+                       'center': [float(v) for v in center],
+                       'mean': value if math.isfinite(value) else None,
+                       'std_dev': error if math.isfinite(error) else None})
+    return points
 def execute(action: str, params: dict) -> dict:
     import openmc
     import numpy as np
@@ -408,24 +483,46 @@ def execute(action: str, params: dict) -> dict:
                         warnings.append(warning)
             return result
         with openmc.StatePoint(params['statepoint'], autolink=False) as point:
+            import numpy as np
             keff = point.keff if point.run_mode == 'eigenvalue' else None
             tallies = []
             for tally in point.tallies.values():
+                mesh = _mesh_descriptor(tally)
+                indices, policy = _mesh_indices(tally.mean, limit, mesh)
+                selected = [int(index) for index in indices]
+                preview = values([tally.mean.ravel()[index] for index in selected], cap=limit, scope='tally')
+                preview_std = values([tally.std_dev.ravel()[index] for index in selected], cap=limit, scope='tally')
+                flat = np.asarray(tally.mean).ravel()
                 tallies.append({'id': tally.id, 'name': tally.name, 'scores': tally.scores,
                                 'nuclides': tally.nuclides, 'estimator': tally.estimator,
                                 'filters': [filter_summary(f) for f in tally.filters],
-                                'shape': list(tally.mean.shape), 'mean': values(tally.mean),
-                                'std_dev': values(tally.std_dev), 'values_truncated': tally.mean.size > limit,
-                                'total_values': int(tally.mean.size), 'returned_values': min(int(tally.mean.size), limit),
+                                'shape': list(tally.mean.shape), 'mean': preview,
+                                'std_dev': preview_std, 'preview_indices': selected,
+                                'preview_policy': policy,
+                                'zero_values': int(np.count_nonzero(np.isfinite(flat) & (flat == 0))),
+                                'nonzero_values': int(np.count_nonzero(np.isfinite(flat) & (flat != 0))),
+                                'non_finite_values': int(np.count_nonzero(~np.isfinite(flat))),
+                                'values_truncated': tally.mean.size > limit,
+                                'total_values': int(tally.mean.size), 'returned_values': len(preview),
+                                'mesh': mesh,
+                                'preview_points': _mesh_points(tally.mean, tally.std_dev, selected, mesh),
                                 'normalization': 'OpenMC原始计分归一化；未换算为工程功率或实际源强。'})
             keff_values = values([keff.nominal_value, keff.std_dev], cap=2, scope='keff') if keff is not None else None
             keff_block = None if keff is None else {'mean': keff_values[0], 'std_dev': keff_values[1],
                                                     'source': 'statepoint:k_combined'}
             if keff_block is not None and (keff_block['mean'] is None or keff_block['std_dev'] is None):
+                # The generic values() warning says "kept empty"; if a fallback
+                # below supplies a value, that sentence would be false.
+                warnings = [warning for warning in warnings if not warning.startswith('keff:')]
                 fallback = _generation_keff(point)
                 if fallback:
                     fallback['fallback_from'] = 'statepoint的k_combined/std含非有限值'
                     keff_block = fallback
+                    warnings.append('keff：k_combined/std含非有限值，改用逐批k合并估计；'
+                                    '不能据此判断是否收敛。')
+                else:
+                    warnings.append('keff：k_combined/std含非有限值且没有可用的逐批k；'
+                                    'mean/std保留为空，不替换为0，也不归因于未收敛。')
             return {'openmc_version': list(point.version), 'run_mode': point.run_mode,
                     'particles': point.n_particles, 'realizations': point.n_realizations,
                     'keff': keff_block,
@@ -601,10 +698,10 @@ def execute(action: str, params: dict) -> dict:
             if total_g > 0:
                 heavy_mass[str(identifier)] = total_g
         total_heavy_g = sum(heavy_mass.values())
-        key_nuclides = {}
-        for nucleus in ('U235', 'U238', 'Pu239', 'Pu241'):
-            if nucleus not in heavy:
-                continue
+        requested = params.get('key_nuclides') or ['U235', 'U238', 'Pu239', 'Pu241', 'Xe135', 'Sm149']
+        key_nuclides, unavailable = {}, []
+        for nucleus in requested:
+            found = False
             for identifier in material_ids:
                 try:
                     values = data.get_mass(str(identifier), nucleus, mass_units='g')[1]
@@ -612,6 +709,9 @@ def execute(action: str, params: dict) -> dict:
                     continue
                 if any(np.isfinite(values)):
                     key_nuclides.setdefault(nucleus, {})[str(identifier)] = [float(v) for v in values]
+                    found = True
+            if not found:
+                unavailable.append(nucleus)
         steps = []
         power = spec.get('power_watts')
         for index in range(len(times)):
@@ -625,8 +725,11 @@ def execute(action: str, params: dict) -> dict:
                 'heavy_metal_mass_g': {key: round(value, 3) for key, value in heavy_mass.items()},
                 'heavy_metal_total_g': round(total_heavy_g, 3),
                 'nuclide_mass_g': key_nuclides,
+                'key_nuclides_requested': requested, 'key_nuclides_unavailable': unavailable,
+                'depletion_guard': spec.get('guard'),
                 'chain_file': chain, 'note': '燃耗值按功率×时间/初始重金属质量估算（MWd/kgHM）；'
-                                            '核素质量为该材料的质量，非密度或份额。'}
+                                            '核素质量为该材料的质量，非密度或份额；Xe135/Sm149是热谱燃耗'
+                                            '常见毒物，若链/材料没有则列入unavailable，不伪造0。'}
     if action == 'add-tally':
         from pathlib import Path as _Path
         tallies_path = _Path('tallies.xml')

@@ -57,7 +57,20 @@ class MeshTallyReal(unittest.TestCase):
             self.assertTrue(all(v is not None and v >= 0 for v in target['mean']), target['mean'])
             self.assertEqual(target['filters'][0]['type'], 'MeshFilter')
             self.assertTrue(target['filters'][0]['description'])
-            # 网格分箱序号→(i,j,k)坐标的显式映射仍在D3/F系列待补；当前扁平序号顺序为OpenMC默认。
+            self.assertEqual(target['mesh']['coordinate_status'], 'mappable')
+            self.assertEqual(target['preview_policy'], 'mesh_nonzero_first')
+            self.assertEqual(len(target['preview_points']), 4)
+            self.assertEqual({tuple(p['mesh_index']) for p in target['preview_points']},
+                             {(0, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1, 0)})
+            self.assertTrue(all(len(p['center']) == 3 for p in target['preview_points']))
+            self.assertTrue(all(p['filter_bin'] == [p['mesh_index'][0] + 1, p['mesh_index'][1] + 1, p['mesh_index'][2] + 1] for p in target['preview_points']))
+            plotted = call('openmc_plot_results', {
+                'job_id': job['job_id'], 'tally_id': defined['tally_id'], 'score': 'flux',
+                'filter_selection': [{'type': 'MeshFilter', 'bins': [[1, 1, 1], [2, 2, 1]]}]})
+            series = json.loads((work / plotted['series_json']).read_text(encoding='utf-8'))
+            self.assertEqual(series['mesh_indices'], [[0, 0, 0], [1, 1, 0]])
+            self.assertEqual(series['mesh']['dimension'], [2, 2, 1])
+            self.assertEqual(plotted['points'], 2)
             self.assertGreaterEqual(len(result['tallies']), 2)  # 原默认tally保留
 
 

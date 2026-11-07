@@ -58,7 +58,7 @@ async def reproduce(args, call):
         return value
     try:
         runtime = await step('openmc_environment', {})
-        if any(runtime.get(key) is not True for key in ('api_available', 'executable_available', 'version_matches')):
+        if any(runtime.get(key) is not True for key in ('api_available', 'executable_available', 'openmc_version_matches')):
             raise RuntimeError('服务端OpenMC环境未就绪；先由管理员完成环境准备')
         await step('openmc_create_model', {'case_dir': args.case_dir, 'template': model['template'],
                    'particles': args.particles, 'batches': args.batches, 'inactive': args.inactive})

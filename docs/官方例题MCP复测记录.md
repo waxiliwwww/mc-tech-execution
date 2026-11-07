@@ -33,7 +33,7 @@ cd <包根>
 curl -s http://127.0.0.1:8770/health
 ```
 
-确认 `status=ok`、`version=0.11.9`；`openmc_environment` 的 `executable_available`、`api_available`、`version_matches` 应为 true。
+确认 `status=ok`、`version=0.11.9`；`openmc_environment` 的 `executable_available`、`api_available`、`openmc_version_matches` 应为 true。
 
 启动输出只保留服务名与版本、MCP 地址、传输协议、鉴权方式、内置工具数量和事件日志路径；`connection.json`和宿主示例查文档。0.11.9 的 `./mcp/start.sh` 已按此输出；若没有地址/传输信息，先核对启动的是不是当前版本。
 
