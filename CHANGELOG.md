@@ -1,6 +1,6 @@
 # 变更记录
 
-## 未发布
+## 0.11.10 — 2026-11-07
 
 - 修复k口径：`openmc_read_results` 的 keff 带 `source`（`statepoint:k_combined` / `statepoint:k_generation`），k_combined/std 含非有限值时改用逐批k合并估计并给 `fallback_from`；`openmc_job_status` 的进度标 `keff_source`；`openmc_job_compare` 改为优先读StatePoint（日志Combined行仅作fallback），`keff_combined.source` 与 `within_2sigma_engineering` 标明来源与判据。此前两个都“已完成”的作业会因日志里的 `-nan` 被拒绝比较k。
 - `openmc_read_results` 增加 `statepoint_context`（燃耗作业有多个时间步时标出读到第几个并指向 `openmc_read_depletion`）与 `statistical_adequacy`（按k相对σ的工程分级；明确不是收敛检验、不检测源收敛与欠采样）。
