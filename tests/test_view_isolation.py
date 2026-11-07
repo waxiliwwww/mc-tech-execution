@@ -11,14 +11,14 @@ class ViewIsolation(unittest.TestCase):
     def hashes(self,root):
         return {str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest()
                 for p in root.rglob('*') if p.is_file() and 'views' not in p.relative_to(root).parts}
-    def render(self,root,**kw):
+    def render(self,root,*,executable=None,**kw):
         import openmc,openmc_worker
         previous=Path.cwd()
         try:
             os.chdir(root)
             with contextlib.redirect_stdout(__import__('io').StringIO()):
                 return openmc_worker.execute('view-geometry',dict(_expected_version=openmc.__version__,
-                    _openmc_exec=str(Path(sys.executable).parent/'openmc'),filename='views/slice.png',**kw))
+                    _openmc_exec=executable or str(Path(sys.executable).parent/'openmc'),filename='views/slice.png',**kw))
         finally:os.chdir(previous)
     def model(self,root,unbounded=False,combined=False):
         import openmc
@@ -77,11 +77,13 @@ class ViewIsolation(unittest.TestCase):
             self.assertEqual(self.hashes(root),before)
             self.assertTrue(seen);self.assertFalse(seen[0].exists())
     def test_plot_process_failure_leaves_input_unchanged(self):
-        from unittest.mock import patch
-        import openmc
         with tempfile.TemporaryDirectory() as d:
             root=Path(d);self.model(root);before=self.hashes(root)
-            with patch.object(openmc.SlicePlot,'to_ipython_image',side_effect=RuntimeError('renderer failed')):
-                with self.assertRaisesRegex(RuntimeError,'renderer failed'):self.render(root,pixels=80)
+            # Both SDK and native-engine fallback must fail. A missing executable
+            # exercises the real subprocess boundary, rather than mocking only
+            # the first renderer and accidentally allowing fallback success.
+            with self.assertRaisesRegex(ValueError,'切片图渲染失败.*引擎直接绘图'):
+                self.render(root,executable=str(root/'missing-openmc'),pixels=80)
             self.assertEqual(self.hashes(root),before)
+            self.assertFalse((root/'views/slice.png').exists())
 if __name__=='__main__':unittest.main()

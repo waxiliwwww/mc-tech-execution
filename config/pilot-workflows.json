@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "base_version": "0.13.0",
+  "base_commit": "c287c3c00b6bed0adf682a5535545c7b7e2e7a5f",
+  "scope": "已确认Linux/WSL环境中的受控内部试点工程交付；不等于通用生产就绪或专业验收。",
+  "excluded": [
+    "DSH/真实模型联调",
+    "HPC",
+    "微调模型",
+    "72小时稳定性",
+    "专业数值验收"
+  ],
+  "workflows": [
+    {
+      "id": "official",
+      "title": "官方例题分步执行",
+      "user_entry": "examples/mcp_client.py / 官方例题MCP步骤",
+      "input": "source-pincell-multigroup；官方1000粒子/100批/10非活跃",
+      "tests": [
+        "test_example_workflows_real.OfficialWorkflowReal.test_same_stepwise_calls_over_standard_mcp"
+      ],
+      "oracle": "固定源码与参数未被静默更改；prepare/data/compute逐步completed；StatePoint可读且采样设置与官方一致。",
+      "evidence": [
+        "process.log",
+        "unittest.log",
+        "result.json",
+        "temporary-directories.json",
+        "snapshots/fixture-*/manifest.json",
+        "auxiliary-evidence/（声明的响应/确认记录）"
+      ],
+      "required_artifacts": [
+        "settings.xml",
+        "statepoint.*.h5"
+      ],
+      "auxiliary_evidence": [
+        "artifacts/runs/official-examples-20261030/standard-mcp-workflow.json"
+      ]
+    },
+    {
+      "id": "build",
+      "title": "结构化新模型生成与迁移重建",
+      "user_entry": "examples/model_workflow.py --spec examples/model-specs/rectangular-assembly.json",
+      "input": "修改布局为2×3、富集配比0.06/0.95、6格通量；真实连续能核数据",
+      "tests": [
+        "test_model_spec_real.ModelSpecReal.test_changed_layout_builds_relocates_and_computes"
+      ],
+      "oracle": "原生API读回布局/核素比例；独立空目录重建XML字节一致；真实求解6格有限正计分。MCP建模入口由import流程的共享测试一并覆盖。",
+      "evidence": [
+        "process.log",
+        "unittest.log",
+        "result.json",
+        "temporary-directories.json",
+        "snapshots/fixture-*/manifest.json",
+        "auxiliary-evidence/（声明的响应/确认记录）"
+      ],
+      "required_artifacts": [
+        "settings.xml",
+        "statepoint.*.h5"
+      ],
+      "auxiliary_evidence": []
+    },
+    {
+      "id": "import",
+      "title": "已有模型导入与命名计算",
+      "user_entry": "examples/model_workflow.py --source-dir 服务端原生输入目录",
+      "input": "非固定例题的新3×2布局、密度0.82、seed71；复制原生XML",
+      "tests": [
+        "test_domain_mcp_real.DomainMCP.test_new_combination_import_and_named_compute_share_native_results"
+      ],
+      "oracle": "真实新MCP进程建模/导入；原XML字节保留；预览/提交指纹相符；按任务名找到同job；曲线/报告/keff与独立StatePoint逐点一致。",
+      "evidence": [
+        "process.log",
+        "unittest.log",
+        "result.json",
+        "temporary-directories.json",
+        "snapshots/fixture-*/manifest.json",
+        "auxiliary-evidence/（声明的响应/确认记录）"
+      ],
+      "required_artifacts": [
+        "settings.xml",
+        "statepoint.*.h5"
+      ],
+      "auxiliary_evidence": []
+    },
+    {
+      "id": "scan",
+      "title": "参数扫描、图表和报告",
+      "user_entry": "examples/scan_report_demo.py",
+      "input": "自带合成单群截面；macro倍率0.8/1.2×seed1/2，共4组合",
+      "tests": [
+        "test_openmc_scan_real.RealScanReports.test_cartesian_scan_preserves_inputs_and_units",
+        "test_openmc_scan_real.RealScanReports.test_complete_series_uses_selected_score_not_truncated_preview",
+        "test_openmc_scan_real.RealScanReports.test_reports_are_real_formats_and_contain_results",
+        "test_openmc_scan_real.RealScanReports.test_real_mcp_image_and_restart_query"
+      ],
+      "oracle": "真实引擎4组合完成；macro单位/原输入保留；完整选择与截断预览分开；图/真实格式报告可读且在产物清单。合成输入只证工程，不证物理。",
+      "evidence": [
+        "process.log",
+        "unittest.log",
+        "result.json",
+        "temporary-directories.json",
+        "snapshots/fixture-*/manifest.json",
+        "auxiliary-evidence/（声明的响应/确认记录）"
+      ],
+      "required_artifacts": [
+        "settings.xml",
+        "statepoint.*.h5",
+        "report.pdf",
+        "report.docx",
+        "report.doc"
+      ],
+      "auxiliary_evidence": []
+    },
+    {
+      "id": "repair",
+      "title": "真实失败、差异确认与关联重算",
+      "user_entry": "examples/repair_demo.py --mcp-url 测试服务URL",
+      "input": "合成单群输入run_mode=eigenvale，分别拒绝/接受修复",
+      "tests": [
+        "test_openmc_repair_real.RealKnowledgeRepair.test_standard_mcp_official_case_and_interactive_repair"
+      ],
+      "oracle": "新MCP进程真实失败；先展示diff再终端确认；拒绝不写/不重算，接受仅改副本并关联新作业；原失败保留，重算读回和报告完成。n/y为测试输入，不称真实人工验收。",
+      "evidence": [
+        "process.log",
+        "unittest.log",
+        "result.json",
+        "temporary-directories.json",
+        "snapshots/fixture-*/manifest.json",
+        "auxiliary-evidence/（声明的响应/确认记录）"
+      ],
+      "required_artifacts": [
+        "settings.xml",
+        "statepoint.*.h5",
+        "solver.log",
+        "report.md"
+      ],
+      "auxiliary_evidence": [
+        "artifacts/runs/20261027-knowledge-repair/real-repair-mcp-n.json",
+        "artifacts/runs/20261027-knowledge-repair/real-repair-mcp-y.json"
+      ]
+    }
+  ]
+}

@@ -79,7 +79,7 @@ try {
   assert.match(await page.locator('#check').innerText(),/Python浮点序列化精度/);
   assert.match(await page.locator('#check').innerText(),/所选报告计分预览表使用9位有效数字/);
   assert.match(await page.locator('#check').innerText(),/热图mesh-\*\.csv/);
-  assert.match(await page.locator('#check').innerText(),/正文只与其实际展示的前20点核对/);
+  assert.match(await page.locator('#check').innerText(),/正文按非零值优先展示至多20行/);
   assert.match(await page.locator('#check').innerText(),/series_csv/);
   await page.locator('#check details > summary').click();
   assert.match(await page.locator('#check').innerText(),/assert_allclose/);await shot('03-data-crosscheck');
