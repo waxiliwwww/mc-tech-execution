@@ -55,7 +55,17 @@ def build_model(case_dir: str, spec: dict) -> dict:
         shutil.rmtree(staging,ignore_errors=True)
         raise
     builder_backend=(value.get('validation') or {}).get('backend')
-    return {'case_dir':case_dir,**value,**file_location(target),'generation_method':'declarative_public_python_api',
+    # `files` is the on-disk rebuild set, not only the four OpenMC XML files:
+    # the saved build_model.py, model-spec.json and model_validation/ are needed
+    # by the returned rebuild_command and by input previews. Keep xml_files
+    # explicit for callers that only want the exported OpenMC inputs.
+    disk_files=sorted(path.relative_to(target).as_posix() for path in target.rglob('*')
+                      if path.is_file() and '__pycache__' not in path.parts
+                      and path.suffix != '.pyc')
+    xml_files=[name for name in disk_files if name in
+               {'materials.xml','geometry.xml','settings.xml','tallies.xml'}]
+    return {'case_dir':case_dir,**value,**file_location(target),'files':disk_files,
+            'xml_files':xml_files,'generation_method':'declarative_public_python_api',
             'validation_backend':server_backend,'builder_validation_backend':builder_backend,
             'validation_backend_scope':'server validated before build; builder reports the backend of its own OpenMC Python',
             'fine_tuned_model_used':False,'professional_acceptance':False,'model_spec_sha256':source_hash,

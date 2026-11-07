@@ -765,29 +765,72 @@ def verified_result(job_id: str):
 
 ADEQUACY_PREVIEW = 0.01
 ADEQUACY_ENGINEERING = 0.001
+SOURCE_MIN_ACTIVE = 20
+SOURCE_MIN_INACTIVE = 10
 
 
-def statistical_adequacy(keff, data) -> dict:
-    """统计充分性的工程分级（只看k的相对σ与活批数）。
+def _source_convergence(progress):
+    """Cheap source-convergence advisory from batch settings, not a proof.
+
+    The StatePoint sigma only describes the active-batch sample. A run with very
+    few active batches or too few inactive batches can carry a systematic bias
+    much larger than that sigma. We only downgrade the label to preview; we do
+    not refuse to read a completed result or claim an entropy test.
+    """
+    if not isinstance(progress, dict) or progress.get('run_mode') != 'eigenvalue':
+        return {'status': 'not_available',
+                'reason': '当前结果没有可用的本征值批次设置；未评估源收敛'}
+    total = progress.get('batches_total')
+    inactive = progress.get('inactive')
+    if (type(total) is not int or type(inactive) is not int
+            or total <= 0 or inactive < 0 or inactive >= total):
+        return {'status': 'not_available',
+                'reason': '批次设置缺失或不可解释；未评估源收敛'}
+    active = total - inactive
+    low = inactive < SOURCE_MIN_INACTIVE or active < SOURCE_MIN_ACTIVE
+    result = {'status': 'heuristic_low_inactive' if low else 'heuristic_ok',
+              'batches_total': total, 'inactive': inactive, 'active_batches': active,
+              'thresholds': {'min_active_batches': SOURCE_MIN_ACTIVE,
+                             'min_inactive_batches': SOURCE_MIN_INACTIVE},
+              'note': '按inactive/活跃批次数做的低成本提示，不是entropy收敛检验，'
+                      '也不证明系统误差已消失。'}
+    if low:
+        result['downgrade'] = ('inactive过少或活跃批次不足；相对σ不能覆盖源未收敛的'
+                               '系统偏差，统计分级降为预览')
+    return result
+
+
+def statistical_adequacy(keff, data, progress=None) -> dict:
+    """统计充分性的工程分级（相对σ + 批次设置提示）。
     不是收敛检验：不检测源收敛、欠采样、系统误差，也不能当专业验收。"""
+    source = _source_convergence(progress)
     if not isinstance(keff, dict) or keff.get('mean') is None:
-        return {'grade': 'not_applicable',
+        return {'grade': 'not_applicable', 'source_convergence': source,
                 'reason': '该作业没有k结果（固定源/绘图作业）或均值不可用'}
     mean, sigma = keff.get('mean'), keff.get('std_dev')
     if sigma is None or isinstance(sigma, bool) or not isinstance(sigma, (int, float)) or sigma != sigma:
         return {'grade': 'unusable', 'mean': mean, 'std_dev': None,
+                'source_convergence': source,
                 'reason': 'k有均值但无标准差；不能判断统计充分性，也不能用于方案比较',
                 'note': '先核对StatePoint的k_combined与日志RESULTS节，再决定是否重算。'}
     relative = abs(float(sigma) / float(mean)) if mean else None
     grade = ('low_statistics_preview' if relative > ADEQUACY_PREVIEW else
              'engineering_estimate' if relative > ADEQUACY_ENGINEERING else 'converged_indicator')
-    return {'grade': grade, 'mean': float(mean), 'std_dev': float(sigma),
-            'relative_std_dev': round(relative, 6), 'realizations': data.get('realizations'),
-            'thresholds': {'low_statistics_preview': '相对σ>1%',
-                           'engineering_estimate': '0.1%<相对σ<=1%',
-                           'converged_indicator': '相对σ<=0.1%'},
-            'note': '按k相对σ的工程分级，只决定“能否当结论引用”；不构成收敛检验，'
-                    '不检测源收敛、欠采样与系统误差，也不代表专业验收。'}
+    result = {'grade': grade, 'mean': float(mean), 'std_dev': float(sigma),
+              'relative_std_dev': round(relative, 6), 'realizations': data.get('realizations'),
+              'source_convergence': source,
+              'thresholds': {'low_statistics_preview': '相对σ>1%',
+                             'engineering_estimate': '0.1%<相对σ<=1%',
+                             'converged_indicator': '相对σ<=0.1%'},
+              'note': '按k相对σ的工程分级，只决定“能否当结论引用”；不构成收敛检验，'
+                      '不检测源收敛、欠采样与系统误差，也不代表专业验收。'}
+    if source.get('status') == 'heuristic_low_inactive' and grade != 'low_statistics_preview':
+        result['downgraded_from'] = grade
+        result['grade'] = 'low_statistics_preview'
+        result['reason'] = source['downgrade']
+        result['note'] = ('相对σ看似可用，但批次设置提示源可能未收敛；'
+                          '只降级为预览，不拒绝读取结果。' + source['note'])
+    return result
 
 
 def _statepoint_context(directory: Path, record: dict, point: Path) -> dict:
@@ -827,7 +870,7 @@ def read_results(job_id: str, max_values: int = 1000) -> dict:
     data.update(job_id=job_id, provenance=status['provenance'],
                 statepoint=relative(point), statepoint_sha256=hashlib.sha256(point.read_bytes()).hexdigest(),
                 statepoint_context=_statepoint_context(directory, record, point),
-                statistical_adequacy=statistical_adequacy(data.get('keff'), data),
+                statistical_adequacy=statistical_adequacy(data.get('keff'), data, status.get('progress')),
                 professional_acceptance=False)
     atomic_json(directory / 'results.json', data)
     return data

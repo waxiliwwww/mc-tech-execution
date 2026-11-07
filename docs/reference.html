@@ -480,7 +480,7 @@
 <details class="tool" id="openmc_job_status"><summary>openmc_job_status
 <span class="tool-purpose">按作业编号查询真实终态、退出码、日志尾部与产物；服务重启后仍可查询，未知终态不冒充成功。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>job_id</td><td>string</td><td>是</td><td>不可省略</td><td>计算编号，直接使用openmc_submit_job或扫描子项返回的job_id；不是目录、文件名或scan_id。查询/读取不会自动提交新计算。</td><td>—</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>state为实际当前状态，error/log_tail等用于诊断；failed/cancelled/interrupted均不算完成结果。progress节按日志尾部解析最新批次/k/平均k、Combined k、总批数与elapsed_seconds；仅本征值批次表可解析，解析不到时如实说明，不替代read_results统计量。</p>
+<h3>返回怎么看</h3><p>state为实际当前状态，error/log_tail等用于诊断；failed/cancelled/interrupted均不算完成结果。progress节按日志尾部解析最新批次/k/平均k、Combined k、RESULTS的Collision/Track-length/Absorption估计、总批数与elapsed_seconds；Combined失效时摘要按Absorption→Collision→Track-length→批次Average回退并标keff_source；仅本征值批次表可解析，解析不到时如实说明，不替代read_results统计量。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>job_id</td><td>计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。</td></tr><tr><td>state</td><td>操作或计算的当前状态；提交受理、计算完成与专业结果正确分别判断。</td></tr><tr><td>provenance</td><td>数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。</td></tr><tr><td>progress</td><td>日志解析的末批/代、最近k、平均k、Combined k与提示；熵列可缺失，不替代StatePoint结果。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
@@ -502,7 +502,7 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;state为实际当前状态，error/log_tail等用于诊断；failed/cancelled/interrupted均不算完成结果。progress节按日志尾部解析最新批次/k/平均k、Combined k、总批数与elapsed_seconds；仅本征值批次表可解析，解析不到时如实说明，不替代read_results统计量。&quot;,
+  &quot;description&quot;: &quot;state为实际当前状态，error/log_tail等用于诊断；failed/cancelled/interrupted均不算完成结果。progress节按日志尾部解析最新批次/k/平均k、Combined k、RESULTS的Collision/Track-length/Absorption估计、总批数与elapsed_seconds；Combined失效时摘要按Absorption→Collision→Track-length→批次Average回退并标keff_source；仅本征值批次表可解析，解析不到时如实说明，不替代read_results统计量。&quot;,
   &quot;properties&quot;: {
     &quot;job_id&quot;: {
       &quot;description&quot;: &quot;计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。&quot;

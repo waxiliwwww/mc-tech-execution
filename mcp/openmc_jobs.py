@@ -237,6 +237,14 @@ PROGRESS_BATCH_LINE = re.compile(
 PROGRESS_COMBINED_KEFF = re.compile(
     rf'Combined k-effective\s*=\s*({PROGRESS_VALUE})\s*\+/-\s*({PROGRESS_VALUE})(?=$|[ \t\r\n])', re.I)
 PROGRESS_COMBINED_LOOSE = re.compile(r'Combined k-effective\s*=\s*(\S+)\s*\+/-\s*(\S+)')
+PROGRESS_RESULT_ESTIMATE = re.compile(
+    rf'k-effective\s*\((Collision|Track-length|Absorption)\)\s*=\s*'
+    rf'({PROGRESS_VALUE})\s*\+/-\s*({PROGRESS_VALUE})', re.I)
+PROGRESS_ESTIMATE_ORDER = (
+    ('Absorption', 'solver.log:RESULTS:Absorption k-effective'),
+    ('Collision', 'solver.log:RESULTS:Collision k-effective'),
+    ('Track-length', 'solver.log:RESULTS:Track-length k-effective'),
+)
 
 
 def _finite_progress(raw):
@@ -244,6 +252,32 @@ def _finite_progress(raw):
     if not raw:return None
     value = float(raw.replace('D', 'E').replace('d', 'e'))
     return value if math.isfinite(value) else None
+
+
+def _usable_keff(value):
+    return (isinstance(value, dict) and value.get('mean') is not None
+            and value.get('std_dev') is not None)
+
+
+def _summary_keff(progress):
+    """Choose the most defensible k available in a log, in documented order.
+
+    Combined is preferred only when finite. When its std is -nan, the RESULTS
+    estimators are better than the last batch-table Average: Absorption first,
+    then Collision, then Track-length. The batch Average is the final fallback.
+    """
+    combined = progress.get('keff_combined')
+    if _usable_keff(combined):
+        return combined, 'solver.log:RESULTS:Combined k'
+    estimates = progress.get('keff_estimates') or {}
+    for name, source in PROGRESS_ESTIMATE_ORDER:
+        value = estimates.get(name.lower())
+        if _usable_keff(value):
+            return value, source
+    average = progress.get('keff_average')
+    if _usable_keff(average):
+        return average, 'solver.log:批次表Average（非Combined，末批波动更大）'
+    return None, None
 
 
 def _progress(directory: Path, value: dict) -> dict:
@@ -269,7 +303,8 @@ def _progress(directory: Path, value: dict) -> dict:
     progress = {'run_mode': mode, 'batches_total': batches_total, 'inactive': inactive,
                 'latest_batch': None, 'latest_generation': None, 'percent': None,
                 'keff_latest': None, 'entropy_latest': None, 'keff_average': None,
-                'keff_combined': None, 'elapsed_seconds': elapsed,
+                'keff_combined': None, 'keff_estimates': {}, 'keff_source': None,
+                'elapsed_seconds': elapsed,
                 'note': '按solver.log尾部批次行解析；不替代openmc_read_results的StatePoint统计量。'}
     log_path = directory / 'solver.log'
     if not log_path.is_file():
@@ -310,16 +345,18 @@ def _progress(directory: Path, value: dict) -> dict:
             progress['keff_note'] = ('Combined k行存在但数值不能安全解析（原文：'
                                      + loose.group(1) + ' +/- ' + loose.group(2)
                                      + '）；不提供keff_combined，请检查该作业是否正常收敛。')
+    estimates = {}
+    for name, raw_mean, raw_std in PROGRESS_RESULT_ESTIMATE.findall(text):
+        mean, std = _finite_progress(raw_mean), _finite_progress(raw_std)
+        if mean is not None and std is not None:
+            estimates[name.lower()] = {'mean': mean, 'std_dev': std}
+    progress['keff_estimates'] = estimates
     if value.get('state') == 'completed' and progress['percent'] is None and mode == 'eigenvalue':
         progress['percent'] = 100.0
     # 标注k的出处：同一作业的k在status/read_results/plot_convergence三处口径不同，
-    # 不标来源时用户无法判断该信哪一个。
-    if progress.get('keff_combined'):
-        progress['keff_source'] = 'solver.log:RESULTS:Combined k'
-    elif progress.get('keff_average'):
-        progress['keff_source'] = 'solver.log:批次表Average（非Combined，末批波动更大）'
-    else:
-        progress['keff_source'] = None
+    # 不标来源时用户无法判断该信哪一个。Combined失效时优先RESULTS估计量，
+    # 不把批次表最后一列Average当成同等质量的回退。
+    _, progress['keff_source'] = _summary_keff(progress)
     return progress
 
 
@@ -351,10 +388,11 @@ def status(job_id: str) -> dict:
     result['input_hashes'] = dict(value.get('input_files', {}))
     result['files'] = sorted(value.get('output_files', {}))
     progress = result.get('progress') or {}
-    k = progress.get('keff_combined') or progress.get('keff_average')
+    k, summary_source = _summary_keff(progress)
+    if summary_source:
+        progress['keff_source'] = summary_source
     if value['state'] == 'completed':
-        has_k = (isinstance(k, dict) and k.get('mean') is not None
-                 and k.get('std_dev') is not None)
+        has_k = _usable_keff(k)
         result['human_summary'] = (f"已完成；k={k['mean']:.5f}±{k['std_dev']:.5f}"
                                    if has_k else '已完成；该作业无k结果')
     elif value['state'] == 'failed':

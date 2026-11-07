@@ -1,0 +1,202 @@
+{
+  "schema_version": 1,
+  "purpose": "已支持能力与已知限制的基线；发布前用 tests/test_capability_baseline_contract.py 和 verify.sh --release 检查，不允许用兜底/校验悄悄删掉合法输入。",
+  "capabilities": [
+    {
+      "id": "model_spec_v2_build",
+      "status": "supported",
+      "surface": [
+        "openmc_model_capabilities",
+        "openmc_build_model"
+      ],
+      "input": "model-spec/v2：显式材料/表面/栅元 ID、类型化 region、CSG 平面/圆柱/球、矩形格架、点/盒源",
+      "output": "OpenMC XML、可重跑的 build_model.py、model-spec.json、model_validation/ 与 validation tag",
+      "evidence": [
+        "tests/model_validation_mcp/test_01_positive_minimal_sphere.py",
+        "tests/test_model_spec.py"
+      ],
+      "gate": "real_mcp"
+    },
+    {
+      "id": "fixed_source_and_eigenvalue",
+      "status": "supported",
+      "surface": [
+        "openmc_build_model",
+        "openmc_submit_job"
+      ],
+      "input": "固定源或本征值 settings；本征值含 particles/batches/inactive/seed",
+      "output": "可提交的 XML 与作业状态/结果",
+      "evidence": [
+        "tests/model_validation_mcp/test_01_positive_minimal_sphere.py",
+        "tests/test_accuracy_baseline.py"
+      ],
+      "gate": "real_openmc"
+    },
+    {
+      "id": "custom_rectangular_lattice",
+      "status": "supported",
+      "surface": [
+        "openmc_build_model"
+      ],
+      "input": "二维矩形栅格 rows/universes、pitch、lower_left、组件/燃料棒宇宙",
+      "output": "栅格几何 XML 与 API 读回",
+      "evidence": [
+        "tests/model_validation_mcp/test_02_positive_custom_lattice.py",
+        "tests/test_model_spec_real.py"
+      ],
+      "gate": "real_mcp"
+    },
+    {
+      "id": "native_model_import",
+      "status": "supported",
+      "surface": [
+        "openmc_import_model"
+      ],
+      "input": "已有原生 geometry/materials/settings/tallies XML 及声明的本地资源",
+      "output": "新副本、输入清单、依赖声明、validation；不执行脚本",
+      "evidence": [
+        "tests/test_model_import.py",
+        "tests/test_import_generated_views.py"
+      ],
+      "gate": "offline"
+    },
+    {
+      "id": "scan",
+      "status": "supported",
+      "surface": [
+        "openmc_submit_scan",
+        "openmc_scan_status",
+        "openmc_plot_scan"
+      ],
+      "input": "已发现参数的笛卡尔组合",
+      "output": "逐组合作业、状态、结果与曲线",
+      "evidence": [
+        "tests/test_openmc_scan_real.py",
+        "tests/test_tool_contracts.py"
+      ],
+      "gate": "real_openmc"
+    },
+    {
+      "id": "selected_report_export",
+      "status": "supported",
+      "surface": [
+        "openmc_export_report"
+      ],
+      "input": "已完成作业、tally/score/核素/过滤器选择",
+      "output": "Markdown/CSV/JSON/PDF/DOCX/DOC 报告及配套数据",
+      "evidence": [
+        "tests/test_selected_report_real.py",
+        "tests/test_report_defaults.py"
+      ],
+      "gate": "real_openmc"
+    },
+    {
+      "id": "geometry_preview",
+      "status": "supported",
+      "surface": [
+        "openmc_view_geometry"
+      ],
+      "input": "已有算例、切片方位/范围/像素/着色",
+      "output": "PNG 与视图元数据；多群/连续能按可用路径渲染",
+      "evidence": [
+        "tests/test_view_geometry_paths.py",
+        "tests/test_openmc_real.py"
+      ],
+      "gate": "real_openmc"
+    },
+    {
+      "id": "dagmc",
+      "status": "supported",
+      "surface": [
+        "openmc_convert_cad",
+        "openmc_build_dagmc_model",
+        "openmc_inspect_step"
+      ],
+      "input": "STEP 与材料标签；DAGMC h5m",
+      "output": "DAGMC 几何、材料/设置 XML 与读回",
+      "evidence": [
+        "tests/test_openmc_cad.py",
+        "tests/test_openmc_cad_real.py"
+      ],
+      "gate": "real_openmc"
+    },
+    {
+      "id": "depletion",
+      "status": "supported",
+      "surface": [
+        "openmc_configure_depletion",
+        "openmc_submit_job",
+        "openmc_read_depletion"
+      ],
+      "input": "显式材料体积、功率、时间步和链文件",
+      "output": "逐时间步 k 与核素质量/燃耗",
+      "evidence": [
+        "tests/test_openmc_depletion_real.py",
+        "tests/test_model_spec.py"
+      ],
+      "gate": "real_openmc"
+    },
+    {
+      "id": "official_examples",
+      "status": "supported",
+      "surface": [
+        "openmc_list_official_examples",
+        "openmc_prepare_official_example",
+        "openmc_run_example_step"
+      ],
+      "input": "固定版本官方例题 ID/步骤",
+      "output": "独立实例、步骤状态、结果与报告",
+      "evidence": [
+        "tests/test_official_examples.py",
+        "tests/test_example_workflows_real.py"
+      ],
+      "gate": "offline_and_real"
+    },
+    {
+      "id": "job_k_summary",
+      "status": "supported",
+      "surface": [
+        "openmc_job_status",
+        "openmc_read_results",
+        "openmc_job_compare"
+      ],
+      "input": "已完成或运行中的作业",
+      "output": "k 值/来源/统计分级；Combined 失效时按 Absorption→Collision→Track-length→Average 回退",
+      "evidence": [
+        "tests/test_keff_summary_fallback.py",
+        "tests/test_keff_sources.py",
+        "tests/test_statistical_source_gate.py"
+      ],
+      "gate": "offline"
+    }
+  ],
+  "restrictions": [
+    {
+      "id": "v1_region_removed",
+      "capability": "model_spec_v2_build",
+      "kind": "contract_removal",
+      "override": null,
+      "migration": "无自动兼容层；旧 v1 调用方需改为 v2 类型化 region（随包示例与 schema 已更新）",
+      "user_decision": "2026-11-06 明确不实现 v1 兼容，接受只支持 v2",
+      "impact": "旧 v1 字符串 region 输入会被拒绝；这是真实能力收窄，不是兜底修复"
+    },
+    {
+      "id": "outer_boundary_transmission",
+      "capability": "model_spec_v2_build",
+      "kind": "guarded",
+      "override": "spec.validation.overrides[].code=outer_boundary_transmission，必须带 reason/scope",
+      "migration": null,
+      "user_decision": "2026-11-06 允许专家显式覆盖并保留 tag",
+      "impact": "合法外边界仍可表达；未覆盖时拒绝，避免 transmission 外边界导致粒子丢失/挂起"
+    },
+    {
+      "id": "unknown_tally_score",
+      "capability": "selected_report_export",
+      "kind": "whitelist",
+      "override": null,
+      "migration": "使用 OpenMC 合法 REACTION_MT 名称；错误会给出最近候选",
+      "user_decision": "2026-11-07 接受在写盘前拒绝未知 score",
+      "impact": "只有 OpenMC 不认识的 score 被拒，不删除可计算能力"
+    }
+  ]
+}

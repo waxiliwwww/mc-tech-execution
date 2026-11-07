@@ -23,3 +23,18 @@
 - 进展记录必须回答“这轮改变了用户哪一步”，不能只列工具数量、测试数量或例题通过数。
 - 术语分开：“输入生成”指把显式参数编码成OpenMC输入；“物理设计”指决定参数本身；不得混写。
 - 用户手册按“初学者/熟手”双路径写：每节先给熟手速查（命令与关键约束），再给第一次用的步骤；精确约束不删，放折叠区或边界，不用简化换准确。
+## 测试与能力基线
+
+- 测试不只证明接口能调用；按 `docs/测试与验收说明.md` 的四层检查：契约/单元、集成/旅程、真实/科学、人的可用性。默认统计设置、低统计警告和真实用户闭环属于必测项。
+- 断言用户可观察的承诺，不从当前输出倒抄；关键测试要能用旧缺陷/错误实现证明会变红。skip 不计通过，真实用例未启用时只能写“未验证”。
+- 发布前运行 `MC_TEST_OPENMC_CONFIG="$PWD/config/openmc.local.json" ./verify.sh --release`；关键真实用例被跳过或缺失时脚本直接失败。普通 `./verify.sh` 不冒充发布验收。
+- 能力基线在 `config/capability-baseline.json`，由 `tests/test_capability_baseline_contract.py` 校验。新增硬拒绝、白名单、必填项或删除旧格式时，必须登记能力、影响、override/迁移/用户决定；兜底修复不能悄悄收窄合法输入。
+- 实现者自测不是独立验收；关键路径由非实现者按用户旅程复测，并写明版本、环境、真实/模拟、skip 与未证明边界。
+
+| 规则 | 由什么拦住 |
+|---|---|
+| 关键真实用例不得被 skip 后冒充通过 | `verify.sh --release` → `scripts/check-release-evidence.py` |
+| 不得悄悄收窄能力 | `tests/test_capability_baseline_contract.py` + `config/capability-baseline.json` |
+| k 摘要不得在 Combined 失效时选批次 Average | `tests/test_keff_summary_fallback.py` |
+| 源批次不足时不得把 σ 当工程结论 | `tests/test_statistical_source_gate.py` |
+| 导入不得搬运生成的 views | `tests/test_import_generated_views.py` |

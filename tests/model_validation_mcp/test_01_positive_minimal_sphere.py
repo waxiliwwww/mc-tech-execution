@@ -18,7 +18,7 @@
 
 预期
 ----
-能力发现返回 schema v2、服务端校验后端和构建器后端策略；构建结果分别列出服务端校验后端与构建器实际后端，二者不混用；构建成功并通过 API 读回；四个 XML 文件生成；`mc-case.json` 带 schema v2 与 validation；算例含 `build_model.py` 和 `model_validation/schema_v2.json`。
+能力发现返回 schema v2、服务端校验后端和构建器后端策略；构建结果分别列出服务端校验后端与构建器实际后端，二者不混用；构建成功并通过 API 读回；`files` 等于落盘重建集（含 `build_model.py`、`model-spec.json`、`model_validation/`），`xml_files` 为四个 XML；`mc-case.json` 带 schema v2 与 validation。
 
 不证明
 ------
@@ -55,9 +55,15 @@ class TestPositiveMinimalSphere(RealMCPCase):
         self.assertEqual(built["validation_backend"], capabilities["validation_backend"])
         self.assertEqual(built["builder_validation_backend"], built["validation"]["backend"])
         self.assertTrue(built["validation_backend_scope"])
-        self.assertEqual(set(built["files"]),
-                         {"materials.xml", "geometry.xml", "settings.xml", "tallies.xml"})
         target = self.workspace / "cases/minimal-sphere"
+        on_disk = {p.relative_to(target).as_posix() for p in target.rglob("*")
+                   if p.is_file() and "__pycache__" not in p.parts and p.suffix != ".pyc"}
+        self.assertEqual(set(built["files"]), on_disk)
+        self.assertEqual(set(built["xml_files"]),
+                         {"materials.xml", "geometry.xml", "settings.xml", "tallies.xml"})
+        self.assertIn("build_model.py", built["files"])
+        self.assertIn("model-spec.json", built["files"])
+        self.assertIn("model_validation/schema_v2.json", built["files"])
         self.assertTrue((target / "build_model.py").is_file())
         self.assertTrue((target / "model_validation/schema_v2.json").is_file())
         marker = json.loads((target / "mc-case.json").read_text(encoding="utf-8"))

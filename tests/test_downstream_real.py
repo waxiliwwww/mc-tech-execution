@@ -58,7 +58,9 @@ class DownstreamRealFlows(unittest.TestCase):
                     self.assertEqual(ET.parse(settings).getroot().findtext('particles'),'400')
                 if script=='scan_report_demo.py':
                     self.assertIn('统计警告：',result.stdout)
-                    self.assertIn('标准差=不可用',result.stdout)
+                    # 统计量可能是有限值，也可能因非有限值显示“不可用”；只守
+                    # “显示标准差”这一用户承诺，不把某次运行的数值状态固化成预期。
+                    self.assertRegex(result.stdout, r'标准差=(?:不可用|[0-9])')
                     self.assertIn('macro 是宏观截面倍率',result.stdout)
                     self.assertEqual({path.suffix for path in paths if path.is_file()} & {'.pdf','.doc','.docx','.md','.csv'},
                                      {'.pdf','.doc','.docx','.md','.csv'})

@@ -1,5 +1,16 @@
 # 变更记录
 
+## 0.11.11 — 2026-11-07
+
+- `openmc_job_status` 的摘要 k 不再在 Combined k 为 `-nan` 时取批次表 Average：新增 RESULTS 的 Collision/Track-length/Absorption 估计解析，按 Absorption→Collision→Track-length→Average 回退并标 `keff_source`；新增回归测试构造 `Combined=-nan` 的真实日志。
+- `statistical_adequacy` 不再只看 σ：同时检查活跃/非活跃批次数，默认 200×10/inactive 2 会降级为 `low_statistics_preview` 并保留 `downgraded_from`；不拒绝低统计作业，只防把它标成工程结论。
+- `openmc_build_model` 的 `files` 改为磁盘上重建所需的全集（XML、`build_model.py`、`model-spec.json`、`model_validation/` 等），并单列 `xml_files`；真实 MCP 用例同步按磁盘核对。
+- `openmc_import_model` 不再复制生成的 `views/`；新增导入回归测试。
+- 测试体系落到发布门禁：`config/capability-baseline.json` + `tests/test_capability_baseline_contract.py` 记录已支持能力与真实收窄（v1 region 删除）；`config/release-critical.txt` + `scripts/check-release-evidence.py` + `./verify.sh --release` 拒绝关键真实用例 skip/缺失。`AGENTS.md` 与 `docs/测试与验收说明.md` 补四层测试、能力基线和发布判据。
+- 修正过期测试：删除 `tests/test_manual_real.py`（旧 `compute.html` 的 `data-run` 教学块已随手册整合消失，保留只会测一个兼容跳转）；新增 `tests/test_manual_compute_redirect.py` 守旧章节入口；`test_downstream_real` 的扫描统计断言接受有限值与“不可用”两种真实输出。重新生成 `docs/reference.html`。
+- 本轮未修：D4 例题步骤 `case_dir` 语义混用、D6 重复导出图像新增、D7 网格热图低统计告警；L1–L5/N1–N4 仍按原报告保留。
+
+
 ## 0.11.10 — 2026-11-07
 
 - 修复k口径：`openmc_read_results` 的 keff 带 `source`（`statepoint:k_combined` / `statepoint:k_generation`），k_combined/std 含非有限值时改用逐批k合并估计并给 `fallback_from`；`openmc_job_status` 的进度标 `keff_source`；`openmc_job_compare` 改为优先读StatePoint（日志Combined行仅作fallback），`keff_combined.source` 与 `within_2sigma_engineering` 标明来源与判据。此前两个都“已完成”的作业会因日志里的 `-nan` 被拒绝比较k。
