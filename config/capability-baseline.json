@@ -168,6 +168,21 @@
         "tests/test_statistical_source_gate.py"
       ],
       "gate": "offline"
+    },
+    {
+      "id": "runtime_identity_guard",
+      "status": "supported",
+      "surface": [
+        "openmc_environment",
+        "MCP new operations"
+      ],
+      "input": "启动身份、当前产品Python/模型Schema指纹与服务版本",
+      "output": "匹配/漂移/不可核实；漂移或不可核实时保留查询取消并拒绝新操作",
+      "evidence": [
+        "tests/test_schema_drift_mcp.py",
+        "tests/test_runtime_identity.py"
+      ],
+      "gate": "real_mcp"
     }
   ],
   "restrictions": [
@@ -188,6 +203,14 @@
       "migration": "使用 OpenMC 合法 REACTION_MT 名称；错误会给出最近候选",
       "user_decision": "2026-11-07 接受在写盘前拒绝未知 score",
       "impact": "只有 OpenMC 不认识的 score 被拒，不删除可计算能力"
+    },
+    {
+      "id": "stale_service_new_operations",
+      "capability": "runtime_identity_guard",
+      "kind": "guarded",
+      "impact": "代码/模型Schema变更或指纹读取失败后，新建/修改/提交操作停止；已运行计算不会自动取消，查询与取消继续可用。",
+      "migration": "确认运行中作业状态后重启对应服务，核对service.ready_for_new_operations并刷新宿主tools/list。",
+      "user_decision": "2026-11-07明确同意漂移时阻止新操作，保留查询取消。"
     }
   ]
 }

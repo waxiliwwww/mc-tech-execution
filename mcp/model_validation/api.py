@@ -43,6 +43,8 @@ def _selected(backend):
 
 
 def validate_spec_result(spec, backend='auto'):
+    if isinstance(spec, dict) and 'schema_version' in spec:
+        raise ValidationError('$.schema_version 不支持的字段；当前模型输入已取消该字段。核对service.restart_required并刷新tools/list；不要继续沿用旧进程Schema。')
     check_region_depth(spec)
     name, module = _selected(backend)
     module.validate_shape(spec)

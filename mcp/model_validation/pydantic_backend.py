@@ -31,7 +31,7 @@ class Material(Strict):
     id: PositiveInt
     name: Name = ''
     density: PositiveFloat
-    density_unit: Literal['g/cm3', 'atom/b-cm', 'atom/cm3']
+    density_unit: Literal['g/cm3', 'g/cc', 'atom/b-cm', 'atom/cm3']
     percent_type: Literal['ao', 'wo']
     nuclides: list[Nuclide] = Field(min_length=1, max_length=500)
     temperature: PositiveFloat = Field(default=None)

@@ -464,7 +464,9 @@ def execute(action: str, params: dict) -> dict:
         return {**marker, 'files': sorted(p.name for p in Path('.').iterdir() if p.is_file())}
     if action == 'validate':
         model = openmc.Model.from_model_xml('model.xml') if Path('model.xml').exists() else openmc.Model.from_xml()
-        return {'api_parsed': True, 'cells': len(model.geometry.get_all_cells()),
+        from openmc_scientific_checks import safe_assess, advisories_warnings
+        science = safe_assess(model)
+        return {'scientific_checks':science,'warnings':advisories_warnings(science), 'api_parsed': True, 'cells': len(model.geometry.get_all_cells()),
                 'materials': len(model.materials), 'tallies': len(model.tallies),
                 'note': '公开API能够读取模型；未进行几何重叠、核数据完备性或物理正确性判定。'}
     if action == 'results':
@@ -493,12 +495,16 @@ def execute(action: str, params: dict) -> dict:
                 preview = values([tally.mean.ravel()[index] for index in selected], cap=limit, scope='tally')
                 preview_std = values([tally.std_dev.ravel()[index] for index in selected], cap=limit, scope='tally')
                 flat = np.asarray(tally.mean).ravel()
+                zero_unscored = int(np.count_nonzero(np.isfinite(flat) & (flat == 0) & (np.asarray(tally.std_dev).ravel() == 0)))
+                if zero_unscored:
+                    warnings.append(f'tally {tally.id}：{zero_unscored}/{flat.size}个计分值均值和标准差均为0；可能是无贡献、统计不足或多群分箱错配，不等于物理量为零；请核对滤波边界和原始数据。')
                 tallies.append({'id': tally.id, 'name': tally.name, 'scores': tally.scores,
                                 'nuclides': tally.nuclides, 'estimator': tally.estimator,
                                 'filters': [filter_summary(f) for f in tally.filters],
                                 'shape': list(tally.mean.shape), 'mean': preview,
                                 'std_dev': preview_std, 'preview_indices': selected,
                                 'preview_policy': policy,
+                                'zero_mean_std_values': zero_unscored,
                                 'zero_values': int(np.count_nonzero(np.isfinite(flat) & (flat == 0))),
                                 'nonzero_values': int(np.count_nonzero(np.isfinite(flat) & (flat != 0))),
                                 'non_finite_values': int(np.count_nonzero(~np.isfinite(flat))),
@@ -523,7 +529,10 @@ def execute(action: str, params: dict) -> dict:
                 else:
                     warnings.append('keff：k_combined/std含非有限值且没有可用的逐批k；'
                                     'mean/std保留为空，不替换为0，也不归因于未收敛。')
-            return {'openmc_version': list(point.version), 'run_mode': point.run_mode,
+            from openmc_scientific_checks import assess_directory, advisories_warnings
+            science = assess_directory()
+            warnings.extend(advisories_warnings(science))
+            return {'scientific_checks':science, 'openmc_version': list(point.version), 'run_mode': point.run_mode,
                     'particles': point.n_particles, 'realizations': point.n_realizations,
                     'keff': keff_block,
                     'tallies': tallies, 'max_values_per_tally': limit, 'warnings': warnings}
@@ -808,7 +817,9 @@ def execute(action: str, params: dict) -> dict:
                 if os.path.exists(pending):
                     os.unlink(pending)
             input_file = 'model.xml'
-        return {'tally_id': identifier, 'name': tally.name, 'scores': list(tally.scores),
+        from openmc_scientific_checks import assess_directory, advisories_warnings
+        science = assess_directory()
+        return {'scientific_checks':science,'warnings':advisories_warnings(science), 'tally_id': identifier, 'name': tally.name, 'scores': list(tally.scores),
                 'filters': [filter_summary(f) for f in filters],
                 'tally_count': len(tallies), 'input_file': input_file,
                 'note': '已写入' + input_file + '；计分口径为OpenMC原始归一化，未换算功率或实际源强。'}

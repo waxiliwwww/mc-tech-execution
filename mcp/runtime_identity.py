@@ -9,24 +9,34 @@ compare it with the current package without trusting a value captured at boot.
 from __future__ import annotations
 
 import hashlib
+import os
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 VERSION_FILE = ROOT / 'VERSION'
-IGNORED_PARTS = {'__pycache__', 'logs'}
+IGNORED_PARTS = {'__pycache__', 'logs', '.venv', 'node_modules'}
+
+
+def _identity_walk_error(error):
+    raise error
 
 
 def code_hashes(base: Path | None = None) -> dict[str, str]:
     """SHA256 of every Python module that can define tools or validation."""
     base = Path(base) if base is not None else ROOT
-    package = base / 'mcp'
+    # Use this product's directory, never the neighbouring third-party MCP SDK.
+    package = (HERE if base == ROOT else
+               base / ('mc_agent_tools' if (base / 'mc_agent_tools').is_dir() else 'mcp'))
     result = {}
-    for path in sorted(package.rglob('*.py')):
-        relative = path.relative_to(base)
-        if any(part in IGNORED_PARTS for part in relative.parts):
-            continue
-        result[relative.as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+    if not package.is_dir():raise OSError('Product package directory is unavailable')
+    for folder, dirs, files in os.walk(package, onerror=_identity_walk_error):
+        dirs[:] = sorted(d for d in dirs if d not in IGNORED_PARTS)
+        for name in sorted(files):
+            path=Path(folder)/name
+            if path.suffix != '.py' and path.relative_to(package).as_posix() != 'model_validation/schema.json':continue
+            result[path.relative_to(base).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+    if not result:raise OSError('Product identity has no readable tracked files')
     return result
 
 
@@ -46,18 +56,36 @@ def version(base: Path | None = None, path: Path | None = None) -> str | None:
     try:
         return path.read_text(encoding='utf-8').strip() or None
     except OSError:
-        return None
+        if path.resolve() != ((Path(base) if base is not None else ROOT) / 'VERSION').resolve():
+            return None
+        if base is not None and Path(base) != ROOT:
+            return None
+        from importlib.metadata import PackageNotFoundError, distribution
+        try:
+            installed = distribution('mc-agent-tools')
+            owner = Path(installed.locate_file('mc_agent_tools/runtime_identity.py')).resolve()
+            return installed.version if owner == Path(__file__).resolve() else None
+        except PackageNotFoundError:
+            return None
 
 
 def snapshot(base: Path | None = None, version_path: Path | None = None) -> dict:
-    hashes = code_hashes(base)
+    try:hashes = code_hashes(base)
+    except OSError as exc:
+        return {'version':version(base,version_path),'code_fingerprint':None,'files':None,'identity_check':'unavailable','error':type(exc).__name__}
     return {'version': version(base, version_path), 'code_fingerprint': code_fingerprint(hashes),
             'files': len(hashes)}
 
 
 def check(startup: dict, base: Path | None = None, version_path: Path | None = None) -> dict:
     """Compare a startup snapshot with the package currently on disk."""
-    current_hashes = code_hashes(base)
+    try:current_hashes = code_hashes(base)
+    except OSError as exc:
+        return {'startup_version':startup.get('version'),'current_version':None,
+                'version_matches':None,'startup_code_fingerprint':startup.get('code_fingerprint'),
+                'current_code_fingerprint':None,'code_matches':None,'changed_files':None,
+                'identity_check':'unavailable','restart_required':True,
+                'message':'服务身份无法核实（'+type(exc).__name__+'）；已暂停新操作，查询和取消仍可用。请核对部署文件并重启服务。'}
     configured_path = version_path
     if configured_path is None and startup.get('_version_path'):
         configured_path = Path(startup['_version_path'])

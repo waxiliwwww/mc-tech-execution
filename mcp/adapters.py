@@ -37,7 +37,27 @@ def validate_value(value, schema, direction):
         # jsonschema's default message may contain submitted secrets. Report paths only.
         first = errors[0]
         path = ".".join(map(str, first.path)) or "$"
-        raise ToolExecutionError(f"{direction} schema validation failed at {path} ({first.validator}).")
+        # Explain the trusted schema, never echo the caller's submitted value.
+        hints = []
+        sensitive = __import__('re').search(r'password|secret|token|authorization|api.?key', path, __import__('re').I)
+        for item in [first, *first.context]:
+            key = item.validator
+            if key in ('type', 'required', 'minimum', 'maximum', 'minItems', 'maxItems') or (key in ('enum', 'const') and not sensitive):
+                hint = str(key) + '=' + json.dumps(item.validator_value, ensure_ascii=False)
+                if hint not in hints:hints.append(hint)
+        if first.validator == 'additionalProperties' and isinstance(first.instance, dict) and 'schema_version' in first.instance:
+            hints.append('schema_version已取消；核对service.restart_required并刷新tools/list，不要继续用旧Schema')
+        detail = (' Expected: ' + '; '.join(hints[:6])[:500]) if hints else ' Check the current tools/list inputSchema and required fields.'
+        raise ToolExecutionError(f"{direction} schema validation failed at {path} ({first.validator})." + detail)
+
+
+def unknown_tool_message(name, names):
+    """Suggest registered public names without echoing untrusted input."""
+    import difflib
+    names = list(names)
+    plain = name.removeprefix('openmc_')
+    choices = [plain] if plain in names else difflib.get_close_matches(name, names, n=3, cutoff=0.5)
+    return '工具不存在；使用tools/list查看实际工具名。' + ('可用工具：' + ' / '.join(choices) if choices else '')
 
 
 def public_tool(definition):

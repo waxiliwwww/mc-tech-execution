@@ -427,7 +427,7 @@ def _semantic_summary(directory: Path, inspected: list, cfg: dict) -> dict:
               'library_key': cfg.get('nuclear_data_library', 'endfb-viii.0'),
               'note': '静态语义检查：材料密度/温度、核素/S(a,b)可用性、tally filter类型与bins规则，'
                       '统一problems定位清单；complete=false表示部分检查未执行（原因见相应skipped_reason）。'
-                      '温度-数据范围对照、filter深层语义以api_check为准；几何重叠属几何检查；通过不代表物理正确。'}
+                      'api_check含模型解析及有限温度/群边界元数据提示，不证明库完整装载或温度适用性；几何重叠属几何检查；通过不代表物理正确。'}
     if nuclide_section.get('checked'):
         result['missing_nuclides'] = missing_nuclides
         result['missing_sab'] = missing_sab
@@ -760,6 +760,15 @@ def validate_inputs(case_dir: str, api_check: bool = False, semantic_check: bool
         try:
             parsed = api('validate', directory, {})
             result['openmc_api'] = {**parsed, 'ok': True}
+            result['warnings'] = list(parsed.get('warnings') or [])
+            if 'semantic' in result:
+                semantic = result['semantic']
+                extra = [{'kind':'scientific_input_advisory','severity':'warning','location':'openmc_api.scientific_checks','detail':w} for w in result['warnings']]
+                merged = [*semantic.get('problems', []), *extra]
+                semantic['problems'] = merged[:100]
+                semantic['problems_truncated'] = semantic.get('problems_truncated', False) or len(merged)>100
+                semantic['warning_count'] = semantic.get('warning_count', 0) + len(extra)
+                semantic['temperature_data'] = {'source':'openmc_api.scientific_checks.temperature', 'status':parsed.get('scientific_checks', {}).get('temperature', {}).get('status', 'unavailable')}
         except Exception as exc:
             context = _api_failure_context(directory)
             result['openmc_api'] = {'ok': False, 'api_parsed': False,
@@ -868,6 +877,7 @@ def statistical_adequacy(keff, data, progress=None) -> dict:
     """统计充分性的工程分级（相对σ + 批次设置提示）。
     不是收敛检验：不检测源收敛、欠采样、系统误差，也不能当专业验收。"""
     source = _source_convergence(progress)
+    source["verified"] = False  # A batch-setting heuristic is not an entropy/source convergence test.
     if not isinstance(keff, dict) or keff.get('mean') is None:
         return {'grade': 'not_applicable', 'source_convergence': source,
                 'reason': '该作业没有k结果（固定源/绘图作业）或均值不可用'}
@@ -882,11 +892,12 @@ def statistical_adequacy(keff, data, progress=None) -> dict:
              'engineering_estimate' if relative > ADEQUACY_ENGINEERING else 'converged_indicator')
     result = {'grade': grade, 'mean': float(mean), 'std_dev': float(sigma),
               'relative_std_dev': round(relative, 6), 'realizations': data.get('realizations'),
+              'source_convergence_verified': False, 'precision_only': True,
               'source_convergence': source,
               'thresholds': {'low_statistics_preview': '相对σ>1%',
                              'engineering_estimate': '0.1%<相对σ<=1%',
                              'converged_indicator': '相对σ<=0.1%'},
-              'note': '按k相对σ的工程分级，只决定“能否当结论引用”；不构成收敛检验，'
+              'note': '按k相对σ的精度分级，旧grade名converged_indicator只代表小相对σ；不构成收敛检验，'
                       '不检测源收敛、欠采样与系统误差，也不代表专业验收。'}
     if source.get('status') == 'heuristic_low_inactive' and grade != 'low_statistics_preview':
         result['downgraded_from'] = grade

@@ -64,7 +64,7 @@ TOOLS += [
                             "inactive": {"type": "integer", "minimum": 0}}, ["case_dir"]),
      "outputSchema": OUTPUT, "function": create_model,
      "annotations": {"readOnlyHint": False, "destructiveHint": False}},
-    {"name": "openmc_validate_inputs", "description": "检查输入XML结构及基础参数，可选公开API模型解析、静态语义校验（密度/温度/核素/tally filter）与几何重叠检查（openmc -g在临时副本上削减批次运行，概率性结论如实标注）。各层通过不代表物理正确。",
+    {"name": "openmc_validate_inputs", "description": "检查输入XML结构及基础参数，可选公开API模型解析及温度/多群边界元数据告警、静态语义校验（密度/温度/核素/tally filter）与几何重叠检查（openmc -g在临时副本上削减批次运行，概率性结论如实标注）。各层通过不代表物理正确。",
      "inputSchema": schema({"case_dir": TEXT, "api_check": {"type": "boolean"}, "semantic_check": {"type": "boolean"}, "geometry_check": {"type": "boolean"}}, ["case_dir"]),
      "outputSchema": OUTPUT, "function": validate_inputs},
     {"name": "openmc_submit_job", "description": "快照输入后提交本地OpenMC计算/绘图/几何调试，立即返回作业编号；随后查询终态与产物。声明式模型会在input_integrity中报告mc-case指纹是否与当前XML/spec一致；不一致只提示、不自动拦截。Linux/WSL运行，不代表提交即完成。",

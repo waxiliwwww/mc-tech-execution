@@ -17,8 +17,8 @@ RETURN_NOTES = {
         ['openmc_version_matches', '只检查OpenMC可执行程序版本，不是工具包服务版本；MCP调用读取service.version，与包内VERSION对照。'],
         ['service.name / service.version / service.version_source', 'MCP调用由服务端加入启动时固定的服务名、版本及mcp_server_startup来源，与握手和/health同源；不会随磁盘VERSION更新。CLI直接调用没有此字段，不能据此判断在线服务。'],
         ['service.startup_version / current_disk_version / version_matches_disk', '启动快照与当前磁盘版本对照；false时不能认为旧进程已经加载新版本。'],
-        ['service.startup_code_fingerprint / current_code_fingerprint / code_matches_disk / changed_files', '启动时Python模块指纹与当前磁盘对照；只列相对包路径，不读取或回显文件内容。'],
-        ['service.restart_required / warnings', '任一版本/代码不一致时为true并给出重启提示；已经运行的旧进程不会自行获得该检测器，需重启一次。'],
+        ['service.startup_code_fingerprint / current_code_fingerprint / code_matches_disk / changed_files', '启动时产品Python模块及model_validation/schema.json指纹与当前磁盘对照；只列相对包路径，不读取或回显文件内容。'],
+        ['service.restart_required / ready_for_new_operations / warnings', '版本/产品代码或模型Schema不一致时提示重启并阻止新操作；查询和取消保留。ready_for_new_operations=false时不要提交。旧进程没有检测器的字段缺失应记未核实，先更新服务。'],
         ['cross_sections_configured / cross_sections_env_set', '均表示OPENMC_CROSS_SECTIONS环境变量是否设置，不是核数据可用性判据。false可以使用nuclear_data指示的受管候选索引；index_exists仍不证明数据齐备，先核对模型核素/热散射名称与索引匹配；静态语义不检查HDF5文件完整性，由部署者按生效索引另核对。'],
     ],
     'openmc_list_artifacts': [
@@ -28,6 +28,7 @@ RETURN_NOTES = {
         ['matches_recorded_output = null', '没有保存的基线可对照，不等于校验失败，也不表示已校验通过。派生图、报告和results.json通常为null，仍需核对来源、数据和当前sha256。'],
     ],
     'openmc_validate_inputs': [
+        ['openmc_api.scientific_checks / warnings', 'api_check=true时另查MGXS群结构和连续能温度kTs元数据。缺数据/超预算明确partial或unavailable；API解析成功不等于温度适用性已验证。模型缺温度时报告继承来源，不从名称或密度推断温度。'],
         ['geometry.checked / completed', '仅请求geometry_check时出现geometry分支；先确认实际检查且完成，未启用、跳过或超时均不能记通过。'],
         ['geometry.ok / returncode / overlapping_cells', '本次抽样ok=true、returncode=0且overlapping_cells=[]表示未发现重叠；不证明全模型无重叠。ok=false看reason/log_tail，ok=null表示没有完成判定。'],
         ['geometry.settings_adjusted', '几何检查在临时副本中最多2批、inactive归零、单线程；此字段列设置差异，不修改原输入，也不是按正式采样设置运行。'],

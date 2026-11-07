@@ -27,7 +27,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 import uvicorn
 
-from adapters import ToolExecutionError, execute_tool, public_tool, validate_registry
+from adapters import ToolExecutionError, execute_tool, public_tool, validate_registry, unknown_tool_message
 from business import MCInputError
 import resources
 import runtime_identity
@@ -265,8 +265,17 @@ def create_app(config, log, tools=None, startup_identity=None):
         parameters = snapshot_arguments(arguments)
         try:
             if name not in registry:
-                raise ToolExecutionError("Unknown tool; call tools/list to discover supported tools.")
+                raise ToolExecutionError(unknown_tool_message(name, registry))
+            drift = runtime_identity.check(startup_identity)
+            # Keep monitoring and cancellation usable while denying operations
+            # that could mix a cached Schema with a new disk-side worker.
+            allowed_during_drift = (registry[name].get('annotations', {}).get('readOnlyHint') is True
+                                    or name in {'openmc_cancel_job', 'openmc_cancel_scan', 'openmc_cancel_example'})
+            if drift['restart_required'] and not allowed_during_drift:
+                raise ToolExecutionError('服务代码/契约已漂移，已阻止新操作；请保留现场，待无运行作业后重启MCP并刷新tools/list。仍可查询状态、环境及取消计算。' + drift['message'])
             result = await execute_tool(registry[name], arguments)
+            if drift['restart_required'] and name != 'openmc_environment' and isinstance(result, dict):
+                result['warnings'] = [*result.get('warnings', []), drift['message']]
             if name == 'openmc_environment':
                 # Bind the MCP observation to this server's startup identity, not
                 # a VERSION file that may have changed while it was running.
@@ -280,7 +289,9 @@ def create_app(config, log, tools=None, startup_identity=None):
                            "current_code_fingerprint": drift["current_code_fingerprint"],
                            "code_matches_disk": drift["code_matches"],
                            "changed_files": drift["changed_files"],
-                           "restart_required": drift["restart_required"]}
+                           "restart_required": drift["restart_required"],
+                           "ready_for_new_operations": not drift["restart_required"],
+                           "identity_check": drift.get("identity_check") or ("mismatch" if drift["restart_required"] else "matched")}
                 result = {**result, "service": service}
                 if drift["restart_required"]:
                     result["warnings"] = [*result.get("warnings", []), drift["message"]]
@@ -357,6 +368,8 @@ def create_app(config, log, tools=None, startup_identity=None):
                 'code_matches_disk': drift['code_matches'],
                 'changed_files': drift['changed_files'],
                 'restart_required': drift['restart_required'],
+                'ready_for_new_operations': not drift['restart_required'],
+                'identity_check': drift.get('identity_check') or ('mismatch' if drift['restart_required'] else 'matched'),
             })
             info['warnings'] = [drift['message']] if drift['restart_required'] else []
             response = JSONResponse(info) if request.method == "GET" else JSONResponse({"error": "Method not allowed"}, 405)

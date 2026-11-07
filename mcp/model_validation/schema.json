@@ -263,6 +263,7 @@
         "density_unit": {
           "enum": [
             "g/cm3",
+            "g/cc",
             "atom/b-cm",
             "atom/cm3"
           ],

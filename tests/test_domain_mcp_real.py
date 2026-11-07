@@ -82,6 +82,7 @@ class DomainMCP(unittest.IsolatedAsyncioTestCase):
                 spec['name'] = 'MCP caller custom layout'
                 spec['lattices'][0]['universes'] = [[2,1,2],[1,1,2]]
                 spec['materials'][1]['density'] = 0.82
+                spec['materials'][1]['density_unit'] = 'g/cc'
                 spec['settings']['seed'] = 71
                 built = await call('openmc_build_model', {'case_dir':'caller/new-model','spec':spec})
                 self.assertTrue(built['api_parsed'])

@@ -1,8 +1,13 @@
-param([string]$Url = "http://127.0.0.1:8770/mcp")
+param([string]$Url = "http://127.0.0.1:8770/mcp", [string]$ExpectedVersion = "")
 # Windows PowerShell 5.1+; performs discovery only, no model or computation calls.
 $ErrorActionPreference = "Stop"
 $phase = "URL"
 $displayUrl = "(invalid URL)"
+$versionReason = ""
+if (-not $ExpectedVersion) {
+    $packageVersion = Join-Path $PSScriptRoot "../VERSION"
+    if (Test-Path $packageVersion) { $ExpectedVersion = (Get-Content -Raw $packageVersion).Trim() }
+}
 try {
     $endpoint = [Uri]$Url
     if ($endpoint.Scheme -notin @("http", "https") -or $endpoint.UserInfo) {
@@ -40,6 +45,16 @@ try {
         protocolVersion="2025-03-26"; capabilities=@{}; clientInfo=@{name="mc-windows-check";version="1"}
     }}
     if (-not $initialized.result.protocolVersion) { throw "No negotiated protocol version." }
+    $phase = "service-version"
+    $serviceVersion = [string]$initialized.result.serverInfo.version
+    $versionCheck = "unavailable"
+    if ($ExpectedVersion) {
+        if ($serviceVersion -ne $ExpectedVersion) {
+            $versionReason = "Service version $serviceVersion differs from package $ExpectedVersion. Check endpoint/directory; restart the service only after active jobs are clear."
+            throw "Service version mismatch"
+        }
+        $versionCheck = "matched"
+    }
     $headers["MCP-Protocol-Version"] = $initialized.result.protocolVersion
     $null = Send-Mcp @{jsonrpc="2.0";method="notifications/initialized"}
     $phase = "tools/list"
@@ -50,7 +65,7 @@ try {
     }
     [ordered]@{
         passed=$true; phase="discovery"; url=$displayUrl; protocol=$initialized.result.protocolVersion
-        tools=$tools.Count; model_requests=0; compute_submissions=0
+        tools=$tools.Count; service_version=$serviceVersion; expected_version=$ExpectedVersion; service_version_check=$versionCheck; model_requests=0; compute_submissions=0
         note="Windows HTTP/MCP discovery passed. DSH plugin activation and natural-language use are separate checks."
     } | ConvertTo-Json -Depth 5
 } catch {
@@ -71,6 +86,7 @@ try {
         }
         $current = $current.InnerException
     }
+    if ($versionReason) { $reason = $versionReason }
     [Console]::Error.WriteLine("MCP check failed at $phase; endpoint=$displayUrl. $reason No model or computation was called.")
     exit 1
 }

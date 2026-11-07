@@ -78,6 +78,55 @@ class RuntimeIdentity(unittest.TestCase):
         self.assertFalse(drift['code_matches'])
         self.assertEqual(drift['changed_files'], ['mcp/tool.py'])
 
+    def test_schema_changes_additions_and_deletions_are_code_drift(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); fixture(root)
+            schema = root/'mcp/model_validation/schema.json'
+            schema.parent.mkdir(); schema.write_text('{}')
+            for action in ('change', 'delete', 'add'):
+                before = runtime_identity.startup(root)
+                if action == 'delete': schema.unlink()
+                else: schema.write_text('{"type":"object"}')
+                drift = runtime_identity.check(before, root)
+                self.assertTrue(drift['restart_required'], action)
+                self.assertIn('mcp/model_validation/schema.json', drift['changed_files'])
+
+    def test_installed_layout_tracks_product_not_neighbouring_sdk(self):
+        import importlib.util, shutil
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); package = root/'mc_agent_tools'; package.mkdir()
+            shutil.copy2(ROOT/'mcp/runtime_identity.py', package/'runtime_identity.py')
+            (package/'tool.py').write_text('VALUE=1')
+            sdk = root/'mcp'; sdk.mkdir(); (sdk/'unrelated.py').write_text('SDK=1')
+            spec = importlib.util.spec_from_file_location('installed_identity',package/'runtime_identity.py')
+            module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+            before = module.startup()
+            self.assertIn('mc_agent_tools/tool.py', before['_hashes'])
+            self.assertNotIn('mcp/unrelated.py', before['_hashes'])
+            (sdk/'unrelated.py').write_text('SDK=2')
+            self.assertFalse(module.check(before)['restart_required'])
+            (package/'tool.py').write_text('VALUE=2')
+            self.assertTrue(module.check(before)['restart_required'])
+
+    def test_installed_metadata_does_not_mask_lost_custom_version_file(self):
+        import importlib.util, shutil
+        from unittest.mock import patch
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); package = root/'mc_agent_tools'; package.mkdir()
+            file = package/'runtime_identity.py';shutil.copy2(ROOT/'mcp/runtime_identity.py', file)
+            spec = importlib.util.spec_from_file_location('installed_version_identity',file)
+            module = importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+            metadata = SimpleNamespace(version='1.0',locate_file=lambda _:file)
+            custom = root/'custom-version';custom.write_text('1.0')
+            with patch('importlib.metadata.distribution', return_value=metadata):
+                self.assertEqual(module.version(), '1.0')  # default wheel fallback still works
+                before = module.startup(version_path=custom);custom.unlink()
+                drift = module.check(before)
+                self.assertIsNone(drift['current_version'])
+                self.assertFalse(drift['version_matches'])
+                self.assertTrue(drift['restart_required'])
+
     def test_unrelated_file_is_not_code_drift(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); fixture(root)

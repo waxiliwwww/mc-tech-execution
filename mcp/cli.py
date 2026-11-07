@@ -52,7 +52,8 @@ def main() -> int:
         else:
             tool = next((t for t in TOOLS if t['name'] == args.tool), None)
             if tool is None:
-                raise ToolExecutionError('工具不存在；使用list查看工具清单')
+                from adapters import unknown_tool_message
+                raise ToolExecutionError(unknown_tool_message(args.tool, [t['name'] for t in TOOLS]))
             try:
                 arguments = json.loads(args.arguments)
             except ValueError as exc:

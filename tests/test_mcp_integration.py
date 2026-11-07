@@ -97,6 +97,18 @@ class ProjectIntegration(unittest.IsolatedAsyncioTestCase):
                           ("name", "version", "version_source")},
                          {"name": "mc-integration", "version": "0.1.0",
                           "version_source": "mcp_server_startup"})
+        async with streamablehttp_client(self.url) as (read, write, _):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                denied = await session.call_tool('openmc_create_model', {'case_dir':'must-not-be-created'})
+                self.assertTrue(denied.isError)
+                self.assertIn('已阻止新操作', denied.content[0].text)
+                self.assertFalse((self.workspace/'must-not-be-created').exists())
+                readable = await session.call_tool('list_cases', {})
+                self.assertFalse(readable.isError)
+                cancelled = await session.call_tool('openmc_cancel_job', {'job_id':'not-a-job'})
+                self.assertNotIn('已阻止新操作', str(cancelled))
+        self.assertFalse(result['service']['ready_for_new_operations'])
         self.assertFalse(result["service"]["version_matches_disk"])
         self.assertTrue(result["service"]["restart_required"])
         self.assertIn("重启", result["warnings"][0])
