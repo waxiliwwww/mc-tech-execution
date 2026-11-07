@@ -2,6 +2,18 @@
 
 ## 未发布
 
+- 修复k口径：`openmc_read_results` 的 keff 带 `source`（`statepoint:k_combined` / `statepoint:k_generation`），k_combined/std 含非有限值时改用逐批k合并估计并给 `fallback_from`；`openmc_job_status` 的进度标 `keff_source`；`openmc_job_compare` 改为优先读StatePoint（日志Combined行仅作fallback），`keff_combined.source` 与 `within_2sigma_engineering` 标明来源与判据。此前两个都“已完成”的作业会因日志里的 `-nan` 被拒绝比较k。
+- `openmc_read_results` 增加 `statepoint_context`（燃耗作业有多个时间步时标出读到第几个并指向 `openmc_read_depletion`）与 `statistical_adequacy`（按k相对σ的工程分级；明确不是收敛检验、不检测源收敛与欠采样）。
+- tally逐bin对比把“一侧均值0且σ=0”的零计数bin单列 `zero_count_bins`，排除在2σ判决与 `bins_compared` 之外；warnings 按 `keff:`/`tally:` 标明作用域，不再把keff的非有限值混成tally级警告。
+- 新增 `config/score-names.json`（由 `openmc.data.REACTION_MT` 生成，473个合法score）与 `mcp/openmc_scores.py`：`openmc_define_tally` 在写盘前拒绝未知score并给最接近候选；`openmc_validate_inputs(semantic_check=true)` 把 tallies.xml 里的未知score记为 `invalid_score`。此前 `fluxx` 能通过全部MCP侧检查，直到输运阶段才以 `Unknown reaction name` 终止。
+- 几何检查把算例引用的相对数据文件（`<cross_sections>` 元素、`library`/`filename` 属性引用的 h5/h5m）一并复制进临时副本；缺文件时返回 `checked=false`+`skipped_reason`+`missing_data_files`，引擎在读数据阶段失败时 `ok=null` 且 `engine_started=false`，不再把“引擎没启动”记成 `ok=false` 的几何结论（此前多群算例必然复现）。
+- `openmc_view_geometry` 增加引擎直读原XML的出图回退（`render_method=engine_native_plot_xml`）：多群算例经SDK单文件导出会丢 `<macroscopic>`，引擎随即中止；现在可出图，连续能算例仍走 `python_api_export`。
+- hex-lattice 模板修两处：反射六角棱柱按栅格外径（环数×栅距）推导，旧值内切圆半径只有0.75cm，7根棒里6根落在反射边界外；O16 质量份额按UO2化学计量由U质量折算（O/U=2，旧值0.1184对应1.76）；plot宽度随栅格外径。旧模板会把“只算了1根棒”当成7根棒的k且不报错。
+- 收敛图与网格热图不再让非有限值进入JSON：k_combined 非有限时 `combined=null` 并写入 `warnings`，逐批k非有限时曲线断开不补0；零均值网格提示改为“x/n个箱均值为0”，全零时另给提示。
+- `openmc_plot_scan` 增加 `x_label`/`y_label`（省略时仍为“参数名 [单位]”）。
+- `config/error-rules.json` 补 `invalid_score`、`missing_cross_sections`、`source_outside_geometry`、`dagmc_geometry` 四类，供 `openmc_diagnose_job` 命中上述引擎中止。
+- 新增6个测试文件（一个场景一个文件，文件头写明功能/类别/前置/输入/预期/不证明）：score名单与拒绝路径、零计数bin判决、k来源与统计分析、几何检查数据依赖、hex模板几何与化学计量、多群几何切片与连续能对照；真实OpenMC用例由 `MC_TEST_OPENMC_CONFIG` 门控，未设置时skip。全套 451 项运行、98 项跳过、无失败。
+- 本轮未改：DAGMC固定源、产物远程下载、本机模型上传、`apply_repair` 确认令牌、Notebook结果筛选、参数层暴露栅格几何量；服务进程与磁盘代码漂移只按部署文档提示核对（本部署实测为旧进程加载新代码，非 schema 声明缺陷）。
 - 声明式输入升级为 `model-spec/v2`：`region` 使用 `halfspace`/`intersection`/`union`/`complement` 类型树，不再接受 v1 字符串表达式；无 v1 兼容层。变更同时更新 `openmc_build_model`、能力发现、随包示例和使用文档。
 - 参数校验拆成独立 `model_validation` 包：优先 Pydantic 严格模型，Pydantic 不可导入时自动使用纯标准库 fallback；真实校验失败不会静默改用另一后端。静态 schema 带 `$id`，可独立校验，也可随算例复制。
 - 专家覆盖以显式 tag 记录：当前只允许 `outer_boundary_transmission`，必须给出 `reason` 与 `scope`；未触发的覆盖保留 warning，构建结果、`mc-case.json` 和作业 provenance 都携带 `validation` 报告。
