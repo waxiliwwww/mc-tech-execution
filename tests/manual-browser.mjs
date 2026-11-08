@@ -26,6 +26,15 @@ async function anchor(id){
   if(await title.count())assert.ok(await title.evaluate(e=>{const r=e.getBoundingClientRect();return r.bottom>0&&r.top<innerHeight;}),'Requested heading is visible: '+id);
 }
 try {
+  // Visible release identity must agree with this package, not a prior sidebar.
+  const packageVersion=(await fs.readFile(path.join(root,'VERSION'),'utf8')).trim();
+  for(const name of ['index.html','toolkit-usage.html','deployment.html','mcp.html','project-records.html']) {
+    await page.goto(url(name));
+    assert.ok((await page.locator('.edition').innerText()).endsWith(packageVersion),'Visible manual version matches VERSION: '+name);
+  }
+  await page.goto(url('toolkit-usage.html#scientific-advisories'));await anchor('scientific-advisories');
+  assert.match(await page.locator('#scientific-advisories').innerText(),/零标准差/);
+  await shot('00-statistical-advisories');
   // New user: capability -> full task -> actual result meaning and verification.
   await page.goto(url('index.html'));
   assert.match(await page.locator('h1').innerText(),/工具包总览/);

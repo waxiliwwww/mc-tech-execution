@@ -39,6 +39,11 @@ def broken_links(root):
 class Manual(unittest.TestCase):
     def test_offline_manual_links_reach_files_and_anchors(self):
         self.assertEqual(broken_links(ROOT),[])
+        version=(ROOT/'VERSION').read_text().strip()
+        for name in ['index.html','toolkit-usage.html','deployment.html','mcp.html','project-records.html']:
+            visible=Document((ROOT/'docs'/name).read_text()).text
+            self.assertTrue(any('工具包'+version in value.replace(' ', '') for value in visible), name+' manual edition must match VERSION')
+        self.assertIn('源码版本'+version, (ROOT/'README.md').read_text())
 
     def test_reference_is_generated_from_current_registry(self):
         spec=importlib.util.spec_from_file_location('mc_reference',ROOT/'scripts/generate_tool_reference.py')
