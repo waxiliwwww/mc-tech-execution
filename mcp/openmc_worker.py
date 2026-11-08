@@ -75,8 +75,53 @@ def filter_summary(item):
     return {'type': kind, 'description': description, 'bin_count': count, 'parameters': parameters}
 
 
+def filter_identity(item):
+    """Hash complete bin meaning, not truncated previews or assigned IDs."""
+    import hashlib
+    context = {}
+    kind = type(item).__name__
+    if kind == 'CellInstanceFilter':
+        # Instance numbers need a verified geometry mapping, absent from the
+        # standalone StatePoint reader. Do not invent a spatial equivalence.
+        return None
+    if kind == 'DistribcellFilter':
+        try:paths = list(item.paths)
+        except (AttributeError, ValueError):return None
+        if len(paths) != item.num_bins or not all(isinstance(p, str) and p for p in paths):return None
+        context['instance_paths'] = paths
+    element = item.to_xml_element()
+    element.attrib.pop('id', None)
+    mesh = getattr(item, 'mesh', None)
+    if mesh is not None:
+        # A MeshFilter's bins element references a mesh ID; expand its physical
+        # definition so renumbering alone does not make equivalent bins differ.
+        if 'mesh' in element.attrib:
+            # MeshMaterialFilter bins are (element, material), not a mesh ID.
+            element.attrib.pop('mesh')
+        else:
+            bins = element.find('bins')
+            if bins is not None:element.remove(bins)
+        definition = mesh.to_xml_element()
+        definition.attrib.pop('id', None)
+        if type(mesh).__name__ == 'UnstructuredMesh':
+            # The external mesh cannot be identified from its filename alone.
+            filename = Path(mesh.filename)
+            if not filename.is_file():return None
+            digest = hashlib.sha256()
+            with filename.open('rb') as source:
+                for block in iter(lambda: source.read(1024 * 1024), b''):digest.update(block)
+            child = definition.find('filename')
+            if child is not None:child.text = 'sha256:' + digest.hexdigest()
+        element.append(definition)
+    # XML indentation and attribute ordering are representation, not bin meaning.
+    def normalized(node):
+        return [node.tag, sorted(node.attrib.items()), (node.text or '').strip(),
+                [normalized(child) for child in node]]
+    return hashlib.sha256(json.dumps([normalized(element), context], sort_keys=True).encode()).hexdigest()
+
+
 def _generation_keff(point):
-    """k_combined/std含非有限值时，用逐批k的合并估计兜底。
+    """调用方确认Combined缺失后，计算逐批k的合并估计；明确失效时不调用。
     与openmc_plot_convergence同口径（活跃批均值±标准误），避免同一作业的k在两处不一致。"""
     import numpy as np
     generations = np.asarray(getattr(point, 'k_generation', None), dtype=float).flatten()
@@ -550,6 +595,7 @@ def execute(action: str, params: dict) -> dict:
                 tallies.append({'id': tally.id, 'name': tally.name, 'scores': tally.scores,
                                 'nuclides': tally.nuclides, 'estimator': tally.estimator,
                                 'filters': [filter_summary(f) for f in tally.filters],
+                                'filter_signatures': [filter_identity(f) for f in tally.filters],
                                 'shape': list(tally.mean.shape), 'mean': preview,
                                 'std_dev': preview_std, 'preview_indices': selected,
                                 'preview_policy': policy,

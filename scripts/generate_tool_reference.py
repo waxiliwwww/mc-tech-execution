@@ -12,6 +12,15 @@ from tools import TOOLS
 
 
 RETURN_NOTES = {
+    'openmc_read_results': [
+        ['tallies[].filter_signatures', '完整分箱身份用于逐bin对比，未将所有边界塞入摘要。null表示实例路径或外部mesh定义不可核实，不代表数值读取失败；此时不宣称两作业同箱。'],
+    ],
+    'openmc_read_depletion': [
+        ['depletion_results.h5', '只读取已完成燃耗作业登记且当前SHA256一致的原始产物；缺失、替换或链接时停止读回，保留现场。'],
+    ],
+    'openmc_job_compare': [
+        ['comparison.tallies.by_id[].aligned', '逐bin比较要求完整分箱定义和选择一致；包括未显示的能量边界、材料箱、mesh坐标及过滤顺序。不以纯filter/mesh编号作为物理差异，无法核实则不对齐。'],
+    ],
     'openmc_environment': [
         ['expected_version / api_version / executable_version_output', 'OpenMC引擎的预期/API/可执行程序版本，不是工具包服务版本。'],
         ['openmc_version_matches', '只检查OpenMC可执行程序版本，不是工具包服务版本；MCP调用读取service.version，与包内VERSION对照。'],

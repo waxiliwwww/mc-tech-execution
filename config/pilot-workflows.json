@@ -2,7 +2,7 @@
   "schema_version": 1,
   "base_version": "0.13.0",
   "base_commit": "c287c3c00b6bed0adf682a5535545c7b7e2e7a5f",
-  "scope": "已确认Linux/WSL环境中的受控内部试点工程交付；不等于通用生产就绪或专业验收。",
+  "scope": "0.13.0起点历史五流程试点及可复用代表场景；不是当前完整交付或稳定化范围，当前计划见docs/development-plan.html。",
   "excluded": [
     "DSH/真实模型联调",
     "HPC",

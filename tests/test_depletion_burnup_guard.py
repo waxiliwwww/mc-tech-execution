@@ -89,6 +89,24 @@ class BurnupGuard(unittest.TestCase):
         marker = json.loads((self.case / 'mc-case.json').read_text())
         self.assertEqual(marker['depletion']['guard']['status'], 'extreme')
 
+    def test_nonfinite_configuration_is_rejected_without_changing_existing_marker(self):
+        marker=self.case/'mc-case.json';marker.write_text('{"data_kind":"user_supplied_unverified"}')
+        before=marker.read_bytes()
+        for power,steps in [(float('nan'),[1]),(float('inf'),[1]),(1000,[float('nan')]),(1000,[float('inf')])]:
+            with self.subTest(power=power,steps=steps),patch.object(tools,'config',lambda:self.cfg):
+                with self.assertRaises(ValueError):tools.configure_depletion('dep',power,steps)
+                self.assertEqual(marker.read_bytes(),before)
+
+    def test_failed_configuration_publication_preserves_original_marker(self):
+        marker=self.case/'mc-case.json';marker.write_text('{"data_kind":"user_supplied_unverified"}')
+        before=marker.read_bytes()
+        with patch.object(tools,'config',lambda:self.cfg), \
+             patch('openmc_runtime.os.replace',side_effect=OSError('injected disk failure')):
+            with self.assertRaisesRegex(OSError,'injected'):
+                tools.configure_depletion('dep',1,[.01],'d')
+        self.assertEqual(marker.read_bytes(),before)
+        self.assertEqual(list(self.case.glob('.pending-*')),[])
+
 
 if __name__ == '__main__':
     unittest.main()

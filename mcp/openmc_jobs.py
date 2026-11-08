@@ -16,6 +16,7 @@ import sys
 import threading
 import time
 import uuid
+from functools import wraps
 from owned_processes import OwnedProcessTree, ProcessControlError
 
 from openmc_runtime import (Error, ROOT, atomic_json, command, config, path_in_workspace,
@@ -171,6 +172,22 @@ def list_jobs(name: str | None = None, state: str | None = None, limit: int = 50
             'note': '名称为精确匹配，可重名；后续状态/取消/结果调用使用job_id。旧记录名称为null。'}
 
 
+def _serialized_admission(function):
+    """Capacity check and queued reservation are one cross-process operation.
+
+    Every producer (CLI/MCP, scans, official steps) goes through submit(). A
+    per-process mutex cannot protect independent MCP/CLI worker processes.
+    The lock is outside .mc-jobs so a rejected submission creates no job record.
+    It stays in place: unlinking it would give waiting peers different inodes.
+    """
+    @wraps(function)
+    def guarded(*args, **kwargs):
+        with (workspace() / '.submission.lock').open('a') as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            return function(*args, **kwargs)
+    return guarded
+
+@_serialized_admission
 def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | None = None,
            _internal: bool = False, _job_id: str | None = None, _expected_inputs: dict | None = None,
            _example_workflow: dict | None = None, _preserve_outputs: bool = False,
@@ -391,8 +408,8 @@ def _progress(directory: Path, value: dict) -> dict:
     if value.get('state') == 'completed' and progress['percent'] is None and mode == 'eigenvalue':
         progress['percent'] = 100.0
     # 标注k的出处：同一作业的k在status/read_results/plot_convergence三处口径不同，
-    # 不标来源时用户无法判断该信哪一个。Combined失效时优先RESULTS估计量，
-    # 不把批次表最后一列Average当成同等质量的回退。
+    # 不标来源时用户无法判断该信哪一个。Combined缺失时才考虑有效日志估计量；
+    # 明确非有限/零σ不改报替代值，也不把批次表Average当等价的最终结果。
     _, progress['keff_source'] = _summary_keff(progress)
     return progress
 

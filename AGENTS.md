@@ -27,7 +27,7 @@
 
 - 测试不只证明接口能调用；按 `docs/测试与验收说明.md` 的四层检查：契约/单元、集成/旅程、真实/科学、人的可用性。默认统计设置、低统计警告和真实用户闭环属于必测项。
 - 断言用户可观察的承诺，不从当前输出倒抄；关键测试要能用旧缺陷/错误实现证明会变红。skip 不计通过，真实用例未启用时只能写“未验证”。
-- 发布前运行 `MC_TEST_OPENMC_CONFIG="$PWD/config/openmc.local.json" ./verify.sh --release`；关键真实用例被跳过或缺失时脚本直接失败。普通 `./verify.sh` 不冒充发布验收。
+- 发布前运行 `MC_TEST_OPENMC_CONFIG="$PWD/config/openmc.local.json" MC_TEST_CAD_CONFIG="$PWD/config/openmc.local.json" ./verify.sh --release`；关键真实用例被跳过或缺失时脚本直接失败。普通 `./verify.sh` 不冒充发布验收。
 - 能力基线在 `config/capability-baseline.json`，由 `tests/test_capability_baseline_contract.py` 校验。新增硬拒绝、白名单、必填项或删除旧格式时，必须登记能力、影响、override/迁移/用户决定；兜底修复不能悄悄收窄合法输入。
 - 实现者自测不是独立验收；关键路径由非实现者按用户旅程复测，并写明版本、环境、真实/模拟、skip 与未证明边界。
 
@@ -41,3 +41,5 @@
 | 二维网格读回与默认报告不越界，源码预览按需展开 | `tests/test_mesh_points_2d.py` + `tests/test_selected_report_real.py` + `tests/test_openmc_preview.py` |
 | 计分变更后派生/扫描不得丢计分，拒绝时不得改源输入；发布失败须回滚 | `tests/test_tally_workflow_real.py` + `tests/test_workflow_boundaries.py` |
 | 完成态状态和读结果使用同一StatePoint与k策略，摘要不得隐藏非有限/零标准差告警 | `tests/test_domain_mcp_real.py` + `tests/test_keff_summary_fallback.py` |
+
+- 2026-11-08稳定化范围以docs/development-plan.html及同一capability-baseline为准：六能力族的合法变化/连续操作不能缩为五条固定例题；合同缺项独立记录。证据复用须核对源码影响、输入/依赖、终态和原始产物；缺证不报完整稳定。收口后集中发布/解压验证，新增功能或重要取舍先确认。

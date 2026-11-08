@@ -7,6 +7,7 @@ import sys
 import tempfile
 import time
 import unittest
+import uuid
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -147,8 +148,8 @@ class JobCompare(unittest.TestCase):
                 'values_truncated': truncated, 'normalization': ''}
 
     def compare_with_tallies(self, tally_lists, warnings=((), ()), **kwargs):
-        a = self.make_job('aa' * 16)
-        b = self.make_job('bb' * 16)
+        a = self.make_job(uuid.uuid4().hex)
+        b = self.make_job(uuid.uuid4().hex)
         store = {a: self.results_payload(a, tally_lists[0], warnings[0]),
                  b: self.results_payload(b, tally_lists[1], warnings[1])}
         with patch.object(tools, 'read_results',
@@ -247,6 +248,19 @@ class JobCompare(unittest.TestCase):
         self.assertFalse(section['performed'])
         self.assertIn('StatePoint', section['reason'])
         self.assertIn('不猜测', section['note'])
+
+    def test_different_complete_filter_identity_prevents_false_bin_alignment(self):
+        first=self.tally(1,[1,2],[.1,.1],filters=('EnergyFilter',))
+        second=self.tally(1,[1,2],[.1,.1],filters=('EnergyFilter',))
+        first['filter_signatures']=['full-bounds-a'];second['filter_signatures']=['full-bounds-b']
+        value=self.compare_with_tallies(([first],[second]))['by_id'][0]
+        self.assertFalse(value['aligned']);self.assertIn('filters',value['structure_mismatch'])
+        self.assertNotIn('bins_compared',value)
+        second['filter_signatures']=first['filter_signatures']
+        value=self.compare_with_tallies(([first],[second]))['by_id'][0]
+        self.assertTrue(value['aligned']);self.assertEqual(value['bins_compared'],2)
+        del second['filter_signatures']
+        self.assertFalse(self.compare_with_tallies(([first],[second]))['by_id'][0]['aligned'])
 
 
 if __name__ == '__main__':

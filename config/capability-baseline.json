@@ -161,7 +161,7 @@
         "openmc_job_compare"
       ],
       "input": "已完成或运行中的作业",
-      "output": "k 值/来源/统计分级；Combined 失效时按 Absorption→Collision→Track-length→Average 回退",
+      "output": "完成态状态/读取/对比共用已核实StatePoint与k策略；运行进度标日志来源。Combined明确非有限或零σ时不在摘要改报估计器；缺失Combined的可用回退明确来源和告警，不混燃耗时间步。",
       "evidence": [
         "tests/test_keff_summary_fallback.py",
         "tests/test_keff_sources.py",
@@ -248,5 +248,113 @@
       "kind": "guarded",
       "impact": "四类查询/准备默认不内联详细元数据；结果值、告警、来源与修复diff仍保留，完整证据不删除"
     }
-  ]
+  ],
+  "stabilization": {
+    "decision_date": "2026-11-08",
+    "base_version": "0.14.0",
+    "base_commit": "175e4141a42e6167b51d1f5484a2abd37c2f36b2",
+    "scope": "先稳定当前已支持完整能力，原合同缺项单列建设；五流程是代表入口，不是全部能力",
+    "plan": "docs/development-plan.html",
+    "progress": "docs/project-progress.html#stabilization-20261108",
+    "evidence_policy": "核对源码/依赖/输入/终态和原始产物后复用历史证据；仅补缺证和变更影响。冻结后统一发布门禁及解压验证；不调用模型或修改用户运行服务。",
+    "completion": [
+      "契约/Schema/实现/手册一致",
+      "合法变化与必要连续操作闭环",
+      "输入/快照/原始结果/图报告同源",
+      "失败取消重启与未知结果无隐性损坏",
+      "下游可独立使用；宿主自然语言需单列证据",
+      "已知明确缺陷及必要关联闭环；源码/文档/包一致"
+    ],
+    "audit": [
+      {
+        "family": "model_preparation",
+        "shared_contract": "结构化/模板/原生导入/CAD形成明确输入和可重建来源",
+        "coverage": [
+          "tests/test_model_spec_real.py",
+          "tests/test_domain_mcp_real.py",
+          "tests/test_openmc_cad_real.py",
+          "tests/test_model_import.py"
+        ],
+        "finding": "沿原生分XML/model.xml及CAD检查输入保留；现有源/计分同步回归复用",
+        "status": "engineering_verified",
+        "evidence": "见stabilization.verification；按本族coverage核对本轮日志，未因测试文件存在就记通过。"
+      },
+      {
+        "family": "mutation_validation",
+        "shared_contract": "合法计分/参数变化可派生扫描；失败不改原算例",
+        "coverage": [
+          "tests/test_tally_workflow_real.py",
+          "tests/test_scientific_advisories_real.py",
+          "tests/test_openmc_semantic.py",
+          "tests/test_model_spec.py"
+        ],
+        "finding": "既有计分/声明源同步与科学告警继续保留；本轮补燃耗配置有限值和原子发布保护",
+        "status": "engineering_verified",
+        "evidence": "见stabilization.verification；按本族coverage核对本轮日志，未因测试文件存在就记通过。"
+      },
+      {
+        "family": "jobs",
+        "shared_contract": "所有生产者共用容量准入、快照、状态及取消",
+        "coverage": [
+          "tests/test_submission_admission.py",
+          "tests/test_openmc_tools.py",
+          "tests/test_disk_admission.py",
+          "tests/test_example_workflows_real.py"
+        ],
+        "finding": "已修容量检查和queued登记之间并发竞态；本地/扫描/官方步骤复用submit入口",
+        "status": "engineering_verified",
+        "evidence": "见stabilization.verification；按本族coverage核对本轮日志，未因测试文件存在就记通过。"
+      },
+      {
+        "family": "results_reports",
+        "shared_contract": "原始产物身份、同一物理分箱和选择贯穿读取/对比/图报告",
+        "coverage": [
+          "tests/test_workflow_boundaries.py",
+          "tests/test_filter_summary.py",
+          "tests/test_openmc_job_compare.py",
+          "tests/test_selected_report_real.py",
+          "tests/test_report_metadata_replay_real.py"
+        ],
+        "finding": "燃耗读回补原始哈希核对；逐bin对比补完整分箱身份，摘要截断和纯mesh编号不决定物理对齐",
+        "status": "engineering_verified",
+        "evidence": "见stabilization.verification；按本族coverage核对本轮日志，未因测试文件存在就记通过。"
+      },
+      {
+        "family": "diagnosis_knowledge_repair",
+        "shared_contract": "可定位失败、依据引用、差异确认、保全源输入和关联重验",
+        "coverage": [
+          "tests/test_knowledge.py",
+          "tests/test_openmc_repair_real.py",
+          "tests/test_business.py",
+          "tests/test_openmc_faults_real.py"
+        ],
+        "finding": "复用现有规则/公开资料与确认修复实现；专业未知保持未分类，不扩充未经审定规则",
+        "status": "engineering_verified",
+        "evidence": "见stabilization.verification；按本族coverage核对本轮日志，未因测试文件存在就记通过。"
+      },
+      {
+        "family": "delivery_hosts",
+        "shared_contract": "独立部署/接口/产物可读，包与源码相符；真实宿主单列",
+        "coverage": [
+          "tests/test_package_delivery.py",
+          "tests/test_mcp_integration.py",
+          "tests/test_manual.py",
+          "tests/manual-browser.mjs",
+          "tests/test_multi_tool_services.py"
+        ],
+        "finding": "复用既有部署/封装与同源版本机制；用户服务不更新，DSH模型联调仍单列待验证",
+        "status": "tool_protocol_verified_real_host_pending",
+        "evidence": "见stabilization.verification；按本族coverage核对本轮日志，未因测试文件存在就记通过。"
+      }
+    ],
+    "release_candidate": "0.14.1",
+    "verification": {
+      "release": "artifacts/runs/20261108-stabilization/release-final.log",
+      "sdk": "artifacts/runs/20261108-stabilization/sdk-replay-final.log",
+      "report_replay": "artifacts/runs/20261108-stabilization/report-replay.log",
+      "historical_official_reuse": "artifacts/runs/20261108-stabilization/official-history-reuse.json",
+      "delivery_receipt": "artifacts/runs/20261108-stabilization/delivery-receipt.json",
+      "boundary": "工具工程检查；DSH真实自然语言、目标服务器首次部署和完整合同/专业验收不据此通过。回执记录最终归档，不以源码更新表示运行服务更新。"
+    }
+  }
 }

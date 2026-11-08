@@ -1078,15 +1078,23 @@ def _tally_comparison(job_a, job_b, max_values):
         one, two = tallies_a[tally_id], tallies_b[tally_id]
         mismatch = [field for field in ('shape', 'scores', 'nuclides', 'estimator')
                     if one.get(field) != two.get(field)]
-        if ([item['type'] for item in one.get('filters', [])]
-                != [item['type'] for item in two.get('filters', [])]):
-            mismatch.append('filters')
+        filters_a, filters_b = one.get('filters', []), two.get('filters', [])
+        signatures_a, signatures_b = one.get('filter_signatures'), two.get('filter_signatures')
+        if filters_a or filters_b:
+            # Same type/shape is insufficient: energy bounds, material IDs and
+            # mesh coordinates may differ even beyond the displayed first 20 bins.
+            verified = (isinstance(signatures_a, list) and isinstance(signatures_b, list)
+                        and len(signatures_a) == len(filters_a)
+                        and len(signatures_b) == len(filters_b)
+                        and all(isinstance(v, str) and v for v in signatures_a + signatures_b))
+            if not verified or signatures_a != signatures_b:
+                mismatch.append('filters')
         entry = {'id': tally_id, 'name': {'a': one.get('name'), 'b': two.get('name')},
                  'aligned': not mismatch, 'structure_mismatch': mismatch,
                  'truncated': bool(one.get('values_truncated') or two.get('values_truncated'))}
         if mismatch:
             entry['shape'] = {'a': one.get('shape'), 'b': two.get('shape')}
-            entry['note'] = '结构不一致，未做逐bin对比；如实报告。'
+            entry['note'] = '结构或完整分箱定义不一致/不可核实，未做逐bin对比；如实报告，不以过滤器类型和箱数相同代替物理坐标对齐。'
             entries.append(entry)
             continue
         problem_bins = []
@@ -1540,10 +1548,10 @@ def configure_depletion(case_dir: str, power_watts: float, timesteps: list,
         raise Error('case_dir须为已存在的算例目录')
     if not (directory / 'materials.xml').is_file() and not (directory / 'model.xml').is_file():
         raise Error('算例缺少materials.xml或model.xml，不能配置燃耗')
-    if type(power_watts) not in (int, float) or isinstance(power_watts, bool) or power_watts <= 0:
+    if type(power_watts) not in (int, float) or not math.isfinite(power_watts) or power_watts <= 0:
         raise Error('power_watts须为正数（单位W）')
     if (not isinstance(timesteps, list) or not timesteps
-            or any(type(v) not in (int, float) or isinstance(v, bool) or v <= 0 for v in timesteps)):
+            or any(type(v) not in (int, float) or not math.isfinite(v) or v <= 0 for v in timesteps)):
         raise Error('timesteps须为非空正数列表（每步长度）')
     if timestep_unit not in DEPLETION_UNITS:
         raise Error('timestep_unit须为' + '/'.join(DEPLETION_UNITS) + '之一')
@@ -1567,8 +1575,8 @@ def configure_depletion(case_dir: str, power_watts: float, timesteps: list,
             'timestep_unit': timestep_unit, 'chain_file': str(chain),
             'guard': guard}
     info.update(depletion=spec)
-    marker.write_text(json.dumps(info, ensure_ascii=False, indent=2), encoding='utf-8')
     digest = hashlib.sha256(chain.read_bytes()).hexdigest()
+    atomic_json(marker, info)
     return {'case_dir': case_dir, **spec, 'depletion_guard': guard,
             'chain_sha256': digest, 'steps': len(timesteps),
             'workspace': str(workspace()), 'location': 'server',
@@ -1585,9 +1593,9 @@ def read_depletion(job_id: str, key_nuclides: list | None = None) -> dict:
     record = jobs.read(directory)
     if record.get('mode') != 'deplete':
         raise Error('该作业不是燃耗作业（mode不是deplete）')
-    work = directory / 'work'
-    if not (work / 'depletion_results.h5').is_file():
-        raise Error('作业缺少depletion_results.h5；确认燃耗已完成')
+    from openmc_result_identity import verified_output
+    point = verified_output(directory, record, 'depletion_results.h5')
+    work = point.parent
     if key_nuclides is not None:
         if (not isinstance(key_nuclides, list) or not key_nuclides
                 or any(not isinstance(name, str) or not name.strip() for name in key_nuclides)):

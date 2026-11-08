@@ -563,6 +563,7 @@
 <h3>返回怎么看</h3><p>keff与tallies保留均值、标准差、定义及截断标识；不可用统计量为null，warnings按作用域加前缀（keff:/tally:）解释原因。keff.source标明出处（statepoint:k_combined | statepoint:k_generation）；k_combined含非有限值时改用逐批k合并估计并带fallback_from，与openmc_plot_convergence同口径。tallies的mean/std_dev是preview_indices对应的预览，不是前N个原始值；网格tally的preview_policy=mesh_nonzero_first、mesh字段给出dimension/lower_left/upper_right/indexing，preview_points给出(i,j,k)与中心坐标；filter_selection.bins按OpenMC MeshFilter从1开始的[i,j,k]三元组，不是扁平序号或mesh id；zero_values/non_finite_values及zero_mean_std_values说明零值；均值与标准差均为0时给警告，不认定物理零。scientific_checks给出多群边界及温度元数据检查，partial/unavailable不算通过。statepoint_context标明读到的是第几个StatePoint（燃耗作业有时间步，末步不等于初始状态）并指向openmc_read_depletion。statistical_adequacy按k相对σ给工程分级（low_statistics_preview/engineering_estimate/converged_indicator/unusable/not_applicable），仅描述相对σ，precision_only=true、source_convergence_verified=false；旧grade名converged_indicator不表示已验证源收敛。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>job_id</td><td>计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。</td></tr><tr><td>keff</td><td>本征值mean和std_dev；不可用时保留null，不能解释为零误差。</td></tr><tr><td>warnings</td><td>统计量等不确定性提示，不能因工具调用成功而忽略。</td></tr><tr><td>provenance</td><td>数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
+<div class="table-wrap"><table><thead><tr><th>判读字段</th><th>含义与继续条件</th></tr></thead><tbody><tr><td>tallies[].filter_signatures</td><td>完整分箱身份用于逐bin对比，未将所有边界塞入摘要。null表示实例路径或外部mesh定义不可核实，不代表数值读取失败；此时不宣称两作业同箱。</td></tr></tbody></table></div>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
@@ -2676,6 +2677,7 @@
 <h3>返回怎么看</h3><p>steps为逐时间步（含t=0起点）：time_days、keff均值/标准差、可选burnup_mwd_kg估算；heavy_metal_total_g为初始重金属质量；nuclide_mass_g为关键核素质量（g），默认含Xe135/Sm149；key_nuclides_requested/key_nuclides_unavailable说明请求与缺失，不补0；depletion_guard回显写入时的估算。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>job_id</td><td>计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。</td></tr><tr><td>steps</td><td>逐时间步结果列表（含t=0起点）；每项含time_days与keff均值/标准差，配置完整时含burnup_mwd_kg估算。</td></tr><tr><td>heavy_metal_total_g</td><td>初始重金属质量（g），按链文件重金属核素在该材料中的质量求和；用于燃耗换算。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
+<div class="table-wrap"><table><thead><tr><th>判读字段</th><th>含义与继续条件</th></tr></thead><tbody><tr><td>depletion_results.h5</td><td>只读取已完成燃耗作业登记且当前SHA256一致的原始产物；缺失、替换或链接时停止读回，保留现场。</td></tr></tbody></table></div>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
@@ -2930,6 +2932,7 @@
 <h3>返回怎么看</h3><p>sides给出两作业状态、运行设置、k与输入指纹；comparison.inputs分identical/differing/only_in_a/only_in_b四类；keff_combined.a/b各带source（statepoint:k_combined | statepoint:k_generation | solver.log:…，StatePoint优先、日志仅作fallback），difference=b-a，combined_std_dev按独立假设合成并给within_2sigma_engineering，仅工程参考。compare_tallies=true时comparison.tallies给出：summary总数（bins_compared/within_2sigma/outside_2sigma/zero_count_bins/non_finite_bins）、by_id逐tally结构对齐与问题bin（至多50条，含index/difference/combined_std_dev）、only_in_a/only_in_b、双方warnings合并（每条带keff:/tally:前缀标明来源）；零计数bin（一侧均值0且σ=0）单列且不参与2σ判决；两倍σ判据为工程参考，非统计显著性判定。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>job_a</td><td>作业编号（a方）；来自openmc_submit_job返回值。</td></tr><tr><td>job_b</td><td>作业编号（b方）；来自openmc_submit_job返回值。</td></tr><tr><td>workspace</td><td>服务端绝对数据根；工作区相对路径以它为基准。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
+<div class="table-wrap"><table><thead><tr><th>判读字段</th><th>含义与继续条件</th></tr></thead><tbody><tr><td>comparison.tallies.by_id[].aligned</td><td>逐bin比较要求完整分箱定义和选择一致；包括未显示的能量边界、材料箱、mesh坐标及过滤顺序。不以纯filter/mesh编号作为物理差异，无法核实则不对齐。</td></tr></tbody></table></div>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,

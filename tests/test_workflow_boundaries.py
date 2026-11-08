@@ -111,4 +111,31 @@ class WorkflowBoundaries(unittest.TestCase):
                 self.assertEqual(actual['keff'],expected['keff'])
                 self.assertEqual(actual['statepoint_sha256'],digest)
 
+    def test_depletion_reader_checks_sealed_output_before_using_sdk(self):
+        import hashlib
+        import business
+        import openmc_jobs as jobs
+        import openmc_tools as tools
+        import os
+        with tempfile.TemporaryDirectory() as tmp:
+            previous=business.WORKSPACE;business.WORKSPACE=Path(tmp)
+            try:
+                identifier='d'*32;directory=Path(tmp)/'.mc-jobs'/identifier
+                (directory/'work').mkdir(parents=True)
+                point=directory/'work/depletion_results.h5';point.write_bytes(b'original result')
+                digest=hashlib.sha256(point.read_bytes()).hexdigest()
+                record={'mode':'deplete','runtime':{},'provenance':{},'output_files':{point.name:digest}}
+                (directory/'job.json').write_text(json.dumps(record))
+                with patch.object(jobs,'status',return_value={'state':'completed'}), \
+                     patch.object(tools,'api',return_value={'steps':[]}) as sdk:
+                    tools.read_depletion(identifier);self.assertEqual(sdk.call_count,1)
+                    sdk.reset_mock();point.write_bytes(b'different result')
+                    with self.assertRaisesRegex(ValueError,'计算后改变'):tools.read_depletion(identifier)
+                    sdk.assert_not_called()
+                    point.unlink();point.symlink_to(directory/'job.json')
+                    with self.assertRaisesRegex(ValueError,'符号链接'):tools.read_depletion(identifier)
+                    sdk.assert_not_called()
+            finally:business.WORKSPACE=previous
+
+
 if __name__=='__main__':unittest.main()

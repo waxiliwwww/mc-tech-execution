@@ -48,3 +48,8 @@ test_mesh_points_2d.MeshPoints2D
 # Researcher workflow boundary regressions.
 test_workflow_boundaries.WorkflowBoundaries
 test_tally_workflow_real.TallyWorkflowReal
+
+# Current supported capability closure: CAD, depletion and shared resource admission.
+test_openmc_cad_real.CadRealConversion
+test_openmc_depletion_real.DepletionReal
+test_submission_admission.SubmissionAdmission
