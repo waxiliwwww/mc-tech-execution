@@ -60,3 +60,6 @@ test_diagnostic_attribution.DiagnosticAttribution
 test_release_evidence_gate.ReleaseEvidenceGate
 test_submission_semantic_real.SubmissionSemanticReal
 test_openmc_repair_real.RealKnowledgeRepair.test_legacy_failure_with_remaining_semantic_error_stops_before_rerun_reservation
+
+# Test-owned service identity, actual tools/list and interrupted cleanup
+test_mcp_test_session.TestSession

@@ -35,6 +35,10 @@ try {
   await page.goto(url('toolkit-usage.html#scientific-advisories'));await anchor('scientific-advisories');
   assert.match(await page.locator('#scientific-advisories').innerText(),/零标准差/);
   await shot('00-statistical-advisories');
+  await page.goto(url('deployment.html#test-session'));await anchor('test-session');
+  assert.match(await page.locator('#test-session').innerText(),/test-mcp\.sh/);
+  assert.match(await page.locator('#test-session').innerText(),/verified_empty/);
+  await shot('00-owned-test-lifecycle');
   // New user: capability -> full task -> actual result meaning and verification.
   await page.goto(url('index.html'));
   assert.match(await page.locator('h1').innerText(),/工具包总览/);

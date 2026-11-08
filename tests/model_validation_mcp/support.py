@@ -14,6 +14,7 @@ import sys
 import tempfile
 import unittest
 import urllib.request
+from scripts.mcp_test_session import check_discovery
 
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
@@ -38,7 +39,7 @@ class RealMCPCase(unittest.IsolatedAsyncioTestCase):
         self.url = f"http://127.0.0.1:{port}/mcp"
         service = self.directory / "service.json"
         service.write_text(json.dumps({"host": "127.0.0.1", "port": port, "path": "/mcp",
-                                       "name": "model-validation-test", "version": "1",
+                                       "name": "model-validation-test", "versionFile": str(ROOT / "VERSION"),
                                        "clientName": "model-validation-test"}))
         env = {key: value for key, value in os.environ.items()
                if not key.startswith(("MC_", "MCP_", "HARNESS_"))}
@@ -79,7 +80,7 @@ class RealMCPCase(unittest.IsolatedAsyncioTestCase):
     async def call(self, name, arguments):
         async with streamablehttp_client(self.url) as (read, write, _):
             async with ClientSession(read, write) as session:
-                await session.initialize()
+                await check_discovery(session)
                 return await session.call_tool(name, arguments)
 
     def error_text(self, result):

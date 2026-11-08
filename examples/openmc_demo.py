@@ -33,7 +33,11 @@ async def client(url):
         headers = {'Authorization': 'Bearer ' + token} if token else None
         async with streamablehttp_client(url, headers=headers) as (read, write, _):
             async with ClientSession(read, write) as session:
-                await session.initialize()
+                # Check the session that will execute the workflow, rather than
+                # relying on a previous /health probe or the host's cached list.
+                sys.path.insert(0, str(ROOT))
+                from scripts.mcp_test_session import check_discovery
+                await check_discovery(session)
                 async def call(name, arguments):
                     result = await session.call_tool(name, arguments)
                     if result.isError:

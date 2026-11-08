@@ -236,7 +236,7 @@ except ValueError as error:
 
     def test_standard_mcp_official_case_and_interactive_repair(self):
         with socket.socket() as sock:sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
-        service=self.directory/'service.json';service.write_text(json.dumps({'host':'127.0.0.1','port':port,'path':'/mcp','name':'knowledge-repair-test','version':'0.4.0','clientName':'mc'}))
+        service=self.directory/'service.json';service.write_text(json.dumps({'host':'127.0.0.1','port':port,'path':'/mcp','name':'knowledge-repair-test','versionFile':str(ROOT/'VERSION'),'clientName':'mc'}))
         env={**self.env,'MCP_CONFIG_FILE':str(service),'MCP_CONNECTION_FILE':str(self.directory/'connection.json')}
         url=f'http://127.0.0.1:{port}/mcp'
         with (self.directory/'server.log').open('w+') as log:

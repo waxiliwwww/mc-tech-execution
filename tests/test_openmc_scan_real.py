@@ -12,6 +12,7 @@ import sys
 import tempfile
 import time
 import unittest
+from scripts.mcp_test_session import check_discovery
 import urllib.request
 import zipfile
 import xml.etree.ElementTree as ET
@@ -355,7 +356,7 @@ else:
     def test_real_mcp_image_and_restart_query(self):
         with socket.socket() as sock:sock.bind(('127.0.0.1', 0)); port = sock.getsockname()[1]
         config = self.work / 'service.json'
-        config.write_text(json.dumps({'host': '127.0.0.1', 'port': port, 'path': '/mcp', 'name': 'scan-test', 'version': '0.3.0', 'clientName': 'mc'}))
+        config.write_text(json.dumps({'host': '127.0.0.1', 'port': port, 'path': '/mcp', 'name': 'scan-test', 'versionFile':str(ROOT/'VERSION'), 'clientName': 'mc'}))
         env = {**self.env, 'MCP_CONFIG_FILE': str(config), 'MCP_CONNECTION_FILE': str(self.work / 'connection.json'), 'MCP_AUTH_TOKEN': 'test-only-token'}
         log = (self.work / 'server.log').open('w+')
         def start():
@@ -370,7 +371,7 @@ else:
             from mcp.client.streamable_http import streamablehttp_client
             async with streamablehttp_client(f'http://127.0.0.1:{port}/mcp', headers={'Authorization': 'Bearer test-only-token'}) as (r, w, _):
                 async with ClientSession(r, w) as session:
-                    await session.initialize()
+                    await check_discovery(session)
                     status = await session.call_tool('openmc_scan_status', {'scan_id': self.scan})
                     self.assertFalse(status.isError)
                     self.assertEqual(status.structuredContent['state'], 'completed')

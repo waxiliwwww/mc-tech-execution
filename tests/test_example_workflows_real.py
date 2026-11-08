@@ -10,6 +10,7 @@ import sys
 import tempfile
 import time
 import unittest
+from scripts.mcp_test_session import check_discovery
 import urllib.request
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -154,7 +155,7 @@ class OfficialWorkflowReal(unittest.TestCase):
 
     def test_same_stepwise_calls_over_standard_mcp(self):
         with socket.socket() as sock:sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
-        service=self.root/'service.json';service.write_text(json.dumps({'host':'127.0.0.1','port':port,'path':'/mcp','name':'official-workflows','version':'test','clientName':'mc'}))
+        service=self.root/'service.json';service.write_text(json.dumps({'host':'127.0.0.1','port':port,'path':'/mcp','name':'official-workflows','versionFile':str(ROOT/'VERSION'),'clientName':'mc'}))
         env={**self.env,'MCP_CONFIG_FILE':str(service),'MCP_CONNECTION_FILE':str(self.root/'connection.json')}
         with (self.root/'mcp.log').open('w+') as log:
             process=subprocess.Popen([sys.executable,str(ROOT/'mcp/server.py')],env=env,stdout=log,stderr=log,cwd=ROOT/'mcp')
@@ -170,7 +171,7 @@ class OfficialWorkflowReal(unittest.TestCase):
                     from mcp.client.streamable_http import streamablehttp_client
                     async with streamablehttp_client(f'http://127.0.0.1:{port}/mcp') as (r,w,_):
                         async with ClientSession(r,w) as session:
-                            await session.initialize()
+                            await check_discovery(session)
                             tools={t.name:t for t in (await session.list_tools()).tools}
                             self.assertIn('example_id',tools['openmc_prepare_official_example'].inputSchema['properties'])
                             async def call(name,args):

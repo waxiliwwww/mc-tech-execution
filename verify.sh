@@ -30,7 +30,26 @@ else
   printf '[2/4] 工具包独立校验：不安装可选Harness依赖。\n'
 fi
 printf '[3/4] 运行业务逻辑与 MCP 集成测试...\n'
-mcp/.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v > artifacts/python-tests.log 2>&1
+# A signal to this shell's PID must reach the owned supervisor too; terminal
+# process-group delivery alone is insufficient for CI/desktop cancellation.
+mc_verify_test_pid=''
+mc_verify_stop_tests() {
+  local mc_verify_sig="$1" mc_verify_exit="$2"
+  trap '' INT TERM HUP
+  if [[ -n "$mc_verify_test_pid" ]]; then
+    kill -s "$mc_verify_sig" "$mc_verify_test_pid" 2>/dev/null || true
+    wait "$mc_verify_test_pid" 2>/dev/null || true
+  fi
+  exit "$mc_verify_exit"
+}
+trap 'mc_verify_stop_tests INT 130' INT
+trap 'mc_verify_stop_tests TERM 143' TERM
+trap 'mc_verify_stop_tests HUP 129' HUP
+./scripts/test-mcp.sh -- mcp/.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v > artifacts/python-tests.log 2>&1 &
+mc_verify_test_pid=$!
+wait "$mc_verify_test_pid"
+mc_verify_test_pid=''
+trap - INT TERM HUP
 if [[ $mc_verify_release == 1 ]]; then
   printf '[3b/4] 检查发布门禁：关键真实用例不得 skip...\n'
   mcp/.venv/bin/python scripts/check-release-evidence.py artifacts/python-tests.log

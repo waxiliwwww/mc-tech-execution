@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from scripts.mcp_test_session import check_discovery
 import urllib.request
 
 from mcp import ClientSession
@@ -35,7 +36,7 @@ class DomainMCP(unittest.IsolatedAsyncioTestCase):
         self.url = f'http://127.0.0.1:{port}/mcp'
         cfg = self.directory / 'service.json'
         cfg.write_text(json.dumps({'host':'127.0.0.1','port':port,'path':'/mcp',
-                                  'name':'domain-test','version':'1','clientName':'domain-test'}))
+                                  'name':'domain-test','versionFile':str(ROOT/'VERSION'),'clientName':'domain-test'}))
         env = {k:v for k,v in os.environ.items() if not k.startswith(('MC_', 'MCP_', 'HARNESS_'))}
         env.update(MC_WORKSPACE=str(self.workspace), MC_OPENMC_CONFIG=str(Path(RUNTIME).resolve()),
                    MCP_CONFIG_FILE=str(cfg), MCP_CONNECTION_FILE=str(self.directory / 'connection.json'))
@@ -52,6 +53,9 @@ class DomainMCP(unittest.IsolatedAsyncioTestCase):
                     self.log.seek(0);self.fail(self.log.read())
                 await asyncio.sleep(.05)
         else:self.fail('isolated MCP server startup timed out')
+        async with streamablehttp_client(self.url) as (read, write, _):
+            async with ClientSession(read, write) as session:
+                await check_discovery(session)
 
     async def stop(self):
         if getattr(self, 'identifier', None):
@@ -68,7 +72,7 @@ class DomainMCP(unittest.IsolatedAsyncioTestCase):
     async def test_new_combination_import_and_named_compute_share_native_results(self):
         async with streamablehttp_client(self.url) as (read, write, _):
             async with ClientSession(read, write) as session:
-                await session.initialize()
+                await check_discovery(session)
                 async def call(name, data):
                     result = await session.call_tool(name, data)
                     self.assertFalse(result.isError, str(result))

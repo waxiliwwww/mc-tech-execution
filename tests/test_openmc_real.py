@@ -86,7 +86,7 @@ class RealOpenMC(unittest.TestCase):
             listener.bind(('127.0.0.1', 0)); port = listener.getsockname()[1]
         config = self.root / 'service.json'
         config.write_text(json.dumps({'host': '127.0.0.1', 'port': port, 'path': '/mcp',
-                                     'name': 'real-openmc-test', 'version': '0.2.0', 'clientName': 'mc'}))
+                                     'name': 'real-openmc-test', 'versionFile':str(ROOT/'VERSION'), 'clientName': 'mc'}))
         self.env.update(MCP_CONFIG_FILE=str(config), MCP_CONNECTION_FILE=str(self.root / 'connection.json'))
         with (self.root / 'server.log').open('w+') as log:
             server = subprocess.Popen([sys.executable, str(ROOT / 'mcp/server.py')], env=self.env,
