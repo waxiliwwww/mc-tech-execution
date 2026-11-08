@@ -900,7 +900,7 @@ def statistical_adequacy(keff, data, progress=None) -> dict:
                 'mean': mean if type(mean) in (int, float) and math.isfinite(mean) else None,
                 'std_dev': sigma if type(sigma) in (int, float) and math.isfinite(sigma) else None,
                 'source_convergence': source,
-                'reason': 'k的均值或标准差缺失、非有限或非正；零标准差不能作为高精度证明，也不能据此比较方案',
+                'reason': 'k的均值或标准差缺失、非有限或非正；不能判断统计充分性，也不能据此比较方案；零标准差不能作为高精度证明',
                 'note': '先核对StatePoint的k_combined与日志RESULTS节，再决定是否重算。'}
     relative = abs(float(sigma) / float(mean)) if mean else None
     grade = ('low_statistics_preview' if relative > ADEQUACY_PREVIEW else
