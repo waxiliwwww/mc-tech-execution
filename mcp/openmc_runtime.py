@@ -158,6 +158,7 @@ def api(action: str, directory: Path, payload: dict, cfg: dict | None = None) ->
         domain = ('报告渲染失败' if action == 'render-report' else
                   '图表生成失败' if action in ('plot-result', 'plot-mesh', 'plot-convergence') else
                   'OpenMC API失败（' + action + '）')
+        if 'ResultSelectionError:' in detail[0]:domain = '结果选择参数无效'
         raise Error(domain + '：' + detail[0][:1000])
     try:
         value = json.loads(result.stdout)

@@ -1,5 +1,12 @@
 [
   {
+    "pattern": "could not find material\\s+\\d+\\s+specified on tally filter",
+    "category": "tally_material_reference",
+    "suggestion": "tally材料过滤器引用未定义的材料编号；对照materials中的ID，用openmc_update_tally修改bins或openmc_delete_tally删除该计分后再预览/校核，不要去修改核数据路径。",
+    "status": "documented_input_check",
+    "reference": "https://docs.openmc.org/en/stable/io_formats/tallies.html"
+  },
+  {
     "pattern": "geometry.*overlap|overlap.*geometry",
     "category": "geometry_overlap",
     "suggestion": "核对日志中涉及的cell/surface编号与边界定义；需要业务人员确认几何关系。",
@@ -40,7 +47,7 @@
     "updated_at": "2026-11-04"
   },
   {
-    "pattern": "lost particle|could not be located in any cell",
+    "pattern": "lost particle|could not be located (in any cell|after crossing a boundary)|maximum number of lost particles|left lattice\\s+\\d+.*no outer definition",
     "category": "lost_particle",
     "suggestion": "按官方说明检查几何边界、cell/surface/lattice及几何调试覆盖，不自动改物理几何。",
     "status": "rule_hint_pending_domain_review",

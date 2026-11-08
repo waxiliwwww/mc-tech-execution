@@ -7,24 +7,28 @@ import math
 from pathlib import Path
 
 
+class ResultSelectionError(ValueError):
+    pass
+
+
 def selected_series(point, params):
     import numpy as np
     available = point.tallies
-    if not available:raise ValueError('计算产物没有tally，不能生成结果图')
+    if not available:raise ResultSelectionError('计算产物没有tally，不能生成结果图')
     identifier = params.get('tally_id')
     if identifier is None:identifier = next(iter(available))
-    if identifier not in available:raise ValueError('tally_id不存在')
+    if identifier not in available:raise ResultSelectionError('tally_id不存在')
     tally = available[identifier]
     score = params.get('score') or tally.scores[0]
     nuclide = params.get('nuclide') or ('total' if 'total' in tally.nuclides else tally.nuclides[0])
     if score not in tally.scores or nuclide not in tally.nuclides:
-        raise ValueError('score或nuclide不存在；请先读取结果中的可用项')
+        raise ResultSelectionError('score或nuclide不存在；请先读取结果中的可用项')
     selections = params.get('filter_selection') or []
     types, bins = [], []
     def tuples(value):return tuple(tuples(v) for v in value) if isinstance(value, list) else value
     for selection in selections:
         matches = [f for f in tally.filters if type(f).__name__ == selection['type']]
-        if len(matches) != 1 or type(matches[0]) in types:raise ValueError('filter类型不存在、重复或不唯一')
+        if len(matches) != 1 or type(matches[0]) in types:raise ResultSelectionError('filter类型不存在、重复或不唯一')
         types.append(type(matches[0]))
         raw_bins = selection['bins']
         if type(matches[0]).__name__ in ('MeshFilter', 'MeshBornFilter'):
@@ -37,11 +41,11 @@ def selected_series(point, params):
             converted = []
             for item in raw_bins:
                 if not isinstance(item, (list, tuple)) or len(item) != 3:
-                    raise ValueError('MeshFilter的bins须为1-based [i,j,k]三元组；'
+                    raise ResultSelectionError('MeshFilter的bins须为1-based [i,j,k]三元组；'
                                      '不接受扁平序号、mesh id或其它形状，收到' + repr(item))
                 converted.append(tuple(int(v) for v in item))
             if any(not (1 <= i <= nx and 1 <= j <= ny and 1 <= k <= nz) for i, j, k in converted):
-                raise ValueError('MeshFilter的bins超出1-based网格维度' + str(dimension)
+                raise ResultSelectionError('MeshFilter的bins超出1-based网格维度' + str(dimension)
                                  + '；示例：[[1,1,1],[2,1,1]]')
             bins.append(tuple(converted))
         else:
@@ -50,7 +54,7 @@ def selected_series(point, params):
     mean = tally.get_values(value='mean', **arguments).ravel()
     std = tally.get_values(value='std_dev', **arguments).ravel()
     if len(mean) > params.get('max_points', 20000):
-        raise ValueError('所选数据点过多；请通过filter_selection缩小范围，不使用默认截断片段绘图')
+        raise ResultSelectionError('所选数据点过多；请通过filter_selection缩小范围，不使用默认截断片段绘图')
     axis = {'x': list(range(len(mean))), 'x_kind': 'filter_bin_index', 'x_unit': '', 'x_scale': 'linear',
             'x_label': 'Selected filter-bin index (OpenMC order: ' +
                        (' × '.join(type(f).__name__ for f in tally.filters) or 'no filters') + ')',
@@ -68,14 +72,14 @@ def selected_series(point, params):
                     indices = [int(v) for v in tally.get_filter_indices(
                         filters=types, filter_bins=[bins[0]])]
                 except Exception as exc:
-                    raise ValueError('MeshFilter的bins无法映射；OpenMC的MeshFilter.bins是1-based '
+                    raise ResultSelectionError('MeshFilter的bins无法映射；OpenMC的MeshFilter.bins是1-based '
                                      '[i,j,k]三元组，例如 [{"type":"MeshFilter",'
                                      '"bins":[[1,1,1],[2,1,1]]}]；'
                                      '扁平序号仅作为兼容输入，范围0..' + str(cells - 1)) from exc
             else:
                 indices = list(range(cells))
             if any(index < 0 or index >= cells for index in indices):
-                raise ValueError('MeshFilter的bins超出范围；索引' + str(indices))
+                raise ResultSelectionError('MeshFilter的bins超出范围；索引' + str(indices))
             lower, upper = [float(v) for v in mesh.lower_left], [float(v) for v in mesh.upper_right]
             spatial_dimension = len(lower)
             # Unused display coordinates are zero, not an invented physical thickness.
@@ -275,7 +279,9 @@ def plot_mesh(params):
             values = np.asarray(values)[start:start + nx * ny]
             errors = np.asarray(errors)[start:start + nx * ny]
         else:
-            level = None
+            if params.get('level') not in (None, 0):
+                raise ValueError('当前网格只有一层；level仅允许0或省略')
+            level = 0 if len(mesh['dimension']) == 3 else None
         grid = np.full((ny, nx), np.nan)
         error_grid = np.full((ny, nx), np.nan)
         for j in range(ny):

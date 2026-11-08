@@ -15,17 +15,18 @@ from openmc_import import publish_directory
 from openmc_runtime import Error, ROOT, api, atomic_json, config, file_location, path_in_workspace
 
 
-def model_capabilities() -> dict:
-    return {'validation_backend':available_backend(),
+def model_capabilities(detail: str = 'summary') -> dict:
+    from response_detail import project
+    return project({'validation_backend':available_backend(),
             'validation_backend_scope':'MCP server input validation; the standalone builder may use fallback when its OpenMC Python lacks Pydantic',
             'builder_validation_backend_policy':'pydantic_if_available_else_fallback',
             'max_tally_values':1000000,'spec_schema':deepcopy(MODEL_SCHEMA),
             'supported':['explicit_nuclide_materials','CSG_planes_cylinders_spheres','boolean_regions',
                          'universes','2d_rectangular_lattices','point_box_neutron_sources',
-                         'eigenvalue_fixed_source','energy_material_mesh_tallies'],
+                         'eigenvalue_fixed_source','energy_material_particle_mesh_tallies'],
             'unsupported':['arbitrary_python_execution','CAD_in_model_spec','hexagonal_lattice_in_model_spec',
                            'automatic_physical_design','fine_tuned_model_generation'],
-            'note':'宿主模型可按schema组合新输入；工具不猜材料与物理参数。生成成功不代表几何、核数据或专业计算正确。'}
+            'note':'宿主模型可按schema组合新输入；工具不猜材料与物理参数。生成成功不代表几何、核数据或专业计算正确。'}, detail, 'capabilities')
 
 
 def build_model(case_dir: str, spec: dict) -> dict:
@@ -74,8 +75,8 @@ def build_model(case_dir: str, spec: dict) -> dict:
 
 
 MODEL_TOOLS=[
-    {'name':'openmc_model_capabilities','description':'发现声明式模型输入的受控组合建模范围、校验后端和完整参数schema；不是OpenMC全部API覆盖声明。',
-     'inputSchema':{'type':'object','properties':{},'additionalProperties':False},'outputSchema':{'type':'object'},'function':model_capabilities,
+    {'name':'openmc_model_capabilities','description':'发现受控组合建模范围与校验后端；默认摘要，detail=full取得完整参数schema；不是OpenMC全部API覆盖声明。',
+     'inputSchema':{'type':'object','properties':{'detail':{'type':'string','enum':['summary','full'],'default':'summary','description':'默认摘要；full返回完整建模Schema。'}},'additionalProperties':False},'outputSchema':{'type':'object'},'function':model_capabilities,
      'annotations':{'readOnlyHint':True,'idempotentHint':True,'openWorldHint':False}},
     {'name':'openmc_build_model','description':'按声明式模型输入组合新模型，经OpenMC Python API导出XML并读回；保留可重跑Python源码与校验包。无任意代码执行，不代表物理正确或微调生成。',
      'inputSchema':{'type':'object','properties':{

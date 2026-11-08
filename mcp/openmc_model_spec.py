@@ -93,7 +93,7 @@ def build(spec):
     import openmc
     materials = {}
     for s in spec['materials']:
-        m = openmc.Material(material_id=s['id'], name=s['name'])
+        m = openmc.Material(material_id=s['id'], name=s.get('name', ''))
         m.set_density(s['density_unit'], s['density'])
         for n in s['nuclides']:
             m.add_nuclide(n['name'], n['fraction'], s['percent_type'])
@@ -164,8 +164,10 @@ def build(spec):
                 filters.append(openmc.EnergyFilter(f['bins'], filter_id=next_filter_id))
             elif f['type'] == 'material':
                 filters.append(openmc.MaterialFilter(f['bins'], filter_id=next_filter_id))
+            elif f['type'] == 'particle':
+                filters.append(openmc.ParticleFilter(f['bins'], filter_id=next_filter_id))
             else:
-                mesh = openmc.RegularMesh(mesh_id=s['id'])
+                mesh = openmc.RegularMesh(mesh_id=f.get('mesh_id') or s['id'])
                 mesh.dimension = f['dimension']
                 mesh.lower_left = f['lower_left']
                 mesh.upper_right = f['upper_right']
@@ -175,6 +177,8 @@ def build(spec):
         tallies.append(tally)
     model = openmc.Model(geometry, openmc.Materials(list(materials.values())), settings, tallies)
     model.export_to_xml()
+    if not tallies:
+        openmc.Tallies().export_to_xml('tallies.xml')
     parsed = openmc.Model.from_xml()
     save_json(Path('model-spec.json'), spec)
     assumptions = model_assumptions(spec)
@@ -235,7 +239,7 @@ def checked_declarative_spec():
     spec_path = directory / 'model-spec.json'
     if (not expected or actual != expected or not spec_path.is_file()
             or digest(spec_path) != marker.get('model_spec_sha256')):
-        raise ValueError('声明式模型XML或model-spec已漂移，未覆盖；请重新导入为原生模型或从新spec重建')
+        raise ValueError('声明式模型XML或model-spec已漂移，未覆盖：' + str(declarative_integrity().get('reason')) + '；若要保留手改输入，用openmc_import_model(source_dir=当前算例,target_dir=新目录)导入为原生模型后继续；或从新spec重建')
     spec = json.loads(spec_path.read_text(encoding='utf-8'))
     validate_spec(spec)
     return spec

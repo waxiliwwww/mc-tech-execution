@@ -95,10 +95,11 @@ def import_model(source_dir: str, target_dir: str, api_check: bool = True) -> di
         raise Error('api_check须为布尔值')
     source = path_in_workspace(source_dir)
     target = path_in_workspace(target_dir, exists=False)
-    if (not source.is_dir() or source == path_in_workspace('.', exists=True)
-            or target.exists() or target == source or target.is_relative_to(source)
-            or source.is_relative_to(target)):
-        raise Error('源须为具体模型目录，目标须为不存在且与源无嵌套的目录')
+    if not source.is_dir():raise Error('source_dir不是模型目录；请提供含model.xml或materials/geometry/settings.xml的目录')
+    if source == path_in_workspace('.', exists=True):raise Error('source_dir不能是整个工作区；请选择具体模型输入目录')
+    if target.exists():raise Error('target_dir已存在；请选择新目录，保留原输入')
+    if target == source or target.is_relative_to(source) or source.is_relative_to(target):
+        raise Error('源与目标目录不能相同或互相嵌套；请选择源目录之外的新target_dir')
     for path in source.rglob('*'):
         if path.is_symlink() or not (stat.S_ISREG(path.stat().st_mode) or path.is_dir()):
             raise Error('源模型包含符号链接或特殊文件，未导入：' + path.relative_to(source).as_posix())

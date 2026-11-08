@@ -112,14 +112,17 @@ def _step_view(instance_case_dir, status):
     return view
 
 
-def example_status(instance_id: str, wait_seconds: int = 0) -> dict:
+def example_status(instance_id: str, wait_seconds: int = 0, detail: str = 'summary') -> dict:
+    if detail not in ('summary','full'):raise Error('detail须为summary或full')
     import time
     if type(wait_seconds) is not int or not 0 <= wait_seconds <= 30:
         raise Error('wait_seconds须为0..30秒；默认立即查询，等待超时不代表计算失败')
     deadline=time.monotonic()+wait_seconds
     while True:
         value=_example_status_once(instance_id)
-        if value['state']!='running' or time.monotonic()>=deadline:return value
+        if value['state']!='running' or time.monotonic()>=deadline:
+            from response_detail import project
+            return project(value, detail, 'example')
         time.sleep(min(.25,max(0,deadline-time.monotonic())))
 
 
@@ -234,13 +237,13 @@ def run_example_step(instance_id: str, step: str, threads: int = 1) -> dict:
 
 
 def cancel_example(instance_id: str) -> dict:
-    value = example_status(instance_id)
+    value = example_status(instance_id, detail='full')
     cancelled = []
     for step, job in value['steps'].items():
         if job['state'] not in jobs.TERMINAL:
             cancelled.append({'step': step, **jobs.cancel(job['job_id'])})
-    return {'instance_id': instance_id, 'cancellations': cancelled,
-            'note': '取消仅针对本实例正在运行的步骤；查询实例终态确认。'}
+    return {'instance_id': instance_id, 'state':value['state'], 'changed':bool(cancelled), 'cancellations': cancelled,
+            'note': ('当前仅prepared，没有运行计算，未取消实例也未删除输入；可继续提交步骤。' if value['state']=='prepared' and not cancelled else '取消仅针对本实例正在运行的步骤；查询实例终态确认。')}
 
 
 def read_example_results(instance_id: str, calculation_id: str | None = None, max_values: int = 1000) -> dict:
@@ -248,7 +251,7 @@ def read_example_results(instance_id: str, calculation_id: str | None = None, ma
     from openmc_tools import read_results
     if type(max_values) is not int or not 1 <= max_values <= 10000:
         raise Error('max_values须为1..10000；只影响返回预览，不改变StatePoint或图表数据')
-    value = example_status(instance_id)
+    value = example_status(instance_id, detail='full')
     artifacts = []
     for step, job in value['steps'].items():
         artifacts.append({'step': step, **list_artifacts('job', job['job_id'])})

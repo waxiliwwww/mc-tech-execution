@@ -168,7 +168,7 @@ async def workflow(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     source = parser.add_mutually_exclusive_group(required=True)
-    source.add_argument('--spec', help='客户端JSON模型文件；字段和单位见openmc_model_capabilities')
+    source.add_argument('--spec', help='客户端JSON模型文件；字段和单位见openmc_model_capabilities(detail=full)')
     source.add_argument('--source-dir', help='服务端MC_WORKSPACE内已有XML输入目录；不会上传本机文件')
     parser.add_argument('--case-dir', help='服务端工作区的新目录；省略自动产生唯一目录')
     parser.add_argument('--name', default='model-workflow', help='任务名称，可重名；结果仍按job_id区分')

@@ -93,6 +93,28 @@ def _generation_keff(point):
             'note': 'k_combined/std不可用，改用逐批k合并估计；与openmc_plot_convergence同口径。'}
 
 
+def statepoint_keff(point):
+    """Single final-k policy for status, result reading and report consumers."""
+    import math
+    if point.run_mode != 'eigenvalue': return {'keff':None,'warnings':[]}
+    value = point.keff
+    pair = [float(value.nominal_value), float(value.std_dev)]
+    clean = [v if math.isfinite(v) else None for v in pair]
+    block = {'mean':clean[0], 'std_dev':clean[1], 'source':'statepoint:k_combined'}
+    warnings = []
+    if None in clean:
+        fallback = _generation_keff(point)
+        if fallback:
+            fallback['fallback_from'] = 'statepoint的k_combined/std含非有限值'
+            block = fallback
+            warnings.append('keff：k_combined/std含非有限值，改用逐批k合并估计；不能据此判断是否收敛。')
+        else:
+            warnings.append('keff：k_combined/std含非有限值且没有可用的逐批k；mean/std保留为空，不替换为0，也不归因于未收敛。')
+    if block.get('std_dev') == 0:
+        warnings.append('keff标准差为0：估计器或采样退化，不能宣称高精度；摘要不播报为有效k结论。')
+    return {'keff':block, 'warnings':warnings}
+
+
 def _render_with_engine(here: Path, plot, params: dict, scratch, target: Path):
     """引擎直接读原XML出图：复制算例XML与依赖数据进scratch，写plots.xml后运行openmc --plot。
     用于SDK单文件导出丢宏观截面引用的多群算例。返回(是否成功, 失败原因)。"""
@@ -108,6 +130,17 @@ def _render_with_engine(here: Path, plot, params: dict, scratch, target: Path):
         for pattern in ('*.h5', '*.hdf5', '*.h5m'):
             for path in sorted(here.glob(pattern)):
                 shutil.copy2(path, folder / path.name)
+        # Same reserved-void normalization as the SDK path; only plotting scratch.
+        import xml.etree.ElementTree as ET
+        omitted = set(params.get('_plot_omitted_material_ids', []))
+        if omitted:
+            inputs = [folder/'model.xml'] if (folder/'model.xml').exists() else [folder/'materials.xml']
+            for path in inputs:
+                tree=ET.parse(path); root=tree.getroot()
+                section=root.find('materials') if root.tag=='model' else root
+                for item in list(section.findall('material')):
+                    if int(item.get('id')) in omitted:section.remove(item)
+                tree.write(path,encoding='utf-8',xml_declaration=True)
         openmc.Plots([plot]).export_to_xml(str(folder / 'plots.xml'))
         executable = params['_openmc_exec']
         command = ([str(executable)] if isinstance(executable, str)
@@ -482,6 +515,9 @@ def execute(action: str, params: dict) -> dict:
         return {'scientific_checks':science,'warnings':advisories_warnings(science), 'api_parsed': True, 'cells': len(model.geometry.get_all_cells()),
                 'materials': len(model.materials), 'tallies': len(model.tallies),
                 'note': '公开API能够读取模型；未进行几何重叠、核数据完备性或物理正确性判定。'}
+    if action == 'result-keff':
+        with openmc.StatePoint(params['statepoint'], autolink=False) as point:
+            return statepoint_keff(point)
     if action == 'results':
         limit = params.get('max_values', 1000)
         warnings = []
@@ -526,22 +562,9 @@ def execute(action: str, params: dict) -> dict:
                                 'mesh': mesh,
                                 'preview_points': _mesh_points(tally.mean, tally.std_dev, selected, mesh),
                                 'normalization': 'OpenMC原始计分归一化；未换算为工程功率或实际源强。'})
-            keff_values = values([keff.nominal_value, keff.std_dev], cap=2, scope='keff') if keff is not None else None
-            keff_block = None if keff is None else {'mean': keff_values[0], 'std_dev': keff_values[1],
-                                                    'source': 'statepoint:k_combined'}
-            if keff_block is not None and (keff_block['mean'] is None or keff_block['std_dev'] is None):
-                # The generic values() warning says "kept empty"; if a fallback
-                # below supplies a value, that sentence would be false.
-                warnings = [warning for warning in warnings if not warning.startswith('keff:')]
-                fallback = _generation_keff(point)
-                if fallback:
-                    fallback['fallback_from'] = 'statepoint的k_combined/std含非有限值'
-                    keff_block = fallback
-                    warnings.append('keff：k_combined/std含非有限值，改用逐批k合并估计；'
-                                    '不能据此判断是否收敛。')
-                else:
-                    warnings.append('keff：k_combined/std含非有限值且没有可用的逐批k；'
-                                    'mean/std保留为空，不替换为0，也不归因于未收敛。')
+            selected_keff = statepoint_keff(point)
+            keff_block = selected_keff['keff']
+            warnings.extend(selected_keff['warnings'])
             from openmc_scientific_checks import assess_directory, advisories_warnings
             science = assess_directory()
             warnings.extend(advisories_warnings(science))
@@ -618,6 +641,20 @@ def execute(action: str, params: dict) -> dict:
         model = (openmc.Model.from_model_xml('model.xml') if Path('model.xml').exists()
                  else openmc.Model.from_xml())
         here = Path.cwd()
+        # DAGMC reserved mat:graveyard/void/vacuum tags are engine void, not
+        # physical materials. Omit redundant *empty* declarations in scratch;
+        # retain any material referenced by a real CSG cell/override.
+        dag = [u for u in model.geometry.get_all_universes().values() if isinstance(u, openmc.DAGMCUniverse)]
+        referenced = set(model.geometry.get_all_materials())
+        for universe in dag:
+            for material in getattr(universe,'material_overrides',{}).values():
+                for item in (material if isinstance(material,list) else [material]):
+                    if item is not None:referenced.add(item.id)
+        omitted = [m.id for m in model.materials if dag and m.name.lower() in ('graveyard','void','vacuum')
+                   and m.id not in referenced and not m.get_nuclides() and not getattr(m,'macroscopic',None)]
+        if omitted:
+            model.materials = openmc.Materials([m for m in model.materials if m.id not in omitted])
+        params = {**params, '_plot_omitted_material_ids':omitted}
         supplied_origin = params.get('origin')
         supplied_width = params.get('width')
         if supplied_origin is not None and supplied_width is not None:
@@ -677,6 +714,9 @@ def execute(action: str, params: dict) -> dict:
                 'width_source': 'user' if supplied_width is not None else 'geometry_bounding_box',
                 'origin_source': 'user' if supplied_origin is not None else 'bounding_box_plane_center_slice_0',
                 'input_files_modified': False,
+                'plotting_omitted_reserved_void_material_ids': omitted,
+                'coverage_verified': False,
+                'coverage_note': '切片只显示当前平面；空白可能是域外或未填充区域，不证明几何覆盖。用geometry_check核对输运路径；不自动补材料。',
                 'materials': len(model.materials),
                 'cells': len(model.geometry.get_all_cells()),
                 'note': '切片图由OpenMC引擎绘制；宽度/原点单位cm，显示范围以返回的width/origin为准。'
@@ -752,90 +792,9 @@ def execute(action: str, params: dict) -> dict:
                 'chain_file': chain, 'note': '燃耗值按功率×时间/初始重金属质量估算（MWd/kgHM）；'
                                             '核素质量为该材料的质量，非密度或份额；Xe135/Sm149是热谱燃耗'
                                             '常见毒物，若链/材料没有则列入unavailable，不伪造0。'}
-    if action == 'add-tally':
-        from pathlib import Path as _Path
-        tallies_path = _Path('tallies.xml')
-        model_path = _Path('model.xml')
-        # 引擎侧的score校验：未知score会在输运时以“Unknown reaction name”终止，
-        # 这里提前用与引擎同一份命名表拒绝，避免把错误推迟到计算阶段。
-        from openmc.data import REACTION_MT
-        base_scores = {'flux', 'total', 'scatter', 'absorption', 'fission', 'nu-fission',
-                       'kappa-fission', 'heating', 'damage-energy', 'current', 'events',
-                       'inverse-velocity', 'delayed-nu-fission', 'prompt-nu-fission', 'decay-rate'}
-        accepted = set(REACTION_MT) | base_scores
-        invalid = [str(s) for s in params['scores'] if str(s) not in accepted]
-        if invalid:
-            import difflib
-            hints = []
-            for name in invalid:
-                close = difflib.get_close_matches(name, sorted(accepted), n=3, cutoff=0.6)
-                hints.append(name + ('（最接近：' + '/'.join(close) + '）' if close else ''))
-            raise ValueError('score不在OpenMC可识别列表：' + '；'.join(hints))
-        model = openmc.Model.from_model_xml(str(model_path)) if model_path.is_file() else None
-        tallies = (model.tallies if model is not None else
-                   openmc.Tallies.from_xml(str(tallies_path)) if tallies_path.is_file() else openmc.Tallies())
-        used = {int(tally.id) for tally in tallies}
-        identifier = params.get('tally_id')
-        if identifier is None:
-            identifier = max(used, default=0) + 1
-        if identifier in used:
-            raise ValueError('tally_id已存在：' + str(identifier))
-        filters = []
-        for spec in params.get('filters') or []:
-            kind = spec['type']
-            if kind == 'energy':
-                filters.append(openmc.EnergyFilter(spec['bins']))
-            elif kind == 'material':
-                filters.append(openmc.MaterialFilter(spec['bins']))
-            elif kind == 'particle':
-                filters.append(openmc.ParticleFilter(spec['bins']))
-            elif kind == 'mesh':
-                mesh = openmc.RegularMesh(mesh_id=spec.get('mesh_id'))
-                mesh.dimension = tuple(spec['dimension'])
-                mesh.lower_left = tuple(spec['lower_left'])
-                mesh.upper_right = tuple(spec['upper_right'])
-                filters.append(openmc.MeshFilter(mesh))
-            else:
-                raise ValueError('不支持的filter类型：' + str(kind))
-        tally = openmc.Tally(tally_id=identifier, name=params.get('name') or '',
-                             scores=list(params['scores']), filters=filters)
-        tallies.append(tally)
-        if model is None:
-            tallies.export_to_xml(str(tallies_path))
-            input_file = 'tallies.xml'
-        else:
-            import xml.etree.ElementTree as ET
-            original = ET.parse(model_path)
-            model.tallies = tallies
-            fd, pending = tempfile.mkstemp(prefix='.model-tally-', suffix='.xml', dir='.')
-            os.close(fd)
-            try:
-                model.export_to_model_xml(pending)
-                # The OpenMC reader resolves relative DAGMC/data paths in memory.
-                # Replace only the tally section, so adding statistics cannot
-                # bind the job to the original input directory or alter physics.
-                replacement = ET.parse(pending).getroot().find('tallies')
-                root = original.getroot()
-                existing = root.find('tallies')
-                if existing is None:
-                    root.append(replacement)
-                else:
-                    index = list(root).index(existing)
-                    root.remove(existing)
-                    root.insert(index, replacement)
-                original.write(pending, encoding='utf-8', xml_declaration=True)
-                openmc.Model.from_model_xml(pending)
-                os.replace(pending, model_path)
-            finally:
-                if os.path.exists(pending):
-                    os.unlink(pending)
-            input_file = 'model.xml'
-        from openmc_scientific_checks import assess_directory, advisories_warnings
-        science = assess_directory()
-        return {'scientific_checks':science,'warnings':advisories_warnings(science), 'tally_id': identifier, 'name': tally.name, 'scores': list(tally.scores),
-                'filters': [filter_summary(f) for f in filters],
-                'tally_count': len(tallies), 'input_file': input_file,
-                'note': '已写入' + input_file + '；计分口径为OpenMC原始归一化，未换算功率或实际源强。'}
+    if action in ('add-tally','update-tally','delete-tally'):
+        from openmc_tally_ops import mutate
+        return mutate({**params,'operation':{'add-tally':'add','update-tally':'update','delete-tally':'delete'}[action]})
     raise ValueError('Unsupported OpenMC API action')
 
 

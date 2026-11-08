@@ -260,6 +260,7 @@ def validate_semantics(spec, backend='fallback'):
             raise ValidationError('盒源下界必须小于上界')
 
     total_tally_values = 0
+    meshes = {}
     for tally in spec.get('tallies', []):
         tally_values = len(tally['scores']) * len(tally.get('nuclides', ['total']))
         kinds = [item['type'] for item in tally.get('filters', [])]
@@ -267,6 +268,11 @@ def validate_semantics(spec, backend='fallback'):
             raise ValidationError('同一tally过滤类型不可重复')
         for item in tally.get('filters', []):
             if item['type'] == 'mesh':
+                mesh_id = item.get('mesh_id') or tally['id']
+                definition = (item['dimension'], item['lower_left'], item['upper_right'])
+                if mesh_id in meshes and meshes[mesh_id] != definition:
+                    raise ValidationError(f'mesh_id={mesh_id}被不同网格定义重复使用')
+                meshes[mesh_id] = definition
                 if any(value < 1 for value in item['dimension']):
                     raise ValidationError('网格每维必须为正整数')
                 tally_values *= math.prod(item['dimension'])

@@ -22,6 +22,7 @@ from openmc_runtime import (Error, ROOT, atomic_json, command, config, path_in_w
                             provenance, relative, workspace)
 
 TERMINAL = {'completed', 'failed', 'cancelled', 'interrupted'}
+KEFF_READER_ID = hashlib.sha256(Path(__file__).with_name('openmc_worker.py').read_bytes()).hexdigest()
 
 
 def is_old_output(name: str) -> bool:
@@ -396,6 +397,48 @@ def _progress(directory: Path, value: dict) -> dict:
     return progress
 
 
+def _final_keff(directory, record):
+    """Small StatePoint projection cached by recorded hash and file identity.
+
+    Read-only status never starts a solver. A changed file invalidates the cache
+    and is hash-verified again; full result reads always verify original bytes.
+    """
+    if record.get('mode') in ('plot','deplete'):return None
+    workflow=record.get('example_workflow')
+    if workflow:
+        from official_catalog import definition
+        if definition(workflow['example_id'])['workflow']=='notebook':return None
+    names = [n for n in record.get('output_files',{}) if re.fullmatch(r'statepoint\.\d+\.h5',n)]
+    if not names:return None
+    name=max(names,key=lambda n:int(n.split('.')[1])); point=directory/'work'/name
+    try:
+        stat=point.stat()
+        key=[record['output_files'][name],stat.st_size,stat.st_mtime_ns,stat.st_ctime_ns,stat.st_ino,KEFF_READER_ID]
+        cache=directory/'.status-keff.json'
+        try:
+            if cache.is_file() and not cache.is_symlink() and cache.stat().st_size < 65536:
+                value=json.loads(cache.read_text())
+                cached=value.get('result') if isinstance(value,dict) else None
+                if (value.get('key')==key if isinstance(value,dict) else False) and isinstance(cached,dict):
+                    k=cached.get('keff')
+                    valid_k=(k is None or (isinstance(k,dict) and k.get('source') in ('statepoint:k_combined','statepoint:k_generation')
+                             and all(v is None or (type(v) in (int,float) and __import__('math').isfinite(v)) for v in (k.get('mean'),k.get('std_dev')))))
+                    if (valid_k and 'keff' in cached and isinstance(cached.get('warnings'),list)
+                            and cached.get('statepoint_sha256')==record['output_files'][name]):return cached
+        except (OSError,ValueError,TypeError):
+            pass  # Disposable cache; never downgrade an intact original result.
+        from openmc_result_identity import select_point
+        from openmc_runtime import api
+        point=select_point(directory,record)
+        result=api('result-keff',directory/'work',{'statepoint':point.name},record['runtime'])
+        result.update(statepoint=relative(point),statepoint_sha256=record['output_files'][name])
+        try:atomic_json(cache,{'key':key,'result':result})
+        except OSError:pass  # Cache write failure does not invalidate a verified read.
+        return result
+    except (Error,OSError,ValueError,KeyError,TypeError) as exc:
+        return {'keff':None,'warnings':['最终StatePoint的k未能核实：'+str(exc)]}
+
+
 def status(job_id: str) -> dict:
     directory = job_directory(job_id)
     value = read(directory)
@@ -425,6 +468,16 @@ def status(job_id: str) -> dict:
     result['files'] = sorted(value.get('output_files', {}))
     progress = result.get('progress') or {}
     k, summary_source = _summary_keff(progress)
+    if value['state'] == 'completed' and value.get('mode') not in ('deplete','plot'):
+        final = _final_keff(directory, value)
+        if final is not None:
+            result['final_result'] = final
+            k = final.get('keff')
+            summary_source = k.get('source') if k else None
+            progress['log_keff_combined'] = progress.get('keff_combined')
+            progress['keff_combined'] = k if summary_source == 'statepoint:k_combined' else None
+            progress['keff_selected'] = k
+            progress['keff_note'] = None if _usable_keff(k) else '最终StatePoint的k或标准差不可用；请查看final_result.warnings，不改报日志估计器。'
     if summary_source:
         progress['keff_source'] = summary_source
         result['keff_source'] = summary_source
@@ -438,6 +491,8 @@ def status(job_id: str) -> dict:
             source = summary_source or '未知来源'
             if source.startswith('solver.log:RESULTS:Combined') or source.startswith('statepoint:k_combined'):
                 label = 'Combined k'
+            elif source == 'statepoint:k_generation':
+                label = '逐批k回退（非Combined，见final_result.warnings）'
             elif '批次表Average' in source:
                 label = '批次Average（非Combined）'
             elif source.startswith('solver.log:RESULTS:'):

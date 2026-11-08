@@ -68,7 +68,7 @@ def render(target, data, runtime, format, image=None):
 def export_job(job_id: str, format: str):
     from openmc_tools import read_results
     from openmc_plots import plot_results
-    data = read_results(job_id)
+    data = read_results(job_id, detail='full')
     from openmc_tools import _report_metadata
     target = jobs.job_directory(job_id); runtime = jobs.read(target)['runtime']
     data['metadata'] = _report_metadata(target)
@@ -91,7 +91,7 @@ def export_selected_job(job_id: str, format: str, selection: dict):
     chart = plot_results(job_id, **selection)
     image = target / chart['image']
     series = json.loads(image.with_suffix('.json').read_text())
-    data = read_results(job_id, max_values=1)
+    data = read_results(job_id, max_values=1, detail='full')
     data.pop('tallies')  # The unselected job preview is not the requested report data.
     # Every format uses the same metadata from the submitted input snapshot.
     # In particular, binary reports must not lose the header at this branch.

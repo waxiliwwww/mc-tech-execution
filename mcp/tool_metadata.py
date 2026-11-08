@@ -101,6 +101,8 @@ EXAMPLES = {
 }
 
 RESULTS = {
+    'openmc_update_tally':'before/after说明具体计分改动；changed_files列输入修改，declarative_source_synchronized说明声明式源同步；已提交作业快照不变。',
+    'openmc_delete_tally':'tally_id为已删除的计分；before保留原定义，其余计分与旧作业快照保留，重新计算才反映删除。',
     'diagnose_log': 'findings含证据行号和规则提示；空列表不表示输入正确。',
     'preview_repair': 'plan_id与diff是待确认的差异；创建计划不修改输入。',
     'read_repair_plan': 'diff、state、file_unchanged用于展示当前计划和核对确认期间的变化。',

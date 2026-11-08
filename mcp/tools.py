@@ -5,7 +5,7 @@ from adapters import ToolExecutionError
 from business import (MCInputError, apply_repair, diagnose_log, get_case, list_cases, preview_repair,
                       read_repair_plan, search_knowledge)
 from openmc_tools import (compare_jobs, create_model, environment, export_report,
-                          preview_input, read_results, storage_report, submit_job,
+                          preview_input, read_results, storage_report, submit_job, update_tally, delete_tally,
                           validate_inputs)
 from openmc_jobs import cancel as cancel_job, status as job_status
 from openmc_scan import list_parameters, prepare_case, submit_scan, status as scan_status, cancel as cancel_scan
@@ -18,7 +18,7 @@ from openmc_cad import build_dagmc_model, convert_cad, inspect_step as inspect_c
 from openmc_faults import check_sample, list_samples
 from openmc_tools import configure_depletion, define_tally, read_depletion, view_geometry
 from openmc_diagnostics import diagnose_job, prepare_repair, recheck_repair
-from tool_metadata import document_tools
+from tool_metadata import document_tools, COMMON
 from official_catalog import list_official_examples, describe as get_official_example
 from example_workflows import (prepare_official_example, run_example_step, example_status,
                                cancel_example, read_example_results)
@@ -313,6 +313,30 @@ TOOLS += MODEL_TOOLS + IMPORT_TOOLS
 # Standard MCP hints describe the business effect. Query bookkeeping/derived
 # caches do not change model inputs or start/modify calculations. Mutating tools
 # keep the conservative default and are never marked read-only by name pattern.
+# Updates/deletes use the same parameter grammar and validation as define_tally.
+_tally_definition = next(t for t in TOOLS if t['name']=='openmc_define_tally')
+TOOLS += [
+    {'name':'openmc_update_tally','description':'按tally_id修改算例中的计分，省略的字段保留；filters=[]清除过滤器。修改前校验引用与score，声明式源/XML/指纹同步，已提交作业快照不变。返回具体前后定义；要获得新结果需重新计算。',
+     'inputSchema':schema(_tally_definition['inputSchema']['properties'], ['case_dir','tally_id']), 'outputSchema':OUTPUT,'function':update_tally,
+     'annotations':{'readOnlyHint':False,'destructiveHint':True,'idempotentHint':True}},
+    {'name':'openmc_delete_tally','description':'按tally_id删除用户算例中的计分，保留其它计分、几何、材料、设置及已提交作业快照；声明式源与指纹同步。编号不存在会报明原因。',
+     'inputSchema':schema({'case_dir':TEXT,'tally_id':{'type':'integer','minimum':1}}, ['case_dir','tally_id']), 'outputSchema':OUTPUT,'function':delete_tally,
+     'annotations':{'readOnlyHint':False,'destructiveHint':True,'idempotentHint':True}},
+]
+for _tool in TOOLS:
+    if _tool['name'] in ('openmc_read_results','openmc_example_status','openmc_prepare_repair'):
+        _tool['inputSchema']['properties']['detail'] = {'type':'string','enum':['summary','full'],'default':'summary','description':'默认摘要，保留结果/来源/告警；full返回详细元数据和完整步骤证据。'}
+
+for _tool in TOOLS:
+    if _tool['name'] in ('openmc_define_tally','openmc_update_tally','openmc_delete_tally'):
+        from copy import deepcopy
+        _tool['inputSchema']['properties']=deepcopy(_tool['inputSchema']['properties'])
+        _fields=_tool['inputSchema']['properties']
+        _fields['tally_id']['description'] = ('算例输入中的计分ID；define省略时分配未使用编号。更新/删除必须显式提供已有ID，从preview_input.summary或输入定义中确认，不是job_id。')
+        if _tool['name']=='openmc_update_tally':
+            for _field in ('scores','filters','name'):
+                _fields[_field]['description'] = _fields[_field].get('description',COMMON.get(_field,'')) + ' 更新时省略保留原值；filters=[]显式清除过滤器。'
+
 READ_ONLY_TOOLS={
     'diagnose_log','read_repair_plan','search_knowledge','list_knowledge_sources',
     'read_knowledge','list_cases','get_case','openmc_environment',

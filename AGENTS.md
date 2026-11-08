@@ -39,3 +39,5 @@
 | 源批次不足时不得把 σ 当工程结论 | `tests/test_statistical_source_gate.py` |
 | 导入不得搬运生成的 views | `tests/test_import_generated_views.py` |
 | 二维网格读回与默认报告不越界，源码预览按需展开 | `tests/test_mesh_points_2d.py` + `tests/test_selected_report_real.py` + `tests/test_openmc_preview.py` |
+| 计分变更后派生/扫描不得丢计分，拒绝时不得改源输入；发布失败须回滚 | `tests/test_tally_workflow_real.py` + `tests/test_workflow_boundaries.py` |
+| 完成态状态和读结果使用同一StatePoint与k策略，摘要不得隐藏非有限/零标准差告警 | `tests/test_domain_mcp_real.py` + `tests/test_keff_summary_fallback.py` |

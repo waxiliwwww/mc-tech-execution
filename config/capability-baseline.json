@@ -183,6 +183,25 @@
         "tests/test_runtime_identity.py"
       ],
       "gate": "real_mcp"
+    },
+    {
+      "id": "tally_lifecycle_and_detail_projection",
+      "status": "supported",
+      "surface": [
+        "openmc_define_tally",
+        "openmc_update_tally",
+        "openmc_delete_tally",
+        "openmc_read_results",
+        "openmc_model_capabilities"
+      ],
+      "input": "按ID更新/删除计分；detail=summary/full；默认摘要",
+      "output": "同步声明式重建源/输入指纹；失败回滚；结果/来源/告警保留",
+      "evidence": [
+        "tests/test_workflow_boundaries.py",
+        "tests/test_tally_workflow_real.py",
+        "tests/test_domain_mcp_real.py"
+      ],
+      "gate": "offline_and_real"
     }
   ],
   "restrictions": [
@@ -219,6 +238,15 @@
       "impact": "mode=plot缺少绘图定义时在创建作业前提示；不替用户生成视角或改模型。",
       "migration": "几何查看用openmc_view_geometry；或提供plots.xml/model.xml内plots后提交。",
       "user_decision": "2026-11-08用户确认缺绘图定义时提前提示、不启动失败作业。"
+    },
+    {
+      "id": "summary_default_0140",
+      "capability": "tally_lifecycle_and_detail_projection",
+      "reason": "用户批准四类重响应默认摘要；不删结果/来源/告警或完整证据",
+      "user_decision": "2026-11-08：默认摘要",
+      "migration": "detail=full获取完整信息；旧修复计划read_repair_plan读取，不重复创建",
+      "kind": "guarded",
+      "impact": "四类查询/准备默认不内联详细元数据；结果值、告警、来源与修复diff仍保留，完整证据不删除"
     }
   ]
 }

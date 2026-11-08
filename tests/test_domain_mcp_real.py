@@ -73,7 +73,7 @@ class DomainMCP(unittest.IsolatedAsyncioTestCase):
                     result = await session.call_tool(name, data)
                     self.assertFalse(result.isError, str(result))
                     return result.structuredContent or json.loads(result.content[0].text)
-                capabilities = await call('openmc_model_capabilities', {})
+                capabilities = await call('openmc_model_capabilities', {'detail':'full'})
                 found = {t.name:t for t in (await session.list_tools()).tools}
                 self.assertEqual(found['openmc_build_model'].inputSchema['properties']['spec'],
                                  capabilities['spec_schema'])
@@ -86,6 +86,24 @@ class DomainMCP(unittest.IsolatedAsyncioTestCase):
                 spec['settings']['seed'] = 71
                 built = await call('openmc_build_model', {'case_dir':'caller/new-model','spec':spec})
                 self.assertTrue(built['api_parsed'])
+                # A normal researcher sequence: add -> change -> remove -> derive.
+                source_before = {p.name:p.read_bytes() for p in (self.workspace/'caller/new-model').glob('*.xml')}
+                rejected = await session.call_tool('openmc_define_tally', {'case_dir':'caller/new-model',
+                    'scores':['flux'],'filters':[{'type':'material','bins':[99]}],'tally_id':9})
+                self.assertTrue(rejected.isError)
+                self.assertEqual({p.name:p.read_bytes() for p in (self.workspace/'caller/new-model').glob('*.xml')},source_before)
+                await call('openmc_define_tally', {'case_dir':'caller/new-model','scores':['flux'],
+                    'filters':[{'type':'material','bins':[1]}],'tally_id':9})
+                changed=await call('openmc_update_tally', {'case_dir':'caller/new-model','tally_id':9,'scores':['fission']})
+                self.assertTrue(changed['declarative_source_synchronized'])
+                await call('openmc_define_tally', {'case_dir':'caller/new-model','scores':['flux'],'tally_id':10})
+                await call('openmc_delete_tally', {'case_dir':'caller/new-model','tally_id':10})
+                derived=await call('openmc_prepare_case',{'case_dir':'caller/new-model','target_dir':'derived-model',
+                    'parameters':{'settings.particles':321}})
+                self.assertTrue(derived['parameter_diff']['verified'])
+                derived_spec=json.loads((self.workspace/'derived-model/model-spec.json').read_text())
+                self.assertEqual(next(t for t in derived_spec['tallies'] if t['id']==9)['scores'],['fission'])
+                self.assertNotIn(10,[t['id'] for t in derived_spec['tallies']])
                 imported = await call('openmc_import_model', {'source_dir':'caller/new-model',
                                                             'target_dir':'imported-model'})
                 self.assertTrue(imported['validation']['openmc_api']['api_parsed'])
@@ -109,6 +127,8 @@ class DomainMCP(unittest.IsolatedAsyncioTestCase):
                 named = await call('openmc_list_jobs', {'name':'陌生组件计算'})
                 self.assertEqual([j['job_id'] for j in named['jobs']], [self.identifier])
                 result = await call('openmc_read_results', {'job_id':self.identifier})
+                self.assertEqual(status['final_result']['keff'],result['keff'])
+                self.assertEqual(status['final_result']['statepoint_sha256'],result['statepoint_sha256'])
                 selection = {'job_id':self.identifier,'tally_id':1,'score':'flux'}
                 chart = await call('openmc_plot_results', selection)
                 report = await call('openmc_export_report', {**selection,'format':'markdown'})

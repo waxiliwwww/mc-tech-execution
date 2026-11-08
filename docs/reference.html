@@ -559,7 +559,7 @@
 <p class="source">函数：<a href="../mcp/openmc_jobs.py">mcp/openmc_jobs.py</a>。</p></details>
 <details class="tool" id="openmc_read_results"><summary>openmc_read_results
 <span class="tool-purpose">通过官方StatePoint读取已成功计算的keff及tally均值/标准差；保留计分维度、数据来源和截断说明，不进行专业验收。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>job_id</td><td>string</td><td>是</td><td>不可省略</td><td>计算编号，直接使用openmc_submit_job或扫描子项返回的job_id；不是目录、文件名或scan_id。查询/读取不会自动提交新计算。</td><td>—</td></tr><tr><td>max_values</td><td>integer</td><td>否</td><td>1000</td><td>每个计分结果返回的预览值数量上限。截断会标记；不改变原StatePoint，绘图按选择读取完整数据。</td><td>—</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>job_id</td><td>string</td><td>是</td><td>不可省略</td><td>计算编号，直接使用openmc_submit_job或扫描子项返回的job_id；不是目录、文件名或scan_id。查询/读取不会自动提交新计算。</td><td>—</td></tr><tr><td>max_values</td><td>integer</td><td>否</td><td>1000</td><td>每个计分结果返回的预览值数量上限。截断会标记；不改变原StatePoint，绘图按选择读取完整数据。</td><td>—</td></tr><tr><td>detail</td><td>string</td><td>否</td><td>&quot;summary&quot;</td><td>默认摘要，保留结果/来源/告警；full返回详细元数据和完整步骤证据。</td><td>—</td></tr></tbody></table></div>
 <h3>返回怎么看</h3><p>keff与tallies保留均值、标准差、定义及截断标识；不可用统计量为null，warnings按作用域加前缀（keff:/tally:）解释原因。keff.source标明出处（statepoint:k_combined | statepoint:k_generation）；k_combined含非有限值时改用逐批k合并估计并带fallback_from，与openmc_plot_convergence同口径。tallies的mean/std_dev是preview_indices对应的预览，不是前N个原始值；网格tally的preview_policy=mesh_nonzero_first、mesh字段给出dimension/lower_left/upper_right/indexing，preview_points给出(i,j,k)与中心坐标；filter_selection.bins按OpenMC MeshFilter从1开始的[i,j,k]三元组，不是扁平序号或mesh id；zero_values/non_finite_values及zero_mean_std_values说明零值；均值与标准差均为0时给警告，不认定物理零。scientific_checks给出多群边界及温度元数据检查，partial/unavailable不算通过。statepoint_context标明读到的是第几个StatePoint（燃耗作业有时间步，末步不等于初始状态）并指向openmc_read_depletion。statistical_adequacy按k相对σ给工程分级（low_statistics_preview/engineering_estimate/converged_indicator/unusable/not_applicable），仅描述相对σ，precision_only=true、source_convergence_verified=false；旧grade名converged_indicator不表示已验证源收敛。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>job_id</td><td>计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。</td></tr><tr><td>keff</td><td>本征值mean和std_dev；不可用时保留null，不能解释为零误差。</td></tr><tr><td>warnings</td><td>统计量等不确定性提示，不能因工具调用成功而忽略。</td></tr><tr><td>provenance</td><td>数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
@@ -578,6 +578,15 @@
       &quot;maximum&quot;: 10000,
       &quot;description&quot;: &quot;每个计分结果返回的预览值数量上限。截断会标记；不改变原StatePoint，绘图按选择读取完整数据。&quot;,
       &quot;default&quot;: 1000
+    },
+    &quot;detail&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;summary&quot;,
+        &quot;full&quot;
+      ],
+      &quot;default&quot;: &quot;summary&quot;,
+      &quot;description&quot;: &quot;默认摘要，保留结果/来源/告警；full返回详细元数据和完整步骤证据。&quot;
     }
   },
   &quot;required&quot;: [
@@ -900,7 +909,7 @@
 <p class="source">函数：<a href="../mcp/openmc_diagnostics.py">mcp/openmc_diagnostics.py</a>。</p></details>
 <details class="tool" id="openmc_prepare_repair"><summary>openmc_prepare_repair
 <span class="tool-purpose">为失败作业复制新的普通算例目录，并按唯一且有依据的建议生成修复差异，不应用修改。当前仅自动准备run_mode近似拼写；必须展示plan.diff并取得真人确认。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>job_id</td><td>string</td><td>是</td><td>不可省略</td><td>计算编号，直接使用openmc_submit_job或扫描子项返回的job_id；不是目录、文件名或scan_id。查询/读取不会自动提交新计算。</td><td>—</td></tr><tr><td>target_dir</td><td>string</td><td>是</td><td>不可省略</td><td>新副本目录，相对服务端MC_WORKSPACE，必须尚不存在且位于原算例之外；原输入保留。后续计算使用返回的新case_dir。</td><td>&quot;cases/my-case-copy&quot;</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>job_id</td><td>string</td><td>是</td><td>不可省略</td><td>计算编号，直接使用openmc_submit_job或扫描子项返回的job_id；不是目录、文件名或scan_id。查询/读取不会自动提交新计算。</td><td>—</td></tr><tr><td>target_dir</td><td>string</td><td>是</td><td>不可省略</td><td>新副本目录，相对服务端MC_WORKSPACE，必须尚不存在且位于原算例之外；原输入保留。后续计算使用返回的新case_dir。</td><td>&quot;cases/my-case-copy&quot;</td></tr><tr><td>detail</td><td>string</td><td>否</td><td>&quot;summary&quot;</td><td>默认摘要，保留结果/来源/告警；full返回详细元数据和完整步骤证据。</td><td>—</td></tr></tbody></table></div>
 <h3>返回怎么看</h3><p>case_dir是保留原失败后创建的修复副本，plan.diff待用户确认，未应用或重算。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>case_dir</td><td>输入目录，相对服务端MC_WORKSPACE；生成/修改后用此目录继续校核或计算。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
@@ -920,6 +929,15 @@
       &quot;examples&quot;: [
         &quot;cases/my-case-copy&quot;
       ]
+    },
+    &quot;detail&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;summary&quot;,
+        &quot;full&quot;
+      ],
+      &quot;default&quot;: &quot;summary&quot;,
+      &quot;description&quot;: &quot;默认摘要，保留结果/来源/告警；full返回详细元数据和完整步骤证据。&quot;
     }
   },
   &quot;required&quot;: [
@@ -2040,7 +2058,7 @@
 <p class="source">函数：<a href="../mcp/example_workflows.py">mcp/example_workflows.py</a>。</p></details>
 <details class="tool" id="openmc_example_status"><summary>openmc_example_status
 <span class="tool-purpose">查询官方例题各步骤的真实状态、日志尾部、job_id和下一步；步骤case_dir指向用户算例，job_case_dir为作业工作副本；失败/取消不伪装成完成，也不自动重新提交。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>instance_id</td><td>string</td><td>是</td><td>不可省略</td><td>准备官方例题返回的instance_id；关联该实例的各步骤和计算编号。</td><td>—</td></tr><tr><td>wait_seconds</td><td>integer</td><td>否</td><td>0</td><td>可选有界等待秒数，默认0立即返回；运行中可用30等待本步骤变化，减少反复轮询。到时仍运行不代表失败，不要重复提交。</td><td>—</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>instance_id</td><td>string</td><td>是</td><td>不可省略</td><td>准备官方例题返回的instance_id；关联该实例的各步骤和计算编号。</td><td>—</td></tr><tr><td>wait_seconds</td><td>integer</td><td>否</td><td>0</td><td>可选有界等待秒数，默认0立即返回；运行中可用30等待本步骤变化，减少反复轮询。到时仍运行不代表失败，不要重复提交。</td><td>—</td></tr><tr><td>detail</td><td>string</td><td>否</td><td>&quot;summary&quot;</td><td>默认摘要，保留结果/来源/告警；full返回详细元数据和完整步骤证据。</td><td>—</td></tr></tbody></table></div>
 <h3>返回怎么看</h3><p>查询官方例题各步骤的真实状态、日志尾部、job_id和下一步；步骤case_dir指向用户算例，job_case_dir为作业工作副本；失败/取消不伪装成完成，也不自动重新提交。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
@@ -2057,6 +2075,15 @@
       &quot;maximum&quot;: 30,
       &quot;description&quot;: &quot;可选有界等待秒数，默认0立即返回；运行中可用30等待本步骤变化，减少反复轮询。到时仍运行不代表失败，不要重复提交。&quot;,
       &quot;default&quot;: 0
+    },
+    &quot;detail&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;summary&quot;,
+        &quot;full&quot;
+      ],
+      &quot;default&quot;: &quot;summary&quot;,
+      &quot;description&quot;: &quot;默认摘要，保留结果/来源/告警；full返回详细元数据和完整步骤证据。&quot;
     }
   },
   &quot;required&quot;: [
@@ -2692,7 +2719,7 @@
 <p class="source">函数：<a href="../mcp/openmc_tools.py">mcp/openmc_tools.py</a>。</p></details>
 <details class="tool" id="openmc_define_tally"><summary>openmc_define_tally
 <span class="tool-purpose">向已有算例追加自定义tally：score列表+常用过滤（能量/材料/粒子/规则网格）；分离XML写tallies.xml，单文件模型更新model.xml内的计分，不改几何、材料、设置。需重新提交计算后结果才含该tally，返回的tally_id用于读取与对比。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>scores</td><td>array</td><td>是</td><td>不可省略</td><td>tally计分项列表，非空，如[&quot;flux&quot;]或[&quot;fission&quot;,&quot;nu-fission&quot;]；写错项由引擎校验报错，不猜测别名。</td><td>—</td></tr><tr><td>filters</td><td>array</td><td>否</td><td>省略时见说明</td><td>可选过滤列表，每项{type, ...}：energy（bins为eV分界，≥2且递增）、material（bins为材料编号）、particle（bins为neutron/photon/electron/positron）、mesh（dimension/lower_left/upper_right，可选mesh_id）；同一tally最多一个mesh。</td><td>—</td></tr><tr><td>name</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选tally名称（不超过80字符）；省略则仅以编号识别。用于在结果里分辨自定义tally。</td><td>—</td></tr><tr><td>tally_id</td><td>integer</td><td>否</td><td>省略时见说明</td><td>计分器ID，先从openmc_read_results返回的tallies[].id选择。省略时取StatePoint首个tally，不等于自动选择业务上正确的量；不要传null。</td><td>—</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>scores</td><td>array</td><td>是</td><td>不可省略</td><td>tally计分项列表，非空，如[&quot;flux&quot;]或[&quot;fission&quot;,&quot;nu-fission&quot;]；写错项由引擎校验报错，不猜测别名。</td><td>—</td></tr><tr><td>filters</td><td>array</td><td>否</td><td>省略时见说明</td><td>可选过滤列表，每项{type, ...}：energy（bins为eV分界，≥2且递增）、material（bins为材料编号）、particle（bins为neutron/photon/electron/positron）、mesh（dimension/lower_left/upper_right，可选mesh_id）；同一tally最多一个mesh。</td><td>—</td></tr><tr><td>name</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选tally名称（不超过80字符）；省略则仅以编号识别。用于在结果里分辨自定义tally。</td><td>—</td></tr><tr><td>tally_id</td><td>integer</td><td>否</td><td>省略时见说明</td><td>算例输入中的计分ID；define省略时分配未使用编号。更新/删除必须显式提供已有ID，从preview_input.summary或输入定义中确认，不是job_id。</td><td>—</td></tr></tbody></table></div>
 <h3>返回怎么看</h3><p>tally_id为追加的编号（省略时为现有最大+1）；name/scores/filters回显，tally_count为写入后tally总数；score先对照OpenMC命名表（config/score-names.json）校验，未知score直接拒绝并给最接近候选，不再推迟到输运阶段；已写盘但不代表可算，需重新提交计算。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>case_dir</td><td>输入目录，相对服务端MC_WORKSPACE；生成/修改后用此目录继续校核或计算。</td></tr><tr><td>tally_id</td><td>本次追加或选定的tally编号；需重新提交计算后结果才含该tally。</td></tr><tr><td>tally_count</td><td>写入后tallies.xml内的tally总数（含原有条目）。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
@@ -2821,7 +2848,7 @@
     &quot;tally_id&quot;: {
       &quot;type&quot;: &quot;integer&quot;,
       &quot;minimum&quot;: 1,
-      &quot;description&quot;: &quot;计分器ID，先从openmc_read_results返回的tallies[].id选择。省略时取StatePoint首个tally，不等于自动选择业务上正确的量；不要传null。&quot;
+      &quot;description&quot;: &quot;算例输入中的计分ID；define省略时分配未使用编号。更新/删除必须显式提供已有ID，从preview_input.summary或输入定义中确认，不是job_id。&quot;
     }
   },
   &quot;required&quot;: [
@@ -2992,20 +3019,30 @@
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_tools.py">mcp/openmc_tools.py</a>。</p></details>
 <details class="tool" id="openmc_model_capabilities"><summary>openmc_model_capabilities
-<span class="tool-purpose">发现声明式模型输入的受控组合建模范围、校验后端和完整参数schema；不是OpenMC全部API覆盖声明。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>无参数</td><td>object</td><td>—</td><td>空对象</td><td>不接受额外参数</td><td>{}</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>发现声明式模型输入的受控组合建模范围、校验后端和完整参数schema；不是OpenMC全部API覆盖声明。</p>
+<span class="tool-purpose">发现受控组合建模范围与校验后端；默认摘要，detail=full取得完整参数schema；不是OpenMC全部API覆盖声明。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>detail</td><td>string</td><td>否</td><td>&quot;summary&quot;</td><td>默认摘要；full返回完整建模Schema。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>发现受控组合建模范围与校验后端；默认摘要，detail=full取得完整参数schema；不是OpenMC全部API覆盖声明。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;properties&quot;: {},
+  &quot;properties&quot;: {
+    &quot;detail&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;summary&quot;,
+        &quot;full&quot;
+      ],
+      &quot;default&quot;: &quot;summary&quot;,
+      &quot;description&quot;: &quot;默认摘要；full返回完整建模Schema。&quot;
+    }
+  },
   &quot;additionalProperties&quot;: false
 }
 </code></pre></details>
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;发现声明式模型输入的受控组合建模范围、校验后端和完整参数schema；不是OpenMC全部API覆盖声明。&quot;
+  &quot;description&quot;: &quot;发现受控组合建模范围与校验后端；默认摘要，detail=full取得完整参数schema；不是OpenMC全部API覆盖声明。&quot;
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_model_tools.py">mcp/openmc_model_tools.py</a>。</p></details>
@@ -3026,10 +3063,11 @@
         &quot;BoxSource&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
-            &quot;type&quot;: {
-              &quot;const&quot;: &quot;box&quot;,
-              &quot;title&quot;: &quot;Type&quot;,
-              &quot;type&quot;: &quot;string&quot;
+            &quot;energy_ev&quot;: {
+              &quot;default&quot;: null,
+              &quot;exclusiveMinimum&quot;: 0,
+              &quot;title&quot;: &quot;Energy Ev&quot;,
+              &quot;type&quot;: &quot;number&quot;
             },
             &quot;lower_left&quot;: {
               &quot;items&quot;: {
@@ -3040,6 +3078,17 @@
               &quot;title&quot;: &quot;Lower Left&quot;,
               &quot;type&quot;: &quot;array&quot;
             },
+            &quot;strength&quot;: {
+              &quot;default&quot;: null,
+              &quot;exclusiveMinimum&quot;: 0,
+              &quot;title&quot;: &quot;Strength&quot;,
+              &quot;type&quot;: &quot;number&quot;
+            },
+            &quot;type&quot;: {
+              &quot;const&quot;: &quot;box&quot;,
+              &quot;title&quot;: &quot;Type&quot;,
+              &quot;type&quot;: &quot;string&quot;
+            },
             &quot;upper_right&quot;: {
               &quot;items&quot;: {
                 &quot;type&quot;: &quot;number&quot;
@@ -3048,18 +3097,6 @@
               &quot;minItems&quot;: 3,
               &quot;title&quot;: &quot;Upper Right&quot;,
               &quot;type&quot;: &quot;array&quot;
-            },
-            &quot;strength&quot;: {
-              &quot;default&quot;: null,
-              &quot;exclusiveMinimum&quot;: 0,
-              &quot;title&quot;: &quot;Strength&quot;,
-              &quot;type&quot;: &quot;number&quot;
-            },
-            &quot;energy_ev&quot;: {
-              &quot;default&quot;: null,
-              &quot;exclusiveMinimum&quot;: 0,
-              &quot;title&quot;: &quot;Energy Ev&quot;,
-              &quot;type&quot;: &quot;number&quot;
             }
           },
           &quot;required&quot;: [
@@ -3073,6 +3110,26 @@
         &quot;Cell&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
+            &quot;fill&quot;: {
+              &quot;discriminator&quot;: {
+                &quot;mapping&quot;: {
+                  &quot;lattice&quot;: &quot;#/$defs/RefFill&quot;,
+                  &quot;material&quot;: &quot;#/$defs/RefFill&quot;,
+                  &quot;universe&quot;: &quot;#/$defs/RefFill&quot;,
+                  &quot;void&quot;: &quot;#/$defs/VoidFill&quot;
+                },
+                &quot;propertyName&quot;: &quot;type&quot;
+              },
+              &quot;oneOf&quot;: [
+                {
+                  &quot;$ref&quot;: &quot;#/$defs/VoidFill&quot;
+                },
+                {
+                  &quot;$ref&quot;: &quot;#/$defs/RefFill&quot;
+                }
+              ],
+              &quot;title&quot;: &quot;Fill&quot;
+            },
             &quot;id&quot;: {
               &quot;minimum&quot;: 1,
               &quot;title&quot;: &quot;Id&quot;,
@@ -3083,11 +3140,6 @@
               &quot;maxLength&quot;: 200,
               &quot;title&quot;: &quot;Name&quot;,
               &quot;type&quot;: &quot;string&quot;
-            },
-            &quot;universe&quot;: {
-              &quot;minimum&quot;: 0,
-              &quot;title&quot;: &quot;Universe&quot;,
-              &quot;type&quot;: &quot;integer&quot;
             },
             &quot;region&quot;: {
               &quot;discriminator&quot;: {
@@ -3115,25 +3167,10 @@
               ],
               &quot;title&quot;: &quot;Region&quot;
             },
-            &quot;fill&quot;: {
-              &quot;discriminator&quot;: {
-                &quot;mapping&quot;: {
-                  &quot;lattice&quot;: &quot;#/$defs/RefFill&quot;,
-                  &quot;material&quot;: &quot;#/$defs/RefFill&quot;,
-                  &quot;universe&quot;: &quot;#/$defs/RefFill&quot;,
-                  &quot;void&quot;: &quot;#/$defs/VoidFill&quot;
-                },
-                &quot;propertyName&quot;: &quot;type&quot;
-              },
-              &quot;oneOf&quot;: [
-                {
-                  &quot;$ref&quot;: &quot;#/$defs/VoidFill&quot;
-                },
-                {
-                  &quot;$ref&quot;: &quot;#/$defs/RefFill&quot;
-                }
-              ],
-              &quot;title&quot;: &quot;Fill&quot;
+            &quot;universe&quot;: {
+              &quot;minimum&quot;: 0,
+              &quot;title&quot;: &quot;Universe&quot;,
+              &quot;type&quot;: &quot;integer&quot;
             }
           },
           &quot;required&quot;: [
@@ -3148,11 +3185,6 @@
         &quot;EnergyFilter&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
-            &quot;type&quot;: {
-              &quot;const&quot;: &quot;energy&quot;,
-              &quot;title&quot;: &quot;Type&quot;,
-              &quot;type&quot;: &quot;string&quot;
-            },
             &quot;bins&quot;: {
               &quot;items&quot;: {
                 &quot;type&quot;: &quot;number&quot;
@@ -3161,6 +3193,11 @@
               &quot;minItems&quot;: 1,
               &quot;title&quot;: &quot;Bins&quot;,
               &quot;type&quot;: &quot;array&quot;
+            },
+            &quot;type&quot;: {
+              &quot;const&quot;: &quot;energy&quot;,
+              &quot;title&quot;: &quot;Type&quot;,
+              &quot;type&quot;: &quot;string&quot;
             }
           },
           &quot;required&quot;: [
@@ -3178,11 +3215,6 @@
               &quot;title&quot;: &quot;Op&quot;,
               &quot;type&quot;: &quot;string&quot;
             },
-            &quot;surface&quot;: {
-              &quot;minimum&quot;: 1,
-              &quot;title&quot;: &quot;Surface&quot;,
-              &quot;type&quot;: &quot;integer&quot;
-            },
             &quot;side&quot;: {
               &quot;enum&quot;: [
                 &quot;negative&quot;,
@@ -3190,6 +3222,11 @@
               ],
               &quot;title&quot;: &quot;Side&quot;,
               &quot;type&quot;: &quot;string&quot;
+            },
+            &quot;surface&quot;: {
+              &quot;minimum&quot;: 1,
+              &quot;title&quot;: &quot;Surface&quot;,
+              &quot;type&quot;: &quot;integer&quot;
             }
           },
           &quot;required&quot;: [
@@ -3208,12 +3245,6 @@
               &quot;title&quot;: &quot;Id&quot;,
               &quot;type&quot;: &quot;integer&quot;
             },
-            &quot;name&quot;: {
-              &quot;default&quot;: &quot;&quot;,
-              &quot;maxLength&quot;: 200,
-              &quot;title&quot;: &quot;Name&quot;,
-              &quot;type&quot;: &quot;string&quot;
-            },
             &quot;lower_left&quot;: {
               &quot;items&quot;: {
                 &quot;type&quot;: &quot;number&quot;
@@ -3222,6 +3253,18 @@
               &quot;minItems&quot;: 2,
               &quot;title&quot;: &quot;Lower Left&quot;,
               &quot;type&quot;: &quot;array&quot;
+            },
+            &quot;name&quot;: {
+              &quot;default&quot;: &quot;&quot;,
+              &quot;maxLength&quot;: 200,
+              &quot;title&quot;: &quot;Name&quot;,
+              &quot;type&quot;: &quot;string&quot;
+            },
+            &quot;outer&quot;: {
+              &quot;default&quot;: null,
+              &quot;minimum&quot;: 0,
+              &quot;title&quot;: &quot;Outer&quot;,
+              &quot;type&quot;: &quot;integer&quot;
             },
             &quot;pitch&quot;: {
               &quot;items&quot;: {
@@ -3247,12 +3290,6 @@
               &quot;minItems&quot;: 1,
               &quot;title&quot;: &quot;Universes&quot;,
               &quot;type&quot;: &quot;array&quot;
-            },
-            &quot;outer&quot;: {
-              &quot;default&quot;: null,
-              &quot;minimum&quot;: 0,
-              &quot;title&quot;: &quot;Outer&quot;,
-              &quot;type&quot;: &quot;integer&quot;
             }
           },
           &quot;required&quot;: [
@@ -3267,17 +3304,6 @@
         &quot;Material&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
-            &quot;id&quot;: {
-              &quot;minimum&quot;: 1,
-              &quot;title&quot;: &quot;Id&quot;,
-              &quot;type&quot;: &quot;integer&quot;
-            },
-            &quot;name&quot;: {
-              &quot;default&quot;: &quot;&quot;,
-              &quot;maxLength&quot;: 200,
-              &quot;title&quot;: &quot;Name&quot;,
-              &quot;type&quot;: &quot;string&quot;
-            },
             &quot;density&quot;: {
               &quot;exclusiveMinimum&quot;: 0,
               &quot;title&quot;: &quot;Density&quot;,
@@ -3293,12 +3319,20 @@
               &quot;title&quot;: &quot;Density Unit&quot;,
               &quot;type&quot;: &quot;string&quot;
             },
-            &quot;percent_type&quot;: {
-              &quot;enum&quot;: [
-                &quot;ao&quot;,
-                &quot;wo&quot;
-              ],
-              &quot;title&quot;: &quot;Percent Type&quot;,
+            &quot;depletable&quot;: {
+              &quot;default&quot;: false,
+              &quot;title&quot;: &quot;Depletable&quot;,
+              &quot;type&quot;: &quot;boolean&quot;
+            },
+            &quot;id&quot;: {
+              &quot;minimum&quot;: 1,
+              &quot;title&quot;: &quot;Id&quot;,
+              &quot;type&quot;: &quot;integer&quot;
+            },
+            &quot;name&quot;: {
+              &quot;default&quot;: &quot;&quot;,
+              &quot;maxLength&quot;: 200,
+              &quot;title&quot;: &quot;Name&quot;,
               &quot;type&quot;: &quot;string&quot;
             },
             &quot;nuclides&quot;: {
@@ -3310,11 +3344,13 @@
               &quot;title&quot;: &quot;Nuclides&quot;,
               &quot;type&quot;: &quot;array&quot;
             },
-            &quot;temperature&quot;: {
-              &quot;default&quot;: null,
-              &quot;exclusiveMinimum&quot;: 0,
-              &quot;title&quot;: &quot;Temperature&quot;,
-              &quot;type&quot;: &quot;number&quot;
+            &quot;percent_type&quot;: {
+              &quot;enum&quot;: [
+                &quot;ao&quot;,
+                &quot;wo&quot;
+              ],
+              &quot;title&quot;: &quot;Percent Type&quot;,
+              &quot;type&quot;: &quot;string&quot;
             },
             &quot;sab&quot;: {
               &quot;items&quot;: {
@@ -3325,10 +3361,11 @@
               &quot;title&quot;: &quot;Sab&quot;,
               &quot;type&quot;: &quot;array&quot;
             },
-            &quot;depletable&quot;: {
-              &quot;default&quot;: false,
-              &quot;title&quot;: &quot;Depletable&quot;,
-              &quot;type&quot;: &quot;boolean&quot;
+            &quot;temperature&quot;: {
+              &quot;default&quot;: null,
+              &quot;exclusiveMinimum&quot;: 0,
+              &quot;title&quot;: &quot;Temperature&quot;,
+              &quot;type&quot;: &quot;number&quot;
             },
             &quot;volume&quot;: {
               &quot;default&quot;: null,
@@ -3350,11 +3387,6 @@
         &quot;MaterialFilter&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
-            &quot;type&quot;: {
-              &quot;const&quot;: &quot;material&quot;,
-              &quot;title&quot;: &quot;Type&quot;,
-              &quot;type&quot;: &quot;string&quot;
-            },
             &quot;bins&quot;: {
               &quot;items&quot;: {
                 &quot;minimum&quot;: 1,
@@ -3364,6 +3396,11 @@
               &quot;minItems&quot;: 1,
               &quot;title&quot;: &quot;Bins&quot;,
               &quot;type&quot;: &quot;array&quot;
+            },
+            &quot;type&quot;: {
+              &quot;const&quot;: &quot;material&quot;,
+              &quot;title&quot;: &quot;Type&quot;,
+              &quot;type&quot;: &quot;string&quot;
             }
           },
           &quot;required&quot;: [
@@ -3376,11 +3413,6 @@
         &quot;MeshFilter&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
-            &quot;type&quot;: {
-              &quot;const&quot;: &quot;mesh&quot;,
-              &quot;title&quot;: &quot;Type&quot;,
-              &quot;type&quot;: &quot;string&quot;
-            },
             &quot;dimension&quot;: {
               &quot;items&quot;: {
                 &quot;type&quot;: &quot;integer&quot;
@@ -3398,6 +3430,17 @@
               &quot;minItems&quot;: 3,
               &quot;title&quot;: &quot;Lower Left&quot;,
               &quot;type&quot;: &quot;array&quot;
+            },
+            &quot;mesh_id&quot;: {
+              &quot;default&quot;: null,
+              &quot;minimum&quot;: 1,
+              &quot;title&quot;: &quot;Mesh Id&quot;,
+              &quot;type&quot;: &quot;integer&quot;
+            },
+            &quot;type&quot;: {
+              &quot;const&quot;: &quot;mesh&quot;,
+              &quot;title&quot;: &quot;Type&quot;,
+              &quot;type&quot;: &quot;string&quot;
             },
             &quot;upper_right&quot;: {
               &quot;items&quot;: {
@@ -3421,16 +3464,16 @@
         &quot;Nuclide&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
+            &quot;fraction&quot;: {
+              &quot;exclusiveMinimum&quot;: 0,
+              &quot;title&quot;: &quot;Fraction&quot;,
+              &quot;type&quot;: &quot;number&quot;
+            },
             &quot;name&quot;: {
               &quot;maxLength&quot;: 40,
               &quot;minLength&quot;: 1,
               &quot;title&quot;: &quot;Name&quot;,
               &quot;type&quot;: &quot;string&quot;
-            },
-            &quot;fraction&quot;: {
-              &quot;exclusiveMinimum&quot;: 0,
-              &quot;title&quot;: &quot;Fraction&quot;,
-              &quot;type&quot;: &quot;number&quot;
             }
           },
           &quot;required&quot;: [
@@ -3472,13 +3515,45 @@
           &quot;title&quot;: &quot;Override&quot;,
           &quot;type&quot;: &quot;object&quot;
         },
+        &quot;ParticleFilter&quot;: {
+          &quot;additionalProperties&quot;: false,
+          &quot;properties&quot;: {
+            &quot;bins&quot;: {
+              &quot;items&quot;: {
+                &quot;enum&quot;: [
+                  &quot;neutron&quot;,
+                  &quot;photon&quot;,
+                  &quot;electron&quot;,
+                  &quot;positron&quot;
+                ],
+                &quot;type&quot;: &quot;string&quot;
+              },
+              &quot;maxItems&quot;: 4,
+              &quot;minItems&quot;: 1,
+              &quot;title&quot;: &quot;Bins&quot;,
+              &quot;type&quot;: &quot;array&quot;
+            },
+            &quot;type&quot;: {
+              &quot;const&quot;: &quot;particle&quot;,
+              &quot;title&quot;: &quot;Type&quot;,
+              &quot;type&quot;: &quot;string&quot;
+            }
+          },
+          &quot;required&quot;: [
+            &quot;type&quot;,
+            &quot;bins&quot;
+          ],
+          &quot;title&quot;: &quot;ParticleFilter&quot;,
+          &quot;type&quot;: &quot;object&quot;
+        },
         &quot;PointSource&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
-            &quot;type&quot;: {
-              &quot;const&quot;: &quot;point&quot;,
-              &quot;title&quot;: &quot;Type&quot;,
-              &quot;type&quot;: &quot;string&quot;
+            &quot;energy_ev&quot;: {
+              &quot;default&quot;: null,
+              &quot;exclusiveMinimum&quot;: 0,
+              &quot;title&quot;: &quot;Energy Ev&quot;,
+              &quot;type&quot;: &quot;number&quot;
             },
             &quot;point&quot;: {
               &quot;items&quot;: {
@@ -3495,11 +3570,10 @@
               &quot;title&quot;: &quot;Strength&quot;,
               &quot;type&quot;: &quot;number&quot;
             },
-            &quot;energy_ev&quot;: {
-              &quot;default&quot;: null,
-              &quot;exclusiveMinimum&quot;: 0,
-              &quot;title&quot;: &quot;Energy Ev&quot;,
-              &quot;type&quot;: &quot;number&quot;
+            &quot;type&quot;: {
+              &quot;const&quot;: &quot;point&quot;,
+              &quot;title&quot;: &quot;Type&quot;,
+              &quot;type&quot;: &quot;string&quot;
             }
           },
           &quot;required&quot;: [
@@ -3512,6 +3586,11 @@
         &quot;RefFill&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
+            &quot;id&quot;: {
+              &quot;minimum&quot;: 1,
+              &quot;title&quot;: &quot;Id&quot;,
+              &quot;type&quot;: &quot;integer&quot;
+            },
             &quot;type&quot;: {
               &quot;enum&quot;: [
                 &quot;material&quot;,
@@ -3520,11 +3599,6 @@
               ],
               &quot;title&quot;: &quot;Type&quot;,
               &quot;type&quot;: &quot;string&quot;
-            },
-            &quot;id&quot;: {
-              &quot;minimum&quot;: 1,
-              &quot;title&quot;: &quot;Id&quot;,
-              &quot;type&quot;: &quot;integer&quot;
             }
           },
           &quot;required&quot;: [
@@ -3537,11 +3611,6 @@
         &quot;RegionComplement&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
-            &quot;op&quot;: {
-              &quot;const&quot;: &quot;complement&quot;,
-              &quot;title&quot;: &quot;Op&quot;,
-              &quot;type&quot;: &quot;string&quot;
-            },
             &quot;item&quot;: {
               &quot;discriminator&quot;: {
                 &quot;mapping&quot;: {
@@ -3567,6 +3636,11 @@
                 }
               ],
               &quot;title&quot;: &quot;Item&quot;
+            },
+            &quot;op&quot;: {
+              &quot;const&quot;: &quot;complement&quot;,
+              &quot;title&quot;: &quot;Op&quot;,
+              &quot;type&quot;: &quot;string&quot;
             }
           },
           &quot;required&quot;: [
@@ -3579,11 +3653,6 @@
         &quot;RegionIntersection&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
-            &quot;op&quot;: {
-              &quot;const&quot;: &quot;intersection&quot;,
-              &quot;title&quot;: &quot;Op&quot;,
-              &quot;type&quot;: &quot;string&quot;
-            },
             &quot;items&quot;: {
               &quot;items&quot;: {
                 &quot;discriminator&quot;: {
@@ -3613,6 +3682,11 @@
               &quot;minItems&quot;: 1,
               &quot;title&quot;: &quot;Items&quot;,
               &quot;type&quot;: &quot;array&quot;
+            },
+            &quot;op&quot;: {
+              &quot;const&quot;: &quot;intersection&quot;,
+              &quot;title&quot;: &quot;Op&quot;,
+              &quot;type&quot;: &quot;string&quot;
             }
           },
           &quot;required&quot;: [
@@ -3625,11 +3699,6 @@
         &quot;RegionUnion&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
-            &quot;op&quot;: {
-              &quot;const&quot;: &quot;union&quot;,
-              &quot;title&quot;: &quot;Op&quot;,
-              &quot;type&quot;: &quot;string&quot;
-            },
             &quot;items&quot;: {
               &quot;items&quot;: {
                 &quot;discriminator&quot;: {
@@ -3659,6 +3728,11 @@
               &quot;minItems&quot;: 1,
               &quot;title&quot;: &quot;Items&quot;,
               &quot;type&quot;: &quot;array&quot;
+            },
+            &quot;op&quot;: {
+              &quot;const&quot;: &quot;union&quot;,
+              &quot;title&quot;: &quot;Op&quot;,
+              &quot;type&quot;: &quot;string&quot;
             }
           },
           &quot;required&quot;: [
@@ -3671,29 +3745,10 @@
         &quot;Settings&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
-            &quot;run_mode&quot;: {
-              &quot;enum&quot;: [
-                &quot;eigenvalue&quot;,
-                &quot;fixed source&quot;
-              ],
-              &quot;title&quot;: &quot;Run Mode&quot;,
-              &quot;type&quot;: &quot;string&quot;
-            },
-            &quot;particles&quot;: {
-              &quot;maximum&quot;: 100000000,
-              &quot;minimum&quot;: 1,
-              &quot;title&quot;: &quot;Particles&quot;,
-              &quot;type&quot;: &quot;integer&quot;
-            },
             &quot;batches&quot;: {
               &quot;maximum&quot;: 1000000,
               &quot;minimum&quot;: 2,
               &quot;title&quot;: &quot;Batches&quot;,
-              &quot;type&quot;: &quot;integer&quot;
-            },
-            &quot;inactive&quot;: {
-              &quot;minimum&quot;: 0,
-              &quot;title&quot;: &quot;Inactive&quot;,
               &quot;type&quot;: &quot;integer&quot;
             },
             &quot;generations_per_batch&quot;: {
@@ -3701,6 +3756,25 @@
               &quot;minimum&quot;: 1,
               &quot;title&quot;: &quot;Generations Per Batch&quot;,
               &quot;type&quot;: &quot;integer&quot;
+            },
+            &quot;inactive&quot;: {
+              &quot;minimum&quot;: 0,
+              &quot;title&quot;: &quot;Inactive&quot;,
+              &quot;type&quot;: &quot;integer&quot;
+            },
+            &quot;particles&quot;: {
+              &quot;maximum&quot;: 100000000,
+              &quot;minimum&quot;: 1,
+              &quot;title&quot;: &quot;Particles&quot;,
+              &quot;type&quot;: &quot;integer&quot;
+            },
+            &quot;run_mode&quot;: {
+              &quot;enum&quot;: [
+                &quot;eigenvalue&quot;,
+                &quot;fixed source&quot;
+              ],
+              &quot;title&quot;: &quot;Run Mode&quot;,
+              &quot;type&quot;: &quot;string&quot;
             },
             &quot;seed&quot;: {
               &quot;default&quot;: 1,
@@ -3740,11 +3814,6 @@
         &quot;Sphere&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
-            &quot;id&quot;: {
-              &quot;minimum&quot;: 1,
-              &quot;title&quot;: &quot;Id&quot;,
-              &quot;type&quot;: &quot;integer&quot;
-            },
             &quot;boundary&quot;: {
               &quot;default&quot;: &quot;transmission&quot;,
               &quot;enum&quot;: [
@@ -3756,13 +3825,18 @@
               &quot;title&quot;: &quot;Boundary&quot;,
               &quot;type&quot;: &quot;string&quot;
             },
+            &quot;id&quot;: {
+              &quot;minimum&quot;: 1,
+              &quot;title&quot;: &quot;Id&quot;,
+              &quot;type&quot;: &quot;integer&quot;
+            },
+            &quot;parameters&quot;: {
+              &quot;$ref&quot;: &quot;#/$defs/SphereParameters&quot;
+            },
             &quot;type&quot;: {
               &quot;const&quot;: &quot;sphere&quot;,
               &quot;title&quot;: &quot;Type&quot;,
               &quot;type&quot;: &quot;string&quot;
-            },
-            &quot;parameters&quot;: {
-              &quot;$ref&quot;: &quot;#/$defs/SphereParameters&quot;
             }
           },
           &quot;required&quot;: [
@@ -3776,6 +3850,11 @@
         &quot;SphereParameters&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
+            &quot;r&quot;: {
+              &quot;exclusiveMinimum&quot;: 0,
+              &quot;title&quot;: &quot;R&quot;,
+              &quot;type&quot;: &quot;number&quot;
+            },
             &quot;x0&quot;: {
               &quot;default&quot;: 0,
               &quot;title&quot;: &quot;X0&quot;,
@@ -3790,11 +3869,6 @@
               &quot;default&quot;: 0,
               &quot;title&quot;: &quot;Z0&quot;,
               &quot;type&quot;: &quot;number&quot;
-            },
-            &quot;r&quot;: {
-              &quot;exclusiveMinimum&quot;: 0,
-              &quot;title&quot;: &quot;R&quot;,
-              &quot;type&quot;: &quot;number&quot;
             }
           },
           &quot;required&quot;: [
@@ -3806,6 +3880,36 @@
         &quot;Tally&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
+            &quot;filters&quot;: {
+              &quot;items&quot;: {
+                &quot;discriminator&quot;: {
+                  &quot;mapping&quot;: {
+                    &quot;energy&quot;: &quot;#/$defs/EnergyFilter&quot;,
+                    &quot;material&quot;: &quot;#/$defs/MaterialFilter&quot;,
+                    &quot;mesh&quot;: &quot;#/$defs/MeshFilter&quot;,
+                    &quot;particle&quot;: &quot;#/$defs/ParticleFilter&quot;
+                  },
+                  &quot;propertyName&quot;: &quot;type&quot;
+                },
+                &quot;oneOf&quot;: [
+                  {
+                    &quot;$ref&quot;: &quot;#/$defs/EnergyFilter&quot;
+                  },
+                  {
+                    &quot;$ref&quot;: &quot;#/$defs/MaterialFilter&quot;
+                  },
+                  {
+                    &quot;$ref&quot;: &quot;#/$defs/ParticleFilter&quot;
+                  },
+                  {
+                    &quot;$ref&quot;: &quot;#/$defs/MeshFilter&quot;
+                  }
+                ]
+              },
+              &quot;maxItems&quot;: 8,
+              &quot;title&quot;: &quot;Filters&quot;,
+              &quot;type&quot;: &quot;array&quot;
+            },
             &quot;id&quot;: {
               &quot;minimum&quot;: 1,
               &quot;title&quot;: &quot;Id&quot;,
@@ -3816,16 +3920,6 @@
               &quot;maxLength&quot;: 200,
               &quot;title&quot;: &quot;Name&quot;,
               &quot;type&quot;: &quot;string&quot;
-            },
-            &quot;scores&quot;: {
-              &quot;items&quot;: {
-                &quot;maxLength&quot;: 200,
-                &quot;type&quot;: &quot;string&quot;
-              },
-              &quot;maxItems&quot;: 20,
-              &quot;minItems&quot;: 1,
-              &quot;title&quot;: &quot;Scores&quot;,
-              &quot;type&quot;: &quot;array&quot;
             },
             &quot;nuclides&quot;: {
               &quot;default&quot;: null,
@@ -3838,30 +3932,14 @@
               &quot;title&quot;: &quot;Nuclides&quot;,
               &quot;type&quot;: &quot;array&quot;
             },
-            &quot;filters&quot;: {
+            &quot;scores&quot;: {
               &quot;items&quot;: {
-                &quot;discriminator&quot;: {
-                  &quot;mapping&quot;: {
-                    &quot;energy&quot;: &quot;#/$defs/EnergyFilter&quot;,
-                    &quot;material&quot;: &quot;#/$defs/MaterialFilter&quot;,
-                    &quot;mesh&quot;: &quot;#/$defs/MeshFilter&quot;
-                  },
-                  &quot;propertyName&quot;: &quot;type&quot;
-                },
-                &quot;oneOf&quot;: [
-                  {
-                    &quot;$ref&quot;: &quot;#/$defs/EnergyFilter&quot;
-                  },
-                  {
-                    &quot;$ref&quot;: &quot;#/$defs/MaterialFilter&quot;
-                  },
-                  {
-                    &quot;$ref&quot;: &quot;#/$defs/MeshFilter&quot;
-                  }
-                ]
+                &quot;maxLength&quot;: 200,
+                &quot;type&quot;: &quot;string&quot;
               },
-              &quot;maxItems&quot;: 8,
-              &quot;title&quot;: &quot;Filters&quot;,
+              &quot;maxItems&quot;: 20,
+              &quot;minItems&quot;: 1,
+              &quot;title&quot;: &quot;Scores&quot;,
               &quot;type&quot;: &quot;array&quot;
             }
           },
@@ -3904,11 +3982,6 @@
         &quot;XCylinder&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
-            &quot;id&quot;: {
-              &quot;minimum&quot;: 1,
-              &quot;title&quot;: &quot;Id&quot;,
-              &quot;type&quot;: &quot;integer&quot;
-            },
             &quot;boundary&quot;: {
               &quot;default&quot;: &quot;transmission&quot;,
               &quot;enum&quot;: [
@@ -3920,13 +3993,18 @@
               &quot;title&quot;: &quot;Boundary&quot;,
               &quot;type&quot;: &quot;string&quot;
             },
+            &quot;id&quot;: {
+              &quot;minimum&quot;: 1,
+              &quot;title&quot;: &quot;Id&quot;,
+              &quot;type&quot;: &quot;integer&quot;
+            },
+            &quot;parameters&quot;: {
+              &quot;$ref&quot;: &quot;#/$defs/XCylinderParameters&quot;
+            },
             &quot;type&quot;: {
               &quot;const&quot;: &quot;x-cylinder&quot;,
               &quot;title&quot;: &quot;Type&quot;,
               &quot;type&quot;: &quot;string&quot;
-            },
-            &quot;parameters&quot;: {
-              &quot;$ref&quot;: &quot;#/$defs/XCylinderParameters&quot;
             }
           },
           &quot;required&quot;: [
@@ -3940,6 +4018,11 @@
         &quot;XCylinderParameters&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
+            &quot;r&quot;: {
+              &quot;exclusiveMinimum&quot;: 0,
+              &quot;title&quot;: &quot;R&quot;,
+              &quot;type&quot;: &quot;number&quot;
+            },
             &quot;y0&quot;: {
               &quot;default&quot;: 0,
               &quot;title&quot;: &quot;Y0&quot;,
@@ -3948,11 +4031,6 @@
             &quot;z0&quot;: {
               &quot;default&quot;: 0,
               &quot;title&quot;: &quot;Z0&quot;,
-              &quot;type&quot;: &quot;number&quot;
-            },
-            &quot;r&quot;: {
-              &quot;exclusiveMinimum&quot;: 0,
-              &quot;title&quot;: &quot;R&quot;,
               &quot;type&quot;: &quot;number&quot;
             }
           },
@@ -3965,11 +4043,6 @@
         &quot;XPlane&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
-            &quot;id&quot;: {
-              &quot;minimum&quot;: 1,
-              &quot;title&quot;: &quot;Id&quot;,
-              &quot;type&quot;: &quot;integer&quot;
-            },
             &quot;boundary&quot;: {
               &quot;default&quot;: &quot;transmission&quot;,
               &quot;enum&quot;: [
@@ -3981,13 +4054,18 @@
               &quot;title&quot;: &quot;Boundary&quot;,
               &quot;type&quot;: &quot;string&quot;
             },
+            &quot;id&quot;: {
+              &quot;minimum&quot;: 1,
+              &quot;title&quot;: &quot;Id&quot;,
+              &quot;type&quot;: &quot;integer&quot;
+            },
+            &quot;parameters&quot;: {
+              &quot;$ref&quot;: &quot;#/$defs/XPlaneParameters&quot;
+            },
             &quot;type&quot;: {
               &quot;const&quot;: &quot;x-plane&quot;,
               &quot;title&quot;: &quot;Type&quot;,
               &quot;type&quot;: &quot;string&quot;
-            },
-            &quot;parameters&quot;: {
-              &quot;$ref&quot;: &quot;#/$defs/XPlaneParameters&quot;
             }
           },
           &quot;required&quot;: [
@@ -4015,11 +4093,6 @@
         &quot;YCylinder&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
-            &quot;id&quot;: {
-              &quot;minimum&quot;: 1,
-              &quot;title&quot;: &quot;Id&quot;,
-              &quot;type&quot;: &quot;integer&quot;
-            },
             &quot;boundary&quot;: {
               &quot;default&quot;: &quot;transmission&quot;,
               &quot;enum&quot;: [
@@ -4031,13 +4104,18 @@
               &quot;title&quot;: &quot;Boundary&quot;,
               &quot;type&quot;: &quot;string&quot;
             },
+            &quot;id&quot;: {
+              &quot;minimum&quot;: 1,
+              &quot;title&quot;: &quot;Id&quot;,
+              &quot;type&quot;: &quot;integer&quot;
+            },
+            &quot;parameters&quot;: {
+              &quot;$ref&quot;: &quot;#/$defs/YCylinderParameters&quot;
+            },
             &quot;type&quot;: {
               &quot;const&quot;: &quot;y-cylinder&quot;,
               &quot;title&quot;: &quot;Type&quot;,
               &quot;type&quot;: &quot;string&quot;
-            },
-            &quot;parameters&quot;: {
-              &quot;$ref&quot;: &quot;#/$defs/YCylinderParameters&quot;
             }
           },
           &quot;required&quot;: [
@@ -4051,6 +4129,11 @@
         &quot;YCylinderParameters&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
+            &quot;r&quot;: {
+              &quot;exclusiveMinimum&quot;: 0,
+              &quot;title&quot;: &quot;R&quot;,
+              &quot;type&quot;: &quot;number&quot;
+            },
             &quot;x0&quot;: {
               &quot;default&quot;: 0,
               &quot;title&quot;: &quot;X0&quot;,
@@ -4059,11 +4142,6 @@
             &quot;z0&quot;: {
               &quot;default&quot;: 0,
               &quot;title&quot;: &quot;Z0&quot;,
-              &quot;type&quot;: &quot;number&quot;
-            },
-            &quot;r&quot;: {
-              &quot;exclusiveMinimum&quot;: 0,
-              &quot;title&quot;: &quot;R&quot;,
               &quot;type&quot;: &quot;number&quot;
             }
           },
@@ -4076,11 +4154,6 @@
         &quot;YPlane&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
-            &quot;id&quot;: {
-              &quot;minimum&quot;: 1,
-              &quot;title&quot;: &quot;Id&quot;,
-              &quot;type&quot;: &quot;integer&quot;
-            },
             &quot;boundary&quot;: {
               &quot;default&quot;: &quot;transmission&quot;,
               &quot;enum&quot;: [
@@ -4092,13 +4165,18 @@
               &quot;title&quot;: &quot;Boundary&quot;,
               &quot;type&quot;: &quot;string&quot;
             },
+            &quot;id&quot;: {
+              &quot;minimum&quot;: 1,
+              &quot;title&quot;: &quot;Id&quot;,
+              &quot;type&quot;: &quot;integer&quot;
+            },
+            &quot;parameters&quot;: {
+              &quot;$ref&quot;: &quot;#/$defs/YPlaneParameters&quot;
+            },
             &quot;type&quot;: {
               &quot;const&quot;: &quot;y-plane&quot;,
               &quot;title&quot;: &quot;Type&quot;,
               &quot;type&quot;: &quot;string&quot;
-            },
-            &quot;parameters&quot;: {
-              &quot;$ref&quot;: &quot;#/$defs/YPlaneParameters&quot;
             }
           },
           &quot;required&quot;: [
@@ -4126,11 +4204,6 @@
         &quot;ZCylinder&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
-            &quot;id&quot;: {
-              &quot;minimum&quot;: 1,
-              &quot;title&quot;: &quot;Id&quot;,
-              &quot;type&quot;: &quot;integer&quot;
-            },
             &quot;boundary&quot;: {
               &quot;default&quot;: &quot;transmission&quot;,
               &quot;enum&quot;: [
@@ -4142,13 +4215,18 @@
               &quot;title&quot;: &quot;Boundary&quot;,
               &quot;type&quot;: &quot;string&quot;
             },
+            &quot;id&quot;: {
+              &quot;minimum&quot;: 1,
+              &quot;title&quot;: &quot;Id&quot;,
+              &quot;type&quot;: &quot;integer&quot;
+            },
+            &quot;parameters&quot;: {
+              &quot;$ref&quot;: &quot;#/$defs/ZCylinderParameters&quot;
+            },
             &quot;type&quot;: {
               &quot;const&quot;: &quot;z-cylinder&quot;,
               &quot;title&quot;: &quot;Type&quot;,
               &quot;type&quot;: &quot;string&quot;
-            },
-            &quot;parameters&quot;: {
-              &quot;$ref&quot;: &quot;#/$defs/ZCylinderParameters&quot;
             }
           },
           &quot;required&quot;: [
@@ -4162,6 +4240,11 @@
         &quot;ZCylinderParameters&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
+            &quot;r&quot;: {
+              &quot;exclusiveMinimum&quot;: 0,
+              &quot;title&quot;: &quot;R&quot;,
+              &quot;type&quot;: &quot;number&quot;
+            },
             &quot;x0&quot;: {
               &quot;default&quot;: 0,
               &quot;title&quot;: &quot;X0&quot;,
@@ -4170,11 +4253,6 @@
             &quot;y0&quot;: {
               &quot;default&quot;: 0,
               &quot;title&quot;: &quot;Y0&quot;,
-              &quot;type&quot;: &quot;number&quot;
-            },
-            &quot;r&quot;: {
-              &quot;exclusiveMinimum&quot;: 0,
-              &quot;title&quot;: &quot;R&quot;,
               &quot;type&quot;: &quot;number&quot;
             }
           },
@@ -4187,11 +4265,6 @@
         &quot;ZPlane&quot;: {
           &quot;additionalProperties&quot;: false,
           &quot;properties&quot;: {
-            &quot;id&quot;: {
-              &quot;minimum&quot;: 1,
-              &quot;title&quot;: &quot;Id&quot;,
-              &quot;type&quot;: &quot;integer&quot;
-            },
             &quot;boundary&quot;: {
               &quot;default&quot;: &quot;transmission&quot;,
               &quot;enum&quot;: [
@@ -4203,13 +4276,18 @@
               &quot;title&quot;: &quot;Boundary&quot;,
               &quot;type&quot;: &quot;string&quot;
             },
+            &quot;id&quot;: {
+              &quot;minimum&quot;: 1,
+              &quot;title&quot;: &quot;Id&quot;,
+              &quot;type&quot;: &quot;integer&quot;
+            },
+            &quot;parameters&quot;: {
+              &quot;$ref&quot;: &quot;#/$defs/ZPlaneParameters&quot;
+            },
             &quot;type&quot;: {
               &quot;const&quot;: &quot;z-plane&quot;,
               &quot;title&quot;: &quot;Type&quot;,
               &quot;type&quot;: &quot;string&quot;
-            },
-            &quot;parameters&quot;: {
-              &quot;$ref&quot;: &quot;#/$defs/ZPlaneParameters&quot;
             }
           },
           &quot;required&quot;: [
@@ -4239,11 +4317,22 @@
       &quot;additionalProperties&quot;: false,
       &quot;description&quot;: &quot;OpenMC 声明式模型输入；组合模型，不执行调用方Python；专业适用性需另行确认。&quot;,
       &quot;properties&quot;: {
-        &quot;name&quot;: {
-          &quot;default&quot;: &quot;&quot;,
-          &quot;maxLength&quot;: 200,
-          &quot;title&quot;: &quot;Name&quot;,
-          &quot;type&quot;: &quot;string&quot;
+        &quot;cells&quot;: {
+          &quot;items&quot;: {
+            &quot;$ref&quot;: &quot;#/$defs/Cell&quot;
+          },
+          &quot;maxItems&quot;: 10000,
+          &quot;minItems&quot;: 1,
+          &quot;title&quot;: &quot;Cells&quot;,
+          &quot;type&quot;: &quot;array&quot;
+        },
+        &quot;lattices&quot;: {
+          &quot;items&quot;: {
+            &quot;$ref&quot;: &quot;#/$defs/Lattice&quot;
+          },
+          &quot;maxItems&quot;: 100,
+          &quot;title&quot;: &quot;Lattices&quot;,
+          &quot;type&quot;: &quot;array&quot;
         },
         &quot;materials&quot;: {
           &quot;items&quot;: {
@@ -4253,6 +4342,20 @@
           &quot;minItems&quot;: 1,
           &quot;title&quot;: &quot;Materials&quot;,
           &quot;type&quot;: &quot;array&quot;
+        },
+        &quot;name&quot;: {
+          &quot;default&quot;: &quot;&quot;,
+          &quot;maxLength&quot;: 200,
+          &quot;title&quot;: &quot;Name&quot;,
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;root_universe&quot;: {
+          &quot;minimum&quot;: 0,
+          &quot;title&quot;: &quot;Root Universe&quot;,
+          &quot;type&quot;: &quot;integer&quot;
+        },
+        &quot;settings&quot;: {
+          &quot;$ref&quot;: &quot;#/$defs/Settings&quot;
         },
         &quot;surfaces&quot;: {
           &quot;items&quot;: {
@@ -4296,31 +4399,6 @@
           &quot;minItems&quot;: 1,
           &quot;title&quot;: &quot;Surfaces&quot;,
           &quot;type&quot;: &quot;array&quot;
-        },
-        &quot;cells&quot;: {
-          &quot;items&quot;: {
-            &quot;$ref&quot;: &quot;#/$defs/Cell&quot;
-          },
-          &quot;maxItems&quot;: 10000,
-          &quot;minItems&quot;: 1,
-          &quot;title&quot;: &quot;Cells&quot;,
-          &quot;type&quot;: &quot;array&quot;
-        },
-        &quot;lattices&quot;: {
-          &quot;items&quot;: {
-            &quot;$ref&quot;: &quot;#/$defs/Lattice&quot;
-          },
-          &quot;maxItems&quot;: 100,
-          &quot;title&quot;: &quot;Lattices&quot;,
-          &quot;type&quot;: &quot;array&quot;
-        },
-        &quot;root_universe&quot;: {
-          &quot;minimum&quot;: 0,
-          &quot;title&quot;: &quot;Root Universe&quot;,
-          &quot;type&quot;: &quot;integer&quot;
-        },
-        &quot;settings&quot;: {
-          &quot;$ref&quot;: &quot;#/$defs/Settings&quot;
         },
         &quot;tallies&quot;: {
           &quot;items&quot;: {
@@ -4443,5 +4521,187 @@
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_jobs.py">mcp/openmc_jobs.py</a>。</p></details>
+<details class="tool" id="openmc_update_tally"><summary>openmc_update_tally
+<span class="tool-purpose">按tally_id修改算例中的计分，省略的字段保留；filters=[]清除过滤器。修改前校验引用与score，声明式源/XML/指纹同步，已提交作业快照不变。返回具体前后定义；要获得新结果需重新计算。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>scores</td><td>array</td><td>否</td><td>省略时见说明</td><td>tally计分项列表，非空，如[&quot;flux&quot;]或[&quot;fission&quot;,&quot;nu-fission&quot;]；写错项由引擎校验报错，不猜测别名。 更新时省略保留原值；filters=[]显式清除过滤器。</td><td>—</td></tr><tr><td>filters</td><td>array</td><td>否</td><td>省略时见说明</td><td>可选过滤列表，每项{type, ...}：energy（bins为eV分界，≥2且递增）、material（bins为材料编号）、particle（bins为neutron/photon/electron/positron）、mesh（dimension/lower_left/upper_right，可选mesh_id）；同一tally最多一个mesh。 更新时省略保留原值；filters=[]显式清除过滤器。</td><td>—</td></tr><tr><td>name</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选tally名称（不超过80字符）；省略则仅以编号识别。用于在结果里分辨自定义tally。 更新时省略保留原值；filters=[]显式清除过滤器。</td><td>—</td></tr><tr><td>tally_id</td><td>integer</td><td>是</td><td>不可省略</td><td>算例输入中的计分ID；define省略时分配未使用编号。更新/删除必须显式提供已有ID，从preview_input.summary或输入定义中确认，不是job_id。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>before/after说明具体计分改动；changed_files列输入修改，declarative_source_synchronized说明声明式源同步；已提交作业快照不变。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;case_dir&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。&quot;,
+      &quot;examples&quot;: [
+        &quot;cases/my-case&quot;
+      ]
+    },
+    &quot;scores&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;minItems&quot;: 1,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;,
+        &quot;minLength&quot;: 1
+      },
+      &quot;description&quot;: &quot;tally计分项列表，非空，如[\&quot;flux\&quot;]或[\&quot;fission\&quot;,\&quot;nu-fission\&quot;]；写错项由引擎校验报错，不猜测别名。 更新时省略保留原值；filters=[]显式清除过滤器。&quot;
+    },
+    &quot;filters&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;required&quot;: [
+          &quot;type&quot;
+        ],
+        &quot;properties&quot;: {
+          &quot;type&quot;: {
+            &quot;type&quot;: &quot;string&quot;,
+            &quot;enum&quot;: [
+              &quot;energy&quot;,
+              &quot;material&quot;,
+              &quot;particle&quot;,
+              &quot;mesh&quot;
+            ]
+          },
+          &quot;bins&quot;: {
+            &quot;type&quot;: &quot;array&quot;,
+            &quot;items&quot;: {
+              &quot;anyOf&quot;: [
+                {
+                  &quot;type&quot;: &quot;number&quot;
+                },
+                {
+                  &quot;type&quot;: &quot;string&quot;
+                }
+              ]
+            }
+          },
+          &quot;dimension&quot;: {
+            &quot;type&quot;: &quot;array&quot;,
+            &quot;items&quot;: {
+              &quot;type&quot;: &quot;integer&quot;
+            },
+            &quot;minItems&quot;: 3,
+            &quot;maxItems&quot;: 3
+          },
+          &quot;lower_left&quot;: {
+            &quot;type&quot;: &quot;array&quot;,
+            &quot;items&quot;: {
+              &quot;type&quot;: &quot;number&quot;
+            },
+            &quot;minItems&quot;: 3,
+            &quot;maxItems&quot;: 3
+          },
+          &quot;upper_right&quot;: {
+            &quot;type&quot;: &quot;array&quot;,
+            &quot;items&quot;: {
+              &quot;type&quot;: &quot;number&quot;
+            },
+            &quot;minItems&quot;: 3,
+            &quot;maxItems&quot;: 3
+          },
+          &quot;mesh_id&quot;: {
+            &quot;type&quot;: &quot;integer&quot;,
+            &quot;minimum&quot;: 1
+          }
+        },
+        &quot;allOf&quot;: [
+          {
+            &quot;if&quot;: {
+              &quot;properties&quot;: {
+                &quot;type&quot;: {
+                  &quot;const&quot;: &quot;particle&quot;
+                }
+              }
+            },
+            &quot;then&quot;: {
+              &quot;properties&quot;: {
+                &quot;bins&quot;: {
+                  &quot;items&quot;: {
+                    &quot;enum&quot;: [
+                      &quot;neutron&quot;,
+                      &quot;photon&quot;,
+                      &quot;electron&quot;,
+                      &quot;positron&quot;
+                    ]
+                  }
+                }
+              }
+            },
+            &quot;else&quot;: {
+              &quot;properties&quot;: {
+                &quot;bins&quot;: {
+                  &quot;items&quot;: {
+                    &quot;type&quot;: &quot;number&quot;
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      &quot;description&quot;: &quot;可选过滤列表，每项{type, ...}：energy（bins为eV分界，≥2且递增）、material（bins为材料编号）、particle（bins为neutron/photon/electron/positron）、mesh（dimension/lower_left/upper_right，可选mesh_id）；同一tally最多一个mesh。 更新时省略保留原值；filters=[]显式清除过滤器。&quot;
+    },
+    &quot;name&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;maxLength&quot;: 80,
+      &quot;description&quot;: &quot;可选tally名称（不超过80字符）；省略则仅以编号识别。用于在结果里分辨自定义tally。 更新时省略保留原值；filters=[]显式清除过滤器。&quot;
+    },
+    &quot;tally_id&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 1,
+      &quot;description&quot;: &quot;算例输入中的计分ID；define省略时分配未使用编号。更新/删除必须显式提供已有ID，从preview_input.summary或输入定义中确认，不是job_id。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;case_dir&quot;,
+    &quot;tally_id&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;before/after说明具体计分改动；changed_files列输入修改，declarative_source_synchronized说明声明式源同步；已提交作业快照不变。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/openmc_tools.py">mcp/openmc_tools.py</a>。</p></details>
+<details class="tool" id="openmc_delete_tally"><summary>openmc_delete_tally
+<span class="tool-purpose">按tally_id删除用户算例中的计分，保留其它计分、几何、材料、设置及已提交作业快照；声明式源与指纹同步。编号不存在会报明原因。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>tally_id</td><td>integer</td><td>是</td><td>不可省略</td><td>算例输入中的计分ID；define省略时分配未使用编号。更新/删除必须显式提供已有ID，从preview_input.summary或输入定义中确认，不是job_id。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>tally_id为已删除的计分；before保留原定义，其余计分与旧作业快照保留，重新计算才反映删除。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;case_dir&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。&quot;,
+      &quot;examples&quot;: [
+        &quot;cases/my-case&quot;
+      ]
+    },
+    &quot;tally_id&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 1,
+      &quot;description&quot;: &quot;算例输入中的计分ID；define省略时分配未使用编号。更新/删除必须显式提供已有ID，从preview_input.summary或输入定义中确认，不是job_id。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;case_dir&quot;,
+    &quot;tally_id&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;tally_id为已删除的计分；before保留原定义，其余计分与旧作业快照保留，重新计算才反映删除。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/openmc_tools.py">mcp/openmc_tools.py</a>。</p></details>
 <footer>由 scripts/generate_tool_reference.py 从实际注册表生成 · 无需联网或启动服务</footer>
 </main></body></html>

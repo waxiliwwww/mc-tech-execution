@@ -3,10 +3,11 @@
     "BoxSource": {
       "additionalProperties": false,
       "properties": {
-        "type": {
-          "const": "box",
-          "title": "Type",
-          "type": "string"
+        "energy_ev": {
+          "default": null,
+          "exclusiveMinimum": 0,
+          "title": "Energy Ev",
+          "type": "number"
         },
         "lower_left": {
           "items": {
@@ -17,6 +18,17 @@
           "title": "Lower Left",
           "type": "array"
         },
+        "strength": {
+          "default": null,
+          "exclusiveMinimum": 0,
+          "title": "Strength",
+          "type": "number"
+        },
+        "type": {
+          "const": "box",
+          "title": "Type",
+          "type": "string"
+        },
         "upper_right": {
           "items": {
             "type": "number"
@@ -25,18 +37,6 @@
           "minItems": 3,
           "title": "Upper Right",
           "type": "array"
-        },
-        "strength": {
-          "default": null,
-          "exclusiveMinimum": 0,
-          "title": "Strength",
-          "type": "number"
-        },
-        "energy_ev": {
-          "default": null,
-          "exclusiveMinimum": 0,
-          "title": "Energy Ev",
-          "type": "number"
         }
       },
       "required": [
@@ -50,6 +50,26 @@
     "Cell": {
       "additionalProperties": false,
       "properties": {
+        "fill": {
+          "discriminator": {
+            "mapping": {
+              "lattice": "#/$defs/RefFill",
+              "material": "#/$defs/RefFill",
+              "universe": "#/$defs/RefFill",
+              "void": "#/$defs/VoidFill"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/VoidFill"
+            },
+            {
+              "$ref": "#/$defs/RefFill"
+            }
+          ],
+          "title": "Fill"
+        },
         "id": {
           "minimum": 1,
           "title": "Id",
@@ -60,11 +80,6 @@
           "maxLength": 200,
           "title": "Name",
           "type": "string"
-        },
-        "universe": {
-          "minimum": 0,
-          "title": "Universe",
-          "type": "integer"
         },
         "region": {
           "discriminator": {
@@ -92,25 +107,10 @@
           ],
           "title": "Region"
         },
-        "fill": {
-          "discriminator": {
-            "mapping": {
-              "lattice": "#/$defs/RefFill",
-              "material": "#/$defs/RefFill",
-              "universe": "#/$defs/RefFill",
-              "void": "#/$defs/VoidFill"
-            },
-            "propertyName": "type"
-          },
-          "oneOf": [
-            {
-              "$ref": "#/$defs/VoidFill"
-            },
-            {
-              "$ref": "#/$defs/RefFill"
-            }
-          ],
-          "title": "Fill"
+        "universe": {
+          "minimum": 0,
+          "title": "Universe",
+          "type": "integer"
         }
       },
       "required": [
@@ -125,11 +125,6 @@
     "EnergyFilter": {
       "additionalProperties": false,
       "properties": {
-        "type": {
-          "const": "energy",
-          "title": "Type",
-          "type": "string"
-        },
         "bins": {
           "items": {
             "type": "number"
@@ -138,6 +133,11 @@
           "minItems": 1,
           "title": "Bins",
           "type": "array"
+        },
+        "type": {
+          "const": "energy",
+          "title": "Type",
+          "type": "string"
         }
       },
       "required": [
@@ -155,11 +155,6 @@
           "title": "Op",
           "type": "string"
         },
-        "surface": {
-          "minimum": 1,
-          "title": "Surface",
-          "type": "integer"
-        },
         "side": {
           "enum": [
             "negative",
@@ -167,6 +162,11 @@
           ],
           "title": "Side",
           "type": "string"
+        },
+        "surface": {
+          "minimum": 1,
+          "title": "Surface",
+          "type": "integer"
         }
       },
       "required": [
@@ -185,12 +185,6 @@
           "title": "Id",
           "type": "integer"
         },
-        "name": {
-          "default": "",
-          "maxLength": 200,
-          "title": "Name",
-          "type": "string"
-        },
         "lower_left": {
           "items": {
             "type": "number"
@@ -199,6 +193,18 @@
           "minItems": 2,
           "title": "Lower Left",
           "type": "array"
+        },
+        "name": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Name",
+          "type": "string"
+        },
+        "outer": {
+          "default": null,
+          "minimum": 0,
+          "title": "Outer",
+          "type": "integer"
         },
         "pitch": {
           "items": {
@@ -224,12 +230,6 @@
           "minItems": 1,
           "title": "Universes",
           "type": "array"
-        },
-        "outer": {
-          "default": null,
-          "minimum": 0,
-          "title": "Outer",
-          "type": "integer"
         }
       },
       "required": [
@@ -244,17 +244,6 @@
     "Material": {
       "additionalProperties": false,
       "properties": {
-        "id": {
-          "minimum": 1,
-          "title": "Id",
-          "type": "integer"
-        },
-        "name": {
-          "default": "",
-          "maxLength": 200,
-          "title": "Name",
-          "type": "string"
-        },
         "density": {
           "exclusiveMinimum": 0,
           "title": "Density",
@@ -270,12 +259,20 @@
           "title": "Density Unit",
           "type": "string"
         },
-        "percent_type": {
-          "enum": [
-            "ao",
-            "wo"
-          ],
-          "title": "Percent Type",
+        "depletable": {
+          "default": false,
+          "title": "Depletable",
+          "type": "boolean"
+        },
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "name": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Name",
           "type": "string"
         },
         "nuclides": {
@@ -287,11 +284,13 @@
           "title": "Nuclides",
           "type": "array"
         },
-        "temperature": {
-          "default": null,
-          "exclusiveMinimum": 0,
-          "title": "Temperature",
-          "type": "number"
+        "percent_type": {
+          "enum": [
+            "ao",
+            "wo"
+          ],
+          "title": "Percent Type",
+          "type": "string"
         },
         "sab": {
           "items": {
@@ -302,10 +301,11 @@
           "title": "Sab",
           "type": "array"
         },
-        "depletable": {
-          "default": false,
-          "title": "Depletable",
-          "type": "boolean"
+        "temperature": {
+          "default": null,
+          "exclusiveMinimum": 0,
+          "title": "Temperature",
+          "type": "number"
         },
         "volume": {
           "default": null,
@@ -327,11 +327,6 @@
     "MaterialFilter": {
       "additionalProperties": false,
       "properties": {
-        "type": {
-          "const": "material",
-          "title": "Type",
-          "type": "string"
-        },
         "bins": {
           "items": {
             "minimum": 1,
@@ -341,6 +336,11 @@
           "minItems": 1,
           "title": "Bins",
           "type": "array"
+        },
+        "type": {
+          "const": "material",
+          "title": "Type",
+          "type": "string"
         }
       },
       "required": [
@@ -353,11 +353,6 @@
     "MeshFilter": {
       "additionalProperties": false,
       "properties": {
-        "type": {
-          "const": "mesh",
-          "title": "Type",
-          "type": "string"
-        },
         "dimension": {
           "items": {
             "type": "integer"
@@ -375,6 +370,17 @@
           "minItems": 3,
           "title": "Lower Left",
           "type": "array"
+        },
+        "mesh_id": {
+          "default": null,
+          "minimum": 1,
+          "title": "Mesh Id",
+          "type": "integer"
+        },
+        "type": {
+          "const": "mesh",
+          "title": "Type",
+          "type": "string"
         },
         "upper_right": {
           "items": {
@@ -398,16 +404,16 @@
     "Nuclide": {
       "additionalProperties": false,
       "properties": {
+        "fraction": {
+          "exclusiveMinimum": 0,
+          "title": "Fraction",
+          "type": "number"
+        },
         "name": {
           "maxLength": 40,
           "minLength": 1,
           "title": "Name",
           "type": "string"
-        },
-        "fraction": {
-          "exclusiveMinimum": 0,
-          "title": "Fraction",
-          "type": "number"
         }
       },
       "required": [
@@ -449,13 +455,45 @@
       "title": "Override",
       "type": "object"
     },
+    "ParticleFilter": {
+      "additionalProperties": false,
+      "properties": {
+        "bins": {
+          "items": {
+            "enum": [
+              "neutron",
+              "photon",
+              "electron",
+              "positron"
+            ],
+            "type": "string"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "title": "Bins",
+          "type": "array"
+        },
+        "type": {
+          "const": "particle",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "bins"
+      ],
+      "title": "ParticleFilter",
+      "type": "object"
+    },
     "PointSource": {
       "additionalProperties": false,
       "properties": {
-        "type": {
-          "const": "point",
-          "title": "Type",
-          "type": "string"
+        "energy_ev": {
+          "default": null,
+          "exclusiveMinimum": 0,
+          "title": "Energy Ev",
+          "type": "number"
         },
         "point": {
           "items": {
@@ -472,11 +510,10 @@
           "title": "Strength",
           "type": "number"
         },
-        "energy_ev": {
-          "default": null,
-          "exclusiveMinimum": 0,
-          "title": "Energy Ev",
-          "type": "number"
+        "type": {
+          "const": "point",
+          "title": "Type",
+          "type": "string"
         }
       },
       "required": [
@@ -489,6 +526,11 @@
     "RefFill": {
       "additionalProperties": false,
       "properties": {
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
         "type": {
           "enum": [
             "material",
@@ -497,11 +539,6 @@
           ],
           "title": "Type",
           "type": "string"
-        },
-        "id": {
-          "minimum": 1,
-          "title": "Id",
-          "type": "integer"
         }
       },
       "required": [
@@ -514,11 +551,6 @@
     "RegionComplement": {
       "additionalProperties": false,
       "properties": {
-        "op": {
-          "const": "complement",
-          "title": "Op",
-          "type": "string"
-        },
         "item": {
           "discriminator": {
             "mapping": {
@@ -544,6 +576,11 @@
             }
           ],
           "title": "Item"
+        },
+        "op": {
+          "const": "complement",
+          "title": "Op",
+          "type": "string"
         }
       },
       "required": [
@@ -556,11 +593,6 @@
     "RegionIntersection": {
       "additionalProperties": false,
       "properties": {
-        "op": {
-          "const": "intersection",
-          "title": "Op",
-          "type": "string"
-        },
         "items": {
           "items": {
             "discriminator": {
@@ -590,6 +622,11 @@
           "minItems": 1,
           "title": "Items",
           "type": "array"
+        },
+        "op": {
+          "const": "intersection",
+          "title": "Op",
+          "type": "string"
         }
       },
       "required": [
@@ -602,11 +639,6 @@
     "RegionUnion": {
       "additionalProperties": false,
       "properties": {
-        "op": {
-          "const": "union",
-          "title": "Op",
-          "type": "string"
-        },
         "items": {
           "items": {
             "discriminator": {
@@ -636,6 +668,11 @@
           "minItems": 1,
           "title": "Items",
           "type": "array"
+        },
+        "op": {
+          "const": "union",
+          "title": "Op",
+          "type": "string"
         }
       },
       "required": [
@@ -648,29 +685,10 @@
     "Settings": {
       "additionalProperties": false,
       "properties": {
-        "run_mode": {
-          "enum": [
-            "eigenvalue",
-            "fixed source"
-          ],
-          "title": "Run Mode",
-          "type": "string"
-        },
-        "particles": {
-          "maximum": 100000000,
-          "minimum": 1,
-          "title": "Particles",
-          "type": "integer"
-        },
         "batches": {
           "maximum": 1000000,
           "minimum": 2,
           "title": "Batches",
-          "type": "integer"
-        },
-        "inactive": {
-          "minimum": 0,
-          "title": "Inactive",
           "type": "integer"
         },
         "generations_per_batch": {
@@ -678,6 +696,25 @@
           "minimum": 1,
           "title": "Generations Per Batch",
           "type": "integer"
+        },
+        "inactive": {
+          "minimum": 0,
+          "title": "Inactive",
+          "type": "integer"
+        },
+        "particles": {
+          "maximum": 100000000,
+          "minimum": 1,
+          "title": "Particles",
+          "type": "integer"
+        },
+        "run_mode": {
+          "enum": [
+            "eigenvalue",
+            "fixed source"
+          ],
+          "title": "Run Mode",
+          "type": "string"
         },
         "seed": {
           "default": 1,
@@ -717,11 +754,6 @@
     "Sphere": {
       "additionalProperties": false,
       "properties": {
-        "id": {
-          "minimum": 1,
-          "title": "Id",
-          "type": "integer"
-        },
         "boundary": {
           "default": "transmission",
           "enum": [
@@ -733,13 +765,18 @@
           "title": "Boundary",
           "type": "string"
         },
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "parameters": {
+          "$ref": "#/$defs/SphereParameters"
+        },
         "type": {
           "const": "sphere",
           "title": "Type",
           "type": "string"
-        },
-        "parameters": {
-          "$ref": "#/$defs/SphereParameters"
         }
       },
       "required": [
@@ -753,6 +790,11 @@
     "SphereParameters": {
       "additionalProperties": false,
       "properties": {
+        "r": {
+          "exclusiveMinimum": 0,
+          "title": "R",
+          "type": "number"
+        },
         "x0": {
           "default": 0,
           "title": "X0",
@@ -767,11 +809,6 @@
           "default": 0,
           "title": "Z0",
           "type": "number"
-        },
-        "r": {
-          "exclusiveMinimum": 0,
-          "title": "R",
-          "type": "number"
         }
       },
       "required": [
@@ -783,6 +820,36 @@
     "Tally": {
       "additionalProperties": false,
       "properties": {
+        "filters": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "energy": "#/$defs/EnergyFilter",
+                "material": "#/$defs/MaterialFilter",
+                "mesh": "#/$defs/MeshFilter",
+                "particle": "#/$defs/ParticleFilter"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/EnergyFilter"
+              },
+              {
+                "$ref": "#/$defs/MaterialFilter"
+              },
+              {
+                "$ref": "#/$defs/ParticleFilter"
+              },
+              {
+                "$ref": "#/$defs/MeshFilter"
+              }
+            ]
+          },
+          "maxItems": 8,
+          "title": "Filters",
+          "type": "array"
+        },
         "id": {
           "minimum": 1,
           "title": "Id",
@@ -793,16 +860,6 @@
           "maxLength": 200,
           "title": "Name",
           "type": "string"
-        },
-        "scores": {
-          "items": {
-            "maxLength": 200,
-            "type": "string"
-          },
-          "maxItems": 20,
-          "minItems": 1,
-          "title": "Scores",
-          "type": "array"
         },
         "nuclides": {
           "default": null,
@@ -815,30 +872,14 @@
           "title": "Nuclides",
           "type": "array"
         },
-        "filters": {
+        "scores": {
           "items": {
-            "discriminator": {
-              "mapping": {
-                "energy": "#/$defs/EnergyFilter",
-                "material": "#/$defs/MaterialFilter",
-                "mesh": "#/$defs/MeshFilter"
-              },
-              "propertyName": "type"
-            },
-            "oneOf": [
-              {
-                "$ref": "#/$defs/EnergyFilter"
-              },
-              {
-                "$ref": "#/$defs/MaterialFilter"
-              },
-              {
-                "$ref": "#/$defs/MeshFilter"
-              }
-            ]
+            "maxLength": 200,
+            "type": "string"
           },
-          "maxItems": 8,
-          "title": "Filters",
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Scores",
           "type": "array"
         }
       },
@@ -881,11 +922,6 @@
     "XCylinder": {
       "additionalProperties": false,
       "properties": {
-        "id": {
-          "minimum": 1,
-          "title": "Id",
-          "type": "integer"
-        },
         "boundary": {
           "default": "transmission",
           "enum": [
@@ -897,13 +933,18 @@
           "title": "Boundary",
           "type": "string"
         },
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "parameters": {
+          "$ref": "#/$defs/XCylinderParameters"
+        },
         "type": {
           "const": "x-cylinder",
           "title": "Type",
           "type": "string"
-        },
-        "parameters": {
-          "$ref": "#/$defs/XCylinderParameters"
         }
       },
       "required": [
@@ -917,6 +958,11 @@
     "XCylinderParameters": {
       "additionalProperties": false,
       "properties": {
+        "r": {
+          "exclusiveMinimum": 0,
+          "title": "R",
+          "type": "number"
+        },
         "y0": {
           "default": 0,
           "title": "Y0",
@@ -925,11 +971,6 @@
         "z0": {
           "default": 0,
           "title": "Z0",
-          "type": "number"
-        },
-        "r": {
-          "exclusiveMinimum": 0,
-          "title": "R",
           "type": "number"
         }
       },
@@ -942,11 +983,6 @@
     "XPlane": {
       "additionalProperties": false,
       "properties": {
-        "id": {
-          "minimum": 1,
-          "title": "Id",
-          "type": "integer"
-        },
         "boundary": {
           "default": "transmission",
           "enum": [
@@ -958,13 +994,18 @@
           "title": "Boundary",
           "type": "string"
         },
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "parameters": {
+          "$ref": "#/$defs/XPlaneParameters"
+        },
         "type": {
           "const": "x-plane",
           "title": "Type",
           "type": "string"
-        },
-        "parameters": {
-          "$ref": "#/$defs/XPlaneParameters"
         }
       },
       "required": [
@@ -992,11 +1033,6 @@
     "YCylinder": {
       "additionalProperties": false,
       "properties": {
-        "id": {
-          "minimum": 1,
-          "title": "Id",
-          "type": "integer"
-        },
         "boundary": {
           "default": "transmission",
           "enum": [
@@ -1008,13 +1044,18 @@
           "title": "Boundary",
           "type": "string"
         },
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "parameters": {
+          "$ref": "#/$defs/YCylinderParameters"
+        },
         "type": {
           "const": "y-cylinder",
           "title": "Type",
           "type": "string"
-        },
-        "parameters": {
-          "$ref": "#/$defs/YCylinderParameters"
         }
       },
       "required": [
@@ -1028,6 +1069,11 @@
     "YCylinderParameters": {
       "additionalProperties": false,
       "properties": {
+        "r": {
+          "exclusiveMinimum": 0,
+          "title": "R",
+          "type": "number"
+        },
         "x0": {
           "default": 0,
           "title": "X0",
@@ -1036,11 +1082,6 @@
         "z0": {
           "default": 0,
           "title": "Z0",
-          "type": "number"
-        },
-        "r": {
-          "exclusiveMinimum": 0,
-          "title": "R",
           "type": "number"
         }
       },
@@ -1053,11 +1094,6 @@
     "YPlane": {
       "additionalProperties": false,
       "properties": {
-        "id": {
-          "minimum": 1,
-          "title": "Id",
-          "type": "integer"
-        },
         "boundary": {
           "default": "transmission",
           "enum": [
@@ -1069,13 +1105,18 @@
           "title": "Boundary",
           "type": "string"
         },
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "parameters": {
+          "$ref": "#/$defs/YPlaneParameters"
+        },
         "type": {
           "const": "y-plane",
           "title": "Type",
           "type": "string"
-        },
-        "parameters": {
-          "$ref": "#/$defs/YPlaneParameters"
         }
       },
       "required": [
@@ -1103,11 +1144,6 @@
     "ZCylinder": {
       "additionalProperties": false,
       "properties": {
-        "id": {
-          "minimum": 1,
-          "title": "Id",
-          "type": "integer"
-        },
         "boundary": {
           "default": "transmission",
           "enum": [
@@ -1119,13 +1155,18 @@
           "title": "Boundary",
           "type": "string"
         },
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "parameters": {
+          "$ref": "#/$defs/ZCylinderParameters"
+        },
         "type": {
           "const": "z-cylinder",
           "title": "Type",
           "type": "string"
-        },
-        "parameters": {
-          "$ref": "#/$defs/ZCylinderParameters"
         }
       },
       "required": [
@@ -1139,6 +1180,11 @@
     "ZCylinderParameters": {
       "additionalProperties": false,
       "properties": {
+        "r": {
+          "exclusiveMinimum": 0,
+          "title": "R",
+          "type": "number"
+        },
         "x0": {
           "default": 0,
           "title": "X0",
@@ -1147,11 +1193,6 @@
         "y0": {
           "default": 0,
           "title": "Y0",
-          "type": "number"
-        },
-        "r": {
-          "exclusiveMinimum": 0,
-          "title": "R",
           "type": "number"
         }
       },
@@ -1164,11 +1205,6 @@
     "ZPlane": {
       "additionalProperties": false,
       "properties": {
-        "id": {
-          "minimum": 1,
-          "title": "Id",
-          "type": "integer"
-        },
         "boundary": {
           "default": "transmission",
           "enum": [
@@ -1180,13 +1216,18 @@
           "title": "Boundary",
           "type": "string"
         },
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "parameters": {
+          "$ref": "#/$defs/ZPlaneParameters"
+        },
         "type": {
           "const": "z-plane",
           "title": "Type",
           "type": "string"
-        },
-        "parameters": {
-          "$ref": "#/$defs/ZPlaneParameters"
         }
       },
       "required": [
@@ -1216,11 +1257,22 @@
   "additionalProperties": false,
   "description": "OpenMC 声明式模型输入；组合模型，不执行调用方Python；专业适用性需另行确认。",
   "properties": {
-    "name": {
-      "default": "",
-      "maxLength": 200,
-      "title": "Name",
-      "type": "string"
+    "cells": {
+      "items": {
+        "$ref": "#/$defs/Cell"
+      },
+      "maxItems": 10000,
+      "minItems": 1,
+      "title": "Cells",
+      "type": "array"
+    },
+    "lattices": {
+      "items": {
+        "$ref": "#/$defs/Lattice"
+      },
+      "maxItems": 100,
+      "title": "Lattices",
+      "type": "array"
     },
     "materials": {
       "items": {
@@ -1230,6 +1282,20 @@
       "minItems": 1,
       "title": "Materials",
       "type": "array"
+    },
+    "name": {
+      "default": "",
+      "maxLength": 200,
+      "title": "Name",
+      "type": "string"
+    },
+    "root_universe": {
+      "minimum": 0,
+      "title": "Root Universe",
+      "type": "integer"
+    },
+    "settings": {
+      "$ref": "#/$defs/Settings"
     },
     "surfaces": {
       "items": {
@@ -1273,31 +1339,6 @@
       "minItems": 1,
       "title": "Surfaces",
       "type": "array"
-    },
-    "cells": {
-      "items": {
-        "$ref": "#/$defs/Cell"
-      },
-      "maxItems": 10000,
-      "minItems": 1,
-      "title": "Cells",
-      "type": "array"
-    },
-    "lattices": {
-      "items": {
-        "$ref": "#/$defs/Lattice"
-      },
-      "maxItems": 100,
-      "title": "Lattices",
-      "type": "array"
-    },
-    "root_universe": {
-      "minimum": 0,
-      "title": "Root Universe",
-      "type": "integer"
-    },
-    "settings": {
-      "$ref": "#/$defs/Settings"
     },
     "tallies": {
       "items": {

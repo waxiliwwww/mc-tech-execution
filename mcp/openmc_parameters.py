@@ -35,7 +35,7 @@ def describe(model):
                                    if material.density_units == 'macro' else '保持原密度单位；不自动换算单位。')})
         items.append({'name': f'materials.{material.id}.temperature', 'type': 'number',
                       'exclusive_minimum': 0, 'current': material.temperature, 'unit': 'K',
-                      'category': 'material', 'note': '实际温度计算还依赖适用核数据。'})
+                      'category': 'material', 'note': 'current=null表示材料未显式设置，可能继承cell/settings/properties；不等于有效温度为0或缺数据。实际温度还依赖适用核数据。'})
     for surface in model.geometry.get_all_surfaces().values():
         for field in SURFACES.get(type(surface).__name__, ()):
             items.append({'name': f'geometry.surfaces.{surface.id}.{field}', 'type': 'number',
@@ -63,7 +63,7 @@ def checked(model, parameters):
         if spec['type'] == 'integer' and type(value) is not int:
             raise ValueError(name + '须为整数')
         if ('minimum' in spec and value < spec['minimum']) or ('exclusive_minimum' in spec and value <= spec['exclusive_minimum']):
-            raise ValueError(name + '超出支持范围')
+            raise ValueError(name + '超出支持范围；当前值=' + str(spec.get('current')) + '；要求=' + str({k: v for k,v in spec.items() if k in ('minimum','maximum','exclusive_minimum','exclusive_maximum','type','unit')}))
     batches = parameters.get('settings.batches', model.settings.batches)
     inactive = parameters.get('settings.inactive', model.settings.inactive or 0)
     if batches is not None and batches - inactive < 2:

@@ -122,6 +122,21 @@ class CadRealConversion(unittest.TestCase):
         import xml.etree.ElementTree as ET
         before = ET.parse(directory / 'model.xml').getroot()
         snapshot = {tag: ET.tostring(before.find(tag)) for tag in ('geometry', 'materials', 'settings')}
+        # A redundant empty reserved void material must not break either plot path.
+        tree=ET.parse(directory/'model.xml');section=tree.getroot().find('materials')
+        void=ET.SubElement(section,'material',id='99991',name='graveyard')
+        ET.SubElement(void,'density',units='g/cm3',value='1.0')
+        tree.write(directory/'model.xml',encoding='utf-8',xml_declaration=True)
+        plot_hashes={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in directory.iterdir() if p.is_file()}
+        for color in ('cell','material'):
+            viewed=tools.view_geometry('transport',color_by=color,pixels=100)
+            self.assertIn(99991,viewed['plotting_omitted_reserved_void_material_ids'])
+            self.assertFalse(viewed['input_files_modified'])
+            self.assertEqual({p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in directory.iterdir() if p.is_file()},plot_hashes)
+        # Remove only the deliberate negative fixture before actual transport.
+        section.remove(void);tree.write(directory/'model.xml',encoding='utf-8',xml_declaration=True)
+        before=ET.parse(directory/'model.xml').getroot()
+        snapshot={tag:ET.tostring(before.find(tag)) for tag in ('geometry','materials','settings')}
         defined = tools.define_tally('transport', ['flux'], name='CAD空间通量', filters=[
             {'type': 'mesh', 'dimension': [4, 4, 1],
              'lower_left': [-0.5, -0.5, -0.5], 'upper_right': [0.5, 0.5, 0.5]}])

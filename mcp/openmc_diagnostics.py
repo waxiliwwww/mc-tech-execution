@@ -52,18 +52,8 @@ def diagnose_job(job_id: str):
     if log.exists():
         with log.open(encoding='utf-8', errors='replace') as stream:
             for total_lines, line in enumerate(stream, 1):tail.append((total_lines, line[:4000]))
-        tail_list = list(tail)
-        for position, (number, line) in enumerate(tail_list):
-            # 引擎会把一条消息折成多行（如 lost particle 的 "could not be located in any" + "cell"），
-            # 逐行匹配会漏；这里把当前行与下一行拼起来再匹配，行号仍报首个命中行。
-            window = line
-            if position + 1 < len(tail_list):
-                window = line.rstrip('\n') + ' ' + tail_list[position + 1][1].strip()
-            for rule in rules:
-                if re.search(rule['pattern'], line, re.IGNORECASE) or re.search(rule['pattern'], window, re.IGNORECASE):
-                    findings.append({'source': 'solver.log', 'line': number, 'excerpt': window.strip()[:1000],
-                                     'category': rule['category'], 'suggestion': rule['suggestion'],
-                                     'rule_status': rule['status'], 'reference': rule.get('reference')})
+        from log_findings import match_lines
+        findings.extend({'source':'solver.log',**item} for item in match_lines(tail,rules))
     proposals = []
     for filename in (('model.xml',) if 'model.xml' in record['input_files'] else ('settings.xml',)):
         if filename not in record['input_files']:continue
@@ -105,7 +95,8 @@ def diagnose_job(job_id: str):
             'note': '日志和输入检查仅提供证据及建议，未排除其他问题；原失败快照不修改。未知错误不报输入正确。'}
 
 
-def prepare_repair(job_id: str, target_dir: str):
+def prepare_repair(job_id: str, target_dir: str, detail: str = 'summary'):
+    if detail not in ('summary','full'):raise Error('detail须为summary或full')
     diagnosis = diagnose_job(job_id)
     if diagnosis['state'] != 'failed':raise Error('仅从失败作业准备修复；其他状态请核对日志和输入')
     if diagnosis['mode'] != 'run':raise Error('自动修复闭环仅支持普通计算run；绘图/几何调试请保留原模式显式校核和重试，不自动改成普通计算')
@@ -124,8 +115,9 @@ def prepare_repair(job_id: str, target_dir: str):
     context = {'origin_job_id': job_id, 'case_dir': target_dir, 'mode': 'run', 'input_files': record['input_files'],
                'diagnosis': diagnosis, 'created_at': time.time()}
     plan = business.preview_repair(relative(target / proposal['file']), proposal['old_text'], proposal['new_text'], _context=context)
-    return {'origin_job_id': job_id, 'case_dir': target_dir, 'plan': plan, 'source_unchanged': True,
-            'next': '展示plan.diff，取得真人确认后调用apply_repair；之后调用openmc_recheck_repair。'}
+    from response_detail import project
+    return project({'origin_job_id': job_id, 'case_dir': target_dir, 'plan': plan, 'source_unchanged': True,
+            'next': '展示plan.diff，取得真人确认后调用apply_repair；之后调用openmc_recheck_repair。'}, detail, 'repair')
 
 
 def recheck_repair(plan_id: str, threads: int = 1):

@@ -172,14 +172,8 @@ def diagnose_log(path: str) -> dict:
         path = candidate.as_posix()
     text = _read_text(_path(path, read_only_internal=True))
     rules = json.loads((ROOT / "config" / "error-rules.json").read_text(encoding="utf-8"))
-    findings = []
-    for number, line in enumerate(text.splitlines(), 1):
-        for rule in rules:
-            if re.search(rule["pattern"], line, re.IGNORECASE):
-                findings.append({"line": number, "excerpt": line[:1000], "category": rule["category"],
-                                 "suggestion": rule["suggestion"], "rule_status": rule["status"]})
-        if len(findings) >= 50:
-            break
+    from log_findings import match_lines
+    findings = match_lines(enumerate(text.splitlines(),1), rules)
     return {"path": path, **job_context, "findings": findings[:50], "diagnosis_status": "rule_hints_only",
             "note": "仅按文本规则提示；空结果不代表输入正确。规则尚待业务人员用真实日志审定。"}
 

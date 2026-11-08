@@ -44,3 +44,7 @@ test_statistical_source_gate.SourceConvergenceAdvisory
 test_openmc_preview.PreviewInput
 test_business.JobLogReadBoundary
 test_mesh_points_2d.MeshPoints2D
+
+# Researcher workflow boundary regressions.
+test_workflow_boundaries.WorkflowBoundaries
+test_tally_workflow_real.TallyWorkflowReal

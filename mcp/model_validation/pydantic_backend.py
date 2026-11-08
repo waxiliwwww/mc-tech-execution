@@ -222,14 +222,20 @@ class MaterialFilter(Strict):
     bins: Annotated[list[PositiveInt], Field(min_length=1, max_length=10000)]
 
 
+class ParticleFilter(Strict):
+    type: Literal['particle']
+    bins: list[Literal['neutron','photon','electron','positron']] = Field(min_length=1,max_length=4)
+
+
 class MeshFilter(Strict):
     type: Literal['mesh']
+    mesh_id: PositiveInt = Field(default=None)
     dimension: Vec3Int
     lower_left: Vec3
     upper_right: Vec3
 
 
-Filter = Annotated[TUnion[EnergyFilter, MaterialFilter, MeshFilter], Field(discriminator='type')]
+Filter = Annotated[TUnion[EnergyFilter, MaterialFilter, ParticleFilter, MeshFilter], Field(discriminator='type')]
 
 
 class Tally(Strict):

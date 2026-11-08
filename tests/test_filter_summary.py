@@ -11,6 +11,13 @@ class FilterSummary(unittest.TestCase):
             root=Path(tmp);original=Path.cwd()
             try:
                 os.chdir(root)
+                # Exercise the same complete native case required by the public
+                # mutation tool; an empty directory cannot validate references.
+                material=openmc.Material();material.add_nuclide('H1',1.0);material.set_density('g/cm3',1.0)
+                sphere=openmc.Sphere(r=10,boundary_type='vacuum')
+                cell=openmc.Cell(fill=material,region=-sphere)
+                settings=openmc.Settings();settings.particles=10;settings.batches=4;settings.inactive=0
+                openmc.Model(openmc.Geometry([cell]),openmc.Materials([material]),settings).export_to_xml()
                 mesh={'type':'mesh','dimension':[17,17,1],'lower_left':[-10.71,-10.71,-1],
                       'upper_right':[10.71,10.71,1]}
                 result=execute('add-tally',{'_expected_version':openmc.__version__,'scores':['flux'],

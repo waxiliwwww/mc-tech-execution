@@ -58,10 +58,10 @@ class ModelSpec(unittest.TestCase):
                 with self.assertRaises(ValueError):validate_spec(s)
 
     def test_capabilities_schema_is_detached_and_matches_execute_contract(self):
-        c=tools.model_capabilities();c['spec_schema']['required'].append('evil')
-        self.assertNotIn('evil',tools.model_capabilities()['spec_schema']['required'])
-        self.assertEqual(tools.model_capabilities()['spec_schema'],tools.MODEL_TOOLS[1]['inputSchema']['properties']['spec'])
-        capabilities=tools.model_capabilities()
+        c=tools.model_capabilities(detail='full');c['spec_schema']['required'].append('evil')
+        self.assertNotIn('evil',tools.model_capabilities(detail='full')['spec_schema']['required'])
+        self.assertEqual(tools.model_capabilities(detail='full')['spec_schema'],tools.MODEL_TOOLS[1]['inputSchema']['properties']['spec'])
+        capabilities=tools.model_capabilities(detail='full')
         self.assertEqual(capabilities['builder_validation_backend_policy'],
                          'pydantic_if_available_else_fallback')
         self.assertTrue(capabilities['validation_backend_scope'])

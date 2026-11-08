@@ -337,6 +337,14 @@ def _semantic_summary(directory: Path, inspected: list, cfg: dict) -> dict:
                                  'location': f'filter type={element.get("type") or "?"}',
                                  'detail': 'filter定义缺id，无法被tally引用'})
             _check_filter(f'filter id={fid or "?"}', element, problems)
+            if (element.get('type') or '').lower() == 'material':
+                section = root.find('materials') if single.exists() else root
+                material_ids = {int(m.get('id')) for m in section.findall('material') if (m.get('id') or '').isdigit()} if section is not None else set()
+                for token in (element.findtext('bins') or '').split():
+                    if token.lstrip('+').isdigit() and int(token) not in material_ids:
+                        problems.append({'kind':'tally_material_reference','severity':'error',
+                                         'location':f'filter id={fid or "?"}',
+                                         'detail':f'MaterialFilter引用材料id={token}，但materials输入未定义；请修正该filter的bins，不是截面路径问题'})
         for tally in tallies_root.iter('tally'):
             tally_count += 1
             label = tally.get('name') or ('id=' + (tally.get('id') or '?'))
@@ -705,6 +713,14 @@ def _geometry_check(directory: Path, cfg: dict) -> dict:
                           '通过不能证明无重叠，仅表示给定抽样下未发现。'}
         if completed.returncode != 0 and not overlaps:
             text = stdout + '\n' + stderr
+            from log_findings import match_lines
+            rules = json.loads((ROOT / 'config/error-rules.json').read_text())
+            findings = match_lines(enumerate(text.splitlines(),1),rules)
+            coverage = [item for item in findings if item['category'] in ('lost_particle','source_outside_geometry')]
+            if coverage:
+                result.update(ok=False, geometry_coverage='failed', findings=coverage,
+                              reason='几何覆盖失败/丢失粒子；不是重叠结论。检查日志指向的lattice/cell边界和填充；切片图不能证明输运区域完整。')
+                return result
             data_failure = next((marker for marker in
                                  ('Cross section HDF5 file', 'No macroscopic data',
                                   'Could not find', 'No cross sections found')
@@ -802,9 +818,11 @@ def validate_inputs(case_dir: str, api_check: bool = False, semantic_check: bool
 
 
 def submit_job(case_dir: str, mode: str = 'run', threads: int = 1, name: str | None = None) -> dict:
-    validation = validate_inputs(case_dir)
+    validation = validate_inputs(case_dir, semantic_check=True)
     if not validation['structure_valid']:
         raise Error('输入结构检查失败：' + '; '.join(validation['problems']))
+    errors = [p['detail'] for p in (validation.get('semantic') or {}).get('problems', []) if p.get('kind') == 'tally_material_reference']
+    if errors:raise Error('计分材料引用检查失败，未启动作业：' + '；'.join(errors))
     runtime = environment()
     if not runtime['executable_available'] or not runtime['openmc_version_matches']:
         raise Error('OpenMC可执行程序不可用或版本不符；先调用openmc_environment并按部署文档修正')
@@ -819,7 +837,7 @@ def submit_job(case_dir: str, mode: str = 'run', threads: int = 1, name: str | N
 def verified_result(job_id: str):
     status = jobs.status(job_id)
     if status['state'] != 'completed':
-        raise Error('作业尚未成功完成；先查询openmc_job_status')
+        raise Error('作业尚未成功完成，当前状态=' + status['state'] + '；' + ('用openmc_diagnose_job查看失败原因' if status['state'] in ('failed','interrupted') else '先查询openmc_job_status等待终态'))
     directory = jobs.job_directory(job_id)
     record = jobs.read(directory)
     workflow=record.get('example_workflow')
@@ -829,20 +847,8 @@ def verified_result(job_id: str):
             raise Error('Notebook可含多次求解，不能默认取最后StatePoint画图或导出报告；用openmc_read_example_results的calculation_id选择原始结果，查看对应Notebook报告。')
     if record['mode'] == 'plot':
         raise Error('绘图作业不提供计算statepoint；请查看作业files中的图像')
-    candidates = [directory / 'work' / name for name in record.get('output_files', {})
-                  if name.startswith('statepoint.') and name.endswith('.h5') and '/' not in name]
-    if not candidates:
-        raise Error('作业没有statepoint产物；绘图作业请查看files，计算作业请检查日志')
-    def batch(path):
-        try:
-            return int(path.name.split('.')[1])
-        except (IndexError, ValueError):
-            raise Error('statepoint文件名不能识别')
-    point = max(candidates, key=batch)
-    if point.is_symlink():
-        raise Error('结果文件不能是符号链接')
-    if not point.is_file() or jobs.file_hash(point) != record['output_files'][point.name]:
-        raise Error('结果文件缺失或已在计算后改变；不能作为本作业原始产物读取')
+    from openmc_result_identity import select_point
+    point = select_point(directory, record)
     return directory, record, point
 
 
@@ -950,7 +956,8 @@ def _statepoint_context(directory: Path, record: dict, point: Path) -> dict:
     return context
 
 
-def read_results(job_id: str, max_values: int = 1000) -> dict:
+def read_results(job_id: str, max_values: int = 1000, detail: str = 'summary') -> dict:
+    if detail not in ('summary','full'):raise Error('detail须为summary或full')
     if type(max_values) is not int or not 1 <= max_values <= 10000:
         raise Error('max_values须为1..10000')
     directory, record, point = verified_result(job_id)
@@ -974,7 +981,8 @@ def read_results(job_id: str, max_values: int = 1000) -> dict:
                 statistical_adequacy=statistical_adequacy(data.get('keff'), data, status.get('progress')),
                 professional_acceptance=False)
     atomic_json(directory / 'results.json', data)
-    return data
+    from response_detail import project
+    return project(data, detail, 'results')
 
 
 def _cleanup_module():
@@ -1173,7 +1181,7 @@ def compare_jobs(job_a: str, job_b: str, compare_tallies: bool = False,
         record = jobs.read(directory)
         progress = status.get('progress') or {}
         candidates = {'statepoint': _statepoint_keff(job_id),
-                      'log_combined': progress.get('keff_combined'),
+                      'log_combined': progress.get('log_keff_combined',progress.get('keff_combined')),
                       'log_average': progress.get('keff_average')}
         sides[label] = {'job_id': job_id, 'state': status['state'],
                         'mode': record.get('mode'), 'case_dir': record.get('case_dir'),
@@ -1290,17 +1298,31 @@ def _tally_filters(value):
 
 def define_tally(case_dir: str, scores: list, filters: list | None = None,
                  name: str | None = None, tally_id: int | None = None) -> dict:
-    """向分离XML或model.xml算例追加tally，保留已有几何、材料和运行设置。"""
+    return _mutate_tally(case_dir, scores, filters, name, tally_id, 'add')
+
+
+def update_tally(case_dir: str, tally_id: int, scores: list | None = None,
+                 filters: list | None = None, name: str | None = None) -> dict:
+    if scores is None and filters is None and name is None:
+        raise Error('至少提供scores、filters或name之一；省略字段保留原值，filters=[]可清除过滤器')
+    return _mutate_tally(case_dir, scores, filters, name, tally_id, 'update')
+
+
+def delete_tally(case_dir: str, tally_id: int) -> dict:
+    return _mutate_tally(case_dir, None, None, None, tally_id, 'delete')
+
+
+def _mutate_tally(case_dir, scores, filters, name, tally_id, operation):
     cfg = config()
     directory = path_in_workspace(case_dir)
     if not directory.is_dir():
         raise Error('case_dir须为已存在的算例目录')
     if not any((directory / name).is_file() for name in ('geometry.xml', 'model.xml')):
         raise Error('算例缺少geometry.xml或model.xml，不能确认是OpenMC输入目录')
-    if (not isinstance(scores, list) or not scores
+    if (operation == 'add' or scores is not None) and (not isinstance(scores, list) or not scores
             or any(not isinstance(item, str) or not item.strip() for item in scores)):
         raise Error('scores须为非空字符串列表，如["flux"]')
-    unknown, hints = openmc_scores.check(scores)
+    unknown, hints = openmc_scores.check(scores) if scores is not None else ([], {})
     if unknown:
         parts = []
         for name in unknown:
@@ -1309,17 +1331,17 @@ def define_tally(case_dir: str, scores: list, filters: list | None = None,
         raise Error('score不在OpenMC可识别列表：' + '；'.join(parts)
                     + '；合法示例：flux / fission / absorption / heating / (n,gamma)；'
                       '名单来源见openmc_scores.describe()')
-    normalised = _tally_filters(filters)
+    normalised = _tally_filters(filters) if filters is not None or operation == 'add' else None
     if name is not None and (not isinstance(name, str) or not name.strip() or len(name) > 80):
         raise Error('name须为非空字符串（不超过80字符）或省略')
-    if tally_id is not None and (type(tally_id) is not int or isinstance(tally_id, bool) or tally_id <= 0):
+    if (operation != 'add' or tally_id is not None) and (type(tally_id) is not int or isinstance(tally_id, bool) or tally_id <= 0):
         raise Error('tally_id须为正整数或省略（省略用现有最大编号+1）')
-    value = api('add-tally', directory,
+    value = api({'add':'add-tally','update':'update-tally','delete':'delete-tally'}[operation], directory,
                 {'scores': scores, 'filters': normalised, 'name': name, 'tally_id': tally_id}, cfg)
     return {'case_dir': case_dir, **value, 'workspace': str(workspace()), 'location': 'server',
             'provenance': provenance(directory, cfg), 'professional_acceptance': False,
             'note': '已写入' + value.get('input_file', 'tallies.xml') +
-                    '；需重新提交计算后结果才含该tally；计分口径为OpenMC原始归一化。'}
+                    '；需重新提交计算后结果才反映本次计分修改，已提交作业快照不变；计分口径为OpenMC原始归一化。'}
 
 
 DEPLETION_UNITS = ('s', 'min', 'h', 'd')
@@ -1558,7 +1580,7 @@ def read_depletion(job_id: str, key_nuclides: list | None = None) -> dict:
     """读取已完成燃耗作业的depletion_results.h5：逐时间步keff、燃耗估算、关键核素质量。"""
     status = jobs.status(job_id)
     if status['state'] != 'completed':
-        raise Error('作业尚未成功完成；先查询openmc_job_status')
+        raise Error('作业尚未成功完成，当前状态=' + status['state'] + '；' + ('用openmc_diagnose_job查看失败原因' if status['state'] in ('failed','interrupted') else '先查询openmc_job_status等待终态'))
     directory = jobs.job_directory(job_id)
     record = jobs.read(directory)
     if record.get('mode') != 'deplete':
@@ -1648,7 +1670,7 @@ def export_report(job_id: str, format: str = 'markdown', tally_id: int | None = 
     if format in ('pdf', 'doc', 'docx'):
         from openmc_reports import export_job
         return export_job(job_id, format)
-    data = read_results(job_id)
+    data = read_results(job_id, detail='full')
     directory = jobs.job_directory(job_id)
     metadata = _report_metadata(directory)
     note = data['provenance'].get('note', '')
