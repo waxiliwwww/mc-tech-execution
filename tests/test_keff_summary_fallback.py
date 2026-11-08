@@ -1,13 +1,6 @@
-"""D1 回归：Combined k 不可用时，摘要不能选批次表 Average。
-
-功能：`openmc_job_status.human_summary` 与 `progress.keff_source` 的 k 回退顺序。
-类别：回归（旧行为：Combined std 为 -nan 时摘要选批次表 Average=Track-length，
-      丢掉同一 RESULTS 中与解析值一致的 Absorption）。
-前置：无。构造隔离工作区和日志；不执行输运。
-输入：一份包含 Collision/Track-length/Absorption 和 Combined=-nan 的 solver.log。
-预期：摘要和 `keff_source` 选 Absorption；只有 Absorption 不可用时才依次落到
-      Collision、Track-length；批次表 Average 最后。
-不证明：不证明真实物理收敛、StatePoint 数值、跨版本日志格式或专业验收。
+"""Job status must not promote nonfinite/zero-uncertainty estimates into a conclusion.
+Constructed log fixtures exercise public status and depletion block consistency.
+No solver/physics acceptance is implied; real-log replay is retained separately.
 """
 import json
 import os
@@ -64,7 +57,7 @@ class KefSummaryFallback(unittest.TestCase):
         (directory / 'solver.log').write_text(log)
         return directory
 
-    def test_combined_nan_uses_absorption_not_batch_average(self):
+    def test_combined_nan_does_not_announce_a_fallback_as_a_result(self):
         log = (' 1/10 1.6 1.0 1.6 +/- 0.1\n'
                ' 2/10 1.6 1.0 1.6 +/- 0.1\n' + RESULTS_BLOCK)
         self.make_job('aa' * 16, log)
@@ -73,13 +66,45 @@ class KefSummaryFallback(unittest.TestCase):
         self.assertEqual(progress['keff_combined'], None)
         self.assertEqual(progress['keff_estimates']['absorption'],
                          {'mean': 1.66667, 'std_dev': 0.0})
-        self.assertIn('k=1.66667±0.00000', value['human_summary'])
-        self.assertIn('Absorption', progress['keff_source'])
-        self.assertNotIn('Track-length', progress['keff_source'])
-        self.assertNotIn('Average', progress['keff_source'])
-        self.assertIn('RESULTS估计器', value['human_summary'])
-        self.assertNotIn('Combined k', value['human_summary'])
+        self.assertNotIn('k=', value['human_summary'])
+        self.assertIn('不可用', value['human_summary'])
+        self.assertIn('非有限', value['human_summary'])
+        self.assertIsNone(progress['keff_source'])
         json.dumps(value, allow_nan=False)
+
+    def test_zero_combined_cannot_fall_back_to_a_positive_estimator(self):
+        self.make_job('ee' * 16, RESULTS_BLOCK.replace('1.66667 +/- -nan', '1.66667 +/- 0.0'))
+        value = jobs.status('ee' * 16)
+        self.assertEqual(value['progress']['keff_combined']['std_dev'], 0.0)
+        self.assertGreater(value['progress']['keff_estimates']['collision']['std_dev'], 0)
+        self.assertNotIn('k=', value['human_summary'])
+        self.assertIn('标准差为零', value['human_summary'])
+
+    def test_depletion_uses_one_final_results_block_and_points_to_time_series(self):
+        first = RESULTS_BLOCK.replace('1.66667 +/- -nan', '1.30 +/- 0.03')
+        last = RESULTS_BLOCK.replace('1.66667 +/- -nan', '1.11 +/- 0.02').replace('1.66667 +/- 0.00000', '1.12 +/- 0.04')
+        directory = self.make_job('bb' * 16, first + last)
+        record = json.loads((directory/'job.json').read_text()); record['mode'] = 'deplete'
+        (directory/'job.json').write_text(json.dumps(record))
+        value = jobs.status('bb' * 16)
+        self.assertEqual(value['progress']['keff_combined']['mean'], 1.11)
+        self.assertEqual(value['progress']['keff_estimates']['absorption']['mean'], 1.12)
+        self.assertNotIn('k=', value['human_summary'])
+        self.assertIn('openmc_read_depletion', value['human_summary'])
+
+    def test_incomplete_final_block_cannot_reuse_an_earlier_combined(self):
+        first = RESULTS_BLOCK.replace('1.66667 +/- -nan', '1.30 +/- 0.03')
+        self.make_job('cc' * 16, first + '\n ====>     RESULTS     <====\n')
+        value = jobs.status('cc' * 16)
+        self.assertIsNone(value['progress']['keff_combined'])
+        self.assertEqual(value['progress']['keff_estimates'], {})
+        self.assertNotIn('k=', value['human_summary'])
+
+    def test_small_nonzero_uncertainty_is_not_formatted_as_zero(self):
+        self.make_job('dd' * 16, RESULTS_BLOCK.replace('1.66667 +/- -nan', '1.25 +/- 0.00000001'))
+        value = jobs.status('dd' * 16)
+        self.assertNotIn('±0.00000', value['human_summary'])
+        self.assertIn('1e-08', value['human_summary'])
 
 
 if __name__ == '__main__':

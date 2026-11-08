@@ -35,6 +35,7 @@
 |---|---|
 | 关键真实用例不得被 skip 后冒充通过 | `verify.sh --release` → `scripts/check-release-evidence.py` |
 | 不得悄悄收窄能力 | `tests/test_capability_baseline_contract.py` + `config/capability-baseline.json` |
-| k 摘要不得在 Combined 失效时选批次 Average | `tests/test_keff_summary_fallback.py` |
+| k 摘要不得在 Combined 非有限或零标准差时改报替代估计器；燃耗值不得混时间步 | `tests/test_keff_summary_fallback.py` |
 | 源批次不足时不得把 σ 当工程结论 | `tests/test_statistical_source_gate.py` |
 | 导入不得搬运生成的 views | `tests/test_import_generated_views.py` |
+| 二维网格读回与默认报告不越界，源码预览按需展开 | `tests/test_mesh_points_2d.py` + `tests/test_selected_report_real.py` + `tests/test_openmc_preview.py` |

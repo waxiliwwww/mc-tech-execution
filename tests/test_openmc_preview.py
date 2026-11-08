@@ -70,6 +70,34 @@ class PreviewInput(unittest.TestCase):
         self.assertFalse(value['professional_acceptance'])
         self.assertEqual(value['location'], 'server')
 
+    def test_default_is_bounded_and_source_content_is_explicit(self):
+        (self.case/'build_model.py').write_text('# source\n' * 3000)
+        (self.case/'model-spec.json').write_text('{"note":"source only"}')
+        value = tools.preview_input('case')
+        self.assertIsNone(self.entry(value, 'build_model.py')['content'])
+        self.assertIsNone(self.entry(value, 'model-spec.json')['content'])
+        self.assertLessEqual(sum(len(x.get('content') or '') for x in value['files']), 8000)
+        full = tools.preview_input('case', include_content=True)
+        self.assertEqual(len(self.entry(full, 'build_model.py')['content']), 20000)
+        self.assertEqual(value['input_hashes'], full['input_hashes'])
+        self.assertEqual(value['summary'], full['summary'])
+
+    def test_missing_plot_settings_are_rejected_before_job_creation(self):
+        with self.assertRaisesRegex(business.MCInputError, 'openmc_view_geometry'):
+            tools.jobs.submit('case', mode='plot')
+        self.assertFalse((business.WORKSPACE/'.mc-jobs').exists())
+
+    def test_plot_preflight_accepts_a_plot_definition(self):
+        (self.case/'plots.xml').write_text('<plots><plot id="1"/></plots>')
+        # Past the drawing-specific preflight; no worker/process is started.
+        with patch.object(tools.jobs, 'check_capacity', side_effect=RuntimeError('passed plot preflight')):
+            with self.assertRaisesRegex(RuntimeError, 'passed plot preflight'):
+                tools.jobs.submit('case', mode='plot')
+        (self.case/'model.xml').write_text('<model><plots><plot id="1"/></plots></model>')
+        with patch.object(tools.jobs, 'check_capacity', side_effect=RuntimeError('passed plot preflight')):
+            with self.assertRaisesRegex(RuntimeError, 'passed plot preflight'):
+                tools.jobs.submit('case', mode='plot')
+
     def test_missing_files_are_listed_as_problems(self):
         (self.case / 'geometry.xml').unlink()
         value = tools.preview_input('case')
@@ -91,8 +119,8 @@ class PreviewInput(unittest.TestCase):
         value = tools.preview_input('case')
         entry = self.entry(value, 'settings.xml')
         self.assertTrue(entry['truncated'])
-        self.assertEqual(len(entry['content']), 20000)
-        self.assertIn('截断', entry['note'])
+        self.assertEqual(len(entry['content']), 2000)
+        self.assertIn('正文预览', entry['note'])
 
     def test_symlinked_provenance_marker_is_rejected_before_metadata_read(self):
         outside=self.root/'private.json'

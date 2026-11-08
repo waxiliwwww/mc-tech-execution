@@ -19,6 +19,17 @@ def numpy_scalar(value):
     raise TypeError('Unsupported JSON result type: ' + type(value).__name__)
 
 
+def _mesh_bounds(mesh):
+    """Return regular-mesh bounds as 3-D cm, padding missing dimensions with zero."""
+    lower = [float(v) for v in mesh.lower_left]
+    upper = [float(v) for v in mesh.upper_right]
+    while len(lower) < 3:
+        lower.append(0.0)
+    while len(upper) < 3:
+        upper.append(0.0)
+    return lower, upper
+
+
 def filter_summary(item):
     """Compact scientific meaning; never dump an SDK object's repr to clients."""
     kind = type(item).__name__
@@ -35,9 +46,10 @@ def filter_summary(item):
             dim = [int(v) for v in mesh.dimension]
             while len(dim) < 3:
                 dim.append(1)
+            lower, upper = _mesh_bounds(mesh)
             parameters.update(dimension=dim,
-                              lower_left=[number(v) for v in mesh.lower_left],
-                              upper_right=[number(v) for v in mesh.upper_right], unit='cm',
+                              lower_left=[number(v) for v in lower],
+                              upper_right=[number(v) for v in upper], unit='cm',
                               bin_indexing='data-array flat = i0 + nx*j0 + nx*ny*k0 (i0 fastest); filter_selection.bins uses OpenMC MeshFilter 1-based [i,j,k]',
                               filter_bin_convention='1-based [i,j,k]; valid i=1..nx, j=1..ny, k=1..nz',
                               bin_range=('data 0..' + str(count - 1) + '; filter bins [1..'
@@ -138,9 +150,9 @@ def _mesh_descriptor(tally):
     cells = nx * ny * nz
     shape = [int(v) for v in np.asarray(tally.mean).shape]
     direct = bool(shape and shape[0] == cells and all(v == 1 for v in shape[1:]))
+    lower, upper = _mesh_bounds(mesh)
     return {'id': int(mesh.id), 'type': 'RegularMesh', 'dimension': dimension,
-            'lower_left': [float(v) for v in mesh.lower_left],
-            'upper_right': [float(v) for v in mesh.upper_right], 'unit': 'cm',
+            'lower_left': lower, 'upper_right': upper, 'unit': 'cm',
             'cells': cells, 'shape': shape,
             'indexing': ('flat = i + nx*j + nx*ny*k (C order, i fastest)' if direct else
                          'flat index includes non-mesh filter dimensions; select one bin before mapping'),
@@ -216,7 +228,8 @@ def execute(action: str, params: dict) -> dict:
                 if baseline is not None:mapped_declarative_spec(baseline,values)
             return {'valid': True, 'combinations': len(params['combinations']), 'parameters': describe(model)}
         changes = apply(model, params['parameters'])
-        write_parameters(model, params['parameters'])
+        if changes:
+            write_parameters(model, {item['name']: item['after'] for item in changes})
         marker = Path('mc-case.json')
         info = json.loads(marker.read_text()) if marker.exists() else {'data_kind': 'user_supplied_unverified'}
         info.update(parameter_changes=changes, professional_acceptance=False)

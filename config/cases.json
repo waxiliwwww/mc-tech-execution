@@ -43,7 +43,10 @@
     "dependencies": [
       "OpenMC0.16.0；自带公开C5G7多群数据，无需外部核数据库"
     ],
-    "professional_acceptance": false
+    "professional_acceptance": false,
+    "warnings": [
+      "此官方多群示例保留原500箱能谱计分，自带截面为7群；细分箱不提供群内能谱信息，可能出现大量零估计。查看能谱前核对MGXS群边界；需要群通量时用openmc_define_tally显式设置与库一致的能量边界。可准备/运行不表示分箱已对齐或结果通过物理验收。"
+    ]
   },
   {
     "id": "run-mode-typo",

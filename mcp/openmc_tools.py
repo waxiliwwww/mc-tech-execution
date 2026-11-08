@@ -50,6 +50,9 @@ def environment() -> dict:
                          'note': ('CLI直接读取调用时的磁盘身份；MCP服务另给service启动快照与漂移判断，'
                                   '不能把这里的磁盘版本当成进程已加载版本。')}
     result['cross_sections_env_set'] = result['cross_sections_configured']
+    result['cross_sections_configured_note'] = ('兼容字段：仅表示OPENMC_CROSS_SECTIONS环境变量是否设置；'
+                                                'false不表示核数据不可用。请查看nuclear_data的source/index_path/index_exists，'
+                                                '再对具体模型执行openmc_validate_inputs；索引存在不证明库文件齐备。')
     result['nuclear_data'] = deployment_status(cfg)
     result['note'] = ('接口包、可执行程序和核数据分别检查；openmc_version_matches只针对OpenMC；'
                       '探测成功不等于物理验收。')
@@ -75,6 +78,9 @@ def create_model(case_dir: str, template: str = 'synthetic-mgxs', particles: int
         # Keep any partial products for diagnosis rather than deleting user-visible evidence.
         atomic_json(directory / 'creation-failed.json', {'state': 'failed', 'note': '生成失败，不能当作完整输入使用。'})
         raise
+    if template == 'pincell-multigroup':
+        from business import get_case
+        value['warnings'] = get_case('openmc-pincell-mg').get('warnings', [])
     return {'case_dir': case_dir, **value, 'workspace': str(workspace()),
             'case_server_path': str(directory), 'location': 'server',
             'generation_method': 'deterministic_public_api_template',
@@ -478,7 +484,7 @@ def _preview_summary(roots: dict) -> dict:
     return summary
 
 
-def preview_input(case_dir: str) -> dict:
+def preview_input(case_dir: str, include_content: bool = False) -> dict:
     """提交前看清输入：逐文件截断预览、指纹与结构摘要；只读，不作物理判定。"""
     directory = path_in_workspace(case_dir)
     if not directory.is_dir():
@@ -498,6 +504,8 @@ def preview_input(case_dir: str) -> dict:
             names.add(name)
         elif path.is_file() and not any(jobs.is_old_output(part) for part in Path(name).parts):
             names.add(name)
+    if type(include_content) is not bool:raise Error('include_content须为布尔值')
+    content_remaining = 8000
     files, problems, roots = [], [], {}
     text_suffixes = {'.xml', '.json', '.py', '.txt', '.yaml', '.yml', '.csv', '.md', '.rst', '.sh'}
     for name in sorted(names):
@@ -526,10 +534,12 @@ def preview_input(case_dir: str) -> dict:
                 files.append(entry)
                 continue
             text = data.decode('utf-8', errors='replace')
-            entry.update(content=text[:PREVIEW_CONTENT_CHARS],
-                         truncated=len(text) > PREVIEW_CONTENT_CHARS)
+            limit = PREVIEW_CONTENT_CHARS if include_content else min(2000, content_remaining) if path.suffix.lower() == '.xml' else 0
+            entry.update(content=text[:limit] if limit else None, truncated=len(text) > limit)
+            if not include_content:content_remaining -= min(len(text), limit)
             if entry['truncated']:
-                entry['note'] = f'内容截断至前{PREVIEW_CONTENT_CHARS}字符；完整文件以服务端为准'
+                entry['note'] = (f'正文预览仅{limit}字符；清单与哈希仍完整。'
+                                 '需要文本正文时显式传include_content=true（每文件仍最多2万字符）；完整文件以服务端为准。')
             if path.suffix.lower() == '.xml':
                 try:
                     roots[name] = ET.fromstring(data)
@@ -882,10 +892,15 @@ def statistical_adequacy(keff, data, progress=None) -> dict:
         return {'grade': 'not_applicable', 'source_convergence': source,
                 'reason': '该作业没有k结果（固定源/绘图作业）或均值不可用'}
     mean, sigma = keff.get('mean'), keff.get('std_dev')
-    if sigma is None or isinstance(sigma, bool) or not isinstance(sigma, (int, float)) or sigma != sigma:
-        return {'grade': 'unusable', 'mean': mean, 'std_dev': None,
+    if (sigma is None or isinstance(sigma, bool) or not isinstance(sigma, (int, float))
+            or not math.isfinite(sigma) or sigma <= 0
+            or isinstance(mean, bool) or not isinstance(mean, (int, float))
+            or not math.isfinite(mean) or mean <= 0):
+        return {'grade': 'unusable',
+                'mean': mean if type(mean) in (int, float) and math.isfinite(mean) else None,
+                'std_dev': sigma if type(sigma) in (int, float) and math.isfinite(sigma) else None,
                 'source_convergence': source,
-                'reason': 'k有均值但无标准差；不能判断统计充分性，也不能用于方案比较',
+                'reason': 'k的均值或标准差缺失、非有限或非正；零标准差不能作为高精度证明，也不能据此比较方案',
                 'note': '先核对StatePoint的k_combined与日志RESULTS节，再决定是否重算。'}
     relative = abs(float(sigma) / float(mean)) if mean else None
     grade = ('low_statistics_preview' if relative > ADEQUACY_PREVIEW else

@@ -35,7 +35,7 @@ SELECTION = {"type": "array", "items": schema({"type": TEXT, "bins": {"type": "a
 RESULT_SELECTION = {"tally_id": {"type": "integer", "minimum": 1}, "score": TEXT,
                     "nuclide": TEXT, "filter_selection": SELECTION}
 TOOLS = [
-    {"name": "diagnose_log", "description": "读取工作目录内的日志并返回带行号的规则提示；不是专业正确性证明。",
+    {"name": "diagnose_log", "description": "读取工作目录内的日志并返回带行号的规则提示；本工作区标准作业日志.mc-jobs/<job_id>/solver.log自动复用openmc_diagnose_job，保留输入完整性及终态检查。其他工作区文本日志可只读诊断，读取与修复写入限制分开；仍拒绝越出工作区和符号链接。不是专业正确性证明。",
      "inputSchema": schema({"path": TEXT}, ["path"]), "outputSchema": OUTPUT, "function": diagnose_log},
     {"name": "preview_repair", "description": "生成单处精确文本修复计划与差异，不修改业务输入。随后必须让用户查看差异并确认。",
      "inputSchema": schema({"path": TEXT, "old_text": TEXT, "new_text": {"type": "string"}}, ["path", "old_text", "new_text"]),
@@ -67,7 +67,7 @@ TOOLS += [
     {"name": "openmc_validate_inputs", "description": "检查输入XML结构及基础参数，可选公开API模型解析及温度/多群边界元数据告警、静态语义校验（密度/温度/核素/tally filter）与几何重叠检查（openmc -g在临时副本上削减批次运行，概率性结论如实标注）。各层通过不代表物理正确。",
      "inputSchema": schema({"case_dir": TEXT, "api_check": {"type": "boolean"}, "semantic_check": {"type": "boolean"}, "geometry_check": {"type": "boolean"}}, ["case_dir"]),
      "outputSchema": OUTPUT, "function": validate_inputs},
-    {"name": "openmc_submit_job", "description": "快照输入后提交本地OpenMC计算/绘图/几何调试，立即返回作业编号；随后查询终态与产物。声明式模型会在input_integrity中报告mc-case指纹是否与当前XML/spec一致；不一致只提示、不自动拦截。Linux/WSL运行，不代表提交即完成。",
+    {"name": "openmc_submit_job", "description": "快照输入后提交本地OpenMC计算/绘图/几何调试，立即返回作业编号；随后查询终态与产物。geometry-debug按原particles/batches完整运行并增加重叠检查开销，不是轻量检查；轻量探测用openmc_validate_inputs(geometry_check=true)。plot需要已有绘图定义，缺失时提交前提示，查看几何可用openmc_view_geometry。声明式模型会在input_integrity中报告mc-case指纹是否与当前XML/spec一致；不一致只提示、不自动拦截。Linux/WSL运行，不代表提交即完成。",
      "inputSchema": schema({"case_dir": TEXT, "mode": {"type": "string", "enum": ["run", "plot", "geometry-debug", "deplete"]},
                             "threads": {"type": "integer", "minimum": 1, "maximum": 64},
                             "name": {"type": "string", "minLength": 1, "maxLength": 120, "description": "可选用户任务名，最多120字符，拒绝控制符；名称可重复，身份仍为job_id，可用openmc_list_jobs按精确名称查询。"}}, ["case_dir"]),
@@ -266,7 +266,7 @@ TOOLS += [
                            ["case_dir", "scores"]),
      "outputSchema": OUTPUT, "function": define_tally, "annotations": WRITE},
     {"name": "openmc_preview_input", "description": "提交前查看普通作业将复制的完整输入清单（XML、mc-case.json和相对资源），返回大小、SHA256及有限文本预览。大文件/二进制只列指纹；manifest_complete和problems说明清单是否完整，input_hashes用于与提交快照作完整比较。只读，拒绝符号链接；清单不含外部部署核数据库，也不证明物理正确。",
-     "inputSchema": schema({"case_dir": TEXT}, ["case_dir"]),
+     "inputSchema": schema({"case_dir": TEXT, "include_content": {"type": "boolean", "description": "默认false：只预览有限XML正文，总共最多8000字符、每文件最多2000字符，源码/JSON/schema只列哈希。true按需返回文本预览，每文件最多20000字符；超2MiB仍只列哈希。"}}, ["case_dir"]),
      "outputSchema": OUTPUT, "function": preview_input},
     {"name": "openmc_job_compare", "description": "对比两个本地作业：逐输入文件SHA256异同、状态/模式/线程/批数、双方Combined k及差值与合成σ（工程参考，非统计显著性判定）。compare_tallies=true时读取两作业StatePoint，按tally id对齐逐bin对比（两倍σ工程判据；结构不齐/截断/非有限值如实报告）。只读。",
      "inputSchema": schema({"job_a": TEXT, "job_b": TEXT,

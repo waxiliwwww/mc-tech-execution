@@ -164,7 +164,7 @@ def _example_status_once(instance_id: str) -> dict:
     else:
         summary = (f"{value['state']}：已完成 {len(completed)}/{len(pipeline)} 步；"
                    f"下一步 {next_step['name']}（{next_step['id']}）")
-    return {'human_summary': summary, **public,
+    return {'human_summary': summary, **public, 'warnings': describe(value['example_id']).get('warnings', []),
             'case_server_path': str(path_in_workspace(value['case_dir'])),
             'steps_available': pipeline, 'professional_acceptance': False,
             'next': None if next_step is None else {'tool': 'openmc_run_example_step',
@@ -226,7 +226,8 @@ def run_example_step(instance_id: str, step: str, threads: int = 1) -> dict:
         started = jobs.submit(value['current_case_dir'], threads=threads, _internal=True,
                               _example_workflow=workflow, _job_id=reserved_job,
                               _expected_inputs=expected, _preserve_outputs=True,
-                              _runtime=value.get('runtime'))
+                              _runtime=value.get('runtime'),
+                              _example_case_dir=value['case_dir'])
         atomic_json(directory / 'example.json', value)
     return {'instance_id': instance_id, 'step': step, **_step_view(value['case_dir'], started), 'reused': False,
             'next': {'tool': 'openmc_example_status', 'arguments': {'instance_id': instance_id}}}

@@ -46,7 +46,7 @@ def validate_value(value, schema, direction):
                 hint = str(key) + '=' + json.dumps(item.validator_value, ensure_ascii=False)
                 if hint not in hints:hints.append(hint)
         if first.validator == 'additionalProperties' and isinstance(first.instance, dict) and 'schema_version' in first.instance:
-            hints.append('schema_version已取消；核对service.restart_required并刷新tools/list，不要继续用旧Schema')
+            hints.append('schema_version已取消，当前spec不要包含此字段。请核对service.restart_required并刷新tools/list（重新发现工具）；如宿主仍声明必填，请刷新宿主会话的工具定义。')
         detail = (' Expected: ' + '; '.join(hints[:6])[:500]) if hints else ' Check the current tools/list inputSchema and required fields.'
         raise ToolExecutionError(f"{direction} schema validation failed at {path} ({first.validator})." + detail)
 

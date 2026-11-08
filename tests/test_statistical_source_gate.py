@@ -10,6 +10,7 @@
 不证明：不证明 entropy 源收敛、真实物理偏差、跨模型阈值或专业验收。
 """
 import sys
+import json
 from pathlib import Path
 import unittest
 
@@ -44,6 +45,17 @@ class SourceConvergenceAdvisory(unittest.TestCase):
             {'run_mode': 'eigenvalue'})
         self.assertEqual(value['source_convergence']['status'], 'not_available')
         self.assertEqual(value['grade'], 'converged_indicator')
+
+    def test_zero_negative_and_nonfinite_uncertainty_are_not_precision(self):
+        for sigma in [0.0, -0.1, float('inf'), float('nan'), None]:
+            with self.subTest(sigma=sigma):
+                value = tools.statistical_adequacy({'mean': 1.0, 'std_dev': sigma}, {})
+                self.assertEqual(value['grade'], 'unusable')
+                json.dumps(value, allow_nan=False)
+        for mean in [0.0, float('inf'), float('nan')]:
+            value = tools.statistical_adequacy({'mean': mean, 'std_dev': 0.01}, {})
+            self.assertEqual(value['grade'], 'unusable')
+            json.dumps(value, allow_nan=False)
 
 
 if __name__ == '__main__':

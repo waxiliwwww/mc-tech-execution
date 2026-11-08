@@ -21,6 +21,6 @@ def prepare_example(case_id: str, case_dir: str, particles: int = 200, batches: 
         marker = json.loads((directory / 'mc-case.json').read_text())
         marker.update(intentional_fault='run_mode_typo', expected_first_run='failed')
         (directory / 'mc-case.json').write_text(json.dumps(marker, ensure_ascii=False, indent=2)+'\n')
-    return {**value, 'case_id': case_id, 'case_dir': case_dir, 'execution_status': 'not_run',
+    return {**value, 'warnings': list(dict.fromkeys([*value.get('warnings', []), *case.get('warnings', [])])), 'case_id': case_id, 'case_dir': case_dir, 'execution_status': 'not_run',
             'expected_first_run': case.get('expected_first_run', 'completed'), 'provenance': provenance(directory),
             'next': '使用openmc_submit_job提交；生成成功不等于计算已经完成。'}

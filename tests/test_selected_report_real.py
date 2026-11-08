@@ -42,7 +42,9 @@ class SelectedReportReal(unittest.TestCase):
         (cls.workspace/'input/tallies.xml').write_text(f'''<tallies>
 <filter id="10" type="energy"><bins>0 1000000 20000000</bins></filter>
 <filter id="11" type="cell"><bins>{cell}</bins></filter>
-<tally id="1"><scores>flux</scores></tally>
+<mesh id="12" type="regular"><dimension>2 3</dimension><lower_left>-10 -10</lower_left><upper_right>10 10</upper_right></mesh>
+<filter id="12" type="mesh"><bins>12</bins></filter>
+<tally id="1"><filters>12</filters><scores>flux</scores></tally>
 <tally id="2"><filters>10</filters><scores>flux fission</scores></tally>
 <tally id="3"><filters>10 11</filters><scores>flux</scores></tally>
 </tallies>''')
@@ -57,6 +59,30 @@ class SelectedReportReal(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):cls.temp.cleanup()
+
+    def test_job_summary_docx_and_pdf_include_two_dimensional_mesh_and_energy(self):
+        plot = self.call('openmc_plot_results', {'job_id': self.job, 'tally_id': 1, 'score': 'flux'})
+        series = json.loads((self.workspace/plot['series_json']).read_text())
+        self.assertEqual(len(series['mean']), 6)
+        self.assertEqual(series['mesh']['spatial_dimension'], 2)
+        self.assertEqual(series['mesh_centers'][0][::2], [-5.0, 0.0])
+        self.assertAlmostEqual(series['mesh_centers'][0][1], -20/3)
+        self.assertEqual(series['mesh_indices'][5], [1, 2, 0])
+        for format in ['docx', 'pdf']:
+            result = self.call('openmc_export_report', {'job_id': self.job, 'format': format})
+            path = self.workspace/result['path']
+            self.assertGreater(path.stat().st_size, 1000)
+            if format == 'docx':
+                with zipfile.ZipFile(path) as archive:
+                    text = archive.read('word/document.xml').decode()
+                    self.assertIn('tally 1 / flux', text)
+                    self.assertIn('tally 2 / flux', text)
+                    self.assertIn('tally 3 / flux', text)
+                    self.assertTrue(any(n.startswith('word/media/') for n in archive.namelist()))
+            else:
+                from pypdf import PdfReader
+                text = ''.join(page.extract_text() for page in PdfReader(path).pages)
+                self.assertIn('tally 2 / flux', text)
 
     def test_selected_reports_use_the_requested_second_tally_in_all_formats(self):
         from pypdf import PdfReader
@@ -151,7 +177,7 @@ with openmc.StatePoint(sys.argv[1],autolink=False) as p:
         output = self.call('openmc_export_report', {'job_id':self.job,'filter_selection':[],'format':'csv'})
         self.assertEqual(output['selection_mode'],'selected')
         self.assertEqual(output['selection']['tally_id'],1)
-        with (self.workspace/output['path']).open() as source:self.assertEqual(len(list(csv.DictReader(source))),1)
+        with (self.workspace/output['path']).open() as source:self.assertEqual(len(list(csv.DictReader(source))),6)
         legacy = self.call('openmc_export_report', {'job_id':self.job,'format':'csv'})
         self.assertEqual(legacy['selection_mode'],'job_summary')
         with (self.workspace/legacy['path']).open() as source:

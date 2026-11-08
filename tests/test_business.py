@@ -70,5 +70,62 @@ class RepairTests(unittest.TestCase):
         self.assertEqual(result["case"]["status"], "pending_material")
 
 
+class JobLogReadBoundary(unittest.TestCase):
+    def test_only_standard_job_log_routes_to_the_existing_diagnostic(self):
+        import sys, os, json, hashlib
+        from unittest.mock import patch
+        sys.path.insert(0, str(ROOT/'mcp'))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); identifier = 'ab'*16
+            folder = root/'.mc-jobs'/identifier; (folder/'work').mkdir(parents=True)
+            text = b'<settings><run_mode>eigenvalue</run_mode></settings>'
+            (folder/'work/settings.xml').write_bytes(text)
+            (folder/'solver.log').write_text('ERROR: No fission sites banked on MPI rank 0\n')
+            record = {'job_id':identifier, 'state':'failed', 'mode':'run', 'case_dir':'case',
+                      'input_files':{'settings.xml':hashlib.sha256(text).hexdigest()},
+                      'provenance':{'data_kind':'log_fixture'}}
+            (folder/'job.json').write_text(json.dumps(record))
+            old = business.WORKSPACE
+            try:
+                business.WORKSPACE = root
+                with patch.dict(os.environ, {'MC_WORKSPACE':str(root)}):
+                    relative = '.mc-jobs/'+identifier+'/solver.log'
+                    for path in [relative, str(root/relative)]:
+                        value = business.diagnose_log(path)
+                        self.assertEqual(value['job_id'], identifier)
+                        self.assertIn('no_fission_sites', {f['category'] for f in value['findings']})
+                        self.assertEqual(value['proposed_repairs'], [])
+                    custom = '.mc-jobs/'+identifier+'/work/custom.log'
+                    (root/custom).write_text('ERROR: No fission sites banked on MPI rank 0\n')
+                    self.assertEqual(business.diagnose_log(custom)['findings'][0]['category'], 'no_fission_sites')
+                    for path in ['../outside.log', '.mc-backups/missing', relative+'/../runtime.json']:
+                        with self.assertRaises(business.MCInputError):business.diagnose_log(path)
+                    for state, mutate in [('running', False), ('failed', True)]:
+                        record['state'] = state; (folder/'job.json').write_text(json.dumps(record))
+                        if mutate:(folder/'work/settings.xml').write_bytes(text+b'\n')
+                        readable = business.diagnose_log(relative)
+                        self.assertEqual(readable['findings'][0]['category'], 'no_fission_sites')
+                        self.assertTrue(readable['diagnostic_limitations'])
+                        self.assertEqual(readable['proposed_repairs'], [])
+                    (folder/'solver.log').unlink(); (folder/'solver.log').symlink_to(folder/'work/settings.xml')
+                    with self.assertRaisesRegex(ValueError, '符号链接'):business.diagnose_log(relative)
+            finally:business.WORKSPACE = old
+
+
+class FissionDiagnosticRule(unittest.TestCase):
+    def test_real_engine_symptom_has_an_actionable_nonautomatic_hint(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            old = business.WORKSPACE
+            try:
+                business.WORKSPACE = Path(tmp)
+                (business.WORKSPACE/'solver.log').write_bytes((ROOT/'fixtures/faults/engine-logs/s18-no-fission-sites.log.txt').read_bytes())
+                value = business.diagnose_log('solver.log')
+            finally:business.WORKSPACE = old
+        finding = value['findings'][0]
+        self.assertEqual(finding['category'], 'no_fission_sites')
+        self.assertIn('多种原因', finding['suggestion'])
+        self.assertIn('用户确认', finding['suggestion'])
+
+
 if __name__ == "__main__":
     unittest.main()

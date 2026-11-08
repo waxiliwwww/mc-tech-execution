@@ -210,12 +210,12 @@ class OpenMCTools(unittest.TestCase):
     def test_fault_sample_library_lists_and_self_checks(self):
         import openmc_faults
         listing = openmc_faults.list_samples()
-        self.assertEqual(listing['count'], 17)
+        self.assertEqual(listing['count'], 18)
         self.assertEqual({item['kind'] for item in listing['samples']}, {'input', 'log'})
         result = openmc_faults.check_sample()
-        self.assertEqual(result['total'], 17)
+        self.assertEqual(result['total'], 18)
         self.assertEqual(result['failed'], [], result.get('results'))
-        self.assertEqual(result['passed'] + len(result['skipped']), 17)
+        self.assertEqual(result['passed'] + len(result['skipped']), 18)
         single = openmc_faults.check_sample('s01-settings-syntax')
         self.assertEqual(single['total'], 1)
         self.assertTrue(single['results'][0]['passed'])

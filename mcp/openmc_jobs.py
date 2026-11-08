@@ -173,7 +173,8 @@ def list_jobs(name: str | None = None, state: str | None = None, limit: int = 50
 def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | None = None,
            _internal: bool = False, _job_id: str | None = None, _expected_inputs: dict | None = None,
            _example_workflow: dict | None = None, _preserve_outputs: bool = False,
-           name: str | None = None, _input_integrity: dict | None = None) -> dict:
+           name: str | None = None, _input_integrity: dict | None = None,
+           _example_case_dir: str | None = None) -> dict:
     name = checked_name(name)
     if not sys.platform.startswith('linux'):
         raise Error('本地持久作业目前支持Linux/WSL；其他系统请在Linux服务器部署MCP')
@@ -183,6 +184,19 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
     if not source.is_dir() or source == workspace():
         raise Error('case_dir须为工作区内的具体算例子目录')
     cfg = _runtime or config()
+    if mode == 'plot':
+        import xml.etree.ElementTree as ET
+        plot_file = source / ('model.xml' if (source / 'model.xml').exists() else 'plots.xml')
+        has_plots = False
+        if plot_file.is_file() and not plot_file.is_symlink():
+            try:
+                root = ET.parse(plot_file).getroot()
+                plots = root if root.tag == 'plots' else root.find('plots')
+                has_plots = plots is not None and plots.find('plot') is not None
+            except ET.ParseError:pass
+        if not has_plots:
+            raise Error('mode=plot需要已有绘图定义（plots.xml或model.xml中的plots）；未启动作业。'
+                        '只想查看几何时，请调用openmc_view_geometry，或准备绘图定义后再提交。')
     if mode == 'deplete':
         markers = source / 'mc-case.json'
         spec = json.loads(markers.read_text(encoding='utf-8')).get('depletion') if markers.is_file() else None
@@ -217,12 +231,15 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
               'work_dir': relative(copied), 'input_files': input_files, 'disk_admission': disk_admission}
     if _example_workflow is not None:
         record['example_workflow'] = _example_workflow
+    if _example_case_dir is not None:
+        record['step_input_dir'] = case_dir
+        record['case_dir'] = _example_case_dir
     if _input_integrity is not None:
         record['input_integrity'] = _input_integrity
     atomic_json(directory / 'job.json', record)
     spawn_worker(directory, 'openmc_jobs.py', job_id)
     return {'job_id': job_id, 'name': name, 'state': read(directory)['state'],
-            'case_dir': case_dir, 'work_dir': relative(copied),
+            'case_dir': record['case_dir'], 'work_dir': relative(copied),
             'provenance': record['provenance'], 'next': '使用openmc_job_status查询，提交不等于计算完成。'}
 
 
@@ -257,19 +274,25 @@ def _finite_progress(raw):
 
 def _usable_keff(value):
     return (isinstance(value, dict) and value.get('mean') is not None
-            and value.get('std_dev') is not None)
+            and isinstance(value.get('mean'), (int, float))
+            and isinstance(value.get('std_dev'), (int, float))
+            and __import__('math').isfinite(value['mean'])
+            and __import__('math').isfinite(value['std_dev'])
+            and value['std_dev'] > 0)
 
 
 def _summary_keff(progress):
-    """Choose the most defensible k available in a log, in documented order.
+    """Do not replace an explicitly unusable Combined with a summary conclusion.
 
-    Combined is preferred only when finite. When its std is -nan, the RESULTS
-    estimators are better than the last batch-table Average: Absorption first,
-    then Collision, then Track-length. The batch Average is the final fallback.
+    If no Combined line exists, finite positive-sigma RESULTS estimators may be
+    shown with their source; batch Average is only a final live-log fallback.
+    Raw zero/nonfinite values remain in progress for diagnosis, not precision.
     """
+    if progress.get('keff_note'):
+        return None, None
     combined = progress.get('keff_combined')
-    if _usable_keff(combined):
-        return combined, 'solver.log:RESULTS:Combined k'
+    if combined is not None:
+        return (combined, 'solver.log:RESULTS:Combined k') if _usable_keff(combined) else (None, None)
     estimates = progress.get('keff_estimates') or {}
     for name, source in PROGRESS_ESTIMATE_ORDER:
         value = estimates.get(name.lower())
@@ -334,13 +357,21 @@ def _progress(directory: Path, value: dict) -> dict:
         progress['note'] = '暂未解析到批次行；计算可能仍在初始化或日志已截断。'
     else:
         progress['note'] = '该run_mode无批次k表；进度以状态与日志尾部为准，不编造百分比。'
-    combined = PROGRESS_COMBINED_KEFF.search(text)
+    # One RESULTS block is one transport solve, especially during depletion.
+    # Never combine the first Combined with estimates from a later solve.
+    blocks = re.split(r'^.*[=>]\s+RESULTS\s+[<=>].*$', text, flags=re.M)
+    results_text = blocks[-1]
+    combined_matches = list(PROGRESS_COMBINED_KEFF.finditer(results_text))
+    combined = combined_matches[-1] if combined_matches else None
     if combined and all(_finite_progress(v) is not None for v in combined.groups()):
         progress['keff_combined'] = {'mean': _finite_progress(combined.group(1)),
                                      'std_dev': _finite_progress(combined.group(2))}
         progress['percent'] = 100.0
+        if progress['keff_combined']['std_dev'] <= 0:
+            progress['keff_note'] = 'Combined k标准差为零或负值；不能据此声明精度，不在摘要中改报其他估计器；请核对StatePoint和采样条件。'
     else:
-        loose = PROGRESS_COMBINED_LOOSE.search(text)
+        loose_matches = list(PROGRESS_COMBINED_LOOSE.finditer(results_text))
+        loose = loose_matches[-1] if loose_matches else None
         if loose:
             # NaN/异常数值不能安全进入JSON结果；如实报告行的存在与原文。
             progress['keff_note'] = ('Combined k行含非有限值（原文：'
@@ -349,11 +380,13 @@ def _progress(directory: Path, value: dict) -> dict:
                                      '也可能是某个估计器方差为0或合并除零；先核对RESULTS节与StatePoint，'
                                      '增加批次数未必修复。')
     estimates = {}
-    for name, raw_mean, raw_std in PROGRESS_RESULT_ESTIMATE.findall(text):
+    for name, raw_mean, raw_std in PROGRESS_RESULT_ESTIMATE.findall(results_text):
         mean, std = _finite_progress(raw_mean), _finite_progress(raw_std)
         if mean is not None and std is not None:
             estimates[name.lower()] = {'mean': mean, 'std_dev': std}
     progress['keff_estimates'] = estimates
+    if len(blocks) > 1 and not combined and not estimates and not progress.get('keff_note'):
+        progress['keff_note'] = '末段RESULTS尚无可用k统计；不回用前一计算段或批次表作为本段结论。'
     if value.get('state') == 'completed' and progress['percent'] is None and mode == 'eigenvalue':
         progress['percent'] = 100.0
     # 标注k的出处：同一作业的k在status/read_results/plot_convergence三处口径不同，
@@ -384,7 +417,7 @@ def status(job_id: str) -> dict:
             tail = log.read().decode('utf-8', errors='replace')
     result = {key: value[key] for key in ('job_id', 'name', 'state', 'mode', 'case_dir', 'work_dir', 'submitted_at',
               'started_at', 'finished_at', 'exit_code', 'error', 'provenance', 'log_truncated',
-              'process_cleanup', 'cancel_requested', 'input_integrity') if key in value}
+              'process_cleanup', 'cancel_requested', 'input_integrity', 'step_input_dir') if key in value}
     result['log_tail'] = tail
     result['progress'] = _progress(directory, value)
     result['input_files'] = sorted(value.get('input_files', {}))
@@ -397,7 +430,11 @@ def status(job_id: str) -> dict:
         result['keff_source'] = summary_source
     if value['state'] == 'completed':
         has_k = _usable_keff(k)
-        if has_k:
+        if value.get('mode') == 'deplete':
+            result['human_summary'] = '燃耗计算已完成；逐时间点的k与核素变化请调用openmc_read_depletion；日志末段k不代表完整燃耗结果'
+        elif progress.get('keff_note'):
+            result['human_summary'] = '已完成；k统计不可用：' + progress['keff_note']
+        elif has_k:
             source = summary_source or '未知来源'
             if source.startswith('solver.log:RESULTS:Combined') or source.startswith('statepoint:k_combined'):
                 label = 'Combined k'
@@ -407,10 +444,12 @@ def status(job_id: str) -> dict:
                 label = 'RESULTS估计器（非Combined）'
             else:
                 label = '来源未标明（不能当成Combined）'
-            result['human_summary'] = (f"已完成；k={k['mean']:.5f}±{k['std_dev']:.5f}"
+            result['human_summary'] = (f"已完成；k={k['mean']:.6g}±{k['std_dev']:.6g}"
                                        f"（{label}）")
         else:
-            result['human_summary'] = '已完成；该作业无k结果；不要把无值当成k=0'
+            result['human_summary'] = ('已完成；k统计不可用（标准差为零、非有限或缺失）；请核对StatePoint和日志RESULTS'
+                                       if progress.get('keff_combined') or progress.get('keff_estimates')
+                                       else '已完成；该作业无k结果；不要把无值当成k=0')
     elif value['state'] == 'failed':
         result['human_summary'] = f"失败；exit_code={value.get('exit_code')}；查看 log_tail"
     elif value['state'] == 'cancelled':

@@ -211,6 +211,14 @@
       "impact": "代码/模型Schema变更或指纹读取失败后，新建/修改/提交操作停止；已运行计算不会自动取消，查询与取消继续可用。",
       "migration": "确认运行中作业状态后重启对应服务，核对service.ready_for_new_operations并刷新宿主tools/list。",
       "user_decision": "2026-11-07明确同意漂移时阻止新操作，保留查询取消。"
+    },
+    {
+      "id": "plot_requires_plot_definitions",
+      "capability": "geometry_preview",
+      "kind": "guarded",
+      "impact": "mode=plot缺少绘图定义时在创建作业前提示；不替用户生成视角或改模型。",
+      "migration": "几何查看用openmc_view_geometry；或提供plots.xml/model.xml内plots后提交。",
+      "user_decision": "2026-11-08用户确认缺绘图定义时提前提示、不启动失败作业。"
     }
   ]
 }

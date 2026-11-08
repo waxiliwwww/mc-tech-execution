@@ -86,5 +86,13 @@
     "status": "rule_hint_pending_domain_review",
     "reference": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/geometry.rst",
     "updated_at": "2026-11-07"
+  },
+  {
+    "pattern": "no fission sites banked",
+    "category": "no_fission_sites",
+    "suggestion": "本代未产生可用于下一代的裂变位点。检查源位置/分布是否覆盖可裂变区、材料与核数据、边界泄漏和初始采样设置；多种原因均可能，不能只凭本日志认定源点错误。用openmc_view_geometry与openmc_validate_inputs核对，修改物理条件前由用户确认。",
+    "status": "rule_hint_pending_domain_review",
+    "reference": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/troubleshoot.rst",
+    "updated_at": "2026-11-08"
   }
 ]

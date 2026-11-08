@@ -155,7 +155,10 @@ def api(action: str, directory: Path, payload: dict, cfg: dict | None = None) ->
     if result.returncode:
         # Worker errors contain actionable validation text; no environment is printed.
         detail = result.stderr.strip().splitlines()[-1:] or ['unknown error']
-        raise Error('OpenMC API失败：' + detail[0][:1000])
+        domain = ('报告渲染失败' if action == 'render-report' else
+                  '图表生成失败' if action in ('plot-result', 'plot-mesh', 'plot-convergence') else
+                  'OpenMC API失败（' + action + '）')
+        raise Error(domain + '：' + detail[0][:1000])
     try:
         value = json.loads(result.stdout)
         if not isinstance(value, dict):

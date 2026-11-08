@@ -169,5 +169,15 @@
       "category": "source_rejection"
     },
     "evidence": "真实 OpenMC 0.16.0 报错摘录（2026-11-04 本机采集）：两个燃料单元区域重叠，引擎在源抽样阶段报 \"Exceeded maximum number of source rejections\"，不给重叠单元清单，故只做症状级识别，不做重叠定位。"
+  },
+  {
+    "id": "s18-no-fission-sites",
+    "kind": "log",
+    "log": "engine-logs/s18-no-fission-sites.log.txt",
+    "expected": {
+      "source": "error-rules",
+      "category": "no_fission_sites"
+    },
+    "evidence": "真实OpenMC 0.16.0作业01fc60ee1f5546e682c3bf5922d380f0日志摘录，用户试用反馈2026-11-08；仅定位无裂变位点症状，不断言物理原因。"
   }
 ]

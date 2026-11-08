@@ -48,7 +48,11 @@ def describe(example_id: str) -> dict:
     pipeline=steps(item)
     status=('deferred_by_user' if item.get('scope')=='deferred' else
             'adapter_available_pending_verification' if all(s['implemented'] for s in pipeline) else 'pending_adapter')
-    return {**item, 'implementation_status':status, 'example_id': item['id'], 'steps': pipeline,
+    warnings = []
+    if example_id == 'source-pincell-multigroup':
+        from business import get_case
+        warnings = get_case('openmc-pincell-mg').get('warnings', [])
+    return {**item, 'warnings': warnings, 'implementation_status':status, 'example_id': item['id'], 'steps': pipeline,
             'execution_status': 'not_run', 'note': '已收录不等于已经运行；按步骤执行后查询实际终态。'}
 
 

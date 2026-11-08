@@ -25,17 +25,17 @@ def _sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _path(relative: str) -> Path:
+def _path(relative: str, *, read_only_internal: bool = False) -> Path:
     if not isinstance(relative, str) or not relative or Path(relative).is_absolute():
         raise MCInputError("path 必须是工作目录内的相对路径")
     candidate = WORKSPACE / relative
-    if any(part == '..' or part.startswith('.mc-') for part in Path(relative).parts):
+    if any(part == '..' or (part.startswith('.mc-') and not read_only_internal) for part in Path(relative).parts):
         raise MCInputError("不允许访问上级目录或内部作业/修复记录")
     current = WORKSPACE
     for part in Path(relative).parts:
         current = current / part
         if current.is_symlink():
-            raise MCInputError("本轮修复不接受符号链接路径")
+            raise MCInputError("不接受符号链接路径")
     resolved = candidate.resolve()
     if not resolved.is_relative_to(WORKSPACE) or not resolved.is_file():
         raise MCInputError("文件不存在或超出工作目录")
@@ -149,7 +149,28 @@ def apply_repair(plan_id: str) -> dict:
 
 
 def diagnose_log(path: str) -> dict:
-    text = _read_text(_path(path))
+    job_context = {}
+    # Reuse job-specific diagnostics when eligible; keep log reads independent
+    # from the stricter mutation-path policy.
+    if isinstance(path, str) and path:
+        candidate = Path(path)
+        if candidate.is_absolute():
+            try:candidate = candidate.relative_to(WORKSPACE)
+            except ValueError:raise MCInputError('日志路径不在本工作区内')
+        parts = candidate.parts
+        if (len(parts) == 3 and parts[0] == '.mc-jobs'
+                and re.fullmatch('[a-f0-9]{32}', parts[1]) and parts[2] == 'solver.log'):
+            from openmc_diagnostics import diagnose_job
+            from openmc_runtime import Error
+            try:return diagnose_job(parts[1])
+            except Error as error:
+                # Read-only diagnosis remains available even when the snapshot is
+                # not eligible for the stricter repair workflow. _path below still
+                # checks the actual log and every ancestor for path/symlink safety.
+                job_context = {'job_id': parts[1], 'proposed_repairs': [],
+                               'diagnostic_limitations': ['完整作业诊断未执行：' + str(error) + '；本次仅扫描当前日志，不据此生成修复。']}
+        path = candidate.as_posix()
+    text = _read_text(_path(path, read_only_internal=True))
     rules = json.loads((ROOT / "config" / "error-rules.json").read_text(encoding="utf-8"))
     findings = []
     for number, line in enumerate(text.splitlines(), 1):
@@ -159,7 +180,7 @@ def diagnose_log(path: str) -> dict:
                                  "suggestion": rule["suggestion"], "rule_status": rule["status"]})
         if len(findings) >= 50:
             break
-    return {"path": path, "findings": findings[:50], "diagnosis_status": "rule_hints_only",
+    return {"path": path, **job_context, "findings": findings[:50], "diagnosis_status": "rule_hints_only",
             "note": "仅按文本规则提示；空结果不代表输入正确。规则尚待业务人员用真实日志审定。"}
 
 
@@ -177,7 +198,7 @@ def get_case(case_id: str) -> dict:
     for case in list_cases()["cases"]:
         if case["id"] == case_id:
             runnable = case.get('status') == 'ready_to_prepare'
-            return {"case": case, "runnable": runnable, 'execution_status': 'not_run',
+            return {"case": case, "warnings": case.get("warnings", []), "runnable": runnable, 'execution_status': 'not_run',
                     "next_step": "用openmc_prepare_example生成新目录，再提交/查询计算。" if runnable else
                     "缺少业务材料或运行条件，不能当作已可运行的验收基准。"}
     raise MCInputError("未找到算例；可先调用list_cases")

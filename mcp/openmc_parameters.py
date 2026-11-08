@@ -31,7 +31,8 @@ def describe(model):
             items.append({'name': f'materials.{material.id}.density', 'type': 'number',
                           'exclusive_minimum': 0, 'current': material.density,
                           'unit': material.density_units, 'category': 'material',
-                          'note': '保留原密度单位；macro为宏观截面倍率，不按质量密度处理。'})
+                          'note': ('macro是无量纲宏观截面倍率，1.0表示原库的1倍；不是g/cm³，不能直接填质量密度。'
+                                   if material.density_units == 'macro' else '保持原密度单位；不自动换算单位。')})
         items.append({'name': f'materials.{material.id}.temperature', 'type': 'number',
                       'exclusive_minimum': 0, 'current': material.temperature, 'unit': 'K',
                       'category': 'material', 'note': '实际温度计算还依赖适用核数据。'})
@@ -88,7 +89,8 @@ def apply(model, parameters):
         else:
             setattr(model.settings, pieces[1], value)
     return [{'name': name, 'before': specs[name]['current'], 'after': value,
-             'unit': specs[name]['unit'], 'category': specs[name]['category']} for name, value in parameters.items()]
+             'unit': specs[name]['unit'], 'category': specs[name]['category']}
+            for name, value in parameters.items() if specs[name]['current'] != value]
 
 
 def write_parameters(model, parameters):

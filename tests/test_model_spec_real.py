@@ -87,7 +87,9 @@ original={p.name:p.read_bytes() for p in root.glob('*.xml')}
 parameters={'materials.2.density':0.65,'materials.1.temperature':293.6,
  'geometry.surfaces.7.r':0.39,'settings.particles':321,
  'settings.generations_per_batch':2,'settings.source.0.strength':1.7}
-model=load_model();apply(model,parameters);write_parameters(model,parameters)
+model=load_model();changes=apply(model,parameters);write_parameters(model,parameters)
+assert all(c['before'] != c['after'] for c in changes)
+assert apply(load_model(),parameters)==[], 'same parameters must not appear as changes'
 updated=json.loads((root/'model-spec.json').read_text())
 assert updated['materials'][1]['density']==0.65
 assert updated['surfaces'][6]['parameters']['r']==0.39

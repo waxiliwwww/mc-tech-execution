@@ -37,3 +37,10 @@ test_schema_drift_mcp.SchemaDriftMCP
 test_audit_contract_feedback.AuditContractFeedback
 test_scientific_advisories_real.ScientificAdvisoriesReal
 test_package_delivery.PackageDelivery
+
+# Trial feedback: result consistency, compact preview, standard-log boundary.
+test_keff_summary_fallback.KefSummaryFallback
+test_statistical_source_gate.SourceConvergenceAdvisory
+test_openmc_preview.PreviewInput
+test_business.JobLogReadBoundary
+test_mesh_points_2d.MeshPoints2D

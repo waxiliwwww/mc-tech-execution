@@ -77,6 +77,9 @@ def selected_series(point, params):
             if any(index < 0 or index >= cells for index in indices):
                 raise ValueError('MeshFilter的bins超出范围；索引' + str(indices))
             lower, upper = [float(v) for v in mesh.lower_left], [float(v) for v in mesh.upper_right]
+            spatial_dimension = len(lower)
+            # Unused display coordinates are zero, not an invented physical thickness.
+            while len(lower) < 3:lower.append(0.0); upper.append(0.0)
             mesh_indices, centers = [], []
             for flat in indices:
                 k, remainder = divmod(flat, nx * ny)
@@ -88,6 +91,8 @@ def selected_series(point, params):
             axis.update({'mesh_indices': mesh_indices, 'mesh_centers': centers,
                          'mesh': {'id': int(mesh.id), 'dimension': dimension,
                                   'lower_left': lower, 'upper_right': upper, 'unit': 'cm',
+                                  'spatial_dimension': spatial_dimension,
+                                  'unused_coordinate_note': 'Unused dimensions have display coordinate 0; no physical thickness inferred.',
                                   'indexing': 'data-array flat = i0 + nx*j0 + nx*ny*k0 (C order, i0 fastest)',
                                   'filter_bin_convention': 'MeshFilter.bins and filter_selection.bins are 1-based [i,j,k]; mesh_indices below are 0-based data coordinates',
                                   'filter_bins': [[int(i) + 1, int(j) + 1, int(k) + 1] for i, j, k in mesh_indices]},
