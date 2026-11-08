@@ -73,7 +73,7 @@ COMMON = {
     'width': '切片显示宽度一个或两个正数，单位cm；省略用几何包围盒。',
     'pixels': '图像像素边长，50..1200；越大越慢。',
     'color_by': '按材料(material)或栅元(cell)着色。',
-    'energy_bin': '带能量过滤的网格tally中第几个能量箱（0起），从tally的EnergyFilter分界推出；省略则要求该tally无能量过滤。',
+    'energy_bin': '带能量过滤的网格tally中第几个能量箱（0起），从tally的EnergyFilter分界推出；有能量过滤时必填；无能量过滤时须省略，不会静默忽略。',
     'level': '三维网格的第几层（0起，沿第三个坐标方向）；省略仅允许二维网格，不静默投影。',
     'colorbar_label': '可选色标标题，最多200字符；省略用score名并注明未做功率归一化。',
     'show_band': '收敛图是否画±1标准误带，true/false，省略为true。',

@@ -114,6 +114,7 @@ def generate(definitions=None):
             lines.extend(['<details><summary>' + title + '</summary><pre><code>',
                           escape(json.dumps(value, ensure_ascii=False, indent=2)), '</code></pre></details>'])
         lines.extend(['<p class="source">' + implementation(tool) + '</p></details>'])
+    lines.append('<section id="semantic-submission"><h2>提交与诊断的错误判定</h2><p>普通计算、扫描和修复重算使用相同的静态语义错误判据：已识别的 error 级问题在提交前拒绝，报出 kind、位置和修正方向；扫描子作业的提交副本也会再次检查。warning、科学条件未核实或检查不完整不会自动成为硬拒绝。这不表示已完成物理校核。官方例题的 prepare/data 是类型化程序步骤，不能把它们当作现成的原生模型检查。</p><p>网格图的 energy_bin 仅适用于含 EnergyFilter 的计分，无该过滤器时必须省略；单层网格的 level 仅允许 0 或省略。正常 DAGMC/MOAB 初始化和“无错误”摘要不作为故障证据。具体错误优先于同段泛化症状，其他段的独立故障保留。</p></section>')
     lines.extend(['<footer>由 scripts/generate_tool_reference.py 从实际注册表生成 · 无需联网或启动服务</footer>',
                   '</main></body></html>'])
     return '\n'.join(lines) + '\n'

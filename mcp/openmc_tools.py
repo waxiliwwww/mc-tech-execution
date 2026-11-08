@@ -817,12 +817,25 @@ def validate_inputs(case_dir: str, api_check: bool = False, semantic_check: bool
     return result
 
 
+def require_semantic_submission(semantic: dict) -> None:
+    """Consume the same error-level findings as explicit validation.
+
+    Warnings and incomplete scientific checks remain advisory; do not infer a
+    physical readiness guarantee from their absence.
+    """
+    errors = [p for p in semantic.get('problems', []) if p.get('severity') == 'error']
+    if errors or semantic.get('error_count', 0) > 0:
+        details = '；'.join(f"[{p.get('kind', 'input_error')}] {p.get('location', '')}: {p['detail']}" for p in errors)
+        if not details:
+            details = f"发现{semantic.get('error_count')}项错误；问题明细已截断，请用openmc_validate_inputs核对"
+        raise Error('输入语义检查失败，未启动作业：' + details + '；先修正输入并调用openmc_validate_inputs复核')
+
+
 def submit_job(case_dir: str, mode: str = 'run', threads: int = 1, name: str | None = None) -> dict:
     validation = validate_inputs(case_dir, semantic_check=True)
     if not validation['structure_valid']:
         raise Error('输入结构检查失败：' + '; '.join(validation['problems']))
-    errors = [p['detail'] for p in (validation.get('semantic') or {}).get('problems', []) if p.get('kind') == 'tally_material_reference']
-    if errors:raise Error('计分材料引用检查失败，未启动作业：' + '；'.join(errors))
+    require_semantic_submission(validation.get('semantic') or {})
     runtime = environment()
     if not runtime['executable_available'] or not runtime['openmc_version_matches']:
         raise Error('OpenMC可执行程序不可用或版本不符；先调用openmc_environment并按部署文档修正')

@@ -4,7 +4,10 @@
     "category": "tally_material_reference",
     "suggestion": "tally材料过滤器引用未定义的材料编号；对照materials中的ID，用openmc_update_tally修改bins或openmc_delete_tally删除该计分后再预览/校核，不要去修改核数据路径。",
     "status": "documented_input_check",
-    "reference": "https://docs.openmc.org/en/stable/io_formats/tallies.html"
+    "reference": "https://docs.openmc.org/en/stable/io_formats/tallies.html",
+    "supersedes": [
+      "missing_input_data"
+    ]
   },
   {
     "pattern": "geometry.*overlap|overlap.*geometry",
@@ -20,7 +23,10 @@
     "suggestion": "核对核素名称、截面数据路径和核数据库版本；不自动删除核素。",
     "status": "seed_rule_pending_domain_review",
     "reference": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/troubleshoot.rst",
-    "updated_at": "2026-11-04"
+    "updated_at": "2026-11-04",
+    "supersedes": [
+      "missing_input_data"
+    ]
   },
   {
     "pattern": "syntax error|parse error|error processing .*xml",
@@ -76,7 +82,10 @@
     "suggestion": "引擎没找到可用截面：核对OPENMC_CROSS_SECTIONS/材料库路径与核数据版本。多群算例另需materials.xml引用的h5文件与算例同目录；几何检查在临时副本上运行，缺数据会被判为引擎未能启动，不能当几何结论。",
     "status": "rule_hint_pending_domain_review",
     "reference": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/materials.rst",
-    "updated_at": "2026-11-07"
+    "updated_at": "2026-11-07",
+    "supersedes": [
+      "missing_input_data"
+    ]
   },
   {
     "pattern": "source (point|site).*not (inside|in)|no cell (was )?found (for|at) (the )?(source|point)|unable to find cell",
@@ -92,7 +101,8 @@
     "suggestion": "DAGMC/h5m相关失败：核对dagmc.h5m是否随算例、材料标签是否与转换时一致、缩放单位（STEP多为毫米，OpenMC为厘米）。转换成功只说明能读回包围盒，不代表几何或材料正确。",
     "status": "rule_hint_pending_domain_review",
     "reference": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/usersguide/geometry.rst",
-    "updated_at": "2026-11-07"
+    "updated_at": "2026-11-07",
+    "requires_failure": true
   },
   {
     "pattern": "no fission sites banked",

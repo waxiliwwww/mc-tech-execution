@@ -52,4 +52,28 @@ class MeshSelection(unittest.TestCase):
                 expected=raw[:,0,1].reshape((2,4) if reverse else (4,2))
                 expected=expected[1,:] if reverse else expected[:,1]
                 np.testing.assert_allclose(data['values'],expected.reshape(2,2))
+    def test_selector_applicability_missing_bounds_and_types(self):
+        for energy in (False,True):
+            for reverse in (False,True):
+                tally,mesh,_=self.tally(energy=energy,reverse=reverse)
+                with tempfile.TemporaryDirectory() as tmp:
+                    for invalid in (-1,True,1.5):
+                        with self.subTest(energy=energy,reverse=reverse,value=invalid):
+                            with self.assertRaisesRegex(ValueError,'energy_bin'):
+                                self.run_plot(tmp,tally,mesh,score='flux',energy_bin=invalid)
+                    if energy:
+                        with self.assertRaisesRegex(ValueError,'energy_bin'):
+                            self.run_plot(tmp,tally,mesh,score='flux')
+                        with self.assertRaisesRegex(ValueError,'energy_bin'):
+                            self.run_plot(tmp,tally,mesh,score='flux',energy_bin=2)
+                        # Both valid boundary bins must remain selectable.
+                        for column in (0,1):self.run_plot(tmp,tally,mesh,score='flux',energy_bin=column,level=0)
+                    else:
+                        for column in (0,5):
+                            with self.assertRaisesRegex(ValueError,'EnergyFilter'):
+                                self.run_plot(tmp,tally,mesh,score='flux',energy_bin=column)
+                        self.run_plot(tmp,tally,mesh,score='flux',level=0)
+                    for level in (-1,True,1):
+                        with self.assertRaisesRegex(ValueError,'level'):
+                            self.run_plot(tmp,tally,mesh,score='flux',level=level,**({'energy_bin':0} if energy else {}))
 if __name__=='__main__':unittest.main()

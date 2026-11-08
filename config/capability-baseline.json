@@ -247,6 +247,22 @@
       "migration": "detail=full获取完整信息；旧修复计划read_repair_plan读取，不重复创建",
       "kind": "guarded",
       "impact": "四类查询/准备默认不内联详细元数据；结果值、告警、来源与修复diff仍保留，完整证据不删除"
+    },
+    {
+      "id": "semantic_error_admission",
+      "capability": "scan",
+      "kind": "guarded",
+      "impact": "普通提交、扫描与修复重算消费已识别的error级静态语义问题；不拒绝warning或仅因complete=false拒绝。内部提交副本再次核对，官方prepare/data类型步骤不视作原生模型。",
+      "migration": "按kind/location/detail修正输入并重新校核；不存在允许错误输入静默入队的override。",
+      "user_decision": "2026-11-08用户明确要求修复校核到提交的漏检，覆盖同类错误和完整流程。"
+    },
+    {
+      "id": "mesh_energy_selector_applicability",
+      "capability": "selected_report_export",
+      "kind": "guarded",
+      "impact": "无EnergyFilter时拒绝非空energy_bin；不再静默返回全能量图。已有合法能群、层号和过滤器顺序继续支持。",
+      "migration": "省略不适用的energy_bin，或选择含EnergyFilter的tally。",
+      "user_decision": "2026-11-08明确授权修复不适用选择参数被静默忽略。"
     }
   ],
   "stabilization": {

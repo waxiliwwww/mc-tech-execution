@@ -33,6 +33,8 @@
 
 | 规则 | 由什么拦住 |
 |---|---|
+| 关键测试须有真实执行记录与成功终态，名字出现在正文不算执行 | `tests/test_release_evidence_gate.py` + `scripts/check-release-evidence.py` |
+| 选择参数须适用，已发现error不得在提交/扫描/修复重算消失，正常日志不得误报 | `tests/test_mesh_selection.py` + `tests/test_semantic_submission.py` + `tests/test_submission_semantic_real.py` + `tests/test_diagnostic_attribution.py` |
 | 关键真实用例不得被 skip 后冒充通过 | `verify.sh --release` → `scripts/check-release-evidence.py` |
 | 不得悄悄收窄能力 | `tests/test_capability_baseline_contract.py` + `config/capability-baseline.json` |
 | k 摘要不得在 Combined 非有限或零标准差时改报替代估计器；燃耗值不得混时间步 | `tests/test_keff_summary_fallback.py` |

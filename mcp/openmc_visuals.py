@@ -189,6 +189,10 @@ def plot_mesh(params):
     """规则网格分布的二维热图；3D网格须显式给层号，不静默投影。"""
     import numpy as np
     import openmc
+    for key in ('energy_bin', 'level'):
+        value = params.get(key)
+        if value is not None and (type(value) is not int or value < 0):
+            raise ValueError(key + '须为非负整数或省略')
     tallies_path = Path(params['tallies_xml'])
     if not tallies_path.is_file():
         raise ValueError('缺少model.xml或tallies.xml，不能还原网格坐标；请用openmc_define_tally生成带网格过滤的tally后重新计算')
@@ -265,6 +269,8 @@ def plot_mesh(params):
             errors = rest_std[:, column]
             energy_label = f'{bounds[column]:.6g}-{bounds[column + 1]:.6g} eV'
         else:
+            if params.get('energy_bin') is not None:
+                raise ValueError('该tally没有EnergyFilter，energy_bin不适用；请省略该参数或选择带能量过滤的tally')
             if rest_mean.shape[1] != 1:
                 raise ValueError('网格tally含额外维度，不能作为二维分布绘制')
             values = rest_mean[:, 0]

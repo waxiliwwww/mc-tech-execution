@@ -83,6 +83,36 @@ class RealKnowledgeRepair(unittest.TestCase):
         self.assertEqual(proposal['reference']['content_kind'],'official_original')
         self.assert_origin_unchanged();self.evidence('real-diagnosis.json',data)
 
+    def test_legacy_failure_with_remaining_semantic_error_stops_before_rerun_reservation(self):
+        # A legacy failed-record fixture (not a newly solved physical case):
+        # before this guard existed, a failed snapshot could contain both a
+        # run-mode typo and a second definite tally error. Repairing one cannot
+        # silently admit the other. Reuse an actual failure's format/log only.
+        import shutil, uuid
+        identifier=uuid.uuid4().hex
+        legacy=self.workspace/'.mc-jobs'/identifier
+        shutil.copytree(self.origin,legacy)
+        tally=legacy/'work/tallies.xml'
+        tree=ET.parse(tally);tree.getroot().find('tally/scores').text='not-a-score';tree.write(tally)
+        record=json.loads((legacy/'job.json').read_text())
+        record.update(job_id=identifier,work_dir=f'.mc-jobs/{identifier}/work',
+                      input_files={p.relative_to(legacy/'work').as_posix():hashlib.sha256(p.read_bytes()).hexdigest()
+                                   for p in (legacy/'work').rglob('*') if p.is_file()},
+                      provenance={'data_kind':'legacy_failed_record_fixture'},output_files={})
+        (legacy/'job.json').write_text(json.dumps(record))
+        snapshot={p.relative_to(legacy).as_posix():p.read_bytes() for p in legacy.rglob('*') if p.is_file()}
+        prepared=self.call('openmc_prepare_repair',{'job_id':identifier,'target_dir':'legacy-residual-error'})
+        plan=prepared['plan'];self.apply_plan(plan)
+        count=len(list((self.workspace/'.mc-jobs').glob('*/job.json')))
+        result=self.call('openmc_recheck_repair',{'plan_id':plan['plan_id']})
+        self.assertIsNone(result['job'])
+        self.assertFalse(result['validation']['semantic']['ok'])
+        self.assertIn('invalid_score',[p['kind'] for p in result['validation']['semantic']['problems']])
+        saved=json.loads((self.workspace/'.mc-plans'/(plan['plan_id']+'.json')).read_text())
+        self.assertNotIn('rerun_job_id',saved['context'])
+        self.assertEqual(len(list((self.workspace/'.mc-jobs').glob('*/job.json'))),count)
+        self.assertEqual(snapshot,{p.relative_to(legacy).as_posix():p.read_bytes() for p in legacy.rglob('*') if p.is_file()})
+
     def test_confirmed_repair_rechecks_and_reuses_one_new_calculation(self):
         data=self.call('openmc_prepare_repair',{'job_id':self.failed,'target_dir':'accepted-repair'})
         plan=data['plan'];self.assert_origin_unchanged()

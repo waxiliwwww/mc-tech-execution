@@ -126,7 +126,7 @@ TOOLS += [
     {"name": "openmc_plot_results", "description": "从完整StatePoint选择tally/score/nuclide/filter，生成PNG/SVG与完整JSON/CSV。单一能量过滤器用eV区间中点，保留上下界；多过滤器用明确的展平分箱索引，不冒充物理坐标。默认首个tally/score，不用截断预览，不做功率或能宽归一化。",
      "inputSchema": schema({"job_id": TEXT, **PLOT_FIELDS, "style": {"type": "string", "enum": ['line', 'bar']}}, ['job_id']),
      "outputSchema": OUTPUT, "function": plot_results, "annotations": WRITE},
-    {"name": "openmc_plot_mesh", "description": "把规则网格tally画成二维分布热图：从StatePoint取网格分箱值，坐标取自算例tallies.xml或model.xml的网格定义（不猜几何）；3D网格须用level指定层，带能量过滤须用energy_bin指定箱；多score须显式选择score，优先total核素，不隐式合并核素。缺数据不补0，非有限值留空。输出PNG与完整JSON/CSV，零均值加标记，并对相对标准差超过10%或误差不可计算的非零箱给出低统计警告；返回zero_bins/low_statistics_bins/max_relative_std，提示增加粒子/批次或合并分箱，不作物理结论。",
+    {"name": "openmc_plot_mesh", "description": "把规则网格tally画成二维分布热图：从StatePoint取网格分箱值，坐标取自算例tallies.xml或model.xml的网格定义（不猜几何）；3D网格须用level指定层，带能量过滤须用energy_bin指定箱，无能量过滤不得传energy_bin；多score须显式选择score，优先total核素，不隐式合并核素。缺数据不补0，非有限值留空。输出PNG与完整JSON/CSV，零均值加标记，并对相对标准差超过10%或误差不可计算的非零箱给出低统计警告；返回zero_bins/low_statistics_bins/max_relative_std，提示增加粒子/批次或合并分箱，不作物理结论。",
      "inputSchema": schema({"job_id": TEXT, "tally_id": {"type": "integer", "minimum": 1},
                             "score": {"type": "string"}, "energy_bin": {"type": "integer", "minimum": 0},
                             "level": {"type": "integer", "minimum": 0},

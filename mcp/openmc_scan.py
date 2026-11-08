@@ -94,7 +94,7 @@ def prepare_case(case_dir: str, target_dir: str, parameters: dict) -> dict:
 def submit_scan(case_dir: str, axes: dict, threads: int = 1, stop_on_error: bool = False,
                 name: str | None = None) -> dict:
     task_name = jobs.checked_name(name)
-    from openmc_tools import environment, validate_inputs
+    from openmc_tools import environment, validate_inputs, require_semantic_submission
     if type(threads) is not int or not 1 <= threads <= 64:raise Error('threads须为1..64')
     if type(stop_on_error) is not bool:raise Error('stop_on_error须为布尔值')
     if not isinstance(axes, dict) or not axes:raise Error('axes须为非空对象，键取自openmc_list_parameters')
@@ -107,8 +107,9 @@ def submit_scan(case_dir: str, axes: dict, threads: int = 1, stop_on_error: bool
     maximum = cfg.get('max_scan_cases', 100)
     if count > maximum:raise Error(f'组合数{count}超过部署配置max_scan_cases={maximum}；请缩小范围或调整配置')
     source = path_in_workspace(case_dir)
-    checked = validate_inputs(case_dir)
+    checked = validate_inputs(case_dir, semantic_check=True)
     if not checked['structure_valid']:raise Error('输入结构无效，未提交扫描')
+    require_semantic_submission(checked.get('semantic') or {})
     combinations = [dict(zip(axes, values)) for values in itertools.product(*axes.values())]
     specs = api('check-parameters', source, {'combinations': combinations}, cfg)['parameters']
     runtime = environment()

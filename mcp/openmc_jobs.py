@@ -243,6 +243,17 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
     input_files = {str(p.relative_to(copied)): file_hash(p) for p in copied.rglob('*') if p.is_file()}
     if _expected_inputs is not None and input_files != _expected_inputs:
         raise Error('输入在校核与快照之间发生变化，未启动计算；保留未完成目录供核对')
+    if _example_workflow is None:
+        # Check the actual immutable submission copy, not just the caller's
+        # earlier validation. This covers direct, scan-child and repair reruns.
+        # Official prepare/data steps are typed programs, not yet native models.
+        from openmc_tools import _semantic_summary, require_semantic_submission
+        try:
+            require_semantic_submission(_semantic_summary(
+                copied, [p.name for p in copied.glob('*.xml')], cfg))
+        except Exception:
+            shutil.rmtree(directory)
+            raise
     record = {'job_id': job_id, 'name': name, 'state': 'queued', 'submitted_at': time.time(),
               'case_dir': case_dir, 'mode': mode, 'threads': threads,
               'provenance': provenance(source, cfg), 'runtime': cfg, 'concurrency': capacity,

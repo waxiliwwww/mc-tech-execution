@@ -148,7 +148,7 @@ def recheck_repair(plan_id: str, threads: int = 1):
         actual = {p.relative_to(target).as_posix() for p in target.rglob('*') if p.is_file()}
         if actual != set(context['input_files']):raise Error('修复目录的文件集合已改变，请重新核对；未提交计算')
         from openmc_tools import environment, validate_inputs
-        validation = validate_inputs(context['case_dir'])
+        validation = validate_inputs(context['case_dir'], semantic_check=True)
         if validation['structure_valid']:
             from openmc_runtime import api
             try:
@@ -157,7 +157,8 @@ def recheck_repair(plan_id: str, threads: int = 1):
             except Error as error:
                 validation['api_error'] = str(error)
         context['validation'] = validation
-        if not validation['structure_valid'] or validation.get('api_error'):
+        if (not validation['structure_valid'] or validation.get('api_error')
+                or (validation.get('semantic') or {}).get('error_count', 0)):
             business._write_json(path, plan)
             return {'plan_id': plan_id, 'origin_job_id': context['origin_job_id'], 'validation': validation,
                     'job': None, 'next': '校核未通过，没有提交重算；核对problems并提出新修复。'}

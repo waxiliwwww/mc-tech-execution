@@ -158,6 +158,9 @@ class PreviewInput(unittest.TestCase):
     def test_manifest_matches_actual_mock_job_snapshot_including_markers_and_resources(self):
         import time
         import openmc_jobs as jobs
+        # This test submits a snapshot: unlike preview-only fixtures, its
+        # material must satisfy the same semantic density requirement.
+        (self.case/'materials.xml').write_text(MATERIALS.replace('<nuclide', '<density units="g/cm3" value="1"/><nuclide', 1))
         marker={'data_kind':'mock_process_fixture','note':'input manifest fixture, no physics'}
         (self.case/'mc-case.json').write_text(json.dumps(marker))
         (self.case/'mock-mode.json').write_text('{"mode":"success"}')
