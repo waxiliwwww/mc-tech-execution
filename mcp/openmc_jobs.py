@@ -488,7 +488,8 @@ def status(job_id: str) -> dict:
             tail = log.read().decode('utf-8', errors='replace')
     result = {key: value[key] for key in ('job_id', 'name', 'state', 'mode', 'case_dir', 'work_dir', 'submitted_at',
               'started_at', 'finished_at', 'exit_code', 'error', 'provenance', 'log_truncated',
-              'process_cleanup', 'cancel_requested', 'input_integrity', 'step_input_dir') if key in value}
+              'process_cleanup', 'cancel_requested', 'input_integrity', 'step_input_dir',
+              'backend', 'cluster_job_id', 'slurm_submission_id', 'remote_runtime', 'path_changes') if key in value}
     result['log_tail'] = tail
     result['progress'] = _progress(directory, value)
     result['input_files'] = sorted(value.get('input_files', {}))

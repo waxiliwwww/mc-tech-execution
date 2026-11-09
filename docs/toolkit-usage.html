@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MC工具包使用手册</title><link rel="stylesheet" href="assets/manual.css"><script src="assets/manual.js" defer></script></head><body><a class="sr-only" href="#content">跳到正文</a><aside class="sidebar"><a class="brand" href="index.html">MC工具包<br>使用与开发手册</a><p class="edition">OpenMC 0.16.0 · 工具包0.14.4</p><nav aria-label="文档导航"><a href="index.html">工具包总览</a><a href="toolkit-usage.html" aria-current="page">使用手册</a><a href="deployment.html">部署与接入</a><a href="toolkit.html">架构设计</a><a href="reference.html">接口参考</a></nav><p class="minor">按任务阅读，参数按需查询。<br>可在本地离线打开。<br><a href="project-records.html">项目资料与验证记录</a></p></aside><main id="content"><h1>MC工具包使用手册</h1><p>首次复测先走<a href="deployment.html#test-session">自启测试服务入口</a>：脚本核对当前包版本和完整工具定义，再执行流程，结束、失败或中断后自动停服务；不复用旧常驻实例。以下case_dir属于该次回执记录的workspace，产物也在该目录下。</p><p class="lead">从一份明确的输入出发，完成校核、计算、读取、绘图与报告；换模型时复用同一条流程。</p><div class="jump"><a href="#start">使用前准备</a><a href="#assembly">组件完整流程</a><a href="#core">换成全堆</a><a href="#quick-read">工具包做什么</a><a href="#own-models">用自己的模型</a><a href="#input-generation">输入参数生成</a><a href="#results">读懂结果</a><a href="#advanced">其他任务</a><a href="#failure">异常与清理</a></div><section id="quick-read"><h2>这个工具包做什么</h2>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MC工具包使用手册</title><link rel="stylesheet" href="assets/manual.css"><script src="assets/manual.js" defer></script></head><body><a class="sr-only" href="#content">跳到正文</a><aside class="sidebar"><a class="brand" href="index.html">MC工具包<br>使用与开发手册</a><p class="edition">OpenMC 0.16.0 · 工具包0.15.0</p><nav aria-label="文档导航"><a href="index.html">工具包总览</a><a href="toolkit-usage.html" aria-current="page">使用手册</a><a href="deployment.html">部署与接入</a><a href="toolkit.html">架构设计</a><a href="reference.html">接口参考</a></nav><p class="minor">按任务阅读，参数按需查询。<br>可在本地离线打开。<br><a href="project-records.html">项目资料与验证记录</a></p></aside><main id="content"><h1>MC工具包使用手册</h1><p>首次复测先走<a href="deployment.html#test-session">自启测试服务入口</a>：脚本核对当前包版本和完整工具定义，再执行流程，结束、失败或中断后自动停服务；不复用旧常驻实例。以下case_dir属于该次回执记录的workspace，产物也在该目录下。</p><p class="lead">从一份明确的输入出发，完成校核、计算、读取、绘图与报告；换模型时复用同一条流程。</p><div class="jump"><a href="#start">使用前准备</a><a href="#assembly">组件完整流程</a><a href="#core">换成全堆</a><a href="#quick-read">工具包做什么</a><a href="#own-models">用自己的模型</a><a href="#input-generation">输入参数生成</a><a href="#results">读懂结果</a><a href="#advanced">其他任务</a><a href="#slurm">Slurm提交</a><a href="#failure">异常与清理</a></div><section id="quick-read"><h2>这个工具包做什么</h2>
 <p>把输入参数转成 OpenMC 输入，提交计算，取回结果。材料、几何、源和计分由使用者提供；工具不推断富集度、材料成分或堆芯设计。</p>
 <div class="table-wrap"><table><thead><tr><th>手上的输入</th><th>入口</th></tr></thead><tbody>
 <tr><td>已有 OpenMC XML</td><td><code>openmc_import_model</code> 导入，然后预览、校核</td></tr>
@@ -347,4 +347,34 @@ mcp/.venv/bin/python examples/cad_case_demo.py \
 $mcPackageLinux = '/实际的Linux工具包根目录'
 $mcWorkspaceLinux = '/环境工具返回的workspace'
 $mcJobId = '本次真实job_id'
-wsl -d $mcDistro --cd $mcPackageLinux -- bash ./cleanup.sh --workspace $mcWorkspaceLinux --job-id $mcJobId</code></pre><p>这是预览，不删除。只有归档、停写与维护窗口条件均满足后，对同一选择加<code>--apply</code>；检查退出码和返回的选择，不因失败自动重试。</p><pre class="command"><code>wsl -d $mcDistro --cd $mcPackageLinux -- bash ./cleanup.sh --workspace $mcWorkspaceLinux --job-id $mcJobId --apply</code></pre><p>远程Linux服务器应通过已有SSH登录后执行上面的Linux命令，不能用本机WSL清理远程服务器。两种方式都先确认预览显示的工作区和job_id正确。</p></details><p>它删除选定终态记录及其快照、日志、图和报告；原 <code>cases/</code> / <code>demos/</code> 输入保留。删除后不能再按编号查询。扫描按整批用 <code>--scan-id</code>；运行中、未确认中断、关联冲突等会拒绝。<code>./cleanup.sh --help</code> 可查保留时间和修复引用选项；默认不删，失败非 0，不应无条件重试。</p><footer>MC工具包 · <a href="project-records.html">项目资料与验证记录</a></footer></main></body></html>
+wsl -d $mcDistro --cd $mcPackageLinux -- bash ./cleanup.sh --workspace $mcWorkspaceLinux --job-id $mcJobId</code></pre><p>这是预览，不删除。只有归档、停写与维护窗口条件均满足后，对同一选择加<code>--apply</code>；检查退出码和返回的选择，不因失败自动重试。</p><pre class="command"><code>wsl -d $mcDistro --cd $mcPackageLinux -- bash ./cleanup.sh --workspace $mcWorkspaceLinux --job-id $mcJobId --apply</code></pre><p>远程Linux服务器应通过已有SSH登录后执行上面的Linux命令，不能用本机WSL清理远程服务器。两种方式都先确认预览显示的工作区和job_id正确。</p></details><p>它删除选定终态记录及其快照、日志、图和报告；原 <code>cases/</code> / <code>demos/</code> 输入保留。删除后不能再按编号查询。扫描按整批用 <code>--scan-id</code>；运行中、未确认中断、关联冲突等会拒绝。<code>./cleanup.sh --help</code> 可查保留时间和修复引用选项；默认不删，失败非 0，不应无条件重试。</p><footer>MC工具包 · <a href="project-records.html">项目资料与验证记录</a></footer><section id="slurm"><h2>Slurm：把已有模型交给集群</h2>
+<p>先按前文生成/导入模型，再走下表。当前适配在受控调度环境验证；真实集群需管理员按<a href="deployment.html#slurm-config">部署配置</a>准备。案例不限定固定例题，输入是你已有的case_dir。</p>
+<table><tr><th>步骤／工具</th><th>输入从哪来</th><th>看什么、下一步是什么</th></tr>
+<tr><td>准备 openmc_slurm_prepare</td><td>已有case_dir、用户任务名、运维允许的resources。CPU数默认1，time默认00:10:00，其余资源默认交集群决定。</td><td>不连网；检查batch_script、input_hashes、path_changes与资源，保存submission_id。原输入不变。脚本/输入在返回directory/input内；配置错误先修配置，再重新准备。</td></tr>
+<tr><td>提交 openmc_slurm_submit</td><td>刚才的submission_id。</td><td>上传快照，再sbatch，取得cluster_job_id。这个数字是调度编号，不是完成证明。同一submission_id不会重复提交已知任务。</td></tr>
+<tr><td>查询 openmc_slurm_status</td><td>同一submission_id。</td><td>queued/running继续等待；completed由会计终态和退出码确认。unknown/submission_unknown须重查原编号或联系运维，不新建任务重交。提交时断线会按forge-唯一编号查原任务。</td></tr>
+<tr><td>取消 openmc_slurm_cancel</td><td>同一submission_id，用户明确要停止。</td><td>未提交时取消本地准备；已提交调用scancel，返回cancel_requested不代表取消完成，继续status确认。输入与记录保留。</td></tr>
+<tr><td>取回 openmc_slurm_collect</td><td>已确认终态的submission_id。</td><td>核对远端输入/结果与本地快照SHA256，原子取回本工具服务端，返回普通job_id。completed且有StatePoint才继续read_results/绘图/报告；失败可取回日志，不能伪装成功。</td></tr>
+</table><p><strong>三个编号：</strong>submission_id是本包远程准备/调度记录；cluster_job_id是Slurm数字编号；collect后job_id用于现有结果工具。当前job_id与submission_id字符串相同，但用途不同，仍以返回字段为准。文件路径属于MCP服务器，不是DSH客户端；Windows/远程文件交接沿<a href="#files">现有说明</a>。</p>
+<details><summary>可复制调用与示例脚本</summary>
+<pre class="command"><code># 替换cases/my-model为已准备的模型；资源由集群运维给出
+./mc.sh call openmc_slurm_prepare '{"case_dir":"cases/my-model","name":"组件试算","resources":{"cpus_per_task":1,"time":"00:10:00"}}'
+# 从返回复制submission_id，显式允许连接集群后再提交
+./mc.sh call openmc_slurm_submit '{"submission_id":"替换为准备返回的32位编号"}'
+./mc.sh call openmc_slurm_status '{"submission_id":"替换为同一编号"}'
+# 确认终态后取回；不重新计算
+./mc.sh call openmc_slurm_collect '{"submission_id":"替换为同一编号"}'
+# 以下使用collect返回的job_id，与本地结果接口相同
+./mc.sh call openmc_read_results '{"job_id":"替换为collect返回的编号"}'
+./mc.sh call openmc_list_artifacts '{"kind":"job","identifier":"替换为同一job_id"}'</code></pre>
+<p>自动脚本<a href="../examples/slurm_workflow.py">examples/slurm_workflow.py</a>沿同一工具顺序，默认仅离线prepare；完整调用和脚本写入--output记录，终端只显示摘要。</p>
+<pre class="command"><code># 离线准备，不连接集群；已有模型目录和MC_SLURM_CONFIG仍需提供
+mcp/.venv/bin/python examples/slurm_workflow.py --case-dir cases/my-model --output artifacts/slurm-prepare.json
+# 标准MCP可加 --mcp-url http://服务器:端口/mcp
+# 看过脚本/资源后，用原编号继续（将真实访问已配置集群）
+mcp/.venv/bin/python examples/slurm_workflow.py --submission-id 替换为原编号 --submit --output artifacts/slurm-run.json
+# 需要停止：
+./mc.sh call openmc_slurm_cancel '{"submission_id":"替换为原编号"}'</code></pre>
+<p>脚本的--cpus与--time对应资源表；--partition/--account/--qos/--memory-mb按运维条件填写。--timeout默认600秒只限制客户端等待，不取消远端任务；--poll-seconds默认2秒。等待超时/断线后保存原编号续查，不能反复从--case-dir新建。</p></details>
+<details><summary>结果核对、故障与空间</summary><p>准备和collect都会核对快照；路径映射会产生明确的原引用→远端引用差异。collect保留远端原始结果哈希，随后用同一job_id的read_results、图、报告及list_artifacts核对，不以生成文件代替数值检查。远端记录实际OpenMC版本；本机API读回版本与集群预期应匹配。核数据适用性与物理结果仍待专业判据，受控调度通过不能宣称目标集群通过。</p><p>上传失败可用同一准备记录重试；提交结果未知先查询；会计记录延迟不得当完成；setup或求解失败查看取回的solver.log或slurm-编号.out。取回失败不发布半成品、不删远端结果。超限可调整与原任务身份一致的传输配置后重试collect；缺空间先清理或扩容。</p><p>本地准备/台账位于MC_WORKSPACE/.mc-slurm/submission_id，远端位于配置remote_root/submission_id，取回后另有.mc-jobs/job_id。准备快照和远端文件不会自动删除；当前cleanup.sh和作业存储清单不管理.mc-slurm或远端目录，勿将作业统计当整个workspace容量。先确认任务终态、取回及证据归档，再由管理员在维护窗口清理这些明确目录，不删除运行中任务。本轮未新增自动删除策略。</p></details></section>
+</main></body></html>

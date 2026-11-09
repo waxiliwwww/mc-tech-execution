@@ -63,3 +63,7 @@ test_openmc_repair_real.RealKnowledgeRepair.test_legacy_failure_with_remaining_s
 
 # Test-owned service identity, actual tools/list and interrupted cleanup
 test_mcp_test_session.TestSession
+
+# Explicit Slurm adapter; controlled boundary is never target-HPC acceptance
+test_slurm_workflow.SlurmWorkflow
+test_slurm_mcp.SlurmMCP

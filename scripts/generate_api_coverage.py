@@ -99,7 +99,7 @@ def render(root=ROOT):
             continue
         tools = '、'.join('<a href="reference.html#'+esc(t)+'"><code>'+esc(t)+'</code></a>' for t in group['tools']) or '没有专用MCP入口'
         output.append('<tr id="api-group-'+esc(key)+'"><th>'+esc(group['label'])+'</th><td><strong>'+esc(group['state'])+'</strong>。'+esc(group['boundary'])+'</td><td>'+tools+'</td></tr>')
-    output.append('</tbody></table></div></details><p>作业命名、预览与哈希、扫描、诊断/确认修复、知识检索和报告是本包增加的工程封装，不把它们当作OpenMC原生API条目。HPC账户/Slurm后端未实现；也没有把官方Notebook能执行某段代码当作已经开放该段代码对应的通用工具。</p>')
+    output.append('</tbody></table></div></details><p>作业命名、预览与哈希、扫描、诊断/确认修复、知识检索和报告是本包增加的工程封装，不把它们当作OpenMC原生API条目。Slurm适配仅离线/受控调度验证，HPC账户与真实集群待联调；也没有把官方Notebook能执行某段代码当作已经开放该段代码对应的通用工具。</p>')
     for module in manifest['modules']:
         entries = [r for r in rows if r['module'] == module['page']]
         output.append('<details id="api-module-'+module['page']+'"><summary>'+esc(module['name'])+' — '+esc(module['label'])+'（'+str(sum(r['origin']=='index' for r in entries))+'个索引项'+('，另有补充' if any(r['origin']=='supplement' for r in entries) else '')+'）</summary><p><a href="'+module['documentation']+'">官方模块文档</a> · <a href="assets/openmc-api/'+module['page']+'.rst">随包固定原始索引</a>。点击功能落点可回看参数边界和工具入口。</p><div class="table-wrap"><table><thead><tr><th>官方接口名</th><th>本包状态</th><th>对应功能与限制</th></tr></thead><tbody>')

@@ -202,6 +202,24 @@
         "tests/test_domain_mcp_real.py"
       ],
       "gate": "offline_and_real"
+    },
+    {
+      "id": "slurm_adapter",
+      "status": "supported",
+      "surface": [
+        "openmc_slurm_prepare",
+        "openmc_slurm_submit",
+        "openmc_slurm_status",
+        "openmc_slurm_cancel",
+        "openmc_slurm_collect"
+      ],
+      "input": "已有模型、显式资源、管理员Slurm/SSH或登录节点配置；仅适配与受控调度验证，真实集群未验",
+      "output": "离线准备快照/脚本、集群编号与状态、按SHA256取回原始结果并交现有job_id读取链",
+      "evidence": [
+        "tests/test_slurm_workflow.py",
+        "tests/test_slurm_mcp.py"
+      ],
+      "gate": "offline_and_real"
     }
   ],
   "restrictions": [
@@ -263,6 +281,13 @@
       "impact": "无EnergyFilter时拒绝非空energy_bin；不再静默返回全能量图。已有合法能群、层号和过滤器顺序继续支持。",
       "migration": "省略不适用的energy_bin，或选择含EnergyFilter的tally。",
       "user_decision": "2026-11-08明确授权修复不适用选择参数被静默忽略。"
+    },
+    {
+      "id": "slurm_transfer_and_single_task",
+      "capability": "slurm_adapter",
+      "kind": "guarded",
+      "impact": "首版单任务/OpenMP运行，外部路径需显式映射；默认单次传输2GiB，不是物理能力指标；真实集群未验",
+      "override": "max_transfer_bytes/传输超时可由运维在同连接身份配置调整；原生本地能力不变，多节点/燃耗Slurm脚本及扫描方式另按实际需求确认"
     }
   ],
   "stabilization": {

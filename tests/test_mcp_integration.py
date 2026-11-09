@@ -108,6 +108,8 @@ class ProjectIntegration(unittest.IsolatedAsyncioTestCase):
                 self.assertFalse(readable.isError)
                 cancelled = await session.call_tool('openmc_cancel_job', {'job_id':'not-a-job'})
                 self.assertNotIn('已阻止新操作', str(cancelled))
+                slurm_cancelled = await session.call_tool('openmc_slurm_cancel', {'submission_id':'0'*32})
+                self.assertNotIn('已阻止新操作', str(slurm_cancelled))
         self.assertFalse(result['service']['ready_for_new_operations'])
         self.assertFalse(result["service"]["version_matches_disk"])
         self.assertTrue(result["service"]["restart_required"])

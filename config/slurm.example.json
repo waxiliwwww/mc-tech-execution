@@ -1,0 +1,13 @@
+{
+  "transport": "ssh",
+  "host": "your-cluster-ssh-alias",
+  "ssh_command": ["ssh", "-o", "BatchMode=yes"],
+  "remote_root": "/replace-with-your-scratch/openmc-forge",
+  "python_command": ["python3"],
+  "openmc_command": ["openmc"],
+  "environment_setup": [],
+  "path_mappings": {},
+  "command_timeout_seconds": 30,
+  "transfer_timeout_seconds": 600,
+  "max_transfer_bytes": 2147483648
+}

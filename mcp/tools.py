@@ -350,4 +350,7 @@ for _tool in TOOLS:
     if _tool['name'] in READ_ONLY_TOOLS:
         _tool['annotations']={'readOnlyHint':True,'idempotentHint':True,'openWorldHint':False}
 
+from openmc_slurm import SLURM_TOOLS
+TOOLS += SLURM_TOOLS
+
 prepare_tools(TOOLS)

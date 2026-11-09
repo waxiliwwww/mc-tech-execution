@@ -270,7 +270,7 @@ def create_app(config, log, tools=None, startup_identity=None):
             # Keep monitoring and cancellation usable while denying operations
             # that could mix a cached Schema with a new disk-side worker.
             allowed_during_drift = (registry[name].get('annotations', {}).get('readOnlyHint') is True
-                                    or name in {'openmc_cancel_job', 'openmc_cancel_scan', 'openmc_cancel_example'})
+                                    or name in {'openmc_cancel_job', 'openmc_cancel_scan', 'openmc_cancel_example', 'openmc_slurm_cancel'})
             if drift['restart_required'] and not allowed_during_drift:
                 raise ToolExecutionError('服务代码/契约已漂移，已阻止新操作；请保留现场，待无运行作业后重启MCP并刷新tools/list。仍可查询状态、环境及取消计算。' + drift['message'])
             result = await execute_tool(registry[name], arguments)

@@ -4706,6 +4706,181 @@
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_tools.py">mcp/openmc_tools.py</a>。</p></details>
+<details class="tool" id="openmc_slurm_prepare"><summary>openmc_slurm_prepare
+<span class="tool-purpose">离线校核并快照已有模型，生成Slurm脚本与资源/输入哈希，绝不连接或提交集群。先配置独立MC_SLURM_CONFIG；此能力不代表真实HPC已验证。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>已有模型在MC_WORKSPACE内的相对目录，先生成/导入、预览并按需要校核。</td><td>—</td></tr><tr><td>resources</td><td>object</td><td>否</td><td>省略时见说明</td><td>资源请求；省略CPU和time时用1线程/10分钟，其余采用集群默认。不要照抄不属于自己的分区或account。</td><td>—</td></tr><tr><td>name</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选用户任务名；真实集群以forge-唯一编号定位，保留此显示名称。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>离线校核并快照已有模型，生成Slurm脚本与资源/输入哈希，绝不连接或提交集群。先配置独立MC_SLURM_CONFIG；此能力不代表真实HPC已验证。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;case_dir&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;已有模型在MC_WORKSPACE内的相对目录，先生成/导入、预览并按需要校核。&quot;
+    },
+    &quot;resources&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;cpus_per_task&quot;: {
+          &quot;type&quot;: &quot;integer&quot;,
+          &quot;minimum&quot;: 1,
+          &quot;description&quot;: &quot;单个Slurm任务申请的CPU数，同时作为OpenMC线程数，默认1；本路径不提交MPI多节点。&quot;
+        },
+        &quot;time&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;description&quot;: &quot;集群墙钟时限HH:MM:SS或D-HH:MM:SS，默认00:10:00；按实际集群限额填写。&quot;
+        },
+        &quot;memory_mb&quot;: {
+          &quot;type&quot;: &quot;integer&quot;,
+          &quot;minimum&quot;: 1,
+          &quot;description&quot;: &quot;可选内存申请MiB，省略使用集群默认值。&quot;
+        },
+        &quot;partition&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;description&quot;: &quot;集群分区名称，由运维提供。&quot;
+        },
+        &quot;account&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;description&quot;: &quot;集群计费/项目account，非登录用户名。&quot;
+        },
+        &quot;qos&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;description&quot;: &quot;可选集群QOS，由运维提供。&quot;
+        }
+      },
+      &quot;required&quot;: [],
+      &quot;additionalProperties&quot;: false,
+      &quot;description&quot;: &quot;资源请求；省略CPU和time时用1线程/10分钟，其余采用集群默认。不要照抄不属于自己的分区或account。&quot;
+    },
+    &quot;name&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;maxLength&quot;: 120,
+      &quot;description&quot;: &quot;可选用户任务名；真实集群以forge-唯一编号定位，保留此显示名称。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;case_dir&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;离线校核并快照已有模型，生成Slurm脚本与资源/输入哈希，绝不连接或提交集群。先配置独立MC_SLURM_CONFIG；此能力不代表真实HPC已验证。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/openmc_slurm.py">mcp/openmc_slurm.py</a>。</p></details>
+<details class="tool" id="openmc_slurm_submit"><summary>openmc_slurm_submit
+<span class="tool-purpose">上传已准备快照并调用sbatch；同一编号不重复提交。回执丢失标未知，先status按唯一任务名核对。会实际访问管理员配置的登录节点。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>submission_id</td><td>string</td><td>是</td><td>不可省略</td><td>openmc_slurm_prepare返回的submission_id；不是数字cluster_job_id。collect后返回可供普通结果工具使用的job_id。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>上传已准备快照并调用sbatch；同一编号不重复提交。回执丢失标未知，先status按唯一任务名核对。会实际访问管理员配置的登录节点。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;submission_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{32}$&quot;,
+      &quot;description&quot;: &quot;openmc_slurm_prepare返回的submission_id；不是数字cluster_job_id。collect后返回可供普通结果工具使用的job_id。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;submission_id&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;上传已准备快照并调用sbatch；同一编号不重复提交。回执丢失标未知，先status按唯一任务名核对。会实际访问管理员配置的登录节点。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/openmc_slurm.py">mcp/openmc_slurm.py</a>。</p></details>
+<details class="tool" id="openmc_slurm_status"><summary>openmc_slurm_status
+<span class="tool-purpose">查询已有Slurm准备/作业，squeue与sacct分开确认排队/运行/终态；队列消失不视为完成。结果仍在远端，completed后需collect。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>submission_id</td><td>string</td><td>是</td><td>不可省略</td><td>openmc_slurm_prepare返回的submission_id；不是数字cluster_job_id。collect后返回可供普通结果工具使用的job_id。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>查询已有Slurm准备/作业，squeue与sacct分开确认排队/运行/终态；队列消失不视为完成。结果仍在远端，completed后需collect。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;submission_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{32}$&quot;,
+      &quot;description&quot;: &quot;openmc_slurm_prepare返回的submission_id；不是数字cluster_job_id。collect后返回可供普通结果工具使用的job_id。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;submission_id&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;查询已有Slurm准备/作业，squeue与sacct分开确认排队/运行/终态；队列消失不视为完成。结果仍在远端，completed后需collect。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/openmc_slurm.py">mcp/openmc_slurm.py</a>。</p></details>
+<details class="tool" id="openmc_slurm_cancel"><summary>openmc_slurm_cancel
+<span class="tool-purpose">取消尚未提交的准备或请求scancel；不删除输入/产物，实际取消终态需status确认。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>submission_id</td><td>string</td><td>是</td><td>不可省略</td><td>openmc_slurm_prepare返回的submission_id；不是数字cluster_job_id。collect后返回可供普通结果工具使用的job_id。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>取消尚未提交的准备或请求scancel；不删除输入/产物，实际取消终态需status确认。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;submission_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{32}$&quot;,
+      &quot;description&quot;: &quot;openmc_slurm_prepare返回的submission_id；不是数字cluster_job_id。collect后返回可供普通结果工具使用的job_id。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;submission_id&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;取消尚未提交的准备或请求scancel；不删除输入/产物，实际取消终态需status确认。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/openmc_slurm.py">mcp/openmc_slurm.py</a>。</p></details>
+<details class="tool" id="openmc_slurm_collect"><summary>openmc_slurm_collect
+<span class="tool-purpose">将确认终态的远端原始结果按输入/输出SHA256取回本工具服务端，原子发布普通job_id供结果/图/报告工具使用；不提供客户端网络下载，不删除远端数据。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>submission_id</td><td>string</td><td>是</td><td>不可省略</td><td>openmc_slurm_prepare返回的submission_id；不是数字cluster_job_id。collect后返回可供普通结果工具使用的job_id。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>将确认终态的远端原始结果按输入/输出SHA256取回本工具服务端，原子发布普通job_id供结果/图/报告工具使用；不提供客户端网络下载，不删除远端数据。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;submission_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{32}$&quot;,
+      &quot;description&quot;: &quot;openmc_slurm_prepare返回的submission_id；不是数字cluster_job_id。collect后返回可供普通结果工具使用的job_id。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;submission_id&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;将确认终态的远端原始结果按输入/输出SHA256取回本工具服务端，原子发布普通job_id供结果/图/报告工具使用；不提供客户端网络下载，不删除远端数据。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/openmc_slurm.py">mcp/openmc_slurm.py</a>。</p></details>
 <section id="semantic-submission"><h2>提交与诊断的错误判定</h2><p>普通计算、扫描和修复重算使用相同的静态语义错误判据：已识别的 error 级问题在提交前拒绝，报出 kind、位置和修正方向；扫描子作业的提交副本也会再次检查。warning、科学条件未核实或检查不完整不会自动成为硬拒绝。这不表示已完成物理校核。官方例题的 prepare/data 是类型化程序步骤，不能把它们当作现成的原生模型检查。</p><p>网格图的 energy_bin 仅适用于含 EnergyFilter 的计分，无该过滤器时必须省略；单层网格的 level 仅允许 0 或省略。正常 DAGMC/MOAB 初始化和“无错误”摘要不作为故障证据。具体错误优先于同段泛化症状，其他段的独立故障保留。</p></section>
 <footer>由 scripts/generate_tool_reference.py 从实际注册表生成 · 无需联网或启动服务</footer>
 </main></body></html>
