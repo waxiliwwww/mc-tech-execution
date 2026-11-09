@@ -1,0 +1,656 @@
+{
+  "schema_version": 1,
+  "upstream_version": "0.16.0",
+  "scope_note": "状态表示本包的功能映射与边界，不表示原Python函数全部参数透传、逐方法覆盖或所有组合实测；不计算总覆盖百分比。",
+  "groups": {
+    "unexposed": {
+      "label": "工具未单独开放",
+      "state": "未封装",
+      "boundary": "未提供独立MCP入口；基础类/数学辅助也归此类，不把每个辅助名称当作一项业务缺口。",
+      "tools": [],
+      "implementation": [],
+      "evidence": []
+    },
+    "materials": {
+      "label": "材料与核素配比",
+      "state": "有限创建/改参",
+      "boundary": "显式核素、密度/单位、温度、S(α,β)、体积与depletable；通用改参只开放发现键中的密度/温度，不开放任意配方编辑或全部Material方法。",
+      "tools": [
+        "openmc_build_model",
+        "openmc_list_parameters",
+        "openmc_prepare_case"
+      ],
+      "implementation": [
+        "mcp/openmc_model_spec.py",
+        "mcp/openmc_parameters.py"
+      ],
+      "evidence": [
+        "tests/test_model_spec_real.py"
+      ]
+    },
+    "csg": {
+      "label": "七类基本曲面",
+      "state": "有限创建/改参",
+      "boundary": "X/Y/Z平面、X/Y/Z圆柱和球可通用创建；只修改发现接口列出的系数。",
+      "tools": [
+        "openmc_build_model",
+        "openmc_list_parameters",
+        "openmc_prepare_case"
+      ],
+      "implementation": [
+        "mcp/openmc_model_spec.py",
+        "mcp/openmc_parameters.py"
+      ],
+      "evidence": [
+        "tests/test_model_spec_real.py"
+      ]
+    },
+    "surface-edit": {
+      "label": "一般平面与轴向圆锥",
+      "state": "改参/原生接入",
+      "boundary": "通用spec不创建这些类型；已接入模型可发现并修改Plane与X/Y/ZCone系数。合计11种可改参曲面，不等于11种可创建曲面。",
+      "tools": [
+        "openmc_import_model",
+        "openmc_list_parameters",
+        "openmc_prepare_case"
+      ],
+      "implementation": [
+        "mcp/openmc_parameters.py"
+      ],
+      "evidence": [
+        "tests/test_model_spec_real.py"
+      ]
+    },
+    "advanced-geometry": {
+      "label": "更复杂的原生几何",
+      "state": "接入待逐类核实",
+      "boundary": "没有Quadric/Torus等通用创建或修改入口；原生XML经导入、API解析和实际环境校核决定是否可用，不宣称逐类实跑完成。",
+      "tools": [
+        "openmc_import_model",
+        "openmc_validate_inputs"
+      ],
+      "implementation": [
+        "mcp/openmc_tools.py"
+      ],
+      "evidence": [
+        "tests/test_model_import.py"
+      ]
+    },
+    "regions": {
+      "label": "区域、栅元和宇宙",
+      "state": "有限创建/接入",
+      "boundary": "类型化布尔区域及Cell/Universe填充引用，包内转为OpenMC对象；不是任意Python对象或任意拓扑编辑器。",
+      "tools": [
+        "openmc_build_model",
+        "openmc_import_model"
+      ],
+      "implementation": [
+        "mcp/openmc_model_spec.py"
+      ],
+      "evidence": [
+        "tests/model_validation_mcp/test_02_positive_custom_lattice.py"
+      ]
+    },
+    "rect": {
+      "label": "矩形格架",
+      "state": "二维创建/条件接入",
+      "boundary": "通用spec生成二维RectLattice；已有三维矩形格架可通过原生模型路径校核接入，不能用全堆模板反推通用三维创建能力。",
+      "tools": [
+        "openmc_build_model",
+        "openmc_import_model"
+      ],
+      "implementation": [
+        "mcp/openmc_model_spec.py"
+      ],
+      "evidence": [
+        "tests/test_model_spec_real.py"
+      ]
+    },
+    "hex": {
+      "label": "六角格架",
+      "state": "模板使用/原生接入",
+      "boundary": "六角模板使用HexLattice；通用spec不创建任意HexLattice，也无通用六角排布编辑。",
+      "tools": [
+        "openmc_create_model",
+        "openmc_import_model"
+      ],
+      "implementation": [
+        "mcp/openmc_worker.py"
+      ],
+      "evidence": [
+        "tests/test_hex_lattice_model.py"
+      ]
+    },
+    "dagmc": {
+      "label": "CAD/DAGMC几何",
+      "state": "专用链路",
+      "boundary": "STEP检查→转换H5M→显式材料映射组装模型；需CAD及DAGMC运行环境，不能替代任意CAD修复或网格质量判定。",
+      "tools": [
+        "openmc_inspect_step",
+        "openmc_convert_cad",
+        "openmc_build_dagmc_model"
+      ],
+      "implementation": [
+        "mcp/openmc_cad.py",
+        "mcp/openmc_worker.py"
+      ],
+      "evidence": [
+        "tests/test_openmc_cad_real.py"
+      ]
+    },
+    "settings": {
+      "label": "运行与中子源配置",
+      "state": "有限创建/改参",
+      "boundary": "eigenvalue/fixed source、采样设置和seed；点/盒空间、默认各向同性、可选单能。源强可改；不原样转发全部Settings/IndependentSource参数。",
+      "tools": [
+        "openmc_build_model",
+        "openmc_list_parameters",
+        "openmc_prepare_case"
+      ],
+      "implementation": [
+        "mcp/openmc_model_spec.py",
+        "mcp/openmc_parameters.py"
+      ],
+      "evidence": [
+        "tests/test_domain_mcp_real.py"
+      ]
+    },
+    "source-basic": {
+      "label": "点/盒及单能分布",
+      "state": "有限创建",
+      "boundary": "Point、Box及单能Discrete由声明式生成器使用；不是任意分布参数的通用构建器。",
+      "tools": [
+        "openmc_build_model"
+      ],
+      "implementation": [
+        "mcp/openmc_model_spec.py"
+      ],
+      "evidence": [
+        "tests/test_model_spec_real.py"
+      ]
+    },
+    "source-default": {
+      "label": "各向同性方向",
+      "state": "默认行为",
+      "boundary": "生成器使用IndependentSource默认各向同性；没有单独的Isotropic配置工具或任意角分布编辑。",
+      "tools": [
+        "openmc_build_model"
+      ],
+      "implementation": [
+        "mcp/openmc_model_spec.py"
+      ],
+      "evidence": []
+    },
+    "source-advanced": {
+      "label": "高级源和分布",
+      "state": "未提供通用创建",
+      "boundary": "File/Compiled/Mesh/Tokamak源及复杂空间/角度/能谱没有通用创建/修改入口；携带此类定义的原生模型须逐项检查外部文件和环境，未逐类保证可接入。",
+      "tools": [
+        "openmc_import_model"
+      ],
+      "implementation": [
+        "mcp/openmc_tools.py"
+      ],
+      "evidence": []
+    },
+    "tally": {
+      "label": "计分生命周期",
+      "state": "有限创建/修改/读取",
+      "boundary": "score、nuclide和有限filter组合；新增/按ID更新/删除同步重建源，结果按所选tally/score/核素读取，不代表所有Tally方法已开放。",
+      "tools": [
+        "openmc_define_tally",
+        "openmc_update_tally",
+        "openmc_delete_tally",
+        "openmc_read_results"
+      ],
+      "implementation": [
+        "mcp/openmc_tally_ops.py",
+        "mcp/openmc_worker.py"
+      ],
+      "evidence": [
+        "tests/test_tally_workflow_real.py"
+      ]
+    },
+    "filter-basic": {
+      "label": "四种可创建过滤器",
+      "state": "有限创建/修改",
+      "boundary": "Energy/Material/Particle/RegularMesh过滤器；支持bins和相应维度，仍受语义校核和网格定义约束。",
+      "tools": [
+        "openmc_define_tally",
+        "openmc_update_tally",
+        "openmc_build_model"
+      ],
+      "implementation": [
+        "mcp/openmc_tally_ops.py",
+        "mcp/openmc_model_spec.py"
+      ],
+      "evidence": [
+        "tests/test_filter_summary.py",
+        "tests/test_tally_workflow_real.py"
+      ]
+    },
+    "filter-advanced": {
+      "label": "其他计分过滤器",
+      "state": "原生接入/有限读取",
+      "boundary": "没有通用创建/修改入口；原生计分按API解析接入后可尝试普通数组读取，不保证每类过滤器组合都能画物理坐标图或网格热图。",
+      "tools": [
+        "openmc_import_model",
+        "openmc_read_results"
+      ],
+      "implementation": [
+        "mcp/openmc_worker.py",
+        "mcp/openmc_visuals.py"
+      ],
+      "evidence": [
+        "tests/test_filter_summary.py"
+      ]
+    },
+    "mesh": {
+      "label": "规则网格",
+      "state": "有限创建/读取",
+      "boundary": "计分创建RegularMesh；读二维/三维计分、按层输出规则网格切片。",
+      "tools": [
+        "openmc_define_tally",
+        "openmc_plot_mesh"
+      ],
+      "implementation": [
+        "mcp/openmc_tally_ops.py",
+        "mcp/openmc_visuals.py"
+      ],
+      "evidence": [
+        "tests/test_mesh_points_2d.py",
+        "tests/test_openmc_mesh_tally_real.py"
+      ]
+    },
+    "mesh-advanced": {
+      "label": "其他网格类型",
+      "state": "接入待逐类核实",
+      "boundary": "没有Rectilinear/Cylindrical/Spherical/UnstructuredMesh通用创建入口；专用网格热图仅支持规则网格，不保证外部网格和文件逐类接入成功。",
+      "tools": [
+        "openmc_import_model"
+      ],
+      "implementation": [
+        "mcp/openmc_tools.py",
+        "mcp/openmc_visuals.py"
+      ],
+      "evidence": []
+    },
+    "slice": {
+      "label": "几何切片",
+      "state": "有限查看",
+      "boundary": "对应SlicePlot/Plot切片；独立目录绘图、原输入哈希不变。未开放体素、光线追踪和三维交互查看。",
+      "tools": [
+        "openmc_view_geometry"
+      ],
+      "implementation": [
+        "mcp/openmc_worker.py"
+      ],
+      "evidence": [
+        "tests/test_view_isolation.py"
+      ]
+    },
+    "plot-run": {
+      "label": "OpenMC绘图执行",
+      "state": "等价任务入口",
+      "boundary": "mode=plot运行已有绘图定义；几何查看工具单独生成切片。并非plot_geometry全部Python参数透传。",
+      "tools": [
+        "openmc_submit_job",
+        "openmc_view_geometry"
+      ],
+      "implementation": [
+        "mcp/openmc_jobs.py"
+      ],
+      "evidence": [
+        "tests/test_openmc_preview.py"
+      ]
+    },
+    "run": {
+      "label": "本地求解与作业管理",
+      "state": "等价任务入口",
+      "boundary": "通过可执行程序运行、命名作业/快照/状态/取消/线程数；不等于openmc.run所有kwargs、MPI/HPC后端或任意restart入口。",
+      "tools": [
+        "openmc_submit_job",
+        "openmc_job_status",
+        "openmc_cancel_job"
+      ],
+      "implementation": [
+        "mcp/openmc_jobs.py"
+      ],
+      "evidence": [
+        "tests/test_openmc_real.py",
+        "tests/test_job_names.py"
+      ]
+    },
+    "results": {
+      "label": "StatePoint结果",
+      "state": "有限读取/后处理",
+      "boundary": "受管作业StatePoint的keff、tally均值/标准差、有限过滤选择和来源核对；不是任意HDF5/StatePoint文件解析服务。",
+      "tools": [
+        "openmc_read_results",
+        "openmc_plot_results",
+        "openmc_plot_mesh",
+        "openmc_export_report"
+      ],
+      "implementation": [
+        "mcp/openmc_worker.py",
+        "mcp/openmc_visuals.py"
+      ],
+      "evidence": [
+        "tests/test_domain_mcp_real.py",
+        "tests/test_selected_report_real.py"
+      ]
+    },
+    "model": {
+      "label": "模型容器与Python输入生成",
+      "state": "有限构建/导入",
+      "boundary": "包内Python/API生成并导出XML、再解析读回；可导入原生XML。已有用户Python模型须先在可信环境自行导出XML，再接入；没有任意.py上传执行的MCP入口，也不是Model全部方法透传。",
+      "tools": [
+        "openmc_build_model",
+        "openmc_import_model"
+      ],
+      "implementation": [
+        "mcp/openmc_model_spec.py",
+        "mcp/openmc_tools.py",
+        "mcp/openmc_import.py"
+      ],
+      "evidence": [
+        "tests/test_model_spec_real.py"
+      ]
+    },
+    "template-helper": {
+      "label": "模型构建便利函数",
+      "state": "模板内部使用",
+      "boundary": "仅部分固定模板使用这些辅助对象；没有任意复合曲面或自动燃料棒构建的通用配置入口。",
+      "tools": [
+        "openmc_create_model"
+      ],
+      "implementation": [
+        "mcp/openmc_worker.py"
+      ],
+      "evidence": [
+        "tests/test_hex_lattice_model.py"
+      ]
+    },
+    "examples-reactor": {
+      "label": "PWR棒/组件/简化全堆",
+      "state": "模板/例题",
+      "boundary": "工具可从官方模型工厂产生组件与简化全堆；模型参数受模板/发现键限制，不是任意真实反应堆设计。",
+      "tools": [
+        "openmc_create_model",
+        "openmc_prepare_official_example"
+      ],
+      "implementation": [
+        "mcp/openmc_worker.py",
+        "mcp/official_catalog.py"
+      ],
+      "evidence": [
+        "tests/test_downstream_real.py",
+        "tests/test_domain_mcp_real.py"
+      ]
+    },
+    "examples-other": {
+      "label": "其他官方模型工厂",
+      "state": "例题适配路径",
+      "boundary": "在官方例题清单中发现对应入口，按prepare/data/compute等步骤执行；没有一对一独立MCP函数。included不等于逐条本轮实跑。",
+      "tools": [
+        "openmc_list_official_examples",
+        "openmc_prepare_official_example",
+        "openmc_run_example_step"
+      ],
+      "implementation": [
+        "mcp/official_catalog.py",
+        "mcp/example_workflows.py"
+      ],
+      "evidence": [
+        "tests/test_example_workflows_real.py"
+      ]
+    },
+    "depletion-run": {
+      "label": "耦合燃耗与Predictor",
+      "state": "有限配置/运行",
+      "boundary": "功率、时间步/单位、链文件、可燃耗材料与体积；运行器固定CoupledOperator+Predictor，不开放任意积分器选择。",
+      "tools": [
+        "openmc_configure_depletion",
+        "openmc_submit_job"
+      ],
+      "implementation": [
+        "mcp/deplete_runner.py"
+      ],
+      "evidence": [
+        "tests/test_openmc_depletion_real.py"
+      ]
+    },
+    "depletion-read": {
+      "label": "燃耗结果",
+      "state": "有限读取",
+      "boundary": "逐时间点keff及所选核素质量等；没有Results全部分析方法或独立任意燃耗文件接入。",
+      "tools": [
+        "openmc_read_depletion"
+      ],
+      "implementation": [
+        "mcp/openmc_worker.py"
+      ],
+      "evidence": [
+        "tests/test_openmc_depletion_real.py"
+      ]
+    },
+    "depletion-other": {
+      "label": "其他燃耗与活化API",
+      "state": "未封装",
+      "boundary": "IndependentOperator、其他积分器、转料/外源、R2S/D1S及内部类没有通用MCP入口；官方Notebook使用不代表已开放这些配置。",
+      "tools": [],
+      "implementation": [],
+      "evidence": []
+    },
+    "mgxs-template": {
+      "label": "多群示例库对象",
+      "state": "示例内部使用",
+      "boundary": "合成单群示例使用EnergyGroups/XSdata/MGXSLibrary；可运行既有多群模型。不能据此声称提供完整MGXS截面生成服务。",
+      "tools": [
+        "openmc_create_model",
+        "openmc_validate_inputs"
+      ],
+      "implementation": [
+        "mcp/openmc_worker.py",
+        "mcp/nuclear_data.py"
+      ],
+      "evidence": [
+        "tests/test_openmc_real.py"
+      ]
+    },
+    "mgxs-other": {
+      "label": "MGXS截面生成体系",
+      "state": "未封装",
+      "boundary": "openmc.mgxs各类反应截面计算、凝聚、导出库没有通用MCP配置/生成入口；已有MGXS HDF5的加载是另一回事。",
+      "tools": [],
+      "implementation": [],
+      "evidence": []
+    },
+    "nuclear-data": {
+      "label": "ENDF/ACE/NJOY与核数据API",
+      "state": "未封装专用处理",
+      "boundary": "工具主要配置/发现/核对已有核数据库及多群库；未提供任意ENDF/ACE/NJOY加工、光子数据处理或核数据函数的直接调用入口。",
+      "tools": [
+        "openmc_environment",
+        "openmc_validate_inputs"
+      ],
+      "implementation": [
+        "mcp/nuclear_data.py",
+        "mcp/openmc_scientific_checks.py"
+      ],
+      "evidence": []
+    },
+    "capi": {
+      "label": "内存态C/C++绑定",
+      "state": "未直接开放",
+      "boundary": "没有任意init/next_batch/source_bank等MCP内存态会话；燃耗及官方Notebook适配会内部调用/包装部分函数，不能算该绑定全面开放。",
+      "tools": [
+        "openmc_run_example_step"
+      ],
+      "implementation": [
+        "mcp/notebook_runtime.py",
+        "mcp/notebook_stages.py",
+        "mcp/deplete_runner.py"
+      ],
+      "evidence": []
+    },
+    "openmoc": {
+      "label": "OpenMOC兼容转换",
+      "state": "未封装",
+      "boundary": "没有OpenMC与OpenMOC对象互转的MCP入口。",
+      "tools": [],
+      "implementation": [],
+      "evidence": []
+    },
+    "advanced": {
+      "label": "高级求解/轨迹/方差缩减",
+      "state": "未封装专用操作",
+      "boundary": "没有专用权窗构造、CMFD配置、keff搜索、TRISO随机堆积、随机体积、粒子轨迹/source/summary通用读取入口；部分官方例题或原生输入可用，不代表通用接口完成。",
+      "tools": [],
+      "implementation": [],
+      "evidence": []
+    }
+  },
+  "assignments": {
+    "openmc.Material": "materials",
+    "openmc.Materials": "materials",
+    "openmc.XPlane": "csg",
+    "openmc.YPlane": "csg",
+    "openmc.ZPlane": "csg",
+    "openmc.XCylinder": "csg",
+    "openmc.YCylinder": "csg",
+    "openmc.ZCylinder": "csg",
+    "openmc.Sphere": "csg",
+    "openmc.Plane": "surface-edit",
+    "openmc.XCone": "surface-edit",
+    "openmc.YCone": "surface-edit",
+    "openmc.ZCone": "surface-edit",
+    "openmc.Cone": "advanced-geometry",
+    "openmc.Quadric": "advanced-geometry",
+    "openmc.XTorus": "advanced-geometry",
+    "openmc.YTorus": "advanced-geometry",
+    "openmc.ZTorus": "advanced-geometry",
+    "openmc.Halfspace": "regions",
+    "openmc.Intersection": "regions",
+    "openmc.Union": "regions",
+    "openmc.Complement": "regions",
+    "openmc.Region": "regions",
+    "openmc.Cell": "regions",
+    "openmc.Universe": "regions",
+    "openmc.Geometry": "regions",
+    "openmc.RectLattice": "rect",
+    "openmc.HexLattice": "hex",
+    "openmc.DAGMCUniverse": "dagmc",
+    "openmc.Settings": "settings",
+    "openmc.IndependentSource": "settings",
+    "openmc.FileSource": "source-advanced",
+    "openmc.CompiledSource": "source-advanced",
+    "openmc.MeshSource": "source-advanced",
+    "openmc.TokamakSource": "source-advanced",
+    "openmc.Tally": "tally",
+    "openmc.Tallies": "tally",
+    "openmc.EnergyFilter": "filter-basic",
+    "openmc.MaterialFilter": "filter-basic",
+    "openmc.ParticleFilter": "filter-basic",
+    "openmc.MeshFilter": "filter-basic",
+    "openmc.RegularMesh": "mesh",
+    "openmc.RectilinearMesh": "mesh-advanced",
+    "openmc.CylindricalMesh": "mesh-advanced",
+    "openmc.SphericalMesh": "mesh-advanced",
+    "openmc.UnstructuredMesh": "mesh-advanced",
+    "openmc.SlicePlot": "slice",
+    "openmc.Plots": "slice",
+    "openmc.plot_geometry": "plot-run",
+    "openmc.run": "run",
+    "openmc.StatePoint": "results",
+    "openmc.model.Model": "model",
+    "openmc.model.HexagonalPrism": "template-helper",
+    "openmc.model.RectangularParallelepiped": "template-helper",
+    "openmc.examples.pwr_pin_cell": "examples-reactor",
+    "openmc.examples.pwr_assembly": "examples-reactor",
+    "openmc.examples.pwr_core": "examples-reactor",
+    "openmc.stats.Point": "source-basic",
+    "openmc.stats.Box": "source-basic",
+    "openmc.stats.Discrete": "source-basic",
+    "openmc.stats.Isotropic": "source-default",
+    "openmc.deplete.CoupledOperator": "depletion-run",
+    "openmc.deplete.PredictorIntegrator": "depletion-run",
+    "openmc.deplete.Results": "depletion-read",
+    "openmc.mgxs.EnergyGroups": "mgxs-template",
+    "openmc.XSdata": "mgxs-template",
+    "openmc.MGXSLibrary": "mgxs-template",
+    "openmc.VolumeCalculation": "advanced",
+    "openmc.calculate_volumes": "advanced",
+    "openmc.search_for_keff": "advanced",
+    "openmc.Summary": "advanced",
+    "openmc.Particle": "advanced",
+    "openmc.ParticleList": "advanced",
+    "openmc.ParticleTrack": "advanced",
+    "openmc.Track": "advanced",
+    "openmc.Tracks": "advanced",
+    "openmc.read_source_file": "advanced",
+    "openmc.write_source_file": "advanced",
+    "openmc.read_collision_track_file": "advanced",
+    "openmc.read_collision_track_hdf5": "advanced",
+    "openmc.read_collision_track_mcpl": "advanced",
+    "openmc.voxel_to_vtk": "advanced",
+    "openmc.VoxelPlot": "advanced",
+    "openmc.WireframeRayTracePlot": "advanced",
+    "openmc.SolidRayTracePlot": "advanced",
+    "openmc.WeightWindows": "advanced",
+    "openmc.WeightWindowsList": "advanced",
+    "openmc.WeightWindowGenerator": "advanced",
+    "openmc.hdf5_to_wws": "advanced",
+    "openmc.wwinp_to_wws": "advanced",
+    "openmc.cmfd.CMFDMesh": "advanced",
+    "openmc.cmfd.CMFDRun": "advanced",
+    "openmc.model.TRISO": "advanced",
+    "openmc.model.create_triso_lattice": "advanced",
+    "openmc.model.pack_spheres": "advanced",
+    "openmc.Filter": "filter-advanced",
+    "openmc.UniverseFilter": "filter-advanced",
+    "openmc.MaterialFromFilter": "filter-advanced",
+    "openmc.CellFilter": "filter-advanced",
+    "openmc.CellFromFilter": "filter-advanced",
+    "openmc.CellBornFilter": "filter-advanced",
+    "openmc.CellInstanceFilter": "filter-advanced",
+    "openmc.CollisionFilter": "filter-advanced",
+    "openmc.SurfaceFilter": "filter-advanced",
+    "openmc.MeshBornFilter": "filter-advanced",
+    "openmc.MeshMaterialFilter": "filter-advanced",
+    "openmc.MeshSurfaceFilter": "filter-advanced",
+    "openmc.EnergyoutFilter": "filter-advanced",
+    "openmc.ParticleProductionFilter": "filter-advanced",
+    "openmc.MuFilter": "filter-advanced",
+    "openmc.MuSurfaceFilter": "filter-advanced",
+    "openmc.PolarFilter": "filter-advanced",
+    "openmc.AzimuthalFilter": "filter-advanced",
+    "openmc.DistribcellFilter": "filter-advanced",
+    "openmc.DelayedGroupFilter": "filter-advanced",
+    "openmc.EnergyFunctionFilter": "filter-advanced",
+    "openmc.LegendreFilter": "filter-advanced",
+    "openmc.SpatialLegendreFilter": "filter-advanced",
+    "openmc.SphericalHarmonicsFilter": "filter-advanced",
+    "openmc.TimeFilter": "filter-advanced",
+    "openmc.WeightFilter": "filter-advanced",
+    "openmc.ZernikeFilter": "filter-advanced",
+    "openmc.ZernikeRadialFilter": "filter-advanced",
+    "openmc.ParentNuclideFilter": "filter-advanced",
+    "openmc.ReactionFilter": "filter-advanced",
+    "openmc.arithmetic.CrossFilter": "filter-advanced",
+    "openmc.arithmetic.AggregateFilter": "filter-advanced",
+    "openmc.Model": "model",
+    "openmc.Plot": "slice"
+  },
+  "module_defaults": {
+    "base": "unexposed",
+    "model": "unexposed",
+    "examples": "examples-other",
+    "deplete": "depletion-other",
+    "mgxs": "mgxs-other",
+    "stats": "source-advanced",
+    "data": "nuclear-data",
+    "capi": "capi",
+    "openmoc": "openmoc"
+  }
+}

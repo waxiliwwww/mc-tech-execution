@@ -1,3 +1,7 @@
 # Preserve upstream source bytes: their SHA256 manifests must survive Windows clones.
 /knowledge/openmc-0.16.0/** -text
 /vendor/openmc-examples/0.16.0/** -text
+# Fixed official API sources retain upstream whitespace and exact SHA256.
+/docs/assets/openmc-api/*.rst -text whitespace=-blank-at-eol
+/docs/assets/openmc-api/*.py.txt -text
+/docs/assets/openmc-api/LICENSE -text

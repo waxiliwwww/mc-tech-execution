@@ -1,0 +1,157 @@
+{
+  "upstream": "openmc-dev/openmc",
+  "version": "0.16.0",
+  "commit": "617d35a5063c57796b43428bc401e627d2011046",
+  "retrieved_on": "2026-11-09",
+  "license": "MIT",
+  "scope": "官方Python API入口的九个模块索引；autosummary及显式data/autodata/function/class等指令列出的名称，重复名称去重。包含官方标注的内部/辅助条目；不枚举类的每个方法/属性、C++头文件、命令行选项或所有用户指南功能。",
+  "sources": [
+    {
+      "file": "base.rst",
+      "sha256": "14652ca80dff59ea0c1fdddf4063f7b9e766327e58bd9fc38ba9ad2e8642d1bb",
+      "url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/pythonapi/base.rst"
+    },
+    {
+      "file": "capi.rst",
+      "sha256": "6ee1f296b08870f30c3cb7a775d7061ec0796b7ff43358e45fac4369d770dabb",
+      "url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/pythonapi/capi.rst"
+    },
+    {
+      "file": "data.rst",
+      "sha256": "f3b2161cb903499d767e1b76ee4e350eae0edb3131b0be2d9fcecf120997bbc2",
+      "url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/pythonapi/data.rst"
+    },
+    {
+      "file": "deplete.rst",
+      "sha256": "f30b64bfa285ca3f4343497b6dc2dd0b6a1f9991ebc2df95a9c87deb93201c19",
+      "url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/pythonapi/deplete.rst"
+    },
+    {
+      "file": "examples.rst",
+      "sha256": "c513a59fdbb024471cb4076398aa05aabe0aa900b9af0e8e78917dda4aa362a2",
+      "url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/pythonapi/examples.rst"
+    },
+    {
+      "file": "index.rst",
+      "sha256": "9c1f5263cfaec0a486b24eb4635a0c1aa3e7b0184ffe2153dd9650c51ecf152b",
+      "url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/pythonapi/index.rst"
+    },
+    {
+      "file": "mgxs.rst",
+      "sha256": "fbdf46ca8ea87b1b15f27456061029e4bcd949f02c0d20485a4b1ed02898f29c",
+      "url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/pythonapi/mgxs.rst"
+    },
+    {
+      "file": "model.rst",
+      "sha256": "2d677d45ddf427ea359fe4a9bc2976e71353c9f42f014efd966a197859c704a8",
+      "url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/pythonapi/model.rst"
+    },
+    {
+      "file": "openmoc.rst",
+      "sha256": "db21e0174c91cabc13b70e4695a935c177a5915ef7d63f1433f5e69e20d1111f",
+      "url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/pythonapi/openmoc.rst"
+    },
+    {
+      "file": "stats.rst",
+      "sha256": "c9aec161bd39875a3876cd8d2e81f019ac0de9a5cacbf7d5c2d08ff1c12e1e04",
+      "url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/docs/source/pythonapi/stats.rst"
+    },
+    {
+      "file": "openmc-init.py.txt",
+      "sha256": "95af072254639449e819477b50189f907535ad8bda1d06640a174c549e52a0b8",
+      "url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/openmc/__init__.py"
+    },
+    {
+      "file": "openmc-plots.py.txt",
+      "sha256": "74834222c5f9ea4f8c69f0974ccc5ad09c8a466d308910af61ff6da7be9892c7",
+      "url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/openmc/plots.py"
+    },
+    {
+      "file": "openmc-examples.py.txt",
+      "sha256": "eef1df5132091c56579586cbb0eef8cf2305c2c45df1296dd8e6b2d257ffa07a",
+      "url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/openmc/examples.py"
+    }
+  ],
+  "modules": [
+    {
+      "page": "base",
+      "name": "openmc",
+      "label": "基础对象与输运",
+      "documentation": "https://docs.openmc.org/en/v0.16.0/pythonapi/base.html"
+    },
+    {
+      "page": "model",
+      "name": "openmc.model",
+      "label": "模型构建辅助",
+      "documentation": "https://docs.openmc.org/en/v0.16.0/pythonapi/model.html"
+    },
+    {
+      "page": "examples",
+      "name": "openmc.examples",
+      "label": "官方模型工厂",
+      "documentation": "https://docs.openmc.org/en/v0.16.0/pythonapi/examples.html"
+    },
+    {
+      "page": "deplete",
+      "name": "openmc.deplete",
+      "label": "燃耗",
+      "documentation": "https://docs.openmc.org/en/v0.16.0/pythonapi/deplete.html"
+    },
+    {
+      "page": "mgxs",
+      "name": "openmc.mgxs",
+      "label": "多群截面生成",
+      "documentation": "https://docs.openmc.org/en/v0.16.0/pythonapi/mgxs.html"
+    },
+    {
+      "page": "stats",
+      "name": "openmc.stats",
+      "label": "源分布",
+      "documentation": "https://docs.openmc.org/en/v0.16.0/pythonapi/stats.html"
+    },
+    {
+      "page": "data",
+      "name": "openmc.data",
+      "label": "核数据处理",
+      "documentation": "https://docs.openmc.org/en/v0.16.0/pythonapi/data.html"
+    },
+    {
+      "page": "capi",
+      "name": "openmc.lib",
+      "label": "进程内C/C++绑定",
+      "documentation": "https://docs.openmc.org/en/v0.16.0/pythonapi/capi.html"
+    },
+    {
+      "page": "openmoc",
+      "name": "openmc.openmoc_compatible",
+      "label": "OpenMOC转换",
+      "documentation": "https://docs.openmc.org/en/v0.16.0/pythonapi/openmoc.html"
+    }
+  ],
+  "supplementary": [
+    {
+      "name": "openmc.Model",
+      "module": "base",
+      "kind": "常用别名",
+      "source_url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/openmc/__init__.py"
+    },
+    {
+      "name": "openmc.Plot",
+      "module": "base",
+      "kind": "已弃用兼容工厂（返回SlicePlot）",
+      "source_url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/openmc/plots.py"
+    },
+    {
+      "name": "openmc.examples.random_ray_lattice",
+      "module": "examples",
+      "kind": "源码/例题清单补充",
+      "source_url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/openmc/examples.py"
+    },
+    {
+      "name": "openmc.examples.random_ray_three_region_cube",
+      "module": "examples",
+      "kind": "源码/例题清单补充",
+      "source_url": "https://github.com/openmc-dev/openmc/blob/617d35a5063c57796b43428bc401e627d2011046/openmc/examples.py"
+    }
+  ]
+}
