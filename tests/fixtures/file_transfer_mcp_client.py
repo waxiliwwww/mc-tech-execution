@@ -91,6 +91,8 @@ async def run():
                 shutil.copyfile(statepoint,evidence/statepoint.name);shutil.copyfile(target,evidence/'report.zip')
                 final.update(job_id=j,native_values_match=True,report_dependencies_match=True,preview_image_mcp=True,
                              input_hashes=status['input_hashes'],statepoint_sha256=hashlib.sha256(statepoint.read_bytes()).hexdigest())
+            shutil.copyfile(archive,evidence/'uploaded-model.zip')
+            shutil.copytree(work/imported['case_dir'],evidence/'input',dirs_exist_ok=True)
             (evidence/'result.json').write_text(json.dumps(final,ensure_ascii=False,indent=2))
         # Assert actual standard MCP image content, not only its JSON metadata.
         if real:
