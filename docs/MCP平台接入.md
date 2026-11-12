@@ -12,7 +12,7 @@
 mcp/.venv/bin/python examples/scan_report_demo.py --mcp-url http://127.0.0.1:8770/mcp
 ```
 
-远程时设置mcp/service.config.json中的host/publicUrl，服务端环境配置MCP_AUTH_TOKEN，使用部署方已有HTTPS入口。客户端使用实际publicUrl和同一Bearer，不把令牌写入源码。`/info`和MCP接口都需同样鉴权，`/health`只表明服务进程存活。此轮没有远程文件下载。
+远程时设置mcp/service.config.json中的host/publicUrl，服务端环境配置MCP_AUTH_TOKEN，使用部署方已有HTTPS入口。客户端使用实际publicUrl和同一Bearer，不把令牌写入源码。`/info`和MCP接口都需同样鉴权，`/health`只表明服务进程存活。文件上传、有限预览与按需下载使用同一MCP工具连接，操作见[使用手册](toolkit-usage.html#file-transfer)；不额外配置文件HTTP接口。
 
 ## Codex
 

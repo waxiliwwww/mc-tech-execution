@@ -25,3 +25,10 @@ harness/model.local.json
 build/
 *.egg-info/
 *.whl
+
+# Host-side MCP transfer environment and receipts (local paths, not source)
+.client-venv/
+*.mc-upload.json
+*.mc-download.json
+*.mc-upload.json.lock
+*.mc-download.json.lock
