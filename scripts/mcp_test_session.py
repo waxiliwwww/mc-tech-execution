@@ -116,6 +116,8 @@ def main(argv=None):
                MC_TEST_SESSION_DIR=str(directory))
     if os.environ.get('MC_TEST_OPENMC_CONFIG'):
         env['MC_OPENMC_CONFIG'] = str(Path(os.environ['MC_TEST_OPENMC_CONFIG']).resolve())
+    if os.environ.get('MC_TEST_TRANSFER_CONFIG'):
+        env['MC_TRANSFER_CONFIG'] = str(Path(os.environ['MC_TEST_TRANSFER_CONFIG']).resolve())
     if os.environ.get('MC_TEST_SLURM_CONFIG'):
         env['MC_SLURM_CONFIG'] = str(Path(os.environ['MC_TEST_SLURM_CONFIG']).resolve())
     command = args.command[1:] if args.command[:1] == ['--'] else args.command

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MC工具包使用手册</title><link rel="stylesheet" href="assets/manual.css"><script src="assets/manual.js" defer></script></head><body><a class="sr-only" href="#content">跳到正文</a><aside class="sidebar"><a class="brand" href="index.html">MC工具包<br>使用与开发手册</a><p class="edition">OpenMC 0.16.0 · 工具包0.15.0</p><nav aria-label="文档导航"><a href="index.html">工具包总览</a><a href="toolkit-usage.html" aria-current="page">使用手册</a><a href="deployment.html">部署与接入</a><a href="toolkit.html">架构设计</a><a href="reference.html">接口参考</a></nav><p class="minor">按任务阅读，参数按需查询。<br>可在本地离线打开。<br><a href="project-records.html">项目资料与验证记录</a></p></aside><main id="content"><h1>MC工具包使用手册</h1><p>首次复测先走<a href="deployment.html#test-session">自启测试服务入口</a>：脚本核对当前包版本和完整工具定义，再执行流程，结束、失败或中断后自动停服务；不复用旧常驻实例。以下case_dir属于该次回执记录的workspace，产物也在该目录下。</p><p class="lead">从一份明确的输入出发，完成校核、计算、读取、绘图与报告；换模型时复用同一条流程。</p><div class="jump"><a href="#start">使用前准备</a><a href="#assembly">组件完整流程</a><a href="#core">换成全堆</a><a href="#quick-read">工具包做什么</a><a href="#own-models">用自己的模型</a><a href="#input-generation">输入参数生成</a><a href="#results">读懂结果</a><a href="#advanced">其他任务</a><a href="#slurm">Slurm提交</a><a href="#failure">异常与清理</a></div><section id="quick-read"><h2>这个工具包做什么</h2>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MC工具包使用手册</title><link rel="stylesheet" href="assets/manual.css"><script src="assets/manual.js" defer></script></head><body><a class="sr-only" href="#content">跳到正文</a><aside class="sidebar"><a class="brand" href="index.html">MC工具包<br>使用与开发手册</a><p class="edition">OpenMC 0.16.0 · 工具包0.16.0</p><nav aria-label="文档导航"><a href="index.html">工具包总览</a><a href="toolkit-usage.html" aria-current="page">使用手册</a><a href="deployment.html">部署与接入</a><a href="toolkit.html">架构设计</a><a href="reference.html">接口参考</a></nav><p class="minor">按任务阅读，参数按需查询。<br>可在本地离线打开。<br><a href="project-records.html">项目资料与验证记录</a></p></aside><main id="content"><h1>MC工具包使用手册</h1><p>首次复测先走<a href="deployment.html#test-session">自启测试服务入口</a>：脚本核对当前包版本和完整工具定义，再执行流程，结束、失败或中断后自动停服务；不复用旧常驻实例。以下case_dir属于该次回执记录的workspace，产物也在该目录下。</p><p class="lead">从一份明确的输入出发，完成校核、计算、读取、绘图与报告；换模型时复用同一条流程。</p><div class="jump"><a href="#start">使用前准备</a><a href="#assembly">组件完整流程</a><a href="#core">换成全堆</a><a href="#quick-read">工具包做什么</a><a href="#own-models">用自己的模型</a><a href="#input-generation">输入参数生成</a><a href="#results">读懂结果</a><a href="#advanced">其他任务</a><a href="#slurm">Slurm提交</a><a href="#failure">异常与清理</a></div><section id="quick-read"><h2>这个工具包做什么</h2>
 <p>把输入参数转成 OpenMC 输入，提交计算，取回结果。材料、几何、源和计分由使用者提供；工具不推断富集度、材料成分或堆芯设计。</p>
 <div class="table-wrap"><table><thead><tr><th>手上的输入</th><th>入口</th></tr></thead><tbody>
 <tr><td>已有 OpenMC XML</td><td><code>openmc_import_model</code> 导入，然后预览、校核</td></tr>
@@ -349,13 +349,13 @@ $mcWorkspaceLinux = '/环境工具返回的workspace'
 $mcJobId = '本次真实job_id'
 wsl -d $mcDistro --cd $mcPackageLinux -- bash ./cleanup.sh --workspace $mcWorkspaceLinux --job-id $mcJobId</code></pre><p>这是预览，不删除。只有归档、停写与维护窗口条件均满足后，对同一选择加<code>--apply</code>；检查退出码和返回的选择，不因失败自动重试。</p><pre class="command"><code>wsl -d $mcDistro --cd $mcPackageLinux -- bash ./cleanup.sh --workspace $mcWorkspaceLinux --job-id $mcJobId --apply</code></pre><p>远程Linux服务器应通过已有SSH登录后执行上面的Linux命令，不能用本机WSL清理远程服务器。两种方式都先确认预览显示的工作区和job_id正确。</p></details><p>它删除选定终态记录及其快照、日志、图和报告；原 <code>cases/</code> / <code>demos/</code> 输入保留。删除后不能再按编号查询。扫描按整批用 <code>--scan-id</code>；运行中、未确认中断、关联冲突等会拒绝。<code>./cleanup.sh --help</code> 可查保留时间和修复引用选项；默认不删，失败非 0，不应无条件重试。</p><footer>MC工具包 · <a href="project-records.html">项目资料与验证记录</a></footer><section id="slurm"><h2>Slurm：把已有模型交给集群</h2>
 <p>先按前文生成/导入模型，再走下表。当前适配在受控调度环境验证；真实集群需管理员按<a href="deployment.html#slurm-config">部署配置</a>准备。案例不限定固定例题，输入是你已有的case_dir。</p>
-<table><tr><th>步骤／工具</th><th>输入从哪来</th><th>看什么、下一步是什么</th></tr>
+<div class="table-wrap"><table><tr><th>步骤／工具</th><th>输入从哪来</th><th>看什么、下一步是什么</th></tr>
 <tr><td>准备 openmc_slurm_prepare</td><td>已有case_dir、用户任务名、运维允许的resources。CPU数默认1，time默认00:10:00，其余资源默认交集群决定。</td><td>不连网；检查batch_script、input_hashes、path_changes与资源，保存submission_id。原输入不变。脚本/输入在返回directory/input内；配置错误先修配置，再重新准备。</td></tr>
 <tr><td>提交 openmc_slurm_submit</td><td>刚才的submission_id。</td><td>上传快照，再sbatch，取得cluster_job_id。这个数字是调度编号，不是完成证明。同一submission_id不会重复提交已知任务。</td></tr>
 <tr><td>查询 openmc_slurm_status</td><td>同一submission_id。</td><td>queued/running继续等待；completed由会计终态和退出码确认。unknown/submission_unknown须重查原编号或联系运维，不新建任务重交。提交时断线会按forge-唯一编号查原任务。</td></tr>
 <tr><td>取消 openmc_slurm_cancel</td><td>同一submission_id，用户明确要停止。</td><td>未提交时取消本地准备；已提交调用scancel，返回cancel_requested不代表取消完成，继续status确认。输入与记录保留。</td></tr>
 <tr><td>取回 openmc_slurm_collect</td><td>已确认终态的submission_id。</td><td>核对远端输入/结果与本地快照SHA256，原子取回本工具服务端，返回普通job_id。completed且有StatePoint才继续read_results/绘图/报告；失败可取回日志，不能伪装成功。</td></tr>
-</table><p><strong>三个编号：</strong>submission_id是本包远程准备/调度记录；cluster_job_id是Slurm数字编号；collect后job_id用于现有结果工具。当前job_id与submission_id字符串相同，但用途不同，仍以返回字段为准。文件路径属于MCP服务器，不是DSH客户端；Windows/远程文件交接沿<a href="#files">现有说明</a>。</p>
+</table></div><p><strong>三个编号：</strong>submission_id是本包远程准备/调度记录；cluster_job_id是Slurm数字编号；collect后job_id用于现有结果工具。当前job_id与submission_id字符串相同，但用途不同，仍以返回字段为准。文件路径属于MCP服务器，不是DSH客户端；Windows/远程文件交接沿<a href="#files">现有说明</a>。</p>
 <details><summary>可复制调用与示例脚本</summary>
 <pre class="command"><code># 替换cases/my-model为已准备的模型；资源由集群运维给出
 ./mc.sh call openmc_slurm_prepare '{"case_dir":"cases/my-model","name":"组件试算","resources":{"cpus_per_task":1,"time":"00:10:00"}}'
@@ -377,4 +377,40 @@ mcp/.venv/bin/python examples/slurm_workflow.py --submission-id 替换为原编�
 ./mc.sh call openmc_slurm_cancel '{"submission_id":"替换为原编号"}'</code></pre>
 <p>脚本的--cpus与--time对应资源表；--partition/--account/--qos/--memory-mb按运维条件填写。--timeout默认600秒只限制客户端等待，不取消远端任务；--poll-seconds默认2秒。等待超时/断线后保存原编号续查，不能反复从--case-dir新建。</p></details>
 <details><summary>结果核对、故障与空间</summary><p>准备和collect都会核对快照；路径映射会产生明确的原引用→远端引用差异。collect保留远端原始结果哈希，随后用同一job_id的read_results、图、报告及list_artifacts核对，不以生成文件代替数值检查。远端记录实际OpenMC版本；本机API读回版本与集群预期应匹配。核数据适用性与物理结果仍待专业判据，受控调度通过不能宣称目标集群通过。</p><p>上传失败可用同一准备记录重试；提交结果未知先查询；会计记录延迟不得当完成；setup或求解失败查看取回的solver.log或slurm-编号.out。取回失败不发布半成品、不删远端结果。超限可调整与原任务身份一致的传输配置后重试collect；缺空间先清理或扩容。</p><p>本地准备/台账位于MC_WORKSPACE/.mc-slurm/submission_id，远端位于配置remote_root/submission_id，取回后另有.mc-jobs/job_id。准备快照和远端文件不会自动删除；当前cleanup.sh和作业存储清单不管理.mc-slurm或远端目录，勿将作业统计当整个workspace容量。先确认任务终态、取回及证据归档，再由管理员在维护窗口清理这些明确目录，不删除运行中任务。本轮未新增自动删除策略。</p></details></section>
+<section id="file-transfer"><h2>文件交接：宿主输入 → 服务器 → 本地结果</h2>
+<p><strong>速查：</strong>已有文件在宿主时先上传；服务器已有模型直接沿用case_dir。算完先列产物和预览，只取需要的图/报告。全程使用标准MCP函数，没有额外文件HTTP接口、网页或DSH依赖。</p>
+<div class="table-wrap"><table><tr><th>谁做什么</th><th>函数与交接结果</th></tr>
+<tr><td>宿主读取本地文件，计算长度/SHA256，直接发送字节</td><td><code>openmc_file_limits → openmc_upload_begin → openmc_upload_chunk → openmc_upload_finish</code>；ZIP模型包返回source_dir，单文件另返回file_path。</td></tr>
+<tr><td>工具服务接收已校验输入，再走原有科学流程</td><td><code>openmc_import_model(source_dir, target_dir)</code> → 预览/校核 → 提交/状态 → 读结果/图/报告。STEP的file_path交CAD转换；上传本身不执行Python或计算。</td></tr>
+<tr><td>智能体看少量文本/图片，选择需要取回的文件</td><td><code>openmc_list_artifacts</code>返回真实path与download_allowed；<code>openmc_preview_file</code>对job/scan/upload的明确path有限预览。图片通过标准MCP ImageContent返回，能否展示取决于宿主。</td></tr>
+<tr><td>宿主直接收字节并写本地文件</td><td><code>openmc_prepare_download → openmc_download_status → openmc_download_chunk</code>；多文件为ZIP，report.md自动包含已登记的本地图片/CSV/JSON引用。完整SHA256通过才发布本地目标；<code>openmc_close_transfer</code>清理下载缓存。</td></tr></table></div>
+<p><strong>先明确两台机器：</strong>服务端只认识工作区路径；把<code>C:\model.zip</code>作为字符串传给远端不能上传。宿主须有本地读写/执行能力。推荐让智能体在宿主执行下面的MCP客户端示例，字节由程序直传，不让模型复述Base64。只有远端MCP调用、没有任何本地文件能力的宿主无法自行传文件，应由用户运行该示例或使用已有文件通道。</p>
+<details open><summary>第一次操作：上传一个已有模型包，再取回一份报告</summary>
+<p>在<strong>拥有输入文件的宿主电脑</strong>解压同版源码包。客户端只需Python 3.10+和接口依赖，无需安装本地OpenMC/核数据库；在包根执行下面的准备命令。远端服务的准备和启动见<a href="deployment.html#file-transfer-config">部署说明</a>。将地址换成实际可达MCP URL；如有鉴权，通过MCP_AUTH_TOKEN环境变量提供，不写入命令参数或回执。</p>
+<pre><code># Linux宿主；已装mcp/.venv的同机环境可直接复用它
+python3 -m venv .client-venv
+.client-venv/bin/python -m pip install -r mcp/requirements.txt
+.client-venv/bin/python examples/transfer_files.py --mcp-url http://127.0.0.1:8770/mcp upload /宿主实际目录/model.zip --archive</code></pre>
+<pre><code># Windows PowerShell宿主，在解压后的工具包根执行
+py -3 -m venv .client-venv
+.\.client-venv\Scripts\python.exe -m pip install -r mcp/requirements.txt
+.\.client-venv\Scripts\python.exe examples/transfer_files.py --mcp-url http://127.0.0.1:8770/mcp upload C:\实际目录\model.zip --archive</code></pre>
+<p>model.zip是<strong>用户已有OpenMC模型目录</strong>压成的ZIP，至少含model.xml或geometry.xml/materials.xml/settings.xml及实际依赖；不打包运行时、核数据库或旧作业输出。保留依赖相对目录。工具会保留单层外目录并返回可直接导入的source_dir。也可先用<a href="#assembly">组件流程</a>生成一个模型，把其预览清单中的输入文件打成ZIP练习。</p>
+<p>脚本输出“上传完成”及source_dir、transfer_id和本地回执位置；将<strong>实际source_dir</strong>交给智能体调用openmc_import_model，target_dir选不存在的新算例目录。之后按<a href="#own-models">接入自己的模型</a>继续预览、校核、提交和读结果。单个STEP不加--archive，取返回file_path；多文件模型需要ZIP，不能只上传一个缺依赖的XML。</p>
+<p>计算完成后调用openmc_list_artifacts(kind="job", identifier=实际job_id)，从artifacts复制report.md的<strong>path</strong>。下面的JOB_ID和REPORT_PATH必须换成本次返回值，不能填server_path：</p>
+<pre><code>.client-venv/bin/python examples/transfer_files.py --mcp-url http://127.0.0.1:8770/mcp download job JOB_ID REPORT_PATH --output /宿主实际目录/report-bundle.zip
+# Windows同一命令，仅换Python和本地输出写法：
+.\.client-venv\Scripts\python.exe examples/transfer_files.py --mcp-url http://127.0.0.1:8770/mcp download job JOB_ID REPORT_PATH --output C:\实际目录\report-bundle.zip</code></pre>
+<p>有本地引用的Markdown报告会连图和数据打成ZIP，单个无依赖文件原样取回；以返回archive_paths判断。解压ZIP到同一目录后打开report.md及其图片/CSV/JSON；不要只移动报告正文。需要独立热图时把其实际path加在REPORT_PATH后。脚本输出本地绝对位置、字节数和SHA256，服务端原文件保留。下载结果核对继续按<a href="#check">同作业数据一致性</a>，传输校验不替代科学判读。</p></details>
+<details><summary>大小、恢复与清理：发生问题该怎么继续</summary>
+<ul><li>默认<strong>完整上传/下载文件5 MiB</strong>（5×1024×1024字节），不是5 MB。ZIP解压后总量、所选下载文件总量也默认5 MiB；目录与文件合计最多1000条。不能靠分块绕过完整文件限制。下载ZIP自身也受5 MiB限制，边界附近可拆选较少文件。</li>
+<li>先调openmc_file_limits看实际限额；管理员可用独立配置调整。已有服务端大HDF5/核数据仍可计算、分析；默认只取图/报告/必要CSV，不自动搬运行时和核数据库。大文本可按offset有限预览，大二进制只给元信息。</li>
+<li>断线或回执丢失：保留本地<code>.mc-upload.json/.mc-download.json</code>回执、<code>.part</code>及微小<code>.lock</code>，重跑<strong>同一命令</strong>。脚本最多重新连接3次；上传按服务器实际偏移与前缀SHA256恢复，下载按本地.part前缀恢复。不新建传输编号，也不重复提交计算。不同文件/服务器不能复用同一回执。</li>
+<li>发现前缀或完整哈希不同就停止，不自动改字节或覆盖目标。先核对原文件和回执；确认不用的传输用下列close命令清暂存，再用新回执重试。完整下载要求本地目标盘支持无覆盖硬链接发布（如NTFS/ext4）；不支持的网络盘/exFAT会明确报错并保留.part，可改本地目录。</li>
+<li>正常重启或网络断线后，已发布的传输记录和数据仍可用同一编号恢复；进程强杀/掉电可能留下无回执的临时目录，需管理员核对后处置，不能据此断言全部自动清理。默认总暂存50 MiB、未完成传输/下载缓存最多100个、预留磁盘1 GiB；达到限额停止接收，显式关闭已知缓存，不自动删除科学输入和证据。close完成上传不会删除已发布inbox输入，原作业结果也不删除。</li></ul>
+<pre><code>.client-venv/bin/python examples/transfer_files.py --mcp-url http://127.0.0.1:8770/mcp close upload TRANSFER_ID
+# 或 close download TRANSFER_ID；编号取本地回执/工具返回
+# 原生函数调用示例：
+./mc.sh call openmc_preview_file '{"kind":"job","identifier":"实际job_id","path":"清单里的实际path","max_bytes":8192}'</code></pre>
+<p>预览/下载范围是已完成上传的文件清单、作业与扫描登记产物；不开放任意服务器文件。独立case_dir/views和CAD中间目录不自动纳入产物下载清单；已在服务器的输入仍用openmc_preview_input查看。完整函数参数见<a href="reference.html#openmc_upload_begin">接口参考</a>。</p></details></section>
 </main></body></html>

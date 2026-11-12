@@ -23,5 +23,5 @@ class ArtifactListing(unittest.TestCase):
                 result=artifacts.list_artifacts('job','a'*32)
             self.assertEqual({x['path'] for x in result['artifacts']},set(names))
             self.assertTrue(all(x['server_path']==str(p/x['path']) and x['sha256'] for x in result['artifacts']))
-            self.assertFalse(result['download_supported'])
+            self.assertTrue(result['download_supported']);self.assertEqual(result['download_transport'],'MCP chunks')
 if __name__=='__main__':unittest.main()

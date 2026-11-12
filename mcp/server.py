@@ -165,7 +165,7 @@ def snapshot_arguments(arguments):
     """Freeze received JSON before business code can mutate it; logging is best-effort."""
     try:
         def mask(record):
-            return {key: "[redacted]" if re.fullmatch(r"password|passwd|secret|token|access_token|refresh_token|api[_-]?key|authorization|credentials?", key, re.I) else value
+            return {key: "[file bytes omitted]" if key == "data_base64" and isinstance(value, str) else "[redacted]" if re.fullmatch(r"password|passwd|secret|token|access_token|refresh_token|api[_-]?key|authorization|credentials?", key, re.I) else value
                     for key, value in record.items()}
         return json.loads(json.dumps(arguments, ensure_ascii=False, allow_nan=False), object_hook=mask)
     except Exception:
@@ -270,7 +270,7 @@ def create_app(config, log, tools=None, startup_identity=None):
             # Keep monitoring and cancellation usable while denying operations
             # that could mix a cached Schema with a new disk-side worker.
             allowed_during_drift = (registry[name].get('annotations', {}).get('readOnlyHint') is True
-                                    or name in {'openmc_cancel_job', 'openmc_cancel_scan', 'openmc_cancel_example', 'openmc_slurm_cancel'})
+                                    or name in {'openmc_cancel_job', 'openmc_cancel_scan', 'openmc_cancel_example', 'openmc_slurm_cancel', 'openmc_close_transfer'})
             if drift['restart_required'] and not allowed_during_drift:
                 raise ToolExecutionError('服务代码/契约已漂移，已阻止新操作；请保留现场，待无运行作业后重启MCP并刷新tools/list。仍可查询状态、环境及取消计算。' + drift['message'])
             result = await execute_tool(registry[name], arguments)
@@ -300,6 +300,11 @@ def create_app(config, log, tools=None, startup_identity=None):
                             log.emit("WARNING", "runtime.drift_detected", **service)
             with contextlib.suppress(Exception):
                 log.emit("INFO", "tool.executed", name=name, arguments=parameters)
+            if name == 'openmc_preview_file' and result.get('preview_type') == 'image':
+                result = dict(result)
+                encoded = result.pop('image_base64')
+                return CallToolResult(structuredContent=result, content=[TextContent(type='text', text=json.dumps(result, ensure_ascii=False)),
+                                      ImageContent(type='image', data=encoded, mimeType=result['mime_type'])])
             if name in ('openmc_plot_results', 'openmc_plot_scan') and result.get('path', '').endswith('.png'):
                 from openmc_runtime import path_in_workspace
                 preview = path_in_workspace(result['path'], internal=True)

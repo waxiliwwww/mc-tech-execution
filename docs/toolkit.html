@@ -70,7 +70,7 @@ details{border:1px solid var(--line);background:var(--panel);padding:14px 20px;m
    ├─ work/                    提交输入及原生计算输出
    │  └─ statepoint.N.h5等
    └─ results.json、图表与报告  后续分析产生</code></pre>
-<p>上面路径相对于部署配置中的服务端工作区，不能直接当作专家电脑路径。产物清单返回服务器位置与指纹，目前不提供远程下载；由我们按约定通道接收模型、交付产物。历史运行示例另见<a href="project-records.html#historical-core">项目记录</a>。</p>
+<p>上面路径相对于部署配置中的服务端工作区，不能直接当作专家电脑路径。产物清单返回服务器位置与指纹，通过标准MCP分块函数交接小文件；大文件默认留在服务端分析，宿主须具备本地读写能力。历史运行示例另见<a href="project-records.html#historical-core">项目记录</a>。</p>
 <h3>本地实现的交接与状态</h3>
 <p><code>submit_job</code>检查输入与运行环境后，由<code>jobs.submit</code>完成容量/空间准入，创建<code>.mc-jobs/&lt;job_id&gt;/work/</code>提交副本，记录输入SHA256、任务名和runtime配置，再以独立会话启动<code>run_worker</code>。worker写出供子进程使用的<code>runtime.json</code>，启动求解器；普通计算、绘图、几何检查和燃耗按各自模式组装命令。</p>
 <div class="table-wrap"><table><thead><tr><th>对象 / 状态</th><th>如何处理</th><th>不能据此推出什么</th></tr></thead><tbody>
@@ -107,7 +107,7 @@ details{border:1px solid var(--line);background:var(--panel);padding:14px 20px;m
 <p><strong>选择是调用纪律：</strong>宿主应明确tally、score、nuclide与过滤条件。当前接口仍有缺省选首项/total等行为，并非强制选择门禁。报告所有选择省略时走作业摘要；进入所选模式后，<code>export_selected_job</code>调用通用曲线工具、读取该图sidecar JSON，各报告格式共用series与提交副本元数据。</p>
 <p><strong>空间切片：</strong>网格热图当前支持规则mesh、可叠加energy、单score，从提交副本中的XML取得网格定义，和原生值对应空间坐标；三维多层或带能量过滤时分别要求level或energy_bin。该分支生成热图和values数据，不能用通用分箱序号当空间距离。</p>
 <details id="scientific-data"><summary>查数据完整性、科学含义和文件格式</summary><p>轻量预览、完整所选数据、原始StatePoint是三个层次；正文预览不代替配套完整CSV/JSON。单能量过滤图以eV区间算术中点为横轴，保留上下界，计分为bin积分量、不自动除能宽；多过滤器通用图使用展平分箱序号。std_dev是均值统计不确定度的估计，不自动代表95%置信区间；非有限值保留为空，不补零。绘图不自动追加体积、功率或实际源强归一化。</p><p>H5M与核数据HDF5是输入；StatePoint为通用统计来源；summary/source/tallies.out若产生可保留，但没有独立通用解析器。燃耗专用读取检查成功终态、燃耗模式与文件存在，当前不作读取前产物指纹比对；关键核素/初始重金属质量依赖分离materials.xml。详细格式与用途集中在<a href="toolkit-usage.html#files">文件说明</a>，结果阅读见<a href="toolkit-usage.html#results">统计与坐标说明</a>。</p></details>
-<p>文件存于服务端作业目录，记录名称、大小、位置与指纹。返回路径不等于下载到宿主；现有产物接口不提供远程下载。结果接口也没有任意外部StatePoint独立导入入口，官方Notebook多次计算须按例题接口明确选择对应阶段。</p>
+<p>文件存于服务端作业目录，记录名称、大小、位置与指纹。返回路径不等于下载到宿主；已登记产物可通过MCP函数预览/按需下载，使用手册的文件交接章节给出完整路径。结果接口也没有任意外部StatePoint独立导入入口，官方Notebook多次计算须按例题接口明确选择对应阶段。</p>
 <details id="result-interfaces"><summary>查接口与源码位置</summary><p><a href="reference.html#openmc_read_results">读取 openmc_read_results</a> → <a href="../mcp/openmc_tools.py">openmc_tools.py</a>的<code>verified_result / read_results</code>；<a href="reference.html#openmc_plot_results">通用曲线 openmc_plot_results</a>与<a href="reference.html#openmc_plot_mesh">网格热图 openmc_plot_mesh</a> → <a href="../mcp/openmc_visuals.py">openmc_visuals.py</a>的<code>selected_series / draw / plot_mesh</code>；<a href="reference.html#openmc_export_report">报告 openmc_export_report</a> → <a href="../mcp/openmc_reports.py">openmc_reports.py</a>的<code>export_selected_job</code>。修改选择和坐标时应同时核对原生值、完整数据、图与所选报告。</p></details>
 </details></section>
 <section id="developer" aria-labelledby="developer-title"><h2 id="developer-title">6．运行边界与开发扩展</h2>
@@ -126,7 +126,7 @@ details{border:1px solid var(--line);background:var(--panel);padding:14px 20px;m
 <p class="minor">实现入口：<a href="reference.html">公开工具参数</a>；验证入口：<a href="project-records.html#validation">CAD与结果复验</a>、<a href="project-records.html#validation">通用测试条件</a>。当前能力和未实施部分据源码说明，工程测试不代替科学适用性判断。</p>
 </section>
 <footer>技术依据：甲方《OpenMC_MCP_表4-1技术落点对照与开发指引》、当前实现及<a href="https://docs.openmc.org/en/v0.16.0/">OpenMC官方文档</a>。技术指引中的组件建议与当前采用方案分开核对；合同进展另见<a href="project-progress.html">执行对照</a>。面向使用者的操作与文件说明见<a href="toolkit-usage.html">使用说明</a>。</footer>
-<section id="engineering"><h2>7．校验机制与开发依据</h2><details id="input-validation"><summary>输入校验的职责、层次及非强制门禁</summary><div class="table-wrap"><table><thead><tr><th>层次</th><th>现在做什么</th><th>如何使用及边界</th></tr></thead><tbody>
+<section id="engineering"><h2>7．校验机制与开发依据</h2><details id="input-validation"><summary>输入校验的职责、层次与门禁边界</summary><div class="table-wrap"><table><thead><tr><th>层次</th><th>现在做什么</th><th>如何使用及边界</th></tr></thead><tbody>
 <tr><th>接口Schema</th><td>MCP/CLI共用工具定义，校验类型、必填、范围及部分组合；参数含说明。</td><td>合法JSON不表示模型物理有效。参数化spec另查编号引用、区域、循环填充和单位等约束。</td></tr>
 <tr><th>XML结构</th><td>缺文件、根元素、解析、DTD/实体拒绝、少量运行参数及文件大小。</td><td>默认validate_inputs和提交入口的基础检查；structure_valid只回答这一层。</td></tr>
 <tr><th>API与静态语义</th><td>公开API读回模型；密度/温度有限且为正、核素/S(a,b)索引可用性、计分过滤器与引用规则。</td><td>调用api_check=true、semantic_check=true；核对openmc_api.api_parsed及semantic.checked/ok/complete。索引存在不保证其HDF5文件完整或温度范围适用。</td></tr>
@@ -149,7 +149,7 @@ details{border:1px solid var(--line);background:var(--panel);padding:14px 20px;m
 ./verify.sh
 ./package.sh</code></pre>
 <p>第一条从真实注册表生成 HTML 参数参考；<code>verify.sh</code> 检查工程行为并输出日志，不等于业务验收。设置 <code>MC_TEST_OPENMC_CONFIG</code> 可启用真实 OpenMC 用例；完整工程回归也测可选 Harness，需要 Node 22/pnpm。<code>package.sh</code> 生成 <code>dist/</code> 下源码包、文件清单和 SHA256，不代替验证。</p>
-<p>包不含环境、个人密钥、本机配置、原合同和运行数据；接收方需按初配准备依赖。部署前在新位置检查运行、产物和文件引用。项目执行记录见<a href="project-records.html">项目资料</a>；公开工程例题、协议连通和专业验收分开判断。</p></details></details></section></main><script>
+<p>包不含环境、个人密钥、本机配置、原合同和运行数据；接收方需按初配准备依赖。部署前在新位置检查运行、产物和文件引用。项目执行记录见<a href="project-records.html">项目资料</a>；公开工程例题、协议连通和专业验收分开判断。</p></details></details></section><details id="transfer-design"><summary>文件交接职责：宿主本地文件 ↔ MCP服务端暂存 ↔ 科学工作区</summary><p>宿主读本地字节→begin预留总量/请求编号→chunk按偏移暂存→status核对前缀→finish验完整SHA256并原子发布inbox→M1已有导入接口。M2/M3计算路径不变。M3登记产物→prepare_download复制固定快照（报告连本地依赖）→status/分块SHA256→宿主.part→完整SHA256→无覆盖发布本地文件→close释放缓存。MCP只提供函数，不建设第二套HTTP文件服务；脚本将字节与模型上下文分离，模型只需处理编号、清单、摘要与选择。</p><p>暂存在.mc-transfers，已发布输入在inbox，原作业产物仍在.mc-jobs/.mc-scans。重复请求使用相同request_id，未知结果先查，不重新发布。ZIP全条目/实际展开总量、整文件、并发暂存/磁盘余量分别检查。传输成功说明字节一致，不改变原有科学判据。配置与用户操作各见部署/使用手册，不在架构页重复命令。</p></details></main><script>
 function revealTarget(){const id=decodeURIComponent(location.hash.slice(1));if(!id)return;const el=document.getElementById(id);if(!el)return;for(let p=el;p;p=p.parentElement)if(p.tagName==='DETAILS')p.open=true;el.scrollIntoView({block:'start'});}
 addEventListener('hashchange',revealTarget);addEventListener('DOMContentLoaded',revealTarget);
 </script></body></html>

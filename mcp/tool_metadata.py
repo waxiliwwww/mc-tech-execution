@@ -124,7 +124,7 @@ RESULTS = {
     'openmc_diagnose_job': 'findings含真实作业日志/输入证据，proposed_repairs仅为受限建议；未知问题不报输入正确。',
     'openmc_prepare_repair': 'case_dir是保留原失败后创建的修复副本，plan.diff待用户确认，未应用或重算。',
     'openmc_recheck_repair': 'job中包含关联重算编号，重复调用查询同次提交；校核失败、重算失败及原失败分别保留。',
-    'openmc_list_artifacts': 'directory和artifacts[].server_path是服务器位置；清单含大小/哈希，不提供远程下载。',
+    'openmc_list_artifacts': 'directory和artifacts[].server_path是服务器位置；清单含大小/哈希和download_allowed；用openmc_prepare_download等MCP函数按需取回，默认完整文件5 MiB、可配置。',
     'openmc_list_parameters': 'parameters逐项给出name/type/current/unit及范围，供prepare_case或submit_scan使用；不包含所有OpenMC属性。',
     'openmc_prepare_case': 'case_dir是参数修改后的新副本；原目录未改，仍须校核并提交计算。parameter_diff.changes为逐参数前后值（含单位/类别），readback为写入后重新读取文件的核对结果，verified=true表示全部读回一致；不一致如实列出，不表示专业正确性。',
     'openmc_submit_scan': 'scan_id用于批次查询，cases是计划组合数量，不是已完成数量。',

@@ -67,3 +67,8 @@ test_mcp_test_session.TestSession
 # Explicit Slurm adapter; controlled boundary is never target-HPC acceptance
 test_slurm_workflow.SlurmWorkflow
 test_slurm_mcp.SlurmMCP
+
+# MCP-only host/server file handoff and scientific readback
+test_file_transfer.FileTransfer
+test_file_transfer_client.FileTransferClient
+test_file_transfer_mcp.FileTransferMCP

@@ -240,9 +240,10 @@ try {
   await page.goto(url('toolkit.html#model-details'));await anchor('model-details');
   assert.equal(await page.locator('#python-entry').getAttribute('open'),null);
   await page.goto(url('toolkit.html#hpc-design'));await anchor('hpc-design');
-  assert.match(await page.locator('#hpc-design > summary').innerText(),/未实现/);
+  assert.match(await page.locator('#hpc-design > summary').innerText(),/真实集群待验/);
   await page.goto(url('toolkit.html#input-validation'));await anchor('input-validation');
-  assert.match(await page.locator('#input-validation').innerText(),/不会强制执行/);
+  assert.match(await page.locator('#input-validation').innerText(),/提交与扫描已强制检查结构/);
+  assert.match(await page.locator('#input-validation').innerText(),/API解析和几何检查仍需显式请求/);
   await page.goto(url('toolkit.html#developer-extension'));await anchor('developer-extension');
   await page.locator('#developer-extension details').first().locator(':scope > summary').click();
   assert.match(await page.locator('#developer-extension').innerText(),/宏观材料/);
@@ -299,6 +300,15 @@ try {
   await fallback.locator('a[href="toolkit-usage.html#parameters"]').first().click();
   assert.ok(fallback.url().endsWith('toolkit-usage.html#parameters'));
   await noJS.close();
+  await page.goto(url('toolkit-usage.html#file-transfer'));await anchor('file-transfer');
+  assert.match(await page.locator('#file-transfer').innerText(),/宿主须有本地读写/);
+  assert.match(await page.locator('#file-transfer').innerText(),/transfer_files.py/);
+  await page.locator('#file-transfer > details').last().locator('summary').click();
+  assert.match(await page.locator('#file-transfer').innerText(),/5 MiB/);
+  await shot('09-mcp-file-transfer');
+  await page.goto(url('deployment.html#file-transfer-config'));await anchor('file-transfer-config');
+  assert.match(await page.locator('#file-transfer-config').innerText(),/MC_TRANSFER_CONFIG/);
+  await shot('10-mcp-file-config');
   await page.setViewportSize({width:390,height:844});
   for(const name of [...main,'official-examples.html','mcp.html','project-records.html','expert-trial.html']) {
     await page.goto(url(name));

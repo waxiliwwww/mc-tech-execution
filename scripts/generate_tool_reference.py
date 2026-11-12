@@ -123,4 +123,11 @@ def generate(definitions=None):
 if __name__ == '__main__':
     target = ROOT / 'docs/reference.html'
     target.write_text(generate(), encoding='utf-8')
+    # A pure-data contract lets Windows host clients check discovery without
+    # importing Linux server modules (fcntl/OpenMC are server-side concerns).
+    from file_transfer import TRANSFER_TOOLS
+    names = {item['name'] for item in TRANSFER_TOOLS}
+    contract = {item['name']: {key:item[key] for key in ('description','inputSchema','outputSchema')}
+                for item in TOOLS if item['name'] in names}
+    (ROOT/'config/file-transfer-tools.json').write_text(json.dumps(contract, ensure_ascii=False, indent=2)+'\n')
     print(target)

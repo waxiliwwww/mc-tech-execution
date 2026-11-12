@@ -1002,9 +1002,9 @@
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_diagnostics.py">mcp/openmc_diagnostics.py</a>。</p></details>
 <details class="tool" id="openmc_list_artifacts"><summary>openmc_list_artifacts
-<span class="tool-purpose">列出计算或扫描已经生成的服务端文件、大小、SHA256和位置。路径属于服务端，本轮不提供远程下载；不暴露本机配置或任意目录。</span></summary>
+<span class="tool-purpose">列出计算或扫描已经生成的服务端文件、大小、SHA256和位置。路径属于服务端；download_allowed给出单文件限额判断，显式prepare_download后用MCP分块取回；不暴露本机配置或任意目录。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>kind</td><td>string</td><td>是</td><td>不可省略</td><td>job列出单次计算产物，scan列出批次汇总产物。identifier须提供相应类型的编号。</td><td>—</td></tr><tr><td>identifier</td><td>string</td><td>是</td><td>不可省略</td><td>kind=job时传job_id，kind=scan时传scan_id；均来自实际提交返回值，不能传任意服务器文件路径。</td><td>—</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>directory和artifacts[].server_path是服务器位置；清单含大小/哈希，不提供远程下载。</p>
+<h3>返回怎么看</h3><p>directory和artifacts[].server_path是服务器位置；清单含大小/哈希和download_allowed；用openmc_prepare_download等MCP函数按需取回，默认完整文件5 MiB、可配置。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>workspace</td><td>服务端绝对数据根；工作区相对路径以它为基准。</td></tr><tr><td>provenance</td><td>数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
 <div class="table-wrap"><table><thead><tr><th>判读字段</th><th>含义与继续条件</th></tr></thead><tbody><tr><td>sha256</td><td>当前文件的SHA256；记录这次取得的文件版本，不代表专业物理验证。</td></tr><tr><td>matches_recorded_output = true</td><td>存在作业保存的输出指纹，当前文件与其一致。</td></tr><tr><td>matches_recorded_output = false</td><td>存在保存的输出指纹但当前文件不一致；保留现场，停止据此沿用原结果。</td></tr><tr><td>matches_recorded_output = null</td><td>没有保存的基线可对照，不等于校验失败，也不表示已校验通过。派生图、报告和results.json通常为null，仍需核对来源、数据和当前sha256。</td></tr></tbody></table></div>
@@ -1036,7 +1036,7 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;directory和artifacts[].server_path是服务器位置；清单含大小/哈希，不提供远程下载。&quot;,
+  &quot;description&quot;: &quot;directory和artifacts[].server_path是服务器位置；清单含大小/哈希和download_allowed；用openmc_prepare_download等MCP函数按需取回，默认完整文件5 MiB、可配置。&quot;,
   &quot;properties&quot;: {
     &quot;workspace&quot;: {
       &quot;description&quot;: &quot;服务端绝对数据根；工作区相对路径以它为基准。&quot;
@@ -4443,7 +4443,7 @@
 <p class="source">函数：<a href="../mcp/openmc_model_tools.py">mcp/openmc_model_tools.py</a>。</p></details>
 <details class="tool" id="openmc_import_model"><summary>openmc_import_model
 <span class="tool-purpose">导入工作区内已有OpenMC模型输入，校验后发布新副本；不要求在例题清单中，不执行脚本，不覆盖原输入。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>source_dir</td><td>string</td><td>是</td><td>不可省略</td><td>MC_WORKSPACE内已有原生XML及依赖目录，相对路径；Python脚本须先自行导出XML。</td><td>—</td></tr><tr><td>target_dir</td><td>string</td><td>是</td><td>不可省略</td><td>MC_WORKSPACE内不存在的新副本相对目录，与源目录不嵌套。</td><td>—</td></tr><tr><td>api_check</td><td>boolean</td><td>否</td><td>true</td><td>是否用已配置OpenMC Python API解析模型；省略为true。false仅做结构和依赖检查，不能当作可运行证明。</td><td>—</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>source_dir</td><td>string</td><td>是</td><td>不可省略</td><td>MC_WORKSPACE内已有原生XML及依赖目录，相对路径；异机文件先用MCP上传ZIP并取source_dir。Python脚本须先自行导出XML。</td><td>—</td></tr><tr><td>target_dir</td><td>string</td><td>是</td><td>不可省略</td><td>MC_WORKSPACE内不存在的新副本相对目录，与源目录不嵌套。</td><td>—</td></tr><tr><td>api_check</td><td>boolean</td><td>否</td><td>true</td><td>是否用已配置OpenMC Python API解析模型；省略为true。false仅做结构和依赖检查，不能当作可运行证明。</td><td>—</td></tr></tbody></table></div>
 <h3>返回怎么看</h3><p>导入工作区内已有OpenMC模型输入，校验后发布新副本；不要求在例题清单中，不执行脚本，不覆盖原输入。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
@@ -4453,7 +4453,7 @@
     &quot;source_dir&quot;: {
       &quot;type&quot;: &quot;string&quot;,
       &quot;minLength&quot;: 1,
-      &quot;description&quot;: &quot;MC_WORKSPACE内已有原生XML及依赖目录，相对路径；Python脚本须先自行导出XML。&quot;
+      &quot;description&quot;: &quot;MC_WORKSPACE内已有原生XML及依赖目录，相对路径；异机文件先用MCP上传ZIP并取source_dir。Python脚本须先自行导出XML。&quot;
     },
     &quot;target_dir&quot;: {
       &quot;type&quot;: &quot;string&quot;,
@@ -4881,6 +4881,394 @@
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_slurm.py">mcp/openmc_slurm.py</a>。</p></details>
+<details class="tool" id="openmc_file_limits"><summary>openmc_file_limits
+<span class="tool-purpose">查询MCP文件传输与预览限额。默认完整文件5 MiB，管理员可配置；不限制服务端大文件计算。不提供网页或额外HTTP上传下载接口。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>无参数</td><td>object</td><td>—</td><td>空对象</td><td>不接受额外参数</td><td>{}</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>查询MCP文件传输与预览限额。默认完整文件5 MiB，管理员可配置；不限制服务端大文件计算。不提供网页或额外HTTP上传下载接口。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {},
+  &quot;required&quot;: [],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;查询MCP文件传输与预览限额。默认完整文件5 MiB，管理员可配置；不限制服务端大文件计算。不提供网页或额外HTTP上传下载接口。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/file_transfer.py">mcp/file_transfer.py</a>。</p></details>
+<details class="tool" id="openmc_upload_begin"><summary>openmc_upload_begin
+<span class="tool-purpose">预留上传。宿主读取本地文件，提交文件名/总字节数/完整SHA256；服务端无法读取宿主C:路径。大块字节请用宿主MCP传输程序发送，不让模型逐块复述。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>filename</td><td>string</td><td>是</td><td>不可省略</td><td>仅文件名，例如model.zip或component.step，不是宿主路径。</td><td>—</td></tr><tr><td>size_bytes</td><td>integer</td><td>是</td><td>不可省略</td><td>完整原始文件字节数，不能靠小分块绕过完整文件上限。</td><td>—</td></tr><tr><td>sha256</td><td>string</td><td>是</td><td>不可省略</td><td>宿主对完整文件计算的SHA256，用于最终校验。</td><td>—</td></tr><tr><td>archive</td><td>boolean</td><td>否</td><td>false</td><td>true表示ZIP模型包，finish受控解压并核对实际解压总量；false保留单文件。</td><td>—</td></tr><tr><td>request_id</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选由宿主生成并保存的32位小写随机幂等键；请求结果未知时重用同一个值，不重复预留或生成文件包。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>预留上传。宿主读取本地文件，提交文件名/总字节数/完整SHA256；服务端无法读取宿主C:路径。大块字节请用宿主MCP传输程序发送，不让模型逐块复述。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;filename&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;仅文件名，例如model.zip或component.step，不是宿主路径。&quot;
+    },
+    &quot;size_bytes&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 0,
+      &quot;description&quot;: &quot;完整原始文件字节数，不能靠小分块绕过完整文件上限。&quot;
+    },
+    &quot;sha256&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{64}$&quot;,
+      &quot;description&quot;: &quot;宿主对完整文件计算的SHA256，用于最终校验。&quot;
+    },
+    &quot;archive&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;,
+      &quot;description&quot;: &quot;true表示ZIP模型包，finish受控解压并核对实际解压总量；false保留单文件。&quot;,
+      &quot;default&quot;: false
+    },
+    &quot;request_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{32}$&quot;,
+      &quot;description&quot;: &quot;可选由宿主生成并保存的32位小写随机幂等键；请求结果未知时重用同一个值，不重复预留或生成文件包。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;filename&quot;,
+    &quot;size_bytes&quot;,
+    &quot;sha256&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;预留上传。宿主读取本地文件，提交文件名/总字节数/完整SHA256；服务端无法读取宿主C:路径。大块字节请用宿主MCP传输程序发送，不让模型逐块复述。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/file_transfer.py">mcp/file_transfer.py</a>。</p></details>
+<details class="tool" id="openmc_upload_status"><summary>openmc_upload_status
+<span class="tool-purpose">读取上传实际已收字节数和已有前缀SHA256；断线先查询，用于核对源文件并续传。不会发布或执行文件。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>transfer_id</td><td>string</td><td>是</td><td>不可省略</td><td>由传输工具返回的transfer_id，服务重启后仍用同一编号恢复；不是本地文件路径。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>读取上传实际已收字节数和已有前缀SHA256；断线先查询，用于核对源文件并续传。不会发布或执行文件。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;transfer_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{32}$&quot;,
+      &quot;description&quot;: &quot;由传输工具返回的transfer_id，服务重启后仍用同一编号恢复；不是本地文件路径。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;transfer_id&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;读取上传实际已收字节数和已有前缀SHA256；断线先查询，用于核对源文件并续传。不会发布或执行文件。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/file_transfer.py">mcp/file_transfer.py</a>。</p></details>
+<details class="tool" id="openmc_upload_chunk"><summary>openmc_upload_chunk
+<span class="tool-purpose">接收宿主读取的Base64分块；offset按实际字节，不是Base64字符数。重复相同分块幂等，冲突或超总长拒绝；仅写临时文件。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>transfer_id</td><td>string</td><td>是</td><td>不可省略</td><td>由传输工具返回的transfer_id，服务重启后仍用同一编号恢复；不是本地文件路径。</td><td>—</td></tr><tr><td>offset</td><td>integer</td><td>是</td><td>不可省略</td><td>分块原始字节起始位置，取upload_status.received_bytes或上一块回执。</td><td>—</td></tr><tr><td>data_base64</td><td>string</td><td>是</td><td>不可省略</td><td>由宿主传输程序编码的文件字节，不是文件路径；单块上限先查openmc_file_limits。不要把文件内容放进模型上下文。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>接收宿主读取的Base64分块；offset按实际字节，不是Base64字符数。重复相同分块幂等，冲突或超总长拒绝；仅写临时文件。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;transfer_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{32}$&quot;,
+      &quot;description&quot;: &quot;由传输工具返回的transfer_id，服务重启后仍用同一编号恢复；不是本地文件路径。&quot;
+    },
+    &quot;offset&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 0,
+      &quot;description&quot;: &quot;分块原始字节起始位置，取upload_status.received_bytes或上一块回执。&quot;
+    },
+    &quot;data_base64&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;maxLength&quot;: 1398104,
+      &quot;description&quot;: &quot;由宿主传输程序编码的文件字节，不是文件路径；单块上限先查openmc_file_limits。不要把文件内容放进模型上下文。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;transfer_id&quot;,
+    &quot;offset&quot;,
+    &quot;data_base64&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;接收宿主读取的Base64分块；offset按实际字节，不是Base64字符数。重复相同分块幂等，冲突或超总长拒绝；仅写临时文件。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/file_transfer.py">mcp/file_transfer.py</a>。</p></details>
+<details class="tool" id="openmc_upload_finish"><summary>openmc_upload_finish
+<span class="tool-purpose">完整长度/SHA256通过后才发布inbox输入；ZIP禁止越界/链接并检查解压总量。返回source_dir或file_path，接现有导入/STEP工具。不执行上传程序。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>transfer_id</td><td>string</td><td>是</td><td>不可省略</td><td>由传输工具返回的transfer_id，服务重启后仍用同一编号恢复；不是本地文件路径。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>完整长度/SHA256通过后才发布inbox输入；ZIP禁止越界/链接并检查解压总量。返回source_dir或file_path，接现有导入/STEP工具。不执行上传程序。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;transfer_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{32}$&quot;,
+      &quot;description&quot;: &quot;由传输工具返回的transfer_id，服务重启后仍用同一编号恢复；不是本地文件路径。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;transfer_id&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;完整长度/SHA256通过后才发布inbox输入；ZIP禁止越界/链接并检查解压总量。返回source_dir或file_path，接现有导入/STEP工具。不执行上传程序。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/file_transfer.py">mcp/file_transfer.py</a>。</p></details>
+<details class="tool" id="openmc_prepare_download"><summary>openmc_prepare_download
+<span class="tool-purpose">按清单paths创建一致的下载快照；报告Markdown自动包含已登记本地图片/数据引用。受完整文件/整包限额约束；原始大文件默认留服务端。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>kind</td><td>string</td><td>是</td><td>不可省略</td><td>job/scan为计算/扫描产物，identifier取相应job_id/scan_id；upload取完成上传的transfer_id。</td><td>—</td></tr><tr><td>identifier</td><td>string</td><td>是</td><td>不可省略</td><td>kind所对应的job_id、scan_id或已完成上传的transfer_id。</td><td>—</td></tr><tr><td>paths</td><td>array</td><td>是</td><td>不可省略</td><td>要取回的明确文件path列表；多个文件为ZIP，保持报告相对引用。</td><td>—</td></tr><tr><td>request_id</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选由宿主生成并保存的32位小写随机幂等键；请求结果未知时重用同一个值，不重复预留或生成文件包。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>按清单paths创建一致的下载快照；报告Markdown自动包含已登记本地图片/数据引用。受完整文件/整包限额约束；原始大文件默认留服务端。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;kind&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;job&quot;,
+        &quot;scan&quot;,
+        &quot;upload&quot;
+      ],
+      &quot;description&quot;: &quot;job/scan为计算/扫描产物，identifier取相应job_id/scan_id；upload取完成上传的transfer_id。&quot;
+    },
+    &quot;identifier&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{32}$&quot;,
+      &quot;description&quot;: &quot;kind所对应的job_id、scan_id或已完成上传的transfer_id。&quot;
+    },
+    &quot;paths&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;minItems&quot;: 1,
+      &quot;uniqueItems&quot;: true,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;,
+        &quot;minLength&quot;: 1,
+        &quot;description&quot;: &quot;从list_artifacts.artifacts[].path或完成上传files[].path复制的工作区相对路径，不是任意服务器路径。&quot;
+      },
+      &quot;description&quot;: &quot;要取回的明确文件path列表；多个文件为ZIP，保持报告相对引用。&quot;
+    },
+    &quot;request_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{32}$&quot;,
+      &quot;description&quot;: &quot;可选由宿主生成并保存的32位小写随机幂等键；请求结果未知时重用同一个值，不重复预留或生成文件包。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;kind&quot;,
+    &quot;identifier&quot;,
+    &quot;paths&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;按清单paths创建一致的下载快照；报告Markdown自动包含已登记本地图片/数据引用。受完整文件/整包限额约束；原始大文件默认留服务端。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/file_transfer.py">mcp/file_transfer.py</a>。</p></details>
+<details class="tool" id="openmc_download_status"><summary>openmc_download_status
+<span class="tool-purpose">检查下载快照、总长和SHA256，可按本地.part长度返回对应前缀SHA256，以安全恢复下载。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>transfer_id</td><td>string</td><td>是</td><td>不可省略</td><td>由传输工具返回的transfer_id，服务重启后仍用同一编号恢复；不是本地文件路径。</td><td>—</td></tr><tr><td>prefix_bytes</td><td>integer</td><td>否</td><td>0</td><td>可选本地已下载.part的实际字节数，用返回prefix_sha256核对后才追加。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>检查下载快照、总长和SHA256，可按本地.part长度返回对应前缀SHA256，以安全恢复下载。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;transfer_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{32}$&quot;,
+      &quot;description&quot;: &quot;由传输工具返回的transfer_id，服务重启后仍用同一编号恢复；不是本地文件路径。&quot;
+    },
+    &quot;prefix_bytes&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 0,
+      &quot;description&quot;: &quot;可选本地已下载.part的实际字节数，用返回prefix_sha256核对后才追加。&quot;,
+      &quot;default&quot;: 0
+    }
+  },
+  &quot;required&quot;: [
+    &quot;transfer_id&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;检查下载快照、总长和SHA256，可按本地.part长度返回对应前缀SHA256，以安全恢复下载。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/file_transfer.py">mcp/file_transfer.py</a>。</p></details>
+<details class="tool" id="openmc_download_chunk"><summary>openmc_download_chunk
+<span class="tool-purpose">返回固定快照的Base64字节和分块SHA256；由宿主传输程序直接写本地文件，不把大块响应交给模型。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>transfer_id</td><td>string</td><td>是</td><td>不可省略</td><td>由传输工具返回的transfer_id，服务重启后仍用同一编号恢复；不是本地文件路径。</td><td>—</td></tr><tr><td>offset</td><td>integer</td><td>是</td><td>不可省略</td><td>本地已核对前缀后的字节偏移。</td><td>—</td></tr><tr><td>length</td><td>integer</td><td>否</td><td>省略时见说明</td><td>本块原始字节数，默认当前chunk_bytes，不能超过配置分块上限。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>返回固定快照的Base64字节和分块SHA256；由宿主传输程序直接写本地文件，不把大块响应交给模型。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;transfer_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{32}$&quot;,
+      &quot;description&quot;: &quot;由传输工具返回的transfer_id，服务重启后仍用同一编号恢复；不是本地文件路径。&quot;
+    },
+    &quot;offset&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 0,
+      &quot;description&quot;: &quot;本地已核对前缀后的字节偏移。&quot;
+    },
+    &quot;length&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 1,
+      &quot;description&quot;: &quot;本块原始字节数，默认当前chunk_bytes，不能超过配置分块上限。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;transfer_id&quot;,
+    &quot;offset&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;返回固定快照的Base64字节和分块SHA256；由宿主传输程序直接写本地文件，不把大块响应交给模型。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/file_transfer.py">mcp/file_transfer.py</a>。</p></details>
+<details class="tool" id="openmc_close_transfer"><summary>openmc_close_transfer
+<span class="tool-purpose">显式关闭未完成上传或下载缓存，释放暂存空间；保留已发布输入、原始结果及传输记录。重复关闭不会删除其他文件。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>direction</td><td>string</td><td>是</td><td>不可省略</td><td>关闭上传临时文件还是下载快照。</td><td>—</td></tr><tr><td>transfer_id</td><td>string</td><td>是</td><td>不可省略</td><td>由传输工具返回的transfer_id，服务重启后仍用同一编号恢复；不是本地文件路径。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>显式关闭未完成上传或下载缓存，释放暂存空间；保留已发布输入、原始结果及传输记录。重复关闭不会删除其他文件。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;direction&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;upload&quot;,
+        &quot;download&quot;
+      ],
+      &quot;description&quot;: &quot;关闭上传临时文件还是下载快照。&quot;
+    },
+    &quot;transfer_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{32}$&quot;,
+      &quot;description&quot;: &quot;由传输工具返回的transfer_id，服务重启后仍用同一编号恢复；不是本地文件路径。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;direction&quot;,
+    &quot;transfer_id&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;显式关闭未完成上传或下载缓存，释放暂存空间；保留已发布输入、原始结果及传输记录。重复关闭不会删除其他文件。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/file_transfer.py">mcp/file_transfer.py</a>。</p></details>
+<details class="tool" id="openmc_preview_file"><summary>openmc_preview_file
+<span class="tool-purpose">对已上传输入或登记产物做有限文本/图片预览；大二进制只返回元信息，不因预览而下载整个文件。宿主是否展示图片取决于客户端。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>kind</td><td>string</td><td>是</td><td>不可省略</td><td>job/scan为计算/扫描产物，identifier取相应job_id/scan_id；upload取完成上传的transfer_id。</td><td>—</td></tr><tr><td>identifier</td><td>string</td><td>是</td><td>不可省略</td><td>kind所对应的job_id、scan_id或已完成上传的transfer_id。</td><td>—</td></tr><tr><td>path</td><td>string</td><td>是</td><td>不可省略</td><td>从实际文件/产物清单复制path。</td><td>—</td></tr><tr><td>offset</td><td>integer</td><td>否</td><td>0</td><td>文本预览字节偏移，省略从0开始。</td><td>—</td></tr><tr><td>max_bytes</td><td>integer</td><td>否</td><td>8192</td><td>文本请求字节数，实际受preview_text_bytes约束，默认8192。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>对已上传输入或登记产物做有限文本/图片预览；大二进制只返回元信息，不因预览而下载整个文件。宿主是否展示图片取决于客户端。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;kind&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;job&quot;,
+        &quot;scan&quot;,
+        &quot;upload&quot;
+      ],
+      &quot;description&quot;: &quot;job/scan为计算/扫描产物，identifier取相应job_id/scan_id；upload取完成上传的transfer_id。&quot;
+    },
+    &quot;identifier&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{32}$&quot;,
+      &quot;description&quot;: &quot;kind所对应的job_id、scan_id或已完成上传的transfer_id。&quot;
+    },
+    &quot;path&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;从实际文件/产物清单复制path。&quot;
+    },
+    &quot;offset&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 0,
+      &quot;description&quot;: &quot;文本预览字节偏移，省略从0开始。&quot;,
+      &quot;default&quot;: 0
+    },
+    &quot;max_bytes&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 1,
+      &quot;description&quot;: &quot;文本请求字节数，实际受preview_text_bytes约束，默认8192。&quot;,
+      &quot;default&quot;: 8192
+    }
+  },
+  &quot;required&quot;: [
+    &quot;kind&quot;,
+    &quot;identifier&quot;,
+    &quot;path&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;对已上传输入或登记产物做有限文本/图片预览；大二进制只返回元信息，不因预览而下载整个文件。宿主是否展示图片取决于客户端。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/file_transfer.py">mcp/file_transfer.py</a>。</p></details>
 <section id="semantic-submission"><h2>提交与诊断的错误判定</h2><p>普通计算、扫描和修复重算使用相同的静态语义错误判据：已识别的 error 级问题在提交前拒绝，报出 kind、位置和修正方向；扫描子作业的提交副本也会再次检查。warning、科学条件未核实或检查不完整不会自动成为硬拒绝。这不表示已完成物理校核。官方例题的 prepare/data 是类型化程序步骤，不能把它们当作现成的原生模型检查。</p><p>网格图的 energy_bin 仅适用于含 EnergyFilter 的计分，无该过滤器时必须省略；单层网格的 level 仅允许 0 或省略。正常 DAGMC/MOAB 初始化和“无错误”摘要不作为故障证据。具体错误优先于同段泛化症状，其他段的独立故障保留。</p></section>
 <footer>由 scripts/generate_tool_reference.py 从实际注册表生成 · 无需联网或启动服务</footer>
 </main></body></html>

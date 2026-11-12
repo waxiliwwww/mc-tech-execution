@@ -105,7 +105,7 @@ TOOLS += [
      "inputSchema": schema({"job_id": TEXT, "target_dir": TEXT}, ['job_id', 'target_dir']), "outputSchema": OUTPUT, "function": prepare_repair, "annotations": WRITE},
     {"name": "openmc_recheck_repair", "description": "仅对已应用的关联修复计划，检查所有输入未再次改变，校核后提交新计算。保留原失败编号；重复调用查询同一重算，不重复提交，不自行应用修改。",
      "inputSchema": schema({"plan_id": TEXT, "threads": {"type": "integer", "minimum": 1, "maximum": 64}}, ['plan_id']), "outputSchema": OUTPUT, "function": recheck_repair, "annotations": WRITE},
-    {"name": "openmc_list_artifacts", "description": "列出计算或扫描已经生成的服务端文件、大小、SHA256和位置。路径属于服务端，本轮不提供远程下载；不暴露本机配置或任意目录。",
+    {"name": "openmc_list_artifacts", "description": "列出计算或扫描已经生成的服务端文件、大小、SHA256和位置。路径属于服务端；download_allowed给出单文件限额判断，显式prepare_download后用MCP分块取回；不暴露本机配置或任意目录。",
      "inputSchema": schema({"kind": {"type": "string", "enum": ['job', 'scan']}, "identifier": TEXT}, ['kind', 'identifier']),
      "outputSchema": OUTPUT, "function": list_artifacts},
     {"name": "openmc_list_parameters", "description": "列出当前模型可调整的运行设置、CSG表面系数、材料密度/温度和源强，带对象ID、当前值、单位与范围；后续扫描请使用这些参数名。",
@@ -352,5 +352,8 @@ for _tool in TOOLS:
 
 from openmc_slurm import SLURM_TOOLS
 TOOLS += SLURM_TOOLS
+
+from file_transfer import TRANSFER_TOOLS
+TOOLS += TRANSFER_TOOLS
 
 prepare_tools(TOOLS)

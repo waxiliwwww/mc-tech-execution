@@ -1,0 +1,330 @@
+{
+  "openmc_file_limits": {
+    "description": "查询MCP文件传输与预览限额。默认完整文件5 MiB，管理员可配置；不限制服务端大文件计算。不提供网页或额外HTTP上传下载接口。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "description": "查询MCP文件传输与预览限额。默认完整文件5 MiB，管理员可配置；不限制服务端大文件计算。不提供网页或额外HTTP上传下载接口。"
+    }
+  },
+  "openmc_upload_begin": {
+    "description": "预留上传。宿主读取本地文件，提交文件名/总字节数/完整SHA256；服务端无法读取宿主C:路径。大块字节请用宿主MCP传输程序发送，不让模型逐块复述。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "type": "string",
+          "minLength": 1,
+          "description": "仅文件名，例如model.zip或component.step，不是宿主路径。"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "完整原始文件字节数，不能靠小分块绕过完整文件上限。"
+        },
+        "sha256": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "宿主对完整文件计算的SHA256，用于最终校验。"
+        },
+        "archive": {
+          "type": "boolean",
+          "description": "true表示ZIP模型包，finish受控解压并核对实际解压总量；false保留单文件。",
+          "default": false
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-f0-9]{32}$",
+          "description": "可选由宿主生成并保存的32位小写随机幂等键；请求结果未知时重用同一个值，不重复预留或生成文件包。"
+        }
+      },
+      "required": [
+        "filename",
+        "size_bytes",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "description": "预留上传。宿主读取本地文件，提交文件名/总字节数/完整SHA256；服务端无法读取宿主C:路径。大块字节请用宿主MCP传输程序发送，不让模型逐块复述。"
+    }
+  },
+  "openmc_upload_status": {
+    "description": "读取上传实际已收字节数和已有前缀SHA256；断线先查询，用于核对源文件并续传。不会发布或执行文件。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "transfer_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-f0-9]{32}$",
+          "description": "由传输工具返回的transfer_id，服务重启后仍用同一编号恢复；不是本地文件路径。"
+        }
+      },
+      "required": [
+        "transfer_id"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "description": "读取上传实际已收字节数和已有前缀SHA256；断线先查询，用于核对源文件并续传。不会发布或执行文件。"
+    }
+  },
+  "openmc_upload_chunk": {
+    "description": "接收宿主读取的Base64分块；offset按实际字节，不是Base64字符数。重复相同分块幂等，冲突或超总长拒绝；仅写临时文件。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "transfer_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-f0-9]{32}$",
+          "description": "由传输工具返回的transfer_id，服务重启后仍用同一编号恢复；不是本地文件路径。"
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "分块原始字节起始位置，取upload_status.received_bytes或上一块回执。"
+        },
+        "data_base64": {
+          "type": "string",
+          "maxLength": 1398104,
+          "description": "由宿主传输程序编码的文件字节，不是文件路径；单块上限先查openmc_file_limits。不要把文件内容放进模型上下文。"
+        }
+      },
+      "required": [
+        "transfer_id",
+        "offset",
+        "data_base64"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "description": "接收宿主读取的Base64分块；offset按实际字节，不是Base64字符数。重复相同分块幂等，冲突或超总长拒绝；仅写临时文件。"
+    }
+  },
+  "openmc_upload_finish": {
+    "description": "完整长度/SHA256通过后才发布inbox输入；ZIP禁止越界/链接并检查解压总量。返回source_dir或file_path，接现有导入/STEP工具。不执行上传程序。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "transfer_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-f0-9]{32}$",
+          "description": "由传输工具返回的transfer_id，服务重启后仍用同一编号恢复；不是本地文件路径。"
+        }
+      },
+      "required": [
+        "transfer_id"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "description": "完整长度/SHA256通过后才发布inbox输入；ZIP禁止越界/链接并检查解压总量。返回source_dir或file_path，接现有导入/STEP工具。不执行上传程序。"
+    }
+  },
+  "openmc_prepare_download": {
+    "description": "按清单paths创建一致的下载快照；报告Markdown自动包含已登记本地图片/数据引用。受完整文件/整包限额约束；原始大文件默认留服务端。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "job",
+            "scan",
+            "upload"
+          ],
+          "description": "job/scan为计算/扫描产物，identifier取相应job_id/scan_id；upload取完成上传的transfer_id。"
+        },
+        "identifier": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-f0-9]{32}$",
+          "description": "kind所对应的job_id、scan_id或已完成上传的transfer_id。"
+        },
+        "paths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "从list_artifacts.artifacts[].path或完成上传files[].path复制的工作区相对路径，不是任意服务器路径。"
+          },
+          "description": "要取回的明确文件path列表；多个文件为ZIP，保持报告相对引用。"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-f0-9]{32}$",
+          "description": "可选由宿主生成并保存的32位小写随机幂等键；请求结果未知时重用同一个值，不重复预留或生成文件包。"
+        }
+      },
+      "required": [
+        "kind",
+        "identifier",
+        "paths"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "description": "按清单paths创建一致的下载快照；报告Markdown自动包含已登记本地图片/数据引用。受完整文件/整包限额约束；原始大文件默认留服务端。"
+    }
+  },
+  "openmc_download_status": {
+    "description": "检查下载快照、总长和SHA256，可按本地.part长度返回对应前缀SHA256，以安全恢复下载。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "transfer_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-f0-9]{32}$",
+          "description": "由传输工具返回的transfer_id，服务重启后仍用同一编号恢复；不是本地文件路径。"
+        },
+        "prefix_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "可选本地已下载.part的实际字节数，用返回prefix_sha256核对后才追加。",
+          "default": 0
+        }
+      },
+      "required": [
+        "transfer_id"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "description": "检查下载快照、总长和SHA256，可按本地.part长度返回对应前缀SHA256，以安全恢复下载。"
+    }
+  },
+  "openmc_download_chunk": {
+    "description": "返回固定快照的Base64字节和分块SHA256；由宿主传输程序直接写本地文件，不把大块响应交给模型。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "transfer_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-f0-9]{32}$",
+          "description": "由传输工具返回的transfer_id，服务重启后仍用同一编号恢复；不是本地文件路径。"
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "本地已核对前缀后的字节偏移。"
+        },
+        "length": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "本块原始字节数，默认当前chunk_bytes，不能超过配置分块上限。"
+        }
+      },
+      "required": [
+        "transfer_id",
+        "offset"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "description": "返回固定快照的Base64字节和分块SHA256；由宿主传输程序直接写本地文件，不把大块响应交给模型。"
+    }
+  },
+  "openmc_close_transfer": {
+    "description": "显式关闭未完成上传或下载缓存，释放暂存空间；保留已发布输入、原始结果及传输记录。重复关闭不会删除其他文件。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "direction": {
+          "type": "string",
+          "enum": [
+            "upload",
+            "download"
+          ],
+          "description": "关闭上传临时文件还是下载快照。"
+        },
+        "transfer_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-f0-9]{32}$",
+          "description": "由传输工具返回的transfer_id，服务重启后仍用同一编号恢复；不是本地文件路径。"
+        }
+      },
+      "required": [
+        "direction",
+        "transfer_id"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "description": "显式关闭未完成上传或下载缓存，释放暂存空间；保留已发布输入、原始结果及传输记录。重复关闭不会删除其他文件。"
+    }
+  },
+  "openmc_preview_file": {
+    "description": "对已上传输入或登记产物做有限文本/图片预览；大二进制只返回元信息，不因预览而下载整个文件。宿主是否展示图片取决于客户端。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "job",
+            "scan",
+            "upload"
+          ],
+          "description": "job/scan为计算/扫描产物，identifier取相应job_id/scan_id；upload取完成上传的transfer_id。"
+        },
+        "identifier": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-f0-9]{32}$",
+          "description": "kind所对应的job_id、scan_id或已完成上传的transfer_id。"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "从实际文件/产物清单复制path。"
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "文本预览字节偏移，省略从0开始。",
+          "default": 0
+        },
+        "max_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "文本请求字节数，实际受preview_text_bytes约束，默认8192。",
+          "default": 8192
+        }
+      },
+      "required": [
+        "kind",
+        "identifier",
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "description": "对已上传输入或登记产物做有限文本/图片预览；大二进制只返回元信息，不因预览而下载整个文件。宿主是否展示图片取决于客户端。"
+    }
+  }
+}

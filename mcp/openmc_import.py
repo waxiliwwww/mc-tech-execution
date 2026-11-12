@@ -151,7 +151,7 @@ def import_model(source_dir: str, target_dir: str, api_check: bool = True) -> di
 IMPORT_TOOLS = [
     {'name': 'openmc_import_model', 'description': '导入工作区内已有OpenMC模型输入，校验后发布新副本；不要求在例题清单中，不执行脚本，不覆盖原输入。',
      'inputSchema': {'type': 'object', 'additionalProperties': False,
-                     'properties': {'source_dir': {'type': 'string', 'minLength': 1, 'description': 'MC_WORKSPACE内已有原生XML及依赖目录，相对路径；Python脚本须先自行导出XML。'},
+                     'properties': {'source_dir': {'type': 'string', 'minLength': 1, 'description': 'MC_WORKSPACE内已有原生XML及依赖目录，相对路径；异机文件先用MCP上传ZIP并取source_dir。Python脚本须先自行导出XML。'},
                                     'target_dir': {'type': 'string', 'minLength': 1, 'description': 'MC_WORKSPACE内不存在的新副本相对目录，与源目录不嵌套。'},
                                     'api_check': {'type': 'boolean', 'default': True, 'description': '是否用已配置OpenMC Python API解析模型；省略为true。false仅做结构和依赖检查，不能当作可运行证明。'}},
                      'required': ['source_dir', 'target_dir']},

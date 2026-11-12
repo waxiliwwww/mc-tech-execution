@@ -268,7 +268,7 @@ else:
             listing = self.call('openmc_list_artifacts', {'kind': kind, 'identifier': identifier})
             listed = {r['path']: r for r in listing['artifacts']}
             for output in outputs.values():self.assertIn(output['path'], listed)
-            self.assertFalse(listing['download_supported'])
+            self.assertTrue(listing['download_supported']);self.assertEqual(listing['download_transport'],'MCP chunks')
             self.assertFalse(any(Path(p).name == 'job.json' for p in listed))
             self.evidence('real-' + kind + '-reports.json', outputs)
 

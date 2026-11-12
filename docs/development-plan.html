@@ -1,6 +1,10 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MC工具包稳定化与完整交付计划</title><link rel="stylesheet" href="assets/manual.css"><script src="assets/manual.js" defer></script></head><body><aside class="sidebar"><a class="brand" href="index.html">MC工具包</a><nav aria-label="文档导航"><a href="index.html">工具包总览</a><a href="toolkit-usage.html">使用手册</a><a href="deployment.html">部署与接入</a><a href="toolkit.html">架构设计</a><a href="reference.html">接口参考</a></nav></aside><main id="content"><h1>MC工具包稳定化与完整交付计划</h1>
 <p class="lead">当前目标：12月第一批MCP工具验收。复用已稳定的模型生成、校核、本地作业和扫描，补齐微调生成与HPC远程提交；工程稳定版不能代替首批合同验收。本页固定首批范围与条件；Slurm无账号适配已启动，微调按用户决定暂停。</p>
 <p>稳定化阶段原决定（2026-11-08，起点0.14.0 / 175e414，历史依据保留）：MCP工具包独立，DSH/其他宿主组织显式参数，包内Python生成或接入输入；用户无需编写Python。已有脚本为可选入口。自有Linux服务器为计算端；产物服务端保存，依现有文件访问/SCP交接，不新增远程下载。本轮不调用真实模型、不修改模型配置、不更新用户服务。</p>
+<section id="file-transfer"><h2>本轮：宿主与工具服务之间的MCP文件交接</h2>
+<p><strong>价值：</strong>异机时本地路径无法被远端服务读取，结果路径也不会自动变成客户端文件。已有SCP方式需要用户额外操作；本轮用标准MCP函数接通上传→现有模型导入/计算→有限预览→按需取回，让宿主能直接管理文件交接。</p>
+<p><strong>已确认范围：</strong>只新增MCP函数和宿主侧标准MCP示例，不做浏览器或额外HTTP文件接口，不绑定DSH。宿主需有本地读写或执行能力，二进制分块由程序直传，不经模型复述。默认完整文件5 MiB、可配置，ZIP解压总量也受限；大文件仍可留在服务端计算分析。</p>
+<p><strong>完成条件：</strong>长度和SHA256通过才发布输入；断线可查同一传输编号及偏移恢复，重复请求不覆盖输入；下载快照、分块和完整文件可核验。用隔离MCP进程验证上传→导入→真实计算→图/报告→预览/下载同源，失败及大小边界不留下半成品。不改已有服务和配置，不调用真实模型；不替代专业验收或真实集群联调。</p></section>
 <section id="december-milestone"><h2>12月第一批验收：当前目标与缺口</h2>
 <p>2026-11-09更新；Slurm无账号适配候选0.15.0，原实现基线0.14.4 / eb7b12f。依据原技术规格书第8章、9.1和表4-1，首批是输入生成、输入校核、本地作业、HPC远程提交、批量参数扫描五项；三页技术指引将首节点安排在12月。确切验收日期、T0以及9.1“两类却称三个功能类型”的笔误需双方确认，不自行扩减范围。</p>
 <div class="table-wrap"><table><thead><tr><th>首批要求</th><th>已有基础</th><th>到验收还需完成什么</th></tr></thead><tbody>

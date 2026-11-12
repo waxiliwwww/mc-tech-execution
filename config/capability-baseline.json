@@ -220,6 +220,30 @@
         "tests/test_slurm_mcp.py"
       ],
       "gate": "offline_and_real"
+    },
+    {
+      "id": "mcp_file_transfer",
+      "status": "supported",
+      "surface": [
+        "openmc_file_limits",
+        "openmc_upload_begin",
+        "openmc_upload_chunk",
+        "openmc_upload_status",
+        "openmc_upload_finish",
+        "openmc_prepare_download",
+        "openmc_download_status",
+        "openmc_download_chunk",
+        "openmc_preview_file",
+        "openmc_close_transfer"
+      ],
+      "input": "宿主读取的文件字节、总长/SHA256；登记的作业/扫描/已上传文件path",
+      "output": "校验后inbox输入、有限MCP预览、固定下载快照与宿主可验证字节；不含额外HTTP文件接口",
+      "evidence": [
+        "tests/test_file_transfer.py",
+        "tests/test_file_transfer_client.py",
+        "tests/test_file_transfer_mcp.py"
+      ],
+      "gate": "offline_and_real"
     }
   ],
   "restrictions": [
@@ -288,6 +312,14 @@
       "kind": "guarded",
       "impact": "首版单任务/OpenMP运行，外部路径需显式映射；默认单次传输2GiB，不是物理能力指标；真实集群未验",
       "override": "max_transfer_bytes/传输超时可由运维在同连接身份配置调整；原生本地能力不变，多节点/燃耗Slurm脚本及扫描方式另按实际需求确认"
+    },
+    {
+      "id": "file_transfer_limits",
+      "capability": "mcp_file_transfer",
+      "kind": "guarded",
+      "impact": "新MCP传输默认每完整文件5 MiB、ZIP展开/所选文件总量5 MiB，大小限制不影响已有服务端大文件计算。仅登记产物/已上传文件，宿主本地读写由调用方提供。",
+      "override": "MC_TRANSFER_CONFIG独立配置可提高整文件/整包上限；无本地读写能力时由用户运行宿主标准MCP脚本或沿已有文件通道。",
+      "user_decision": "用户2026-11-12确认默认5 MiB可配置、仅MCP函数，不增加浏览器或HTTP文件接口。"
     }
   ],
   "stabilization": {

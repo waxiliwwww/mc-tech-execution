@@ -1,11 +1,11 @@
-"""List local outputs with checksums; no network download or arbitrary file reads."""
+"""List local outputs with checksums; registered outputs; MCP transfer lives in file_transfer."""
 import mimetypes
 
 import openmc_jobs as jobs
 from openmc_runtime import Error, relative, workspace
 
 
-def list_artifacts(kind: str, identifier: str) -> dict:
+def artifact_files(kind: str, identifier: str):
     if kind == 'job':
         target = jobs.job_directory(identifier)
         record = jobs.read(target)
@@ -28,6 +28,13 @@ def list_artifacts(kind: str, identifier: str) -> dict:
             path = target / 'work' / name
             if not path.resolve().is_relative_to((target / 'work').resolve()):raise Error('产物记录路径无效')
             paths.append(path)
+    return target, record, sorted(set(paths))
+
+
+def list_artifacts(kind: str, identifier: str) -> dict:
+    target, record, paths = artifact_files(kind, identifier)
+    from file_transfer import policy
+    limits = policy()
     artifacts = []
     for path in sorted(set(paths)):
         if not path.is_file() or path.is_symlink():continue
@@ -35,8 +42,9 @@ def list_artifacts(kind: str, identifier: str) -> dict:
         original = record.get('output_files', {}).get(str(path.relative_to(target / 'work'))) if kind == 'job' and path.is_relative_to(target / 'work') else None
         artifacts.append({'path': relative(path), 'server_path': str(path), 'bytes': path.stat().st_size,
                           'sha256': digest, 'mime_type': mimetypes.guess_type(path.name)[0] or 'application/octet-stream',
-                          'matches_recorded_output': digest == original if original else None})
+                          'matches_recorded_output': digest == original if original else None,
+                          'download_allowed':path.stat().st_size <= limits['max_file_bytes']})
     return {'kind': kind, 'identifier': identifier, 'workspace': str(workspace()),
             'directory': str(target), 'artifacts': artifacts,
-            'location': 'server', 'download_supported': False, 'provenance': record['provenance'],
-            'note': '路径位于服务端；本轮不提供远程下载。输入与大型核数据不会自动清理，请按部署环境管理磁盘。'}
+            'location': 'server', 'download_supported': True, 'download_transport':'MCP chunks', 'max_file_bytes':limits['max_file_bytes'], 'provenance': record['provenance'],
+            'note': '路径位于服务端；需要传输时用openmc_prepare_download；超限大文件留在服务端分析，限额可由管理员调整。不会自动下载或清理。'}
