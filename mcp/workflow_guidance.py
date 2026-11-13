@@ -4,10 +4,6 @@ import sysconfig
 from pathlib import Path
 from adapters import ToolExecutionError
 
-INSTRUCTIONS = ('OpenMC Forge提供模型接入、受控建模、计算与结果管理。首次处理OpenMC任务，'
-                '先调用openmc_get_workflow(chapter="start")读取任务指引，再按需取files或advanced章节。'
-                '无需在客户端另装Skill；读取指引不授权计算、修复或扩充资源。'
-                '先核对openmc_environment与当前工具定义，不猜未知物理参数。')
 FILES = {'start': 'SKILL.md', 'files': 'references/file-transfer.md',
          'advanced': 'references/extended-tasks.md'}
 PREFIX = 'skill://openmc-workflows/'
@@ -39,6 +35,18 @@ def get_workflow(chapter='start'):
             'note': '这是任务指引，不是计算或专业验收结果；相对参考用同一工具的files/advanced章节读取。'}
 
 
+def server_instructions():
+    """Put the canonical minimal workflow in the first model input, not just a hint to fetch it."""
+    skill = get_workflow('start')['content']
+    _, marker, rest = skill.partition('## 连接时速查\n')
+    core = rest.split('\n## ', 1)[0].strip()
+    if not marker or not core:
+        raise ToolExecutionError('技能缺少连接时速查章节；请恢复同版Skill，未发布不完整连接指引。')
+    return ('OpenMC Forge任务指引（核心内容已随连接提供，无需先安装Skill）：\n'+core+
+            '\n完整说明按任务调用openmc_get_workflow(chapter="start")，文件交接读files，扩展任务读advanced。'
+            '工具名前缀以宿主实际发现为准；阅读不授权扩大计算或修改配置。')
+
+
 def read_resource(uri):
     for key, value in FILES.items():
         if uri == PREFIX+value:
@@ -51,7 +59,7 @@ RESOURCES = [{'uri': PREFIX+value, 'name': 'OpenMC工作流：'+key,
               'mimeType': 'text/markdown'} for key,value in FILES.items()]
 
 WORKFLOW_TOOLS = [{'name': 'openmc_get_workflow',
-    'description': '首次处理OpenMC科学任务先读取start指引；异机传文件读files，扫描/CAD/燃耗/Slurm/修复读advanced。与随包Skill同源，无需客户端安装；不执行计算或修改配置。',
+    'description': '连接已提供核心工作流；需要完整任务说明时读取start，异机传文件读files，扫描/CAD/燃耗/Slurm/修复读advanced。与随包Skill同源，无需客户端安装；不执行计算或修改配置。',
     'inputSchema': {'type':'object','properties':{'chapter':{'type':'string','enum':list(FILES),
         'default':'start','description':'start：任务选择与主流程；files：宿主/服务端文件交接；advanced：扩展任务与修复。'}},'additionalProperties':False},
     'outputSchema': {'type':'object'}, 'function':get_workflow,

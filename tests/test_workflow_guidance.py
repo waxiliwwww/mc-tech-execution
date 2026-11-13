@@ -17,6 +17,18 @@ class WorkflowGuidance(unittest.TestCase):
             self.assertEqual(guide.read_resource(value['uri']),value['content'])
         self.assertEqual(guide.get_workflow(),guide.get_workflow('start'))
 
+    def test_bootstrap_is_sourced_from_skill_and_missing_section_is_not_silent(self):
+        with tempfile.TemporaryDirectory() as d,patch.object(guide,'skill_root',return_value=Path(d)):
+            skill=Path(d)/'SKILL.md'
+            skill.write_text('# Skill\n## 连接时速查\nunique instruction one\n## Other\nnot bootstrap')
+            self.assertIn('unique instruction one',guide.server_instructions())
+            self.assertNotIn('not bootstrap',guide.server_instructions())
+            skill.write_text(skill.read_text().replace('unique instruction one','updated instruction two'))
+            self.assertIn('updated instruction two',guide.server_instructions())
+            self.assertNotIn('unique instruction one',guide.server_instructions())
+            skill.write_text('# Skill without required core')
+            with self.assertRaises(ToolExecutionError):guide.server_instructions()
+
     def test_unknown_files_and_missing_installation_fail_without_fallback(self):
         for chapter in ['../SKILL.md','/etc/passwd','unknown','start/../files']:
             with self.assertRaises(ToolExecutionError):guide.get_workflow(chapter)

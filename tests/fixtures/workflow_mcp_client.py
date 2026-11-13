@@ -11,6 +11,9 @@ async def run():
             assert hello.serverInfo.version==(ROOT/'VERSION').read_text().strip()
             assert 'openmc_get_workflow' in hello.instructions
             assert 'chapter="start"' in hello.instructions
+            skill=(ROOT/'skills/openmc-workflows/SKILL.md').read_text()
+            core=skill.split('## 连接时速查\n',1)[1].split('\n## ',1)[0].strip()
+            assert core in hello.instructions, 'core workflow must arrive before any tool call'
             discovered=await session.list_tools()
             tool=next(t for t in discovered.tools if t.name=='openmc_get_workflow')
             assert tool.annotations.readOnlyHint

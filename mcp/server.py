@@ -245,8 +245,8 @@ def create_app(config, log, tools=None, startup_identity=None):
             log.emit("INFO", "runtime.identity", version=startup_identity.get("version"),
                      code_fingerprint=startup_identity.get("code_fingerprint"),
                      files=startup_identity.get("files"))
-    from workflow_guidance import INSTRUCTIONS
-    server = Server(config.name, version=config.version, instructions=INSTRUCTIONS)
+    from workflow_guidance import server_instructions
+    server = Server(config.name, version=config.version, instructions=server_instructions())
 
     @server.list_tools()
     async def list_tools():

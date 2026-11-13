@@ -5270,9 +5270,9 @@
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/file_transfer.py">mcp/file_transfer.py</a>。</p></details>
 <details class="tool" id="openmc_get_workflow"><summary>openmc_get_workflow
-<span class="tool-purpose">首次处理OpenMC科学任务先读取start指引；异机传文件读files，扫描/CAD/燃耗/Slurm/修复读advanced。与随包Skill同源，无需客户端安装；不执行计算或修改配置。</span></summary>
+<span class="tool-purpose">连接已提供核心工作流；需要完整任务说明时读取start，异机传文件读files，扫描/CAD/燃耗/Slurm/修复读advanced。与随包Skill同源，无需客户端安装；不执行计算或修改配置。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>chapter</td><td>string</td><td>否</td><td>&quot;start&quot;</td><td>start：任务选择与主流程；files：宿主/服务端文件交接；advanced：扩展任务与修复。</td><td>—</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>首次处理OpenMC科学任务先读取start指引；异机传文件读files，扫描/CAD/燃耗/Slurm/修复读advanced。与随包Skill同源，无需客户端安装；不执行计算或修改配置。</p>
+<h3>返回怎么看</h3><p>连接已提供核心工作流；需要完整任务说明时读取start，异机传文件读files，扫描/CAD/燃耗/Slurm/修复读advanced。与随包Skill同源，无需客户端安装；不执行计算或修改配置。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
@@ -5294,7 +5294,7 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;首次处理OpenMC科学任务先读取start指引；异机传文件读files，扫描/CAD/燃耗/Slurm/修复读advanced。与随包Skill同源，无需客户端安装；不执行计算或修改配置。&quot;
+  &quot;description&quot;: &quot;连接已提供核心工作流；需要完整任务说明时读取start，异机传文件读files，扫描/CAD/燃耗/Slurm/修复读advanced。与随包Skill同源，无需客户端安装；不执行计算或修改配置。&quot;
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/workflow_guidance.py">mcp/workflow_guidance.py</a>。</p></details>
