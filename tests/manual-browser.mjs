@@ -20,7 +20,11 @@ const main=['index.html','toolkit-usage.html','deployment.html','toolkit.html','
 async function shot(name){await page.screenshot({path:path.join(out,name+'.png')});screenshots.push(name+'.png');}
 async function anchor(id){
   const target=page.locator('#'+id);await target.waitFor();
-  if(await target.evaluate(e=>e.tagName==='DETAILS'))assert.equal(await target.getAttribute('open'),'');
+  if(await target.evaluate(e=>e.tagName==='DETAILS')){
+    // Hash navigation opens details asynchronously after a same-page click.
+    await page.waitForFunction(id=>document.getElementById(id)?.open,id,{timeout:3000});
+    assert.equal(await target.getAttribute('open'),'');
+  }
   assert.ok(await target.evaluate(e=>{for(let p=e.parentElement;p;p=p.parentElement)if(p.tagName==='DETAILS'&&!p.open)return false;return true;}),'Folded parent must reveal the requested chapter: '+id);
   const title=target.locator(':scope > h2, :scope > summary').first();
   if(await title.count())assert.ok(await title.evaluate(e=>{const r=e.getBoundingClientRect();return r.bottom>0&&r.top<innerHeight;}),'Requested heading is visible: '+id);
@@ -32,6 +36,13 @@ try {
     await page.goto(url(name));
     assert.ok((await page.locator('.edition').innerText()).endsWith(packageVersion),'Visible manual version matches VERSION: '+name);
   }
+  // Client skill discovery is an optional route from the stable overview.
+  await page.goto(url('index.html'));
+  await page.locator('a[href="deployment.html#agent-skill"]').click();await anchor('agent-skill');
+  const skillLink=page.locator('#agent-skill a[href="../skills/openmc-workflows/SKILL.md"]');
+  assert.equal(await skillLink.count(),1);
+  assert.ok((await fs.readFile(path.join(root,'skills/openmc-workflows/SKILL.md'),'utf8')).startsWith('---'));
+  await shot('11-agent-skill');
   await page.goto(url('toolkit-usage.html#scientific-advisories'));await anchor('scientific-advisories');
   assert.match(await page.locator('#scientific-advisories').innerText(),/零标准差/);
   await shot('00-statistical-advisories');

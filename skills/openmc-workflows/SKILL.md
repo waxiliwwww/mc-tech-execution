@@ -1,0 +1,49 @@
+---
+name: openmc-workflows
+description: 使用OpenMC Forge的MCP工具接入已有模型、按支持范围建模或改参，完成校核、计算及结果交付；适用于OpenMC科学任务、参数扫描、CAD接入和失败诊断。不用于替用户决定未知的物理条件。
+metadata:
+  toolkit: openmc-forge
+---
+
+# OpenMC任务工作流
+
+前置：需要已连接的OpenMC Forge MCP服务；文件传输另需宿主本地文件读写能力或随包客户端。不要求在宿主安装OpenMC。
+
+把用户目标落实为可回查的模型、作业和产物。优先复用已有结果；用户要求计算时才准备新作业。技能不启动服务、不更换模型配置，也不自动安装依赖。
+
+## 先识别环境和入口
+
+- 首次操作调用 `openmc_environment`：区分工具包运行服务版本和OpenMC引擎版本，检查漂移/需重启状态、工作区与API/可执行程序。发现漂移先请管理员处理；工具列出不证明在线。跨平台的服务名前缀不同，按当前宿主发现的实际工具名调用。
+- `cross_sections_configured=false`只表示环境变量未配置；结合返回的核数据候选、模型实际引用及后续校核判断，不能单凭此值拒绝连续能模型或认定数据已齐。
+- 已有模型：提供服务端工作区中的原生 `model.xml` 或分离XML及相对依赖，再调用 `openmc_import_model`。导入不会执行用户Python。只有Python脚本时，先请用户用适用环境导出原生输入；不要假设导入工具会运行它。
+- 新建模型：公开模板用 `openmc_create_model`；组合新模型先用 `openmc_model_capabilities` 查看范围，确需生成spec时用 `detail="full"`取得当前Schema，再用 `openmc_build_model`。不要凭记忆构造旧Schema或把示例堆型当成全部能力。
+- 只分析结果：取得已有 `job_id`，查询状态后直接进入结果处理，不为出图重新求解。
+
+缺少材料组成/密度、几何尺寸/单位、边界、源、统计设置或计分目标时，只询问影响当前任务的必要条件。用户明确选择公开练习可沿用其已声明默认设置；未知业务条件不能套用例题默认值。
+
+## 从输入到作业
+
+1. **文件到位。** 客户端路径不是服务器路径。异机先走[文件交接](references/file-transfer.md)；不要让用户把MB级Base64贴到模型上下文。服务器已有输入可直接使用，不必再次上传。
+2. **发现再改参。** `openmc_list_parameters(case_dir)`给出本模型支持的键、当前值、单位和范围。用这些键调用 `openmc_prepare_case(case_dir,target_dir,parameters)`，读取差异及 `parameter_diff.verified`；不猜键、不覆盖源目录。材料密度的`macro`单位是宏观截面倍率，不是g/cm³。能导入不等于所有参数都能修改。
+3. **明确计分。** 按用户目标用 `openmc_define_tally`追加，已有ID用 `openmc_update_tally`或`openmc_delete_tally`。确认材料/几何对象、能量箱、网格边界和单位；使用返回的 `tally_id`。改计分后需新计算，旧作业不会新增结果。
+4. **预览及校核。** `openmc_preview_input`查看摘要、完整输入清单和哈希；`problems`应为空且`manifest_complete=true`。`openmc_validate_inputs(api_check=true)`检查结构、API与语义；错误先处理，未检查/未完成项和警告如实报告。模型生成或API解析成功不等于几何、物理已验证。
+5. **提交并跟踪。** 在用户认可的任务及资源范围内调用 `openmc_submit_job`，指定可识别名称；保存 `job_id`。用 `openmc_job_status`查到终态与退出码，核对预览和提交/终态 `input_hashes`。运行中可按用户要求 `openmc_cancel_job`。提交回执不是完成。
+
+长计算按用户或部署者确定的粒子数、批次、线程、数量与时限执行。未约定大规模资源时先询问规模；不要为了“看起来收敛”擅自扩大计算。
+
+## 结果与交付
+
+- 先用 `openmc_read_results(job_id)`发现成功作业已有的计分和维度；它只接收job_id/max_values/detail，不接收计分选择参数。然后把 `tally_id`、`score`、`nuclide`及适用过滤选择传给绘图/报告工具。保留均值、标准差、来源、维度和截断信息；不能用截断预览冒充全量。
+- 规则网格用 `openmc_plot_mesh`（3D须明确层，带能量过滤按需选箱）；其他支持选择用 `openmc_plot_results`。`openmc_export_report`沿用同一结果选择。同作业同格式导出会覆盖原报告；需要保留旧版时先安排归档或选择其他格式，不把重复导出当作新版本。图表样式可由用户后续分析调整，核心是数据、选择和来源一致。
+- 报告正文通常只预览20点；完整核对读关联CSV/JSON，不能要求正文包含最后一个点。热图CSV/报告预览9位有效数字，普通曲线CSV按浮点序列化精度；用同一显示精度或原生数据核对，不比较字符串格式。
+- 零均值、非有限值、零标准差及低统计警告都保留；不补零、不改报更好看的估计器。统计误差不能替代源收敛或参考解准确率结论。
+- `openmc_list_artifacts`取得服务端位置、大小、SHA256；`matches_recorded_output=null`表示无记录可比，不等于不一致。需要取回文件时按[文件交接](references/file-transfer.md)。
+- 向用户交付：模型/作业标识、这次输入及改动、执行终态、所选量与单位/归一化、关键告警、可打开的图和报告位置。远程尚未下载时明确是服务端路径；不要声称用户本机已有文件。
+
+## 按任务深入与失败接续
+
+扫描、官方例题、CAD、燃耗、Slurm及修复按需读取[扩展任务](references/extended-tasks.md)。不要一次加载全部能力Schema或例题清单。
+
+传输或提交结果未知时，先查原传输ID/作业记录，不盲目重复写入或计算。失败保留原记录：诊断日志，区分输入错误、核数据/运行环境缺失和工具问题。修复必须展示实际diff并取得用户明确确认后才 `apply_repair`；不能把本技能或一次计算请求当作修复授权。
+
+正式使用说明在完整工具包中的 `docs/index.html`（不在独立安装的技能目录内）；用户操作、部署、接口分别见其稳定导航。技能可单独安装，不依赖包外个人目录；详细工具参数以当前MCP定义为准。
