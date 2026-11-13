@@ -356,4 +356,7 @@ TOOLS += SLURM_TOOLS
 from file_transfer import TRANSFER_TOOLS
 TOOLS += TRANSFER_TOOLS
 
+from workflow_guidance import WORKFLOW_TOOLS
+TOOLS += WORKFLOW_TOOLS
+
 prepare_tools(TOOLS)

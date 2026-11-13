@@ -5269,6 +5269,35 @@
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/file_transfer.py">mcp/file_transfer.py</a>。</p></details>
+<details class="tool" id="openmc_get_workflow"><summary>openmc_get_workflow
+<span class="tool-purpose">首次处理OpenMC科学任务先读取start指引；异机传文件读files，扫描/CAD/燃耗/Slurm/修复读advanced。与随包Skill同源，无需客户端安装；不执行计算或修改配置。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>chapter</td><td>string</td><td>否</td><td>&quot;start&quot;</td><td>start：任务选择与主流程；files：宿主/服务端文件交接；advanced：扩展任务与修复。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>首次处理OpenMC科学任务先读取start指引；异机传文件读files，扫描/CAD/燃耗/Slurm/修复读advanced。与随包Skill同源，无需客户端安装；不执行计算或修改配置。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;chapter&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;start&quot;,
+        &quot;files&quot;,
+        &quot;advanced&quot;
+      ],
+      &quot;default&quot;: &quot;start&quot;,
+      &quot;description&quot;: &quot;start：任务选择与主流程；files：宿主/服务端文件交接；advanced：扩展任务与修复。&quot;
+    }
+  },
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;首次处理OpenMC科学任务先读取start指引；异机传文件读files，扫描/CAD/燃耗/Slurm/修复读advanced。与随包Skill同源，无需客户端安装；不执行计算或修改配置。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/workflow_guidance.py">mcp/workflow_guidance.py</a>。</p></details>
 <section id="semantic-submission"><h2>提交与诊断的错误判定</h2><p>普通计算、扫描和修复重算使用相同的静态语义错误判据：已识别的 error 级问题在提交前拒绝，报出 kind、位置和修正方向；扫描子作业的提交副本也会再次检查。warning、科学条件未核实或检查不完整不会自动成为硬拒绝。这不表示已完成物理校核。官方例题的 prepare/data 是类型化程序步骤，不能把它们当作现成的原生模型检查。</p><p>网格图的 energy_bin 仅适用于含 EnergyFilter 的计分，无该过滤器时必须省略；单层网格的 level 仅允许 0 或省略。正常 DAGMC/MOAB 初始化和“无错误”摘要不作为故障证据。具体错误优先于同段泛化症状，其他段的独立故障保留。</p></section>
 <footer>由 scripts/generate_tool_reference.py 从实际注册表生成 · 无需联网或启动服务</footer>
 </main></body></html>

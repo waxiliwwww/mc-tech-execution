@@ -244,6 +244,22 @@
         "tests/test_file_transfer_mcp.py"
       ],
       "gate": "offline_and_real"
+    },
+    {
+      "id": "mcp_workflow_guidance",
+      "status": "supported",
+      "surface": [
+        "openmc_get_workflow",
+        "initialize.instructions",
+        "resources/read"
+      ],
+      "input": "start/files/advanced章节或已登记Skill资源URI",
+      "output": "同源Markdown、章节目录及内容SHA256；不执行科学任务",
+      "evidence": [
+        "tests/test_workflow_guidance.py",
+        "tests/fixtures/workflow_mcp_client.py"
+      ],
+      "gate": "real_mcp"
     }
   ],
   "restrictions": [

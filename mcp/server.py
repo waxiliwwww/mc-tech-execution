@@ -245,7 +245,8 @@ def create_app(config, log, tools=None, startup_identity=None):
             log.emit("INFO", "runtime.identity", version=startup_identity.get("version"),
                      code_fingerprint=startup_identity.get("code_fingerprint"),
                      files=startup_identity.get("files"))
-    server = Server(config.name, version=config.version)
+    from workflow_guidance import INSTRUCTIONS
+    server = Server(config.name, version=config.version, instructions=INSTRUCTIONS)
 
     @server.list_tools()
     async def list_tools():
@@ -329,7 +330,10 @@ def create_app(config, log, tools=None, startup_identity=None):
 
     @server.read_resource()
     async def read_resource(uri):
-        return resources.read(str(uri))
+        from mcp.server.lowlevel.helper_types import ReadResourceContents
+        content = resources.read(str(uri))
+        mime = next(item["mimeType"] for item in resources.RESOURCES if item["uri"] == str(uri))
+        return [ReadResourceContents(content=content, mime_type=mime)]
 
     security = security_settings(config)
     checker = TransportSecurityMiddleware(security)

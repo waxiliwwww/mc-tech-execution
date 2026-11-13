@@ -27,3 +27,7 @@ dependencies = { file = ["mcp/requirements.txt"] }
 [tool.setuptools.package-data]
 mc_agent_tools = ["service.config.json", "requirements.txt", "UPSTREAM.json", "README.md"]
 "mc_agent_tools.model_validation" = ["schema.json"]
+
+[tool.setuptools.data-files]
+"share/mc-agent-tools/skills/openmc-workflows" = ["skills/openmc-workflows/SKILL.md"]
+"share/mc-agent-tools/skills/openmc-workflows/references" = ["skills/openmc-workflows/references/file-transfer.md", "skills/openmc-workflows/references/extended-tasks.md"]

@@ -11,12 +11,13 @@ import resources  # noqa: E402
 
 
 class ResourceContract(unittest.TestCase):
-    def test_three_resources_are_declared(self):
+    def test_existing_and_workflow_resources_are_declared(self):
         uris = [item["uri"] for item in resources.RESOURCES]
-        self.assertEqual(uris, ["mc://parameters/settings", "mc://examples/catalog", "mc://logs/tool-calls"])
+        self.assertEqual(uris[:3], ["mc://parameters/settings", "mc://examples/catalog", "mc://logs/tool-calls"])
+        self.assertEqual(set(uris[3:]), {"skill://openmc-workflows/"+f for f in ["SKILL.md", "references/file-transfer.md", "references/extended-tasks.md"]})
         for item in resources.RESOURCES:
             self.assertTrue(item["name"] and item["description"])
-            self.assertEqual(item["mimeType"], "application/json")
+            self.assertEqual(item["mimeType"], "text/markdown" if item["uri"].startswith("skill://") else "application/json")
 
     def test_parameter_resource_matches_module_constants(self):
         from openmc_parameters import SETTINGS, SURFACES

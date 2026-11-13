@@ -74,7 +74,13 @@ def _tool_calls(limit: int = 50) -> dict:
             "note": "只含调用参数名，不含参数值与结果内容。", "events": events[-limit:]}
 
 
+from workflow_guidance import RESOURCES as WORKFLOW_RESOURCES, read_resource as read_workflow_resource
+RESOURCES += WORKFLOW_RESOURCES
+
+
 def read(uri: str) -> str:
+    if str(uri).startswith("skill://"):
+        return read_workflow_resource(str(uri))
     table = {"mc://parameters/settings": _settings,
              "mc://examples/catalog": _catalog,
              "mc://logs/tool-calls": _tool_calls}
