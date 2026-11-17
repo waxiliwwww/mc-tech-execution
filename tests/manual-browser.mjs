@@ -43,6 +43,14 @@ try {
   assert.equal(await skillLink.count(),1);
   assert.ok((await fs.readFile(path.join(root,'skills/openmc-workflows/SKILL.md'),'utf8')).startsWith('---'));
   await shot('11-agent-skill');
+  await page.locator('#natural-language-routing > summary').click();
+  await page.locator('#natural-language-routing').scrollIntoViewIfNeeded();
+  assert.match(await page.locator('#natural-language-routing').innerText(),/模型实际看到什么/);
+  assert.match(await page.locator('#natural-language-routing').innerText(),/实际轨迹验收/);
+  await shot('11a-natural-language-routing');
+  await page.goto(url('deployment.html#local-process'));await anchor('local-process');
+  assert.match(await page.locator('#local-process').innerText(),/当前没有stdio启动入口/);
+  await shot('11b-local-process-options');
   await page.goto(url('toolkit-usage.html#result-bundle'));await anchor('result-bundle');
   assert.match(await page.locator('#result-bundle').innerText(),/openmc_generate_result_bundle/);
   assert.match(await page.locator('#result-bundle').innerText(),/不重新计算/);

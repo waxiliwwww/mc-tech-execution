@@ -59,7 +59,7 @@ RESOURCES = [{'uri': PREFIX+value, 'name': 'OpenMC工作流：'+key,
               'mimeType': 'text/markdown'} for key,value in FILES.items()]
 
 WORKFLOW_TOOLS = [{'name': 'openmc_get_workflow',
-    'description': '连接已提供核心工作流；需要完整任务说明时读取start，异机传文件读files，扫描/CAD/燃耗/Slurm/修复读advanced。与随包Skill同源，无需客户端安装；不执行计算或修改配置。',
+    'description': '用户要OpenMC导入、改参、计算或结果交付而需要操作路线时读取start；连接已提供优先选用MCP的核心规则，无需每次先读全文，异机传文件读files，扫描/CAD/燃耗/Slurm/修复读advanced。与随包Skill同源，无需客户端安装；不执行计算或修改配置。',
     'inputSchema': {'type':'object','properties':{'chapter':{'type':'string','enum':list(FILES),
         'default':'start','description':'start：任务选择与主流程；files：宿主/服务端文件交接；advanced：扩展任务与修复。'}},'additionalProperties':False},
     'outputSchema': {'type':'object'}, 'function':get_workflow,

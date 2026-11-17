@@ -1,6 +1,6 @@
 ---
 name: openmc-workflows
-description: 使用OpenMC Forge的MCP工具接入已有模型、按支持范围建模或改参，完成校核、计算及结果交付；适用于OpenMC科学任务、参数扫描、CAD接入和失败诊断。不用于替用户决定未知的物理条件。
+description: 当用户要求OpenMC模型导入、建模、改密度/温度/尺寸、校核、计算、参数扫描、通量/能谱绘图、报告或失败诊断时，优先使用已连接的OpenMC Forge MCP；无需用户点名MCP。只解释概念时不启动计算，不替用户决定未知物理条件。
 metadata:
   toolkit: openmc-forge
 ---
@@ -15,6 +15,8 @@ metadata:
 
 ## 连接时速查
 
+- 用户要求OpenMC模型导入、建模/改参、校核、计算/扫描、结果绘图/报告或失败诊断时，优先使用已连接的对应MCP工具，无需用户说“用MCP”。不要先用Shell/Python重写已有能力；单纯概念解释不启动计算。工具未连接、缺能力或调用失败时，说明具体原因再选择CLI/脚本后备；执行结果未知先查询，不重复提交。
+- 按目标选入口：“改密度/温度/尺寸”先openmc_list_parameters再openmc_prepare_case；“比较多组参数/参数扫描”用openmc_submit_scan；“已有结果出图和报告”先确认job_id/计分，优先openmc_generate_result_bundle。只改字体、配色或尺寸时复用plot_script及原始数据，不重新求解。自定义分析可使用原单项工具或脚本，保留选择、坐标和来源。
 - 先确认任务是接入已有模型、新建/改参计算，还是只分析已有结果。只分析已有作业时复用job_id，不重新求解；缺计分不能后处理补造。
 - 先用openmc_environment核对服务、引擎、工作区及漂移状态。客户端路径不是服务端路径；异机文件先上传，原生XML及相对依赖到位后再导入。
 - 修改前用openmc_list_parameters发现实际参数键、单位和范围。密度10.5必须明确材料与单位；macro是宏观截面倍率，不是g/cm³。用户提供几何、材料、源、统计及计分条件，未知条件先问，不从例题猜。
