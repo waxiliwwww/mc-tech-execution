@@ -116,10 +116,21 @@ class DiskAdmission(unittest.TestCase):
                          'provenance':{'data_kind':'mock_process_fixture'},'cases':rows})
         # Parameter adaptation and physics interpretation have separate native coverage;
         # this case exercises real scan/job persistence and worker process admission.
+        # Keep the parameter boundary truthful: persist requested values and
+        # let the shared readback consume them. Disk admission, job persistence
+        # and fake worker execution below remain real; physics is not tested.
+        def parameter_api(action,directory,payload,cfg=None):
+            state=directory/'parameter-fixture.json'
+            if action=='update-parameters':
+                state.write_text(json.dumps(payload['parameters']))
+                return {'changes':[]}
+            if action=='parameters':
+                return {'parameters':[{'name':k,'current':v} for k,v in json.loads(state.read_text()).items()]}
+            raise AssertionError('Unexpected parameter operation: '+action)
         handlers={s:signal.getsignal(s) for s in (signal.SIGTERM,signal.SIGINT)}
         try:
             with patch('shutil.disk_usage',side_effect=[(10000,1000,9000),(10000,9999,1)]), \
-                 patch.object(scan,'api',return_value={}), \
+                 patch.object(scan,'api',side_effect=parameter_api), \
                  patch('openmc_tools.read_results',return_value={'keff':None,'warnings':['mock process; no physics']}):
                 scan.run(identifier)
         finally:
