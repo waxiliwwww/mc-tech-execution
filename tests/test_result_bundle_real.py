@@ -144,6 +144,17 @@ class ResultBundleReal(unittest.TestCase):
         after={p.name for p in (self.record/'bundles').glob('bundle-*')}
         self.assertEqual(before,after);self.assertFalse(list((self.record/'bundles').glob('.pending-*')))
 
+    def test_two_dimensional_mesh_subset_and_legacy_tool_share_native_bins(self):
+        selection=[{'type':'MeshFilter','bins':[[2,3,1],[1,1,1]]}]
+        whole=self.bundle();grid=json.loads((self.workspace/whole['data_json']).read_text())
+        bundle=self.bundle(view='series',filter_selection=selection,style='bar',image_format='svg',
+                           report_formats=['markdown','docx'])
+        self.validate(bundle);data=json.loads((self.workspace/bundle['data_json']).read_text())
+        self.assertEqual(data['mean'],[grid['values'][2][1],grid['values'][0][0]])
+        self.assertEqual(data['mesh_indices'],[[1,2,0],[0,0,0]]);self.assertEqual(data['x'],[5,0])
+        legacy=self.call('openmc_plot_results',{'job_id':self.job,'tally_id':1,'score':'flux','filter_selection':selection})
+        old=json.loads((self.workspace/legacy['series_json']).read_text());self.assertEqual(data['mean'],old['mean'])
+
     def test_changed_input_snapshot_is_not_misreported_as_original_metadata(self):
         path=self.record/'work/settings.xml';original=path.read_bytes()
         before={p.name for p in (self.record/'bundles').glob('bundle-*')}

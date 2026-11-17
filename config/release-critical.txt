@@ -78,3 +78,4 @@ test_plot_reproduction.PlotReproduction
 
 # Task-level composition must preserve selection, reports, native mapping and download/replay
 test_result_bundle_real.ResultBundleReal
+test_mesh_bin_selection_real.MeshBinSelectionReal

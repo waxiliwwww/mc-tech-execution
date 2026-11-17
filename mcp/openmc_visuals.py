@@ -44,11 +44,16 @@ def selected_series(point, params):
                 if not isinstance(item, (list, tuple)) or len(item) != 3:
                     raise ResultSelectionError('MeshFilter的bins须为1-based [i,j,k]三元组；'
                                      '不接受扁平序号、mesh id或其它形状，收到' + repr(item))
+                if any(isinstance(v,bool) or not isinstance(v,(int,float)) or
+                       (isinstance(v,float) and (not math.isfinite(v) or not v.is_integer())) for v in item):
+                    raise ResultSelectionError('MeshFilter坐标须为有限整数；不截断小数或把布尔值当坐标')
                 converted.append(tuple(int(v) for v in item))
             if any(not (1 <= i <= nx and 1 <= j <= ny and 1 <= k <= nz) for i, j, k in converted):
                 raise ResultSelectionError('MeshFilter的bins超出1-based网格维度' + str(dimension)
                                  + '；示例：[[1,1,1],[2,1,1]]')
-            bins.append(tuple(converted))
+            # Tool requests use a canonical [i,j,k]. Native SDK bins have
+            # exactly mesh.n_dimension entries (2D tuples do not include k=1).
+            bins.append(tuple(item[:len(mesh.dimension)] for item in converted))
         else:
             bins.append(tuples(raw_bins))
     arguments = dict(scores=[score], nuclides=[nuclide], filters=types, filter_bins=bins)
@@ -93,13 +98,13 @@ def selected_series(point, params):
                 centers.append([lower[0] + (i + .5) * (upper[0] - lower[0]) / nx,
                                 lower[1] + (j + .5) * (upper[1] - lower[1]) / ny,
                                 lower[2] + (k + .5) * (upper[2] - lower[2]) / nz])
-            axis.update({'mesh_indices': mesh_indices, 'mesh_centers': centers,
+            axis.update({'x': indices, 'mesh_indices': mesh_indices, 'mesh_centers': centers,
                          'mesh': {'id': int(mesh.id), 'dimension': dimension,
                                   'lower_left': lower, 'upper_right': upper, 'unit': 'cm',
                                   'spatial_dimension': spatial_dimension,
                                   'unused_coordinate_note': 'Unused dimensions have display coordinate 0; no physical thickness inferred.',
                                   'indexing': 'data-array flat = i0 + nx*j0 + nx*ny*k0 (C order, i0 fastest)',
-                                  'filter_bin_convention': 'MeshFilter.bins and filter_selection.bins are 1-based [i,j,k]; mesh_indices below are 0-based data coordinates',
+                                  'filter_bin_convention': 'Tool filter_selection.bins are canonical 1-based [i,j,k]; native SDK tuples use mesh.n_dimension entries; mesh_indices are 0-based data coordinates',
                                   'filter_bins': [[int(i) + 1, int(j) + 1, int(k) + 1] for i, j, k in mesh_indices]},
                          'x_label': 'Selected mesh bin (data flat index; coordinates in mesh_indices/mesh_centers)',
                          'coordinate_note': 'Mesh cells map to 0-based (i,j,k) and centers; filter_selection and OpenMC MeshFilter.bins use 1-based [i,j,k]. Values remain raw mesh bins.'})
