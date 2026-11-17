@@ -49,7 +49,7 @@ try {
   assert.match(await page.locator('#natural-language-routing').innerText(),/实际轨迹验收/);
   await shot('11a-natural-language-routing');
   await page.goto(url('deployment.html#local-process'));await anchor('local-process');
-  assert.match(await page.locator('#local-process').innerText(),/当前没有stdio启动入口/);
+  assert.match(await page.locator('#local-process').innerText(),/Windows启动器与Linux直接运行/);
   await shot('11b-local-process-options');
   await page.goto(url('toolkit-usage.html#result-bundle'));await anchor('result-bundle');
   assert.match(await page.locator('#result-bundle').innerText(),/openmc_generate_result_bundle/);

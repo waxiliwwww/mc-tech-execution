@@ -35,3 +35,9 @@ def serve(argv=None) -> int:
         sys.argv = [sys.argv[0], *argv]
     runpy.run_path(str(HERE / "server.py"), run_name="__main__")
     return 0
+
+def stdio(argv=None) -> int:
+    """Start the host-owned stdio transport; runtime preparation is separate."""
+    _prepare()
+    import stdio_service
+    return stdio_service.main()

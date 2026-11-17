@@ -272,6 +272,24 @@
         "tests/test_result_bundle_real.py"
       ],
       "gate": "offline_and_real"
+    },
+    {
+      "id": "local_stdio_launcher",
+      "status": "supported",
+      "surface": [
+        "mcp/stdio.sh",
+        "mc-agent-tools-stdio",
+        "Windows openmc-forge.exe",
+        "scripts/local-setup.sh"
+      ],
+      "input": "宿主stdio连接；Windows所选WSL发行版与Linux包目录；已有或首次准备的OpenMC环境",
+      "output": "与HTTP共用的工具/资源/工作流和业务结果；固定Linux工作区与跨连接作业；HTTP保持可用",
+      "evidence": [
+        "tests/test_stdio_service.py",
+        "tests/test_local_install.py",
+        "tests/fixtures/windows_stdio_client.mjs"
+      ],
+      "gate": "real_mcp"
     }
   ],
   "restrictions": [

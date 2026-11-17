@@ -229,7 +229,7 @@ def security_settings(config):
     return TransportSecuritySettings(enable_dns_rebinding_protection=True, allowed_hosts=sorted(hosts), allowed_origins=sorted(origins))
 
 
-def create_app(config, log, tools=None, startup_identity=None):
+def create_mcp_server(config, log, tools=None, startup_identity=None):
     definitions = TOOLS if tools is None else tools
     validate_registry(definitions)
     registry = {tool["name"]: tool for tool in definitions}
@@ -335,6 +335,12 @@ def create_app(config, log, tools=None, startup_identity=None):
         mime = next(item["mimeType"] for item in resources.RESOURCES if item["uri"] == str(uri))
         return [ReadResourceContents(content=content, mime_type=mime)]
 
+    return server, startup_identity
+
+
+def create_app(config, log, tools=None, startup_identity=None):
+    definitions = TOOLS if tools is None else tools
+    server, startup_identity = create_mcp_server(config, log, definitions, startup_identity)
     security = security_settings(config)
     checker = TransportSecurityMiddleware(security)
     manager = StreamableHTTPSessionManager(server, stateless=True, json_response=True, security_settings=security)

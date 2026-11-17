@@ -13,6 +13,7 @@ requires-python = ">=3.10"
 [project.scripts]
 mc-agent-tools = "mc_agent_tools.launcher:main"
 mc-agent-tools-serve = "mc_agent_tools.launcher:serve"
+mc-agent-tools-stdio = "mc_agent_tools.launcher:stdio"
 
 [tool.setuptools]
 package-dir = { "mc_agent_tools" = "mcp" }
