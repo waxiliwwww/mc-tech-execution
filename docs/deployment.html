@@ -27,7 +27,7 @@ if [ -e "$SKILL_PARENT/openmc-workflows" ]; then
   echo "同名技能已存在；先核对，不覆盖"
 else
   cp -R skills/openmc-workflows "$SKILL_PARENT/"
-fi</code></pre><p>Windows可用文件管理器把同一完整文件夹复制到宿主配置的技能目录；包在WSL时，先从WSL共享路径打开。具体目录由宿主决定，不把Linux服务端路径当Windows技能路径。</p></details><p>官方Skills over MCP扩展要求2026-07-28及新的发现机制；本包锁定SDK当前协议为2025-11-25。本轮按确认仅提供兼容入口，协议升级另行安排，不以skill://资源URI冒充扩展支持。详细参数取当前工具定义；技能不能补出尚未实现的科学能力，也不替用户决定未知物理条件。</p></section><section id="test-session"><h2>复测：自启待测服务，结束后自动停止</h2>
+fi</code></pre><p>Windows可用文件管理器把同一完整文件夹复制到宿主配置的技能目录；包在WSL时，先从WSL共享路径打开。具体目录由宿主决定，不把Linux服务端路径当Windows技能路径。</p></details><p>官方Skills over MCP扩展要求2026-07-28及新的发现机制；本包锁定SDK当前协议为2025-11-25。本轮按确认仅提供兼容入口，协议升级另行安排，不以skill://资源URI冒充扩展支持。详细参数取当前工具定义；技能不能补出尚未实现的科学能力，也不替用户决定未知物理条件。</p></section><p>更新到0.18.0后，当前宿主工具清单应能发现<code>openmc_generate_result_bundle</code>。服务更新不会保证既有会话缓存刷新；看不到新工具时按宿主规则重连或重新发现<code>tools/list</code>。仍先核对实际服务版本与当前工具定义，不以源码已更新代替接通。</p><section id="test-session"><h2>复测：自启待测服务，结束后自动停止</h2>
 <p>复测用下列入口，不复用8770上的常驻服务。脚本从当前工具包启动随机本机端口、独立工作区和连接文件；先核对实际MCP握手版本、完整工具名称/参数Schema/说明，以及待测源码指纹。不一致立即停止，不执行后续测试。普通部署仍使用下方的服务启动入口。</p>
 <pre class="command"><code># 只验证当前包的版本、工具发现和自动清理，不计算、不调用模型
 ./scripts/test-mcp.sh
