@@ -14,6 +14,7 @@ class SchemaDriftMCP(unittest.IsolatedAsyncioTestCase):
     async def test_schema_only_change_and_unreadable_identity_keep_query_cancel_available(self):
         with tempfile.TemporaryDirectory(prefix='mc schema drift ') as directory:
             root=Path(directory);shutil.copytree(ROOT/'mcp',root/'mcp',ignore=shutil.ignore_patterns('.venv','logs','connection.json','__pycache__'))
+            shutil.copytree(ROOT/'skills',root/'skills')
             (root/'VERSION').write_text('1.2.3');(root/'config').mkdir();shutil.copy2(ROOT/'config/openmc.json',root/'config/openmc.json')
             with socket.socket() as sock:sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
             env={k:v for k,v in os.environ.items() if not k.startswith(('MC_','MCP_','HARNESS_'))};env.update(MCP_PORT=str(port),MC_WORKSPACE=str(root/'workspace'))
@@ -24,7 +25,8 @@ class SchemaDriftMCP(unittest.IsolatedAsyncioTestCase):
                     try:
                         with urllib.request.urlopen(f'http://127.0.0.1:{port}/health',timeout=.2):break
                     except OSError:
-                        if process.poll() is not None:self.fail('isolated service exited')
+                        if process.poll() is not None:
+                            log.flush();self.fail('isolated service exited: '+(root/'server.log').read_text())
                         await asyncio.sleep(.05)
                 else:self.fail('isolated service startup timeout')
                 async with streamablehttp_client(f'http://127.0.0.1:{port}/mcp') as (read,write,_):

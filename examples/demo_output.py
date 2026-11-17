@@ -76,6 +76,8 @@ def emit_result(data, args, title):
     for key, label in [('scan_plot', '扫描曲线'), ('result_plot', '单次结果图'), ('chart', '结果图')]:
         if data.get(key):
             print('  ' + label + '：' + server_path(data[key], root))
+            if data[key].get('plot_script'):
+                print('    重画脚本：' + server_path(data[key]['plot_script'], root))
     reports = data.get('reports') or ([data['report']] if data.get('report') else [])
     for report in reports:
         print('  ' + report.get('format', 'report') + '：' + server_path(report, root))

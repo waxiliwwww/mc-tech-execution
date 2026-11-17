@@ -79,7 +79,19 @@ async def run():
                 with zipfile.ZipFile(target) as z:z.extractall(unpack)
                 assert (unpack/'report.md').read_bytes()==Path(report['server_path']).read_bytes()
                 series=json.loads((work/report['series_json']).read_text());fetched_series=json.loads((unpack/Path(report['series_json']).name).read_text());assert series==fetched_series
-                for name in (report['series_json'],report['series_csv']):assert (unpack/Path(name).name).read_bytes()==(work/name).read_bytes()
+                for name in (report['series_json'],report['series_csv'],report['plot_script']):
+                    assert (unpack/Path(name).name).read_bytes()==(work/name).read_bytes()
+                assert report['plot_script'] in [a['path'] for a in artifacts['artifacts']]
+                # Replot from the downloaded host bundle, with OpenMC unavailable.
+                # Only the plotting Python is reused; no toolkit directory is imported.
+                script=unpack/Path(report['plot_script']).name
+                entry="import sys,runpy;sys.modules['openmc']=None;sys.argv=sys.argv[1:];runpy.run_path(sys.argv[0],run_name='__main__')"
+                redrawn=host/'client-redraw.svg'
+                done=await asyncio.to_thread(subprocess.run,cfg['python_command']+['-c',entry,str(script),
+                    '--output',str(redrawn),'--title','Client replay'],cwd=host,
+                    capture_output=True,text=True,timeout=30)
+                assert done.returncode==0,done.stdout+done.stderr
+                assert redrawn.is_file() and 'Client replay' in redrawn.read_text()
                 # Independent OpenMC native oracle, not another tool-generated JSON.
                 jobdir=work/'.mc-jobs'/j;statepoint=next((jobdir/'work').glob('statepoint.*.h5'))
                 script='import openmc,json,sys;p=openmc.StatePoint(sys.argv[1]);t=p.get_tally(id=int(sys.argv[2]));print(json.dumps({"mean":t.get_values(scores=[sys.argv[3]],value="mean").ravel().tolist(),"std_dev":t.get_values(scores=[sys.argv[3]],value="std_dev").ravel().tolist()}))'
@@ -90,6 +102,7 @@ async def run():
                 text=await call('openmc_preview_file',{'kind':'job','identifier':j,'path':report['path'],'max_bytes':30});assert text['next_offset']<=30 and text['truncated']
                 shutil.copyfile(statepoint,evidence/statepoint.name);shutil.copyfile(target,evidence/'report.zip')
                 final.update(job_id=j,native_values_match=True,report_dependencies_match=True,preview_image_mcp=True,
+                             downloaded_plot_script_replayed=True,
                              input_hashes=status['input_hashes'],statepoint_sha256=hashlib.sha256(statepoint.read_bytes()).hexdigest())
             shutil.copyfile(archive,evidence/'uploaded-model.zip')
             shutil.copytree(work/imported['case_dir'],evidence/'input',dirs_exist_ok=True)

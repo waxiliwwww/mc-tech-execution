@@ -46,6 +46,16 @@ RETURN_NOTES = {
 }
 
 
+for name in ('openmc_plot_results', 'openmc_plot_scan', 'openmc_plot_mesh', 'openmc_plot_convergence'):
+    RETURN_NOTES.setdefault(name, []).extend([
+        ['plot_template / plot_script', 'curve/spectrum/scan/mesh/convergence模板及独立Python脚本的服务端工作区相对路径。脚本与同名JSON取回同一目录后可用NumPy/Matplotlib重画，无需OpenMC或MCP。默认输出新文件；调整参数见使用手册的独立重画章节。'],
+        ['JSON.plot / source_sha256', '实际绘图设置及来源StatePoint指纹；扫描保留sources逐作业引用。科学选择、均值/误差和归一化保留，不从样式推断物理正确。'],
+    ])
+RETURN_NOTES['openmc_export_report'] = [
+    ['plot_script', '明确选择计分的报告返回其曲线复现脚本，并在正文引用；Markdown下载沿相对引用带回图片/JSON/CSV/脚本。网格热图是独立产物，需另取它的文件。'],
+]
+
+
 def implementation(tool):
     if 'function' in tool:
         try:

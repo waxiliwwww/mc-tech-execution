@@ -97,7 +97,7 @@ def export_selected_job(job_id: str, format: str, selection: dict):
     # In particular, binary reports must not lose the header at this branch.
     metadata = _report_metadata(target)
     data.update(metadata=metadata, selected_series=series, series_json=image.with_suffix('.json').name,
-                series_csv=image.with_suffix('.csv').name)
+                series_csv=image.with_suffix('.csv').name, plot_script=image.with_suffix('.py').name)
     if any(v is None for v in series['mean'] + series['std_dev']):
         data['warnings'].append('所选统计量含不可用值；保留为空，不替换为0。')
     runtime = jobs.read(target)['runtime']
@@ -126,6 +126,7 @@ def export_selected_job(job_id: str, format: str, selection: dict):
                     '横轴：' + series['x_label'], series['coordinate_note'], '',
                     f"![所选结果图]({image.name})", '',
                     f"完整{len(series['mean'])}点数据：[CSV]({data['series_csv']})；[JSON与元数据]({data['series_json']})。",
+                    f"复现绘图：[Python脚本]({data['plot_script']})；与上述JSON放在同一目录运行，输出新图，不重新计算。",
                     '全局keff：' + json.dumps(data['keff'], ensure_ascii=False), '',
                     f"数据预览：{len(preview)}/{len(series['mean'])}点，9位有效数字；完整数据保存在上述文件。", '',
                     '|量/计分项|核素/过滤箱|均值|标准差|说明|', '|---|---|---|---|---|']
@@ -147,6 +148,7 @@ def export_selected_job(job_id: str, format: str, selection: dict):
             'selection': {k:series[k] for k in ('tally_id', 'score', 'nuclide', 'filter_selection')},
             'points': len(series['mean']), 'preview_rows': len(preview),
             'chart': relative(image), 'series_json': chart['series_json'], 'series_csv': chart['series_csv'],
+            'plot_script': chart['plot_script'],
             'note': '图与正文使用同一选择；正文数表仅预览，完整数据和坐标见配套CSV/JSON。CSV格式导出全部所选数据。'}
 
 

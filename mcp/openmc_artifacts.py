@@ -15,14 +15,12 @@ def artifact_files(kind: str, identifier: str):
         record = jobs.read(target)
     else:raise Error('kind须为job或scan')
     paths = []
-    for pattern in ('report.md', 'report.csv', 'report.docx', 'report.pdf', 'report.doc', 'results.json',
-                    'summary.json', 'summary.csv', 'plot-*.png', 'plot-*.svg', 'plot-*.json', 'plot-*.csv',
-                    'scan-*.png', 'scan-*.svg', 'scan-*.json', 'scan-*.csv'):
+    for pattern in ('report.md', 'report.csv', 'report.docx', 'report.pdf', 'report.doc',
+                    'results.json', 'summary.json', 'summary.csv'):
         paths.extend(target.glob(pattern))
-    if kind == 'job':
-        for prefix in ('mesh', 'convergence'):
-            for suffix in ('png', 'svg', 'json', 'csv'):
-                paths.extend(target.glob(f'{prefix}-*.{suffix}'))
+    for prefix in ('plot', 'scan', 'mesh', 'convergence'):
+        for suffix in ('png', 'svg', 'json', 'csv', 'py'):
+            paths.extend(target.glob(f'{prefix}-*.{suffix}'))
     if kind == 'job':
         for name in record.get('output_files', {}):
             path = target / 'work' / name

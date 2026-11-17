@@ -131,10 +131,18 @@ class ProjectIntegration(unittest.IsolatedAsyncioTestCase):
                 self.assertIn("resources", init.capabilities.model_dump(exclude_none=True))
                 listed = await session.list_resources()
                 uris = [str(item.uri) for item in listed.resources]
-                self.assertEqual(uris, ["mc://parameters/settings", "mc://examples/catalog", "mc://logs/tool-calls"])
+                self.assertEqual(uris, ["mc://parameters/settings", "mc://examples/catalog", "mc://logs/tool-calls",
+                    "skill://openmc-workflows/SKILL.md",
+                    "skill://openmc-workflows/references/file-transfer.md",
+                    "skill://openmc-workflows/references/extended-tasks.md"])
                 read_back = await session.read_resource("mc://examples/catalog")
                 data = json.loads(read_back.contents[0].text)
                 self.assertEqual(data["total"], 50)
+                # Public resource content must match the authored, shipped Skill.
+                for file in ('SKILL.md','references/file-transfer.md','references/extended-tasks.md'):
+                    resource=await session.read_resource('skill://openmc-workflows/'+file)
+                    self.assertEqual(resource.contents[0].text,
+                                     (ROOT/'skills/openmc-workflows'/file).read_text())
         with urllib.request.urlopen(self.url.replace("/mcp", "/info")) as response:
             info = json.load(response)
         self.assertEqual([item["uri"] for item in info["resources"]], uris)

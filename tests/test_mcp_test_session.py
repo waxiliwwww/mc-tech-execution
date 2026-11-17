@@ -189,6 +189,7 @@ sys.exit(r.main(ARGS))
         shutil.copy2(ROOT/'verify.sh',package/'verify.sh')
         shutil.copy2(ROOT/'VERSION',package/'VERSION')
         shutil.copytree(ROOT/'mcp',package/'mcp',ignore=shutil.ignore_patterns('.venv','logs','__pycache__'))
+        shutil.copytree(ROOT/'skills',package/'skills')
         # CI installs SDK dependencies into the active global Python, whereas
         # local runs use .venv. Delegate to this test's actual interpreter in
         # either case; do not assume the source checkout contains a .venv.

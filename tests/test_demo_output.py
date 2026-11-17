@@ -19,7 +19,8 @@ class ReadableDemoOutput(unittest.TestCase):
                     {'parameters':{'materials.1.density':.8},'state':'completed','job_id':'b'*32,
                      'keff':{'mean':1.6,'std_dev':None},'warnings':['统计量不可用，未替换为0']}]},
                 'artifacts':{'workspace':'/server data','directory':'/server data/.mc-scans/'+'a'*32},
-                'scan_plot':{'path':'.mc-scans/'+'a'*32+'/curve.png'},
+                'scan_plot':{'path':'.mc-scans/'+'a'*32+'/curve.png',
+                             'plot_script':'.mc-scans/'+'a'*32+'/curve.py'},
                 'reports':[{'format':'pdf','server_path':'/server data/report.pdf'}],
                 'professional_acceptance':False}
 
@@ -31,6 +32,7 @@ class ReadableDemoOutput(unittest.TestCase):
     def test_readable_summary_keeps_warnings_and_server_paths(self):
         text=self.render(self.data())
         self.assertIn('/server data/.mc-scans/'+'a'*32+'/curve.png',text)
+        self.assertIn('重画脚本：/server data/.mc-scans/'+'a'*32+'/curve.py',text)
         self.assertIn('标准差=不可用',text)
         self.assertIn('统计警告：统计量不可用，未替换为0',text)
         self.assertIn('宏观截面倍率',text)

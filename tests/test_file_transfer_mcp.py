@@ -22,6 +22,7 @@ class FileTransferMCP(unittest.TestCase):
             cleanup=json.loads((session/'receipt.json').read_text());self.assertTrue(cleanup['cleanup']['verified_empty']);self.assertTrue(cleanup['port_released'])
             if real:
                 self.assertTrue(result['native_values_match']);self.assertTrue(result['report_dependencies_match']);self.assertTrue(result['preview_image_mcp'])
+                self.assertTrue(result['downloaded_plot_script_replayed'])
             # Keep small evidence only when explicitly requested; all scratch data removed.
             dest=os.environ.get('TRANSFER_KEEP_EVIDENCE')
             if dest:

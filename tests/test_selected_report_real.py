@@ -60,6 +60,28 @@ class SelectedReportReal(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):cls.temp.cleanup()
 
+    def test_all_plot_families_export_registered_reproduction_scripts(self):
+        import shutil
+        for tool, selection, template in [
+            ('openmc_plot_results', {'tally_id':1,'score':'flux'}, 'curve'),
+            ('openmc_plot_results', {'tally_id':2,'score':'flux'}, 'spectrum'),
+            ('openmc_plot_mesh', {'tally_id':1,'score':'flux'}, 'mesh'),
+            ('openmc_plot_convergence', {}, 'convergence')]:
+            chart=self.call(tool,{'job_id':self.job,**selection})
+            self.assertEqual(chart['plot_template'],template)
+            source=self.workspace/chart['plot_script']
+            self.assertTrue(source.is_file())
+            data=self.workspace/(chart.get('series_json') or chart['values_json'])
+            with tempfile.TemporaryDirectory(prefix='host redraw ') as temp:
+                host=Path(temp)
+                shutil.copy2(source,host/source.name);shutil.copy2(data,host/data.name)
+                run=subprocess.run(self.runtime['python_command']+[str(host/source.name),
+                    '--output',str(host/'redraw.svg')],cwd=host,capture_output=True,text=True,timeout=30)
+                self.assertEqual(run.returncode,0,run.stdout+run.stderr)
+                self.assertTrue((host/'redraw.svg').is_file())
+            artifacts=self.call('openmc_list_artifacts',{'kind':'job','identifier':self.job})
+            self.assertIn(chart['plot_script'],[a['path'] for a in artifacts['artifacts']])
+
     def test_job_summary_docx_and_pdf_include_two_dimensional_mesh_and_energy(self):
         plot = self.call('openmc_plot_results', {'job_id': self.job, 'tally_id': 1, 'score': 'flux'})
         series = json.loads((self.workspace/plot['series_json']).read_text())

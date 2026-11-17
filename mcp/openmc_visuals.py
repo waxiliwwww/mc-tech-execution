@@ -5,6 +5,7 @@ import csv
 import json
 import math
 from pathlib import Path
+from plot_templates import write_text
 
 
 class ResultSelectionError(ValueError):
@@ -123,40 +124,15 @@ def selected_series(point, params):
 
 
 def draw(series, path: Path, params):
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
     import numpy as np
-    font = params.get('_font_path')
-    if font and Path(font).is_file():
-        from matplotlib.font_manager import FontProperties, fontManager
-        fontManager.addfont(font)
-        plt.rcParams['font.family'] = FontProperties(fname=font).get_name()
     mean = np.array([float(v) if v is not None else np.nan for v in series['mean']])
-    std = np.array([float(v) if v is not None else np.nan for v in series['std_dev']])
     if not np.isfinite(mean).any():raise ValueError('没有可绘制的有限结果；失败或缺失数据不能补0')
-    x = np.asarray(series['x'], dtype=float)
-    figure, axes = plt.subplots(figsize=(8, 4.6), constrained_layout=True)
-    try:
-        if params.get('style', 'line') == 'bar':
-            widths = .8 * (np.asarray(series['x_upper']) - np.asarray(series['x_lower'])) if 'x_lower' in series else .8
-            axes.bar(x, mean, width=widths)
-        else:axes.plot(x, mean, marker='o', linewidth=1.3)
-        valid_error = np.isfinite(mean) & np.isfinite(std)
-        if valid_error.any():axes.errorbar(x[valid_error], mean[valid_error], yerr=std[valid_error], fmt='none', capsize=3, color='black')
-        axes.set_xlabel(series['x_label']); axes.set_ylabel(series['y_label'])
-        axes.set_xscale(series.get('x_scale', 'linear'))
-        axes.set_title(params.get('title') or series.get('title', 'OpenMC result'))
-        axes.grid(alpha=.25)
-        kind = params['provenance']['data_kind']
-        footer = kind + ' | engineering output; professional acceptance: not performed'
-        if any(v is None for v in series['mean']):footer += '\nMissing/failed values remain gaps.'
-        if any(v is None for v in series['std_dev']):footer += '\nSome uncertainties unavailable; not replaced by zero.'
-        figure.suptitle(footer, fontsize=8, color='#804000')
-        figure.savefig(path, dpi=150)
-    finally:plt.close(figure)
+    kind = params['provenance']['data_kind']
+    template = 'scan' if 'sources' in series else ('spectrum' if series.get('x_unit') == 'eV' else 'curve')
+    series = {**series, 'plot': {'template': template, 'style': params.get('style', 'line'),
+                                'title': params.get('title') or series.get('title', 'OpenMC result')}}
     data_path = path.with_suffix('.json')
-    data_path.write_text(json.dumps({**series, 'provenance': params['provenance'], 'source_sha256': params.get('source_sha256'), 'professional_acceptance': False}, ensure_ascii=False, indent=2), encoding='utf-8')
+    write_text(data_path, json.dumps({**series, 'provenance': params['provenance'], 'source_sha256': params.get('source_sha256'), 'professional_acceptance': False}, ensure_ascii=False, indent=2, allow_nan=False))
     csv_path = path.with_suffix('.csv')
     with csv_path.open('w', newline='', encoding='utf-8') as output:
         writer = csv.writer(output)
@@ -169,8 +145,10 @@ def draw(series, path: Path, params):
                              json.dumps(selection, ensure_ascii=False), json.dumps(series.get('fixed', {})), data_path.name,
                              series['x_lower'][index] if 'x_lower' in series else '',
                              series['x_upper'][index] if 'x_upper' in series else '', series.get('x_unit', '')])
+    render_saved_plot(data_path, path, params)
     return {'image': path.name, 'series_json': data_path.name, 'series_csv': csv_path.name,
-            'points': len(series['x']), 'missing': sum(v is None for v in series['mean'])}
+            'points': len(series['x']), 'missing': sum(v is None for v in series['mean']),
+            'plot_script': path.with_suffix('.py').name, 'plot_template': template}
 
 
 def _read_meshes(path: Path):
@@ -305,7 +283,7 @@ def plot_mesh(params):
                   'mesh_id': mesh_id, 'dimension': [nx, ny, nz], 'level': level,
                   'score': score, 'nuclide': nuclide, 'energy_label': energy_label,
                   'colorbar_label': params.get('colorbar_label') or
-                                     (str(score) + ' (OpenMC raw score; no power normalization)'),
+                                     (str(score) + ' (raw tally)'),
                   'tally_id': int(tally.id)}
         return draw_mesh(series, Path(params['filename']), params)
 
@@ -336,11 +314,7 @@ def mesh_statistics(values, errors, threshold=0.1):
 
 
 def draw_mesh(series, path: Path, params):
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
     import numpy as np
-    _set_font(params)
     zero_mask = np.isfinite(series['values']) & (series['values'] == 0)
     zero_bins = int(np.count_nonzero(zero_mask))
     statistics = mesh_statistics(series['values'], series['errors'])
@@ -359,36 +333,8 @@ def draw_mesh(series, path: Path, params):
                     + format(statistics['relative_std_threshold'], '.0%')
                     + '（最大相对标准差' + maximum_text + '）；这表示本次抽样统计不足，'
                       '不是物理结论；请增加粒子/批次、合并分箱或缩小区间后再解读。')
-    figure, axes = plt.subplots(figsize=(7.2, 5.6), constrained_layout=True)
-    try:
-        image = axes.pcolormesh(series['x_edges'], series['y_edges'], series['values'], shading='flat',
-                                cmap='viridis')
-        bar = figure.colorbar(image, ax=axes)
-        bar.set_label(series['colorbar_label'])
-        if zero_bins:
-            xs = .5 * (np.asarray(series['x_edges'][:-1]) + series['x_edges'][1:])
-            ys = .5 * (np.asarray(series['y_edges'][:-1]) + series['y_edges'][1:])
-            j, i = np.nonzero(zero_mask)
-            axes.scatter(xs[i], ys[j], marker='x', s=20, color='#f5bd55', linewidths=.9,
-                         label=f'zero estimate: {zero_bins} bins (not a physical-zero conclusion)')
-            axes.legend(loc='upper center', bbox_to_anchor=(.5, -.14), fontsize=7, framealpha=.9)
-        axes.set_aspect('equal')
-        axes.set_xlabel(series['x_label'])
-        axes.set_ylabel(series['y_label'])
-        axes.set_title(series['title'])
-        note = f'mesh {series["mesh_id"]} | dimension {series["dimension"]}'
-        if series.get('level') is not None:
-            note += f' | layer k={series["level"]}'
-        if series.get('energy_label'):
-            note += ' | energy bin ' + series['energy_label']
-        kind = params['provenance']['data_kind']
-        figure.suptitle(note + ' | ' + kind + ' | engineering output; professional acceptance: not performed',
-                        fontsize=8, color='#804000', y=1.02)
-        figure.savefig(path, dpi=150, bbox_inches='tight')
-    finally:
-        plt.close(figure)
     values_path = path.with_suffix('.json')
-    values_path.write_text(json.dumps({'tally_id': series['tally_id'], 'mesh_id': series['mesh_id'], 'dimension': series['dimension'],
+    write_text(values_path, json.dumps({'tally_id': series['tally_id'], 'mesh_id': series['mesh_id'], 'dimension': series['dimension'],
                                        'zero_bins': zero_bins, 'zero_bin_note': zero_note if zero_bins else None,
                                        'low_statistics_bins': low_bins,
                                        'low_statistics_threshold': statistics['relative_std_threshold'],
@@ -404,8 +350,12 @@ def draw_mesh(series, path: Path, params):
                                        'errors': [[None if not np.isfinite(v) else float(v) for v in row]
                                                   for row in series['errors']],
                                        'normalization': 'OpenMC原始计分归一化；未换算功率或实际源强。',
-                                       'provenance': params['provenance'], 'professional_acceptance': False},
-                                      ensure_ascii=False, indent=2), encoding='utf-8')
+                                       'provenance': params['provenance'], 'professional_acceptance': False,
+                                       'source_sha256': params.get('source_sha256'),
+                                       'plot': {'template': 'mesh', 'title': series['title'],
+                                                'x_label': series['x_label'], 'y_label': series['y_label'],
+                                                'colorbar_label': series['colorbar_label']}},
+                                      ensure_ascii=False, indent=2, allow_nan=False))
     csv_path = path.with_suffix('.csv')
     with csv_path.open('w', newline='', encoding='utf-8') as output:
         writer = csv.writer(output)
@@ -428,6 +378,7 @@ def draw_mesh(series, path: Path, params):
                                  '' if relative is None else format(relative, '.9g'),
                                  low,
                                  series['mesh_id'], series.get('level'), series['score']])
+    render_saved_plot(values_path, path, params)
     return {'image': path.name, 'values_json': values_path.name, 'values_csv': csv_path.name,
             'tally_id': series['tally_id'], 'score': series['score'], 'nuclide': series.get('nuclide'), 'zero_bins': zero_bins,
             'low_statistics_bins': low_bins,
@@ -436,7 +387,8 @@ def draw_mesh(series, path: Path, params):
             'mesh_statistics': statistics,
             'warnings': [note for note in (zero_note if zero_bins else None, low_note) if note],
             'cells': int(series['dimension'][0] * series['dimension'][1]),
-            'mesh': {'id': series['mesh_id'], 'dimension': series['dimension'], 'level': series.get('level')}}
+            'mesh': {'id': series['mesh_id'], 'dimension': series['dimension'], 'level': series.get('level')},
+            'plot_script': path.with_suffix('.py').name, 'plot_template': 'mesh'}
 
 
 def plot_convergence(params):
@@ -449,8 +401,9 @@ def plot_convergence(params):
         generations = np.asarray(handle['k_generation'][()], dtype=float).flatten()
         n_batches = int(handle['n_batches'][()]) if 'n_batches' in handle else len(generations)
         n_inactive = int(handle['n_inactive'][()]) if 'n_inactive' in handle else 0
+        generations_per_batch = int(handle['generations_per_batch'][()]) if 'generations_per_batch' in handle else 1
         combined = np.asarray(handle['k_combined'][()], dtype=float) if 'k_combined' in handle else None
-    active = generations[n_inactive:]
+    active = generations[n_inactive * generations_per_batch:]
     if active.size == 0:
         raise ValueError('没有活跃批次的逐批k可绘制')
     warnings = []
@@ -469,73 +422,57 @@ def plot_convergence(params):
             warnings.append('StatePoint的k_combined含非有限值（mean=' + repr(mean_value)
                             + '，std_dev=' + repr(sigma_value)
                             + '）；不标combined线，逐批收敛带与JSON/CSV仍完整导出。')
-    series = {'x': [int(n_inactive + i) for i in counts],
+    series = {'x': [int(n_inactive * generations_per_batch + i) for i in counts],
               'mean': [None if not np.isfinite(v) else float(v) for v in cumulative],
               'stderr': [None if not np.isfinite(v) else float(v) for v in stderr],
-              'x_label': params.get('x_label') or 'Batch index (active batches)',
-              'y_label': params.get('y_label') or 'k-eff (cumulative mean)',
-              'title': params.get('title') or 'k-effective convergence',
+              'x_label': params.get('x_label') or ('Batch number' if generations_per_batch == 1
+                                                   else 'Generation number'),
+              'y_label': params.get('y_label') or 'k-effective',
+              'title': params.get('title') or 'k-effective history',
               'combined': combined_block,
               'n_inactive': n_inactive, 'n_batches': n_batches,
+              'generations_per_batch': generations_per_batch,
+              'generation_k': [None if not np.isfinite(v) else float(v) for v in active],
               'warnings': warnings}
     return draw_convergence(series, Path(params['filename']), params)
 
 
-def _set_font(params):
-    import matplotlib.pyplot as plt
-    font = params.get('_font_path')
-    if font and Path(font).is_file():
-        from matplotlib.font_manager import FontProperties, fontManager
-        fontManager.addfont(font)
-        plt.rcParams['font.family'] = FontProperties(fname=font).get_name()
+def render_saved_plot(data_path, path, params):
+    from plot_templates import render, write_script
+    data = json.loads(data_path.read_text(encoding='utf-8'))
+    render(data, path, font_path=params.get('_font_path'))
+    write_script(data_path)
 
 
 def draw_convergence(series, path: Path, params):
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
     import numpy as np
-    _set_font(params)
     mean = np.asarray([np.nan if v is None else float(v) for v in series['mean']], dtype=float)
-    stderr = np.asarray([np.nan if v is None else float(v) for v in series['stderr']], dtype=float)
-    x = np.asarray(series['x'], dtype=float)
-    figure, axes = plt.subplots(figsize=(8, 4.6), constrained_layout=True)
-    try:
-        axes.plot(x, mean, marker='o', linewidth=1.3, label='cumulative mean')
-        if params.get('show_band', True) and np.isfinite(stderr).any():
-            axes.fill_between(x, mean - stderr, mean + stderr, alpha=.25,
-                              label='±1 standard error (statepoint k_generation)')
-        if series.get('combined'):
-            value = series['combined']['mean']
-            axes.axhline(value, linestyle='--', linewidth=1.0, color='black', alpha=.7,
-                         label=f'combined k = {value:.5f} ± {series["combined"]["std_dev"]:.5f}')
-        axes.set_xlabel(series['x_label'])
-        axes.set_ylabel(series['y_label'])
-        axes.set_title(series['title'])
-        axes.grid(alpha=.25)
-        axes.legend(fontsize=8)
-        kind = params['provenance']['data_kind']
-        figure.suptitle('per-batch k from statepoint k_generation; cumulative mean over active batches | '
-                        + kind + ' | engineering output; professional acceptance: not performed',
-                        fontsize=8, color='#804000')
-        figure.savefig(path, dpi=150)
-    finally:
-        plt.close(figure)
+    series = {**series, 'plot': {'template': 'convergence', 'title': series['title'],
+                                'show_band': params.get('show_band', True),
+                                'x_label': series['x_label'], 'y_label': series['y_label']}}
     data_path = path.with_suffix('.json')
-    data_path.write_text(json.dumps({**series, 'provenance': params['provenance'],
-                                     'professional_acceptance': False}, ensure_ascii=False, indent=2),
-                         encoding='utf-8')
+    write_text(data_path, json.dumps({**series, 'provenance': params['provenance'],
+                                     'source_sha256': params.get('source_sha256'),
+                                     'professional_acceptance': False}, ensure_ascii=False, indent=2, allow_nan=False))
     csv_path = path.with_suffix('.csv')
     with csv_path.open('w', newline='', encoding='utf-8') as output:
         writer = csv.writer(output)
-        writer.writerow(['batch', 'cumulative_mean_k', 'standard_error', 'combined_k', 'combined_std_dev'])
+        index_label = 'generation' if series.get('generations_per_batch', 1) > 1 else 'batch'
+        writer.writerow([index_label, 'cumulative_mean_k', 'standard_error', 'combined_k', 'combined_std_dev']
+                        + (['generation_k'] if 'generation_k' in series else []))
         for index, batch in enumerate(series['x']):
             writer.writerow([batch, format(mean[index], '.9g'),
                              '' if series['stderr'][index] is None else format(series['stderr'][index], '.9g'),
                              '' if not series.get('combined') else format(series['combined']['mean'], '.9g'),
-                             '' if not series.get('combined') else format(series['combined']['std_dev'], '.9g')])
+                             '' if not series.get('combined') else format(series['combined']['std_dev'], '.9g')]
+                            + (['' if series['generation_k'][index] is None else format(series['generation_k'][index], '.9g')]
+                               if 'generation_k' in series else []))
+    render_saved_plot(data_path, path, params)
     return {'image': path.name, 'series_json': data_path.name, 'series_csv': csv_path.name,
-            'batches': int(len(series['x'])), 'combined': series.get('combined')}
+            'batches': (len(series['x']) + series.get('generations_per_batch', 1) - 1) // series.get('generations_per_batch', 1),
+            'generations': len(series['x']), 'generations_per_batch': series.get('generations_per_batch', 1),
+            'combined': series.get('combined'),
+            'plot_script': path.with_suffix('.py').name, 'plot_template': 'convergence'}
 
 
 def plot_result(params):
@@ -631,6 +568,8 @@ def render_docx(params):
         document.add_paragraph('横轴：' + series['x_label'] + '；' + series['coordinate_note'])
         document.add_paragraph('来源StatePoint SHA256：' + data['statepoint_sha256'])
         document.add_paragraph(f"完整数据：{data['series_csv']}；元数据：{data['series_json']}。共{len(series['mean'])}点，数表以9位有效数字显示。")
+        if data.get('plot_script'):
+            document.add_paragraph('复现绘图脚本：' + data['plot_script'] + '；与配套JSON放在同一目录，用Python重画。')
         if params.get('image'):
             document.add_heading('所选结果图表', level=1)
             document.add_picture(params['image'], width=Inches(6))

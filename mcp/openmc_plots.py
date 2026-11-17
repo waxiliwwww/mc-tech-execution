@@ -13,7 +13,8 @@ def output_name(prefix, payload, format):
     """Deterministic artifact name so repeated identical plots are idempotent."""
     if format not in ('png', 'svg'):
         raise Error('format须为png/svg')
-    canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+    from plot_templates import STYLE_VERSION
+    canonical = json.dumps({'renderer': STYLE_VERSION, 'request': payload}, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
     digest = hashlib.sha256(canonical.encode('utf-8')).hexdigest()[:16]
     return prefix + '-' + digest + '.' + format
 
@@ -42,6 +43,7 @@ def plot_results(job_id: str, tally_id: int | None = None, score: str | None = N
     value = api('plot-result', target, params, record['runtime'])
     return {'job_id': job_id, **value, **file_location(target / filename),
             'series_json': relative(target / value['series_json']), 'series_csv': relative(target / value['series_csv']),
+            'plot_script': relative(target / value['plot_script']),
             'provenance': record['provenance'], 'professional_acceptance': False}
 
 
@@ -67,12 +69,14 @@ def plot_mesh(job_id: str, tally_id: int | None = None, score: str | None = None
                                     'colorbar_label': colorbar_label, 'format': format}, format)
     params = {'statepoint': 'work/' + point.name, 'tallies_xml': tally_input, 'filename': filename,
               'tally_id': tally_id, 'score': score, 'energy_bin': energy_bin, 'level': level,
-              'provenance': record['provenance'], 'title': title, 'x_label': x_label, 'y_label': y_label,
+              'provenance': record['provenance'], 'source_sha256': record['output_files'][point.name],
+              'title': title, 'x_label': x_label, 'y_label': y_label,
               'colorbar_label': colorbar_label, '_font_path': record['runtime'].get('font_path')}
     value = api('plot-mesh', target, params, record['runtime'])
     return {'job_id': job_id, **value, **file_location(target / filename),
             'values_json': relative(target / value['values_json']),
             'values_csv': relative(target / value['values_csv']),
+            'plot_script': relative(target / value['plot_script']),
             'provenance': record['provenance'], 'professional_acceptance': False}
 
 
@@ -92,12 +96,14 @@ def plot_convergence(job_id: str, format: str = 'png', title: str | None = None,
                                             'x_label': x_label, 'y_label': y_label,
                                             'format': format}, format)
     params = {'statepoint': 'work/' + point.name, 'filename': filename, 'title': title,
+              'source_sha256': record['output_files'][point.name],
               'show_band': show_band, 'x_label': x_label, 'y_label': y_label,
               'provenance': record['provenance'], '_font_path': record['runtime'].get('font_path')}
     value = api('plot-convergence', target, params, record['runtime'])
     return {'job_id': job_id, **value, **file_location(target / filename),
             'series_json': relative(target / value['series_json']),
             'series_csv': relative(target / value['series_csv']),
+            'plot_script': relative(target / value['plot_script']),
             'provenance': record['provenance'], 'professional_acceptance': False}
 
 
@@ -155,4 +161,5 @@ def plot_scan(scan_id: str, x_parameter: str, metric: str = 'keff', fixed: dict 
                 'title': title, 'provenance': record['provenance']}, runtime)
     return {'scan_id': scan_id, **value, **file_location(target / filename),
             'series_json': relative(target / value['series_json']), 'series_csv': relative(target / value['series_csv']),
+            'plot_script': relative(target / value['plot_script']),
             'provenance': record['provenance'], 'professional_acceptance': False}

@@ -43,6 +43,11 @@ try {
   assert.equal(await skillLink.count(),1);
   assert.ok((await fs.readFile(path.join(root,'skills/openmc-workflows/SKILL.md'),'utf8')).startsWith('---'));
   await shot('11-agent-skill');
+  await page.goto(url('toolkit-usage.html#replot'));await anchor('replot');
+  assert.match(await page.locator('#replot').innerText(),/plot_script/);
+  assert.match(await page.locator('#replot').innerText(),/--font-size 16/);
+  assert.match(await page.locator('#replot').innerText(),/无需OpenMC/);
+  await shot('12-independent-replot');
   await page.goto(url('toolkit-usage.html#scientific-advisories'));await anchor('scientific-advisories');
   assert.match(await page.locator('#scientific-advisories').innerText(),/零标准差/);
   await shot('00-statistical-advisories');
