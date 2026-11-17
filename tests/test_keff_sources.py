@@ -83,6 +83,13 @@ class StatepointContext(unittest.TestCase):
         for name in names:
             (self.directory / 'work' / name).write_bytes(b'')
 
+    def test_declared_input_library_is_not_counted_as_a_generated_statepoint(self):
+        self.touch('statepoint.library.h5','statepoint.10.h5')
+        record={'mode':'run','input_files':{'statepoint.library.h5':'input hash'}}
+        value=tools._statepoint_context(self.directory,record,self.directory/'work/statepoint.10.h5')
+        self.assertEqual(value['statepoints_present'],1)
+        self.assertEqual(value['statepoint_index'],1)
+
     def test_depletion_last_step_is_labelled(self):
         self.touch('statepoint.10.h5', 'statepoint.20.h5')
         (self.directory / 'mc-case.json').write_text(json.dumps(

@@ -121,6 +121,36 @@ class NativeImport(unittest.TestCase):
                 self.assertEqual(value['dependencies'], [])
                 self.assertEqual((self.ws/value['case_dir']/'settings.xml').read_text(),text)
 
+    def test_inspect_missing_then_bind_and_import_changes_only_copy(self):
+        from openmc_import import inspect_model
+        external = self.root/'source.h5'; external.write_bytes(b'source fixture only')
+        text = '<settings><source file="../other/source.h5"/></settings>'
+        (self.source/'settings.xml').write_text(text)
+        report = inspect_model('incoming')
+        self.assertFalse(report['ready']); self.assertIn('../other/source.h5',report['problems'][0]['message'])
+        bindings = {'../other/source.h5':str(external)}
+        report = inspect_model('incoming',bindings)
+        self.assertTrue(report['ready']); self.assertEqual((self.source/'settings.xml').read_text(),text)
+        result = import_model('incoming','bound',api_check=False,dependency_bindings=bindings)
+        self.assertIn(str(external),(self.ws/'bound/settings.xml').read_text())
+        self.assertEqual((self.source/'settings.xml').read_text(),text)
+        self.assertEqual(result['dependency_bindings'][0]['reference'],'../other/source.h5')
+        marker=json.loads((self.ws/'bound/mc-case.json').read_text())
+        self.assertIn('settings.xml',marker['source_input_hashes'])
+        self.assertFalse((self.ws/'bound/source.h5').exists(), 'binding references, never copies external data')
+
+    def test_bad_bindings_no_partial_import_or_silent_guess(self):
+        from openmc_import import inspect_model
+        for bindings in [{'unused':str(self.root/'absent')},{'../x':'relative'}, {'missing':None}]:
+            with self.subTest(bindings=bindings), self.assertRaises(ValueError):
+                import_model('incoming','refused',api_check=False,dependency_bindings=bindings)
+            self.assertFalse((self.ws/'refused').exists())
+        external=self.root/'index.xml'; external.write_text('<cross_sections><library path="absent.h5"/></cross_sections>')
+        (self.source/'materials.xml').write_text('<materials><cross_sections>old.xml</cross_sections></materials>')
+        value=inspect_model('incoming',{'old.xml':str(external)})
+        self.assertFalse(value['ready']);self.assertTrue(value['warnings'])
+        self.assertEqual(value['dependencies'][0]['index_check']['missing_count'],1)
+
 
 @unittest.skipUnless(os.environ.get('MC_TEST_OPENMC_CONFIG'), '设置MC_TEST_OPENMC_CONFIG验证真实原生模型导入')
 class RealNativeImport(unittest.TestCase):

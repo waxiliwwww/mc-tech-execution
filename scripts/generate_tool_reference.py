@@ -18,7 +18,11 @@ RETURN_NOTES = {
     'openmc_read_depletion': [
         ['depletion_results.h5', '只读取已完成燃耗作业登记且当前SHA256一致的原始产物；缺失、替换或链接时停止读回，保留现场。'],
     ],
+    'openmc_inspect_model': [['ready / problems / warnings','只读检查原生XML及依赖；ready不表示API/语义/专业通过。dependency_bindings为原引用到服务器绝对文件的显式映射，未匹配绑定报明，不猜路径。']],
+    'openmc_resume_scan': [['scan_id / parent_scan_id / reused_cases','新关联批次，仅重做失败/未跑项；保留成功job_id与原记录。重复原编号返回同一续算编号；输入/依赖/配置变更或身份缺失拒绝复用，未知原子作业先查。']],
     'openmc_job_compare': [
+        ['comparison.parameters / nuclear_data','支持参数的实际变化及提交时核数据身份；旧记录缺身份时未核实，不从当前环境倒推。'],
+        ['comparison.tallies.by_id[].complete / uncompared_bins','按原始preview_indices对齐，complete=false仅比较共有预览箱，未覆盖不等于0；保留零贡献/非有限箱及独立σ假设。'],
         ['comparison.tallies.by_id[].aligned', '逐bin比较要求完整分箱定义和选择一致；包括未显示的能量边界、材料箱、mesh坐标及过滤顺序。不以纯filter/mesh编号作为物理差异，无法核实则不对齐。'],
     ],
     'openmc_environment': [

@@ -23,6 +23,7 @@ class WorkflowReceipts(unittest.TestCase):
                 self.calls.append((name,args))
                 if name==fail:raise RuntimeError(message)
                 value = {
+                    'openmc_inspect_model':{'ready':fail!='missing_dependency','problems':[{'reference':'missing.h5'}] if fail=='missing_dependency' else []},
                     'openmc_import_model':{'case_dir':'cases/example','server_path':'/server/workspace/cases/example'},
                     'openmc_list_parameters':{'parameters':[]},
                     'openmc_preview_input':{'manifest_complete':True,'input_hashes':{'geometry.xml':'abc'},'files':[{'name':'geometry.xml','present':True,'sha256':'abc'}]},
@@ -72,6 +73,12 @@ class WorkflowReceipts(unittest.TestCase):
                 code,out,err=self.invoke(failure)
                 self.assertEqual(code,1);self.assertIn('不提交计算',err)
                 self.assertNotIn('openmc_submit_job',[name for name,_ in self.calls])
+
+    def test_missing_dependencies_stop_before_import_or_compute(self):
+        code,out,err=self.invoke('missing_dependency')
+        self.assertEqual(code,1);self.assertIn('接入依赖未齐备',err)
+        self.assertNotIn('openmc_import_model',[name for name,_ in self.calls])
+        self.assertNotIn('openmc_submit_job',[name for name,_ in self.calls])
 
     def test_extra_unpreviewed_snapshot_file_is_not_accepted_as_a_match(self):
         code,out,err=self.invoke('unpreviewed_input')

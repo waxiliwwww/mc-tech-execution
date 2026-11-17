@@ -505,12 +505,14 @@ def preview_input(case_dir: str, include_content: bool = False) -> dict:
                ['materials.xml', 'geometry.xml', 'settings.xml']
     # Match ordinary submit/copytree's per-component exclusion policy. Include
     # markers and relative resources, not only the XML that OpenMC parses.
+    from openmc_import import input_output_filter
+    skip_output=input_output_filter(directory)
     names = set(required)
     for path in directory.rglob('*'):
         name = path.relative_to(directory).as_posix()
         if path.is_symlink():
             names.add(name)
-        elif path.is_file() and not any(jobs.is_old_output(part) for part in Path(name).parts):
+        elif path.is_file() and not any(skip_output(part) for part in Path(name).parts):
             names.add(name)
     if type(include_content) is not bool:raise Error('include_content须为布尔值')
     content_remaining = 8000
@@ -945,7 +947,7 @@ def statistical_adequacy(keff, data, progress=None) -> dict:
 def _statepoint_context(directory: Path, record: dict, point: Path) -> dict:
     """标注读到的是哪一个StatePoint：燃耗作业有多个时间步，末步不等于初始状态。"""
     work = directory / 'work'
-    present = sorted((p.name for p in work.glob('statepoint.*.h5') if p.is_file()),
+    present = sorted((p.name for p in work.glob('statepoint.*.h5') if p.is_file() and (p.name not in (record.get('input_files') or {}) or p.name in (record.get('output_files') or {}))),
                      key=lambda name: int(name.split('.')[1]) if name.split('.')[1].isdigit() else -1)
     index = present.index(point.name) + 1 if point.name in present else None
     context = {'statepoint': point.name, 'statepoint_index': index, 'statepoints_present': len(present)}
@@ -1089,7 +1091,7 @@ def _tally_comparison(job_a, job_b, max_values):
     entries = []
     for tally_id in sorted(set(tallies_a) & set(tallies_b)):
         one, two = tallies_a[tally_id], tallies_b[tally_id]
-        mismatch = [field for field in ('shape', 'scores', 'nuclides', 'estimator')
+        mismatch = [field for field in ('shape', 'scores', 'nuclides', 'estimator', 'normalization')
                     if one.get(field) != two.get(field)]
         filters_a, filters_b = one.get('filters', []), two.get('filters', [])
         signatures_a, signatures_b = one.get('filter_signatures'), two.get('filter_signatures')
@@ -1113,8 +1115,30 @@ def _tally_comparison(job_a, job_b, max_values):
         problem_bins = []
         compared = within = outside = non_finite = zero_counted = 0
         max_abs_diff = None
-        for index, (mean_a, std_a, mean_b, std_b) in enumerate(
-                zip(one['mean'], one['std_dev'], two['mean'], two['std_dev'])):
+        def indexed(tally):
+            values, errors = tally['mean'], tally['std_dev']
+            indices = tally.get('preview_indices', list(range(len(values))))
+            total = tally.get('total_values', __import__('math').prod(tally.get('shape') or [len(values)]))
+            if (not isinstance(indices,list) or len(indices) != len(values) or len(errors) != len(values)
+                    or any(type(i) is not int or not 0 <= i < total for i in indices)
+                    or len(set(indices)) != len(indices)
+                    or (tally.get('preview_policy')=='mesh_nonzero_first' and 'preview_indices' not in tally)):
+                return None, total
+            return dict(zip(indices, zip(values, errors))), total
+        indexed_a, total_a = indexed(one)
+        indexed_b, total_b = indexed(two)
+        if indexed_a is None or indexed_b is None or total_a != total_b:
+            entry.update(aligned=False, structure_mismatch=['preview_indices'],
+                         note='原始箱编号缺失或不一致，未按预览数组位置猜测对齐。')
+            entries.append(entry)
+            continue
+        common = sorted(indexed_a.keys() & indexed_b.keys())
+        entry.update(total_bins=total_a, shared_preview_bins=len(common),
+                     uncompared_bins=total_a-len(common), complete=len(common)==total_a,
+                     alignment='original_flat_bin_index')
+        for index in common:
+            mean_a, std_a = indexed_a[index]
+            mean_b, std_b = indexed_b[index]
             if None in (mean_a, std_a, mean_b, std_b):
                 non_finite += 1
                 if len(problem_bins) < 50:
@@ -1164,7 +1188,7 @@ def _tally_comparison(job_a, job_b, max_values):
             'warnings': sorted(set(data_a.get('warnings', [])) | set(data_b.get('warnings', []))),
             'note': '两倍σ判据按两作业独立假设合成（|差值|≤2σ_合成），为工程参考，不构成统计显著性判定；'
                     '零计数bin（一侧均值0且σ=0）单列zero_count_bins且不参与判决；'
-                    '截断时仅对比前max_values个bin并如实标记；非有限bin不替换为0；问题bin至多列50条。'
+                    '按preview_indices的原始箱编号对齐；截断时仅比较双方共有箱，complete=false且uncompared_bins说明未覆盖范围；非有限bin不替换为0；问题bin至多列50条。'
                     '完整数据在各作业results.json。'}
 
 
@@ -1214,7 +1238,8 @@ def compare_jobs(job_a: str, job_b: str, compare_tallies: bool = False,
                         'keff_combined': progress.get('keff_combined'),
                         'keff_candidates': {source: value for source, value in candidates.items() if value},
                         'input_files': record.get('input_files', {}),
-                        'output_count': len(record.get('output_files', {}))}
+                        'output_count': len(record.get('output_files', {})),
+                        'model_context': record.get('model_context')}
     a, b = sides['a'], sides['b']
     names = set(a['input_files']) | set(b['input_files'])
     identical = sorted(n for n in names
@@ -1247,7 +1272,41 @@ def compare_jobs(job_a: str, job_b: str, compare_tallies: bool = False,
     else:
         keff['note'] = ('至少一方无可用k（未完成、固定源、无StatePoint且日志无RESULTS节，'
                         '或数值异常如NaN）；不作差值。')
+    # Explain actual supported parameter changes; unsupported XML stays represented by hashes.
+    parameter_sides = {}
+    for label, job_id in (('a',job_a),('b',job_b)):
+        folder = jobs.job_directory(job_id)/'work'
+        if not ((folder/'model.xml').is_file() or (folder/'materials.xml').is_file()):
+            parameter_sides[label] = None
+            continue
+        try:
+            verified_result(job_id)
+            record = jobs.read(folder.parent)
+            parameter_sides[label] = {p['name']:p for p in api('parameters',folder,{},record['runtime'])['parameters']}
+        except (Error,KeyError):parameter_sides[label] = None
+    changes = []
+    if all(parameter_sides.values()):
+        pa,pb = parameter_sides['a'],parameter_sides['b']
+        for key in sorted(pa.keys()|pb.keys()):
+            av,bv = pa.get(key),pb.get(key)
+            if av is None or bv is None or (av.get('current'),av.get('unit'))!=(bv.get('current'),bv.get('unit')):
+                changes.append({'name':key,'a':av,'b':bv})
+    ca,cb = sides['a'].pop('model_context'),sides['b'].pop('model_context')
+    nuclear = {'checked':False,'same':None,'reason':'至少一方缺提交时核数据身份；不按当前服务器配置倒推历史'}
+    if ca and cb and ca.get('checked') and cb.get('checked'):
+        na,nb=ca['nuclear_data'],cb['nuclear_data']
+        def data_key(n):
+            return (n.get('energy_mode'),(n.get('index') or {}).get('sha256'),n.get('libraries',[]))
+        def data_summary(n):
+            return {key:n.get(key) for key in ('energy_mode','library','index','metadata_complete','content_verified')} | {
+                'library_files':len(n.get('libraries',[]))}
+        known = bool(na.get('metadata_complete') and nb.get('metadata_complete'))
+        nuclear = {'checked':known,'same':data_key(na)==data_key(nb) if known else None,
+                   'a':data_summary(na),'b':data_summary(nb),'note':ca['identity_note']}
+    parameter_comparison = {'checked':all(v is not None for v in parameter_sides.values()),
+                            'changes':changes,'note':'只解释参数发现适配器支持的字段；完整输入变化仍见文件指纹。'}
     comparison = {
+        'parameters':parameter_comparison, 'nuclear_data':nuclear,
         'inputs': {'identical': identical, 'differing': differing,
                    'only_in_a': sorted(set(a['input_files']) - set(b['input_files'])),
                    'only_in_b': sorted(set(b['input_files']) - set(a['input_files']))},

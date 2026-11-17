@@ -95,7 +95,11 @@ async def workflow(args):
                 spec=json.loads(Path(args.spec).read_text(encoding='utf-8'))
                 await step('model_input','openmc_build_model',{'case_dir':case_dir,'spec':spec},output,'case')
             else:
-                await step('model_input','openmc_import_model',{'source_dir':args.source_dir,'target_dir':case_dir},output,'case')
+                bindings=json.loads(Path(args.dependency_bindings).read_text()) if args.dependency_bindings else None
+                source_args={'source_dir':args.source_dir, **({'dependency_bindings':bindings} if bindings is not None else {})}
+                inspected=await step('inspect','openmc_inspect_model',source_args,output,'inspection')
+                if not inspected['ready']:raise RuntimeError('接入依赖未齐备，停止导入：'+json.dumps(inspected,ensure_ascii=False))
+                await step('model_input','openmc_import_model',{**source_args,'target_dir':case_dir},output,'case')
             await step('discover_parameters','openmc_list_parameters',{'case_dir':case_dir},output,'parameters')
             if changes:
                 prepared=await step('prepare','openmc_prepare_case',{'case_dir':case_dir,
@@ -170,6 +174,7 @@ def main():
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument('--spec', help='客户端JSON模型文件；字段和单位见openmc_model_capabilities(detail=full)')
     source.add_argument('--source-dir', help='服务端MC_WORKSPACE内已有XML输入目录；不会上传本机文件')
+    parser.add_argument('--dependency-bindings',help='客户端JSON文件：原XML引用→服务器已有绝对文件路径，仅配合--source-dir；不上传核数据')
     parser.add_argument('--case-dir', help='服务端工作区的新目录；省略自动产生唯一目录')
     parser.add_argument('--name', default='model-workflow', help='任务名称，可重名；结果仍按job_id区分')
     parser.add_argument('--set', action='append', default=[], metavar='PARAMETER=VALUE', help='按发现的参数创建修改副本并额外计算对比，可重复')
@@ -181,6 +186,7 @@ def main():
     parser.add_argument('--receipt', help='客户端增量JSON记录；接入、提交及各阶段立即保存，失败保留编号和已有结果；与服务端产物分开')
     parser.add_argument('--json', action='store_true', help='完整JSON输出；默认中文摘要和服务端绝对位置')
     args = parser.parse_args()
+    if args.dependency_bindings and not args.source_dir:parser.error('--dependency-bindings须配合--source-dir')
     try:
         result = asyncio.run(workflow(args))
         if args.json:

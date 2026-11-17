@@ -50,13 +50,15 @@
       "id": "native_model_import",
       "status": "supported",
       "surface": [
-        "openmc_import_model"
+        "openmc_import_model",
+        "openmc_inspect_model"
       ],
       "input": "已有原生 geometry/materials/settings/tallies XML 及声明的本地资源",
-      "output": "新副本、输入清单、依赖声明、validation；不执行脚本",
+      "output": "新副本、输入清单、依赖声明、validation；不执行脚本；只读缺依赖检查、用户显式绑定及源XML指纹，不猜路径、不复制核库",
       "evidence": [
         "tests/test_model_import.py",
-        "tests/test_import_generated_views.py"
+        "tests/test_import_generated_views.py",
+        "tests/test_native_model_journey_real.py"
       ],
       "gate": "offline"
     },
@@ -66,13 +68,16 @@
       "surface": [
         "openmc_submit_scan",
         "openmc_scan_status",
-        "openmc_plot_scan"
+        "openmc_plot_scan",
+        "openmc_resume_scan"
       ],
       "input": "已发现参数的笛卡尔组合",
-      "output": "逐组合参数差异/落盘读回、作业、状态、结果与曲线；旧记录缺读回字段不冒充已验证",
+      "output": "逐组合参数差异/落盘读回、作业、状态、结果与曲线；旧记录缺读回字段不冒充已验证；确认后关联续算失败/未跑项，成功项复用、重复请求不重投；旧身份缺失或条件变化新建批次",
       "evidence": [
         "tests/test_openmc_scan_real.py",
-        "tests/test_tool_contracts.py"
+        "tests/test_tool_contracts.py",
+        "tests/test_scan_resume.py",
+        "tests/test_native_model_journey_real.py"
       ],
       "gate": "real_openmc"
     },
@@ -290,6 +295,20 @@
         "tests/fixtures/windows_stdio_client.mjs"
       ],
       "gate": "real_mcp"
+    },
+    {
+      "id": "physical_bin_comparison",
+      "status": "supported",
+      "surface": [
+        "openmc_job_compare"
+      ],
+      "input": "两作业、同计分/分箱/归一化；原始箱编号而非预览位置",
+      "output": "参数差异、提交时核数据身份、共同箱比较/未覆盖范围；独立σ工程参考，不代替物理判断",
+      "evidence": [
+        "tests/test_openmc_job_compare.py",
+        "tests/test_native_model_journey_real.py"
+      ],
+      "gate": "real_openmc"
     }
   ],
   "restrictions": [

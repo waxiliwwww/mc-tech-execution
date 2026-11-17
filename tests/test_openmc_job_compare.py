@@ -205,6 +205,35 @@ class JobCompare(unittest.TestCase):
         self.assertTrue(section['warnings'])
         self.assertIn('未替换为0', section['warnings'][0])
 
+    def test_mesh_preview_orders_align_by_original_bin_not_return_position(self):
+        one = self.tally(1, [20., 30., 0.], [1., 1., 0.])
+        two = self.tally(1, [10., 30., 0.], [1., 1., 0.])
+        one.update(preview_indices=[1, 2, 0], total_values=3)
+        two.update(preview_indices=[0, 2, 1], total_values=3)
+        entry = self.compare_with_tallies(([one], [two]))['by_id'][0]
+        self.assertEqual(entry['zero_count_bins'], 2, 'physical bins 0 and 1 must be unavailable, not paired as nonzero')
+        self.assertEqual(entry['bins_compared'], 1)
+        self.assertEqual(entry['max_abs_diff'], 0.)
+
+    def test_different_truncated_preview_subsets_only_compare_shared_bins(self):
+        one = self.tally(1, [20., 30.], [1., 1.], shape=[4], truncated=True)
+        two = self.tally(1, [10., 30.], [1., 1.], shape=[4], truncated=True)
+        one.update(preview_indices=[1, 2], total_values=4)
+        two.update(preview_indices=[0, 2], total_values=4)
+        entry = self.compare_with_tallies(([one], [two]))['by_id'][0]
+        self.assertEqual(entry['bins_compared'], 1)
+        self.assertEqual(entry['max_abs_diff'], 0.)
+        self.assertEqual(entry['uncompared_bins'], 3)
+        self.assertFalse(entry['complete'])
+
+    def test_corrupt_indices_and_incompatible_normalization_do_not_compare(self):
+        for key,value in [('preview_indices',[0,0]),('preview_indices',[0,9]),('normalization','power normalized')]:
+            with self.subTest(key=key,value=value):
+                one=self.tally(1,[1.,2.],[.1,.1]);two=self.tally(1,[1.,2.],[.1,.1])
+                one[key]=value
+                entry=self.compare_with_tallies(([one],[two]))['by_id'][0]
+                self.assertFalse(entry['aligned']);self.assertNotIn('bins_compared',entry)
+
     def test_tally_structure_mismatch_not_compared(self):
         one = self.tally(1, [1.0, 2.0], [0.01, 0.01])
         two = self.tally(1, [1.0], [0.01])

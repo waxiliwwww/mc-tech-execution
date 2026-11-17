@@ -82,3 +82,6 @@ test_mesh_bin_selection_real.MeshBinSelectionReal
 
 # Scans must verify actual parameter readback before reserving/submitting any child.
 test_openmc_scan_real.RealScanReports.test_scan_rejects_update_that_did_not_reach_disk_before_any_submission
+
+# 自有模型依赖绑定、异常批次续算与原生箱比较完整旅程
+test_native_model_journey_real.NativeModelJourney

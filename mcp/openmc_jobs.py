@@ -224,7 +224,9 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
             raise Error('燃耗算例缺少materials.xml或model.xml')
     capacity = check_capacity(cfg, threads)
     from openmc_storage import check_submission_space
-    disk_admission = check_submission_space(source, workspace(), cfg, _preserve_outputs, is_old_output)
+    from openmc_import import input_output_filter
+    skip_output=input_output_filter(source)
+    disk_admission = check_submission_space(source, workspace(), cfg, _preserve_outputs, skip_output)
     job_id = _job_id or uuid.uuid4().hex
     if not re.fullmatch('[a-f0-9]{32}', job_id):raise Error('无效预留作业编号')
     jobs = path_in_workspace('.mc-jobs', exists=False, internal=True)
@@ -239,7 +241,7 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
     # Ordinary jobs reject stale outputs; typed workflows explicitly carry their
     # predecessor's verified resources (including images/HDF5) into the next step.
     shutil.copytree(source, copied, ignore=None if _preserve_outputs else
-                    lambda _directory, names: [n for n in names if is_old_output(n)])
+                    lambda _directory, names: [n for n in names if skip_output(n)])
     input_files = {str(p.relative_to(copied)): file_hash(p) for p in copied.rglob('*') if p.is_file()}
     if _expected_inputs is not None and input_files != _expected_inputs:
         raise Error('输入在校核与快照之间发生变化，未启动计算；保留未完成目录供核对')
@@ -258,6 +260,9 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
               'case_dir': case_dir, 'mode': mode, 'threads': threads,
               'provenance': provenance(source, cfg), 'runtime': cfg, 'concurrency': capacity,
               'work_dir': relative(copied), 'input_files': input_files, 'disk_admission': disk_admission}
+    if _example_workflow is None:
+        from openmc_model_context import comparison_context
+        record['model_context'] = comparison_context(copied,cfg,input_files)
     if _example_workflow is not None:
         record['example_workflow'] = _example_workflow
     if _example_case_dir is not None:

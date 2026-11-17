@@ -60,6 +60,15 @@ class PrepareCaseDiff(unittest.TestCase):
         with patch.object(scan, 'api', self.stub_api(readback_values)):
             return scan.prepare_case('case', target or f'modified{self.targets}', parameters)
 
+    def test_explicit_file_dependency_survives_derivation_even_when_named_like_output(self):
+        from openmc_scan import copy_inputs
+        (self.case/'model.xml').write_text('<model><settings><source file="bank/statepoint.source.h5"/></settings></model>')
+        (self.case/'bank').mkdir();(self.case/'bank/statepoint.source.h5').write_bytes(b'explicit input source bank')
+        (self.case/'statepoint.99.h5').write_bytes(b'old unreferenced output')
+        copy_inputs(self.case,business.WORKSPACE/'derived')
+        self.assertEqual((business.WORKSPACE/'derived/bank/statepoint.source.h5').read_bytes(),b'explicit input source bank')
+        self.assertFalse((business.WORKSPACE/'derived/statepoint.99.h5').exists())
+
     def test_verified_diff_with_readback(self):
         result = self.prepare({'settings.particles': 400}, {'settings.particles': 400})
         diff = result['parameter_diff']

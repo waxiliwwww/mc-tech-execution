@@ -1391,6 +1391,34 @@
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_scan.py">mcp/openmc_scan.py</a>。</p></details>
+<details class="tool" id="openmc_resume_scan"><summary>openmc_resume_scan
+<span class="tool-purpose">用户确认后续算终止批次中的失败/未跑项；创建关联批次，保留成功job_id与原记录。先核对冻结输入、依赖、配置和原子作业终态；同一原批次重复调用返回同一续算编号，不自动重试。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>scan_id</td><td>string</td><td>是</td><td>不可省略</td><td>用户已确认续算的原批次编号，取自openmc_submit_scan/openmc_scan_status；原批次须终止，重复调用返回同一关联批次。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>用户确认后续算终止批次中的失败/未跑项；创建关联批次，保留成功job_id与原记录。先核对冻结输入、依赖、配置和原子作业终态；同一原批次重复调用返回同一续算编号，不自动重试。</p>
+<div class="table-wrap"><table><thead><tr><th>判读字段</th><th>含义与继续条件</th></tr></thead><tbody><tr><td>scan_id / parent_scan_id / reused_cases</td><td>新关联批次，仅重做失败/未跑项；保留成功job_id与原记录。重复原编号返回同一续算编号；输入/依赖/配置变更或身份缺失拒绝复用，未知原子作业先查。</td></tr></tbody></table></div>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;scan_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;用户已确认续算的原批次编号，取自openmc_submit_scan/openmc_scan_status；原批次须终止，重复调用返回同一关联批次。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;scan_id&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;用户确认后续算终止批次中的失败/未跑项；创建关联批次，保留成功job_id与原记录。先核对冻结输入、依赖、配置和原子作业终态；同一原批次重复调用返回同一续算编号，不自动重试。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/openmc_scan.py">mcp/openmc_scan.py</a>。</p></details>
 <details class="tool" id="openmc_scan_status"><summary>openmc_scan_status
 <span class="tool-purpose">查询计算参数批次的逐组合状态、作业编号、结果/失败与计数；cases[].parameter_diff给出修改后落盘读回，verified只表示请求参数生效，不是物理正确性。旧记录缺此字段时未核实。completed仅表示每个组合完成；partial/failed/cancelled保留，不自动重新提交。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>scan_id</td><td>string</td><td>是</td><td>不可省略</td><td>扫描批次编号，使用openmc_submit_scan返回的scan_id；一个批次关联多个job_id，不能混用两种编号。</td><td>—</td></tr></tbody></table></div>
@@ -3091,7 +3119,7 @@
 <h3>返回怎么看</h3><p>sides给出两作业状态、运行设置、k与输入指纹；comparison.inputs分identical/differing/only_in_a/only_in_b四类；keff_combined.a/b各带source（statepoint:k_combined | statepoint:k_generation | solver.log:…，StatePoint优先、日志仅作fallback），difference=b-a，combined_std_dev按独立假设合成并给within_2sigma_engineering，仅工程参考。compare_tallies=true时comparison.tallies给出：summary总数（bins_compared/within_2sigma/outside_2sigma/zero_count_bins/non_finite_bins）、by_id逐tally结构对齐与问题bin（至多50条，含index/difference/combined_std_dev）、only_in_a/only_in_b、双方warnings合并（每条带keff:/tally:前缀标明来源）；零计数bin（一侧均值0且σ=0）单列且不参与2σ判决；两倍σ判据为工程参考，非统计显著性判定。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>job_a</td><td>作业编号（a方）；来自openmc_submit_job返回值。</td></tr><tr><td>job_b</td><td>作业编号（b方）；来自openmc_submit_job返回值。</td></tr><tr><td>workspace</td><td>服务端绝对数据根；工作区相对路径以它为基准。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
-<div class="table-wrap"><table><thead><tr><th>判读字段</th><th>含义与继续条件</th></tr></thead><tbody><tr><td>comparison.tallies.by_id[].aligned</td><td>逐bin比较要求完整分箱定义和选择一致；包括未显示的能量边界、材料箱、mesh坐标及过滤顺序。不以纯filter/mesh编号作为物理差异，无法核实则不对齐。</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>判读字段</th><th>含义与继续条件</th></tr></thead><tbody><tr><td>comparison.parameters / nuclear_data</td><td>支持参数的实际变化及提交时核数据身份；旧记录缺身份时未核实，不从当前环境倒推。</td></tr><tr><td>comparison.tallies.by_id[].complete / uncompared_bins</td><td>按原始preview_indices对齐，complete=false仅比较共有预览箱，未覆盖不等于0；保留零贡献/非有限箱及独立σ假设。</td></tr><tr><td>comparison.tallies.by_id[].aligned</td><td>逐bin比较要求完整分箱定义和选择一致；包括未显示的能量边界、材料箱、mesh坐标及过滤顺序。不以纯filter/mesh编号作为物理差异，无法核实则不对齐。</td></tr></tbody></table></div>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
@@ -4600,15 +4628,59 @@
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_model_tools.py">mcp/openmc_model_tools.py</a>。</p></details>
+<details class="tool" id="openmc_inspect_model"><summary>openmc_inspect_model
+<span class="tool-purpose">接入自有原生模型前只读检查XML与依赖；列出缺失文件、外部引用与显式绑定，未复制、执行或改变模型。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>source_dir</td><td>string</td><td>是</td><td>不可省略</td><td>工作区内已有原生输入目录；异机文件先上传</td><td>—</td></tr><tr><td>dependency_bindings</td><td>object</td><td>否</td><td>省略时见说明</td><td>用户明确提供的原XML引用→服务器已有绝对文件路径；只改导入副本，不猜路径，不复制核数据库。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>接入自有原生模型前只读检查XML与依赖；列出缺失文件、外部引用与显式绑定，未复制、执行或改变模型。</p>
+<div class="table-wrap"><table><thead><tr><th>判读字段</th><th>含义与继续条件</th></tr></thead><tbody><tr><td>ready / problems / warnings</td><td>只读检查原生XML及依赖；ready不表示API/语义/专业通过。dependency_bindings为原引用到服务器绝对文件的显式映射，未匹配绑定报明，不猜路径。</td></tr></tbody></table></div>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;additionalProperties&quot;: false,
+  &quot;properties&quot;: {
+    &quot;source_dir&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;工作区内已有原生输入目录；异机文件先上传&quot;
+    },
+    &quot;dependency_bindings&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;additionalProperties&quot;: {
+        &quot;type&quot;: &quot;string&quot;,
+        &quot;minLength&quot;: 1
+      },
+      &quot;description&quot;: &quot;用户明确提供的原XML引用→服务器已有绝对文件路径；只改导入副本，不猜路径，不复制核数据库。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;source_dir&quot;
+  ]
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;接入自有原生模型前只读检查XML与依赖；列出缺失文件、外部引用与显式绑定，未复制、执行或改变模型。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/openmc_import.py">mcp/openmc_import.py</a>。</p></details>
 <details class="tool" id="openmc_import_model"><summary>openmc_import_model
 <span class="tool-purpose">导入工作区内已有OpenMC模型输入，校验后发布新副本；不要求在例题清单中，不执行脚本，不覆盖原输入。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>source_dir</td><td>string</td><td>是</td><td>不可省略</td><td>MC_WORKSPACE内已有原生XML及依赖目录，相对路径；异机文件先用MCP上传ZIP并取source_dir。Python脚本须先自行导出XML。</td><td>—</td></tr><tr><td>target_dir</td><td>string</td><td>是</td><td>不可省略</td><td>MC_WORKSPACE内不存在的新副本相对目录，与源目录不嵌套。</td><td>—</td></tr><tr><td>api_check</td><td>boolean</td><td>否</td><td>true</td><td>是否用已配置OpenMC Python API解析模型；省略为true。false仅做结构和依赖检查，不能当作可运行证明。</td><td>—</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>dependency_bindings</td><td>object</td><td>否</td><td>省略时见说明</td><td>用户明确提供的原XML引用→服务器已有绝对文件路径；只改导入副本，不猜路径，不复制核数据库。</td><td>—</td></tr><tr><td>source_dir</td><td>string</td><td>是</td><td>不可省略</td><td>MC_WORKSPACE内已有原生XML及依赖目录，相对路径；异机文件先用MCP上传ZIP并取source_dir。Python脚本须先自行导出XML。</td><td>—</td></tr><tr><td>target_dir</td><td>string</td><td>是</td><td>不可省略</td><td>MC_WORKSPACE内不存在的新副本相对目录，与源目录不嵌套。</td><td>—</td></tr><tr><td>api_check</td><td>boolean</td><td>否</td><td>true</td><td>是否用已配置OpenMC Python API解析模型；省略为true。false仅做结构和依赖检查，不能当作可运行证明。</td><td>—</td></tr></tbody></table></div>
 <h3>返回怎么看</h3><p>导入工作区内已有OpenMC模型输入，校验后发布新副本；不要求在例题清单中，不执行脚本，不覆盖原输入。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
   &quot;additionalProperties&quot;: false,
   &quot;properties&quot;: {
+    &quot;dependency_bindings&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;additionalProperties&quot;: {
+        &quot;type&quot;: &quot;string&quot;,
+        &quot;minLength&quot;: 1
+      },
+      &quot;description&quot;: &quot;用户明确提供的原XML引用→服务器已有绝对文件路径；只改导入副本，不猜路径，不复制核数据库。&quot;
+    },
     &quot;source_dir&quot;: {
       &quot;type&quot;: &quot;string&quot;,
       &quot;minLength&quot;: 1,

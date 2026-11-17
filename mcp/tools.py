@@ -8,7 +8,7 @@ from openmc_tools import (compare_jobs, create_model, environment, export_report
                           preview_input, read_results, storage_report, submit_job, update_tally, delete_tally,
                           validate_inputs)
 from openmc_jobs import cancel as cancel_job, status as job_status
-from openmc_scan import list_parameters, prepare_case, submit_scan, status as scan_status, cancel as cancel_scan
+from openmc_scan import list_parameters, prepare_case, submit_scan, resume_scan, status as scan_status, cancel as cancel_scan
 from openmc_plots import plot_convergence, plot_mesh, plot_results, plot_scan
 from openmc_reports import export_scan
 from result_bundle import generate_result_bundle
@@ -130,6 +130,8 @@ TOOLS += [
                             "threads": {"type": "integer", "minimum": 1, "maximum": 64}, "stop_on_error": {"type": "boolean"},
                             "name": {"type": "string", "minLength": 1, "maxLength": 120, "description": "可选扫描名称；子作业名称为名称[index]，按零基组合编号派生，身份仍为各自job_id。"}}, ['case_dir', 'axes']),
      "outputSchema": OUTPUT, "function": submit_scan, "annotations": WRITE},
+    {"name":"openmc_resume_scan", "description":"用户确认后续算终止批次中的失败/未跑项；创建关联批次，保留成功job_id与原记录。先核对冻结输入、依赖、配置和原子作业终态；同一原批次重复调用返回同一续算编号，不自动重试。",
+     "inputSchema":schema({"scan_id":{**TEXT,"description":"用户已确认续算的原批次编号，取自openmc_submit_scan/openmc_scan_status；原批次须终止，重复调用返回同一关联批次。"}},['scan_id']), "outputSchema":OUTPUT,"function":resume_scan,"annotations":WRITE},
     {"name": "openmc_scan_status", "description": "查询计算参数批次的逐组合状态、作业编号、结果/失败与计数；cases[].parameter_diff给出修改后落盘读回，verified只表示请求参数生效，不是物理正确性。旧记录缺此字段时未核实。completed仅表示每个组合完成；partial/failed/cancelled保留，不自动重新提交。",
      "inputSchema": schema({"scan_id": TEXT}, ['scan_id']), "outputSchema": OUTPUT, "function": scan_status},
     {"name": "openmc_cancel_scan", "description": "取消当前扫描计算并阻止后续组合提交；查询终态确认取消完成。",
@@ -356,7 +358,7 @@ READ_ONLY_TOOLS={
     'openmc_diagnose_job','openmc_list_artifacts','openmc_list_parameters',
     'openmc_scan_status','openmc_list_official_examples','openmc_get_official_example',
     'openmc_example_status','openmc_read_example_results','openmc_inspect_step',
-    'openmc_model_capabilities','openmc_list_jobs',
+    'openmc_model_capabilities','openmc_list_jobs','openmc_inspect_model',
 }
 for _tool in TOOLS:
     if _tool['name'] in READ_ONLY_TOOLS:

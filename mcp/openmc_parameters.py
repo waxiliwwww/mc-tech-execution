@@ -47,6 +47,16 @@ def describe(model):
         items.append({'name': f'settings.source.{index}.strength', 'type': 'number',
                       'current': source.strength, 'exclusive_minimum': 0, 'unit': 'relative strength',
                       'category': 'source'})
+    # Names are labels from the user's model, not inferred physical roles.
+    material_names = {m.id: m.name for m in model.materials}
+    surfaces = model.geometry.get_all_surfaces()
+    for item in items:
+        parts = item['name'].split('.')
+        if parts[0] == 'materials':
+            item['object'] = {'kind':'material', 'id':int(parts[1]), 'name':material_names[int(parts[1])]}
+        elif parts[:2] == ['geometry','surfaces']:
+            obj = surfaces[int(parts[2])]
+            item['object'] = {'kind':type(obj).__name__, 'id':obj.id, 'name':obj.name}
     return items
 
 

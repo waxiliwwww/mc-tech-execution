@@ -45,7 +45,9 @@ def copy_inputs(source: Path, target: Path):
     if source == workspace() or target.is_relative_to(source):raise Error('目标须在原算例目录之外')
     for path in source.rglob('*'):
         if path.is_symlink():raise Error('算例中包含符号链接，拒绝复制')
-    shutil.copytree(source, target, ignore=lambda _d, names: [n for n in names if jobs.is_old_output(n)])
+    from openmc_import import input_output_filter
+    skip=input_output_filter(source)
+    shutil.copytree(source, target, ignore=lambda _d, names: [n for n in names if skip(n)])
 
 
 def apply_and_verify_parameters(case: Path, parameters: dict, runtime: dict | None = None) -> dict:
@@ -124,18 +126,87 @@ def submit_scan(case_dir: str, axes: dict, threads: int = 1, stop_on_error: bool
     specs = api('check-parameters', source, {'combinations': combinations}, cfg)['parameters']
     runtime = environment()
     if not runtime['executable_available'] or not runtime['openmc_version_matches']:raise Error('运行时不可用或版本不符，未提交扫描')
-    scan_id = uuid.uuid4().hex
+    return _enqueue_scan(source, axes, combinations, cfg, threads, stop_on_error, task_name, specs)
+
+
+def _enqueue_scan(source, axes, combinations, cfg, threads, stop_on_error, name, specs,
+                  *, scan_id=None, inherited=None, parent_scan_id=None, case_dir=None):
+    from openmc_model_context import model_context
+    scan_id = scan_id or uuid.uuid4().hex
     root = path_in_workspace('.mc-scans', exists=False, internal=True); root.mkdir(exist_ok=True)
     target = root / scan_id; target.mkdir()
-    copy_inputs(source, target / 'baseline')
-    record = {'scan_id': scan_id, 'name': task_name, 'state': 'queued', 'submitted_at': time.time(), 'case_dir': case_dir,
-              'axes': axes, 'parameter_specs': specs, 'threads': threads, 'stop_on_error': stop_on_error,
-              'runtime': cfg, 'provenance': provenance(source, cfg),
-              'cases': [{'index': i, 'parameters': p, 'state': 'planned'} for i, p in enumerate(combinations)]}
-    atomic_json(target / 'job.json', record)
-    jobs.spawn_worker(target, 'openmc_scan.py', scan_id)
-    return {'scan_id': scan_id, 'name': task_name, 'state': 'queued', 'cases': count, 'provenance': record['provenance'],
-            'next': '查询openmc_scan_status；这是计算参数批次编号，不是智能体任务。'}
+    try:
+        copy_inputs(source, target / 'baseline')
+        context = model_context(target / 'baseline', cfg)
+        record = {'scan_id': scan_id, 'name': name, 'state': 'queued', 'submitted_at': time.time(),
+                  'case_dir': case_dir or relative(source), 'axes': axes, 'parameter_specs': specs, 'threads':threads,
+                  'stop_on_error':stop_on_error, 'runtime':cfg, 'provenance':provenance(source,cfg),
+                  'model_context':context,
+                  'cases':[dict(index=i,parameters=p,state='planned') for i,p in enumerate(combinations)]}
+        if inherited is not None:
+            record['cases'] = inherited
+            record['parent_scan_id'] = parent_scan_id
+        atomic_json(target/'job.json',record)
+        jobs.spawn_worker(target,'openmc_scan.py',scan_id)
+    except Exception:
+        # If a worker identity exists, its result may be unknown: keep its record.
+        if not (target/'job.json').exists():shutil.rmtree(target)
+        raise
+    return {'scan_id':scan_id, 'name':name, 'state':'queued', 'cases':len(record['cases']),
+            'reused_cases':sum(c['state']=='completed' for c in record['cases']),
+            'parent_scan_id':parent_scan_id, 'provenance':record['provenance'],
+            'next':'查询openmc_scan_status；成功项保留原job_id，planned项才会计算。'}
+
+
+def resume_scan(scan_id: str) -> dict:
+    """Explicit continuation, never an automatic retry of a successful/unknown job."""
+    from openmc_model_context import model_context
+    target = directory(scan_id)
+    with (target/'record.lock').open('a') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX)
+        pointer = target/'continuation.json'
+        if pointer.exists():
+            previous = json.loads(pointer.read_text())
+            child = directory(previous['scan_id'])
+            return {'scan_id':previous['scan_id'], 'parent_scan_id':scan_id, 'existing':True,
+                    'state':jobs.read(child)['state'], 'next':'查询该续算编号；如该批次仍有失败，确认后对该续算编号继续。'}
+        record = jobs.read(target)
+        if record['state'] not in TERMINAL:raise Error('原批次尚未终止；先查询或取消，不能重复续算')
+        pending = [c for c in record['cases'] if c['state']!='completed']
+        if not pending:raise Error('所有组合已完成，无需续算；如需改条件请提交新批次')
+        for row in record['cases']:
+            if row.get('job_id'):
+                child = jobs.status(row['job_id'])
+                if child['state'] not in jobs.TERMINAL or not (child.get('process_cleanup') or {}).get('verified_empty'):
+                    raise Error('原子作业仍活动或进程清理未核实，不能重复计算；先按job_id查询并确认：'+row['job_id'])
+                if row['state']=='completed':
+                    from openmc_tools import verified_result
+                    verified_result(row['job_id'])
+        expected = record.get('model_context')
+        if expected is None:raise Error('旧批次缺输入/依赖身份依据，不能证明可复用；保留旧结果并显式提交新批次')
+        current = model_context(target/'baseline', record['runtime'])
+        runtime = model_context(target/'baseline', config())
+        if current!=expected or runtime!=expected:
+            raise Error('冻结输入、依赖或运行配置发生变化，不能复用成功项；请新建批次，原记录未改')
+        if not current['dependencies_ready'] or not current['nuclear_data']['metadata_complete']:
+            raise Error('模型依赖或核数据身份未核实，不能续算；先确认条件后新建批次')
+        inherited = []
+        for row in record['cases']:
+            if row['state']=='completed':
+                inherited.append({**row,'reused_from':{'scan_id':scan_id,'index':row['index'],'job_id':row['job_id']}})
+            else:inherited.append({'index':row['index'],'parameters':row['parameters'],'state':'planned',
+                                   'previous_attempt':{'scan_id':scan_id,'state':row['state'],'job_id':row.get('job_id')}})
+        new_id = uuid.uuid4().hex
+        # Persist the idempotent link before spawn. A failure with a queued record
+        # is investigated by this ID, not retried into another batch.
+        atomic_json(pointer,{'scan_id':new_id})
+        try:
+            return _enqueue_scan(target/'baseline', record['axes'], [c['parameters'] for c in inherited],
+                                 record['runtime'],record['threads'],record['stop_on_error'],record.get('name'),
+                                 record['parameter_specs'],scan_id=new_id,inherited=inherited,parent_scan_id=scan_id,case_dir=record['case_dir'])
+        except Exception:
+            if not (workspace()/'.mc-scans'/new_id/'job.json').exists():pointer.unlink(missing_ok=True)
+            raise
 
 
 
@@ -196,8 +267,10 @@ def status(scan_id: str) -> dict:
             if record['state'] not in TERMINAL:
                 record.update(state='interrupted', error='扫描监控进程丢失；未自动重新提交。可查询/取消已记录的计算作业。')
                 atomic_json(target / 'job.json', record)
-    result = {key: record[key] for key in ('scan_id', 'name', 'state', 'case_dir', 'axes', 'cases', 'active_job_id', 'provenance', 'submitted_at', 'finished_at', 'error') if key in record}
+    result = {key: record[key] for key in ('scan_id', 'name', 'state', 'case_dir', 'axes', 'cases', 'active_job_id', 'provenance', 'submitted_at', 'finished_at', 'error', 'parent_scan_id') if key in record}
     result['counts'] = {state: sum(item['state'] == state for item in record['cases']) for state in ('planned', 'preparing', 'running', 'completed', 'failed', 'cancelled', 'interrupted', 'not_run')}
+    result['reused_cases'] = sum(bool(c.get('reused_from')) for c in record['cases'])
+    result['identity_note'] = (record.get('model_context') or {}).get('identity_note', '旧记录未核实依赖身份')
     result['differences'] = differences(record)
     return result
 
@@ -242,6 +315,7 @@ def run(scan_id):
                 worker_identity=jobs.identity(__import__('os').getpid()))
     try:
         for index, item in enumerate(record['cases']):
+            if item['state'] == 'completed':continue
             latest = jobs.read(target)
             if stopped or latest.get('cancel_requested'):break
             try:
