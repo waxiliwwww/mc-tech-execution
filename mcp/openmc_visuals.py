@@ -230,6 +230,7 @@ def plot_mesh(params):
         rest_mean = mean.reshape(cells, -1)
         rest_std = std.reshape(cells, -1)
         energy_label = None
+        energy_bounds = None
         if len(tally.filters) > 1:
             energy_filter = next((f for f in tally.filters if type(f).__name__ == 'EnergyFilter'), None)
             if energy_filter is None:
@@ -245,6 +246,7 @@ def plot_mesh(params):
                 raise ValueError('能量过滤与网格过滤的组合形状无法判定')
             values = rest_mean[:, column]
             errors = rest_std[:, column]
+            energy_bounds = [float(bounds[column]), float(bounds[column + 1])]
             energy_label = f'{bounds[column]:.6g}-{bounds[column + 1]:.6g} eV'
         else:
             if params.get('energy_bin') is not None:
@@ -281,7 +283,7 @@ def plot_mesh(params):
                   'y_label': params.get('y_label') or 'y (cm)',
                   'title': params.get('title') or f'Mesh tally {tally.id} / {score}',
                   'mesh_id': mesh_id, 'dimension': [nx, ny, nz], 'level': level,
-                  'score': score, 'nuclide': nuclide, 'energy_label': energy_label,
+                  'score': score, 'nuclide': nuclide, 'energy_label': energy_label, 'energy_bounds': energy_bounds, 'mesh': mesh,
                   'colorbar_label': params.get('colorbar_label') or
                                      (str(score) + ' (raw tally)'),
                   'tally_id': int(tally.id)}
@@ -343,6 +345,7 @@ def draw_mesh(series, path: Path, params):
                                        'level': series.get('level'), 'score': series['score'],
                                        'nuclide': series.get('nuclide'),
                                        'energy_label': series.get('energy_label'),
+                                       'energy_bounds': series.get('energy_bounds'), 'mesh': series.get('mesh'),
                                        'x_edges': [float(v) for v in series['x_edges']],
                                        'y_edges': [float(v) for v in series['y_edges']],
                                        'values': [[None if not np.isfinite(v) else float(v) for v in row]
@@ -565,6 +568,7 @@ def render_docx(params):
     if series is not None:
         document.add_paragraph('结果选择：' + selection_label(series))
         document.add_paragraph('过滤条件：' + json.dumps(series['filter_selection'], ensure_ascii=False))
+        if series.get('selection_note'):document.add_paragraph(series['selection_note'])
         document.add_paragraph('横轴：' + series['x_label'] + '；' + series['coordinate_note'])
         document.add_paragraph('来源StatePoint SHA256：' + data['statepoint_sha256'])
         document.add_paragraph(f"完整数据：{data['series_csv']}；元数据：{data['series_json']}。共{len(series['mean'])}点，数表以9位有效数字显示。")

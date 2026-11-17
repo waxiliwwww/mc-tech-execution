@@ -75,3 +75,6 @@ test_file_transfer_mcp.FileTransferMCP
 
 # Scientific templates and independent host-side replay of exported plot bundles
 test_plot_reproduction.PlotReproduction
+
+# Task-level composition must preserve selection, reports, native mapping and download/replay
+test_result_bundle_real.ResultBundleReal

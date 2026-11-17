@@ -82,25 +82,28 @@ def export_job(job_id: str, format: str):
     return {'job_id': job_id, 'selection_mode': 'job_summary', **render(target, data, runtime, format, image)}
 
 
-def export_selected_job(job_id: str, format: str, selection: dict):
+def export_selected_job(job_id: str, format: str, selection: dict, *,
+                        _output_dir: Path | None = None, _chart: dict | None = None,
+                        _series: dict | None = None):
     """One native selection supplies chart, complete data and every report format."""
     from openmc_tools import read_results, _report_metadata
     from openmc_plots import plot_results
-    target = jobs.job_directory(job_id)
+    job_target = jobs.job_directory(job_id)
+    target = _output_dir if _output_dir is not None else job_target
     # Validate/select before replacing any report. Never silently fall back to tally 1.
-    chart = plot_results(job_id, **selection)
+    chart = _chart if _chart is not None else plot_results(job_id, **selection, _output_dir=_output_dir)
     image = target / chart['image']
-    series = json.loads(image.with_suffix('.json').read_text())
+    series = _series if _series is not None else json.loads(image.with_suffix('.json').read_text())
     data = read_results(job_id, max_values=1, detail='full')
     data.pop('tallies')  # The unselected job preview is not the requested report data.
     # Every format uses the same metadata from the submitted input snapshot.
     # In particular, binary reports must not lose the header at this branch.
-    metadata = _report_metadata(target)
+    metadata = _report_metadata(job_target)
     data.update(metadata=metadata, selected_series=series, series_json=image.with_suffix('.json').name,
                 series_csv=image.with_suffix('.csv').name, plot_script=image.with_suffix('.py').name)
     if any(v is None for v in series['mean'] + series['std_dev']):
         data['warnings'].append('所选统计量含不可用值；保留为空，不替换为0。')
-    runtime = jobs.read(target)['runtime']
+    runtime = jobs.read(job_target)['runtime']
     preview = selected_report_rows(series, min(20, runtime.get('max_report_rows', 1000)))
     if format in ('pdf', 'doc', 'docx'):
         result = render(target, data, runtime, format, str(image))
@@ -119,7 +122,8 @@ def export_selected_job(job_id: str, format: str, selection: dict):
                     '运行时间：' + str(runtime_info['started_at'] or '未记录') + ' → ' + str(runtime_info['finished_at'] or '未记录') + '（' + duration + '）',
                     '随机种子：' + str(metadata['seed'] or '未记录'),
                     '结果选择：' + selection_label(series),
-                    '过滤条件：' + json.dumps(series['filter_selection'], ensure_ascii=False), '',
+                    '过滤条件：' + json.dumps(series['filter_selection'], ensure_ascii=False),
+                    *([series['selection_note']] if series.get('selection_note') else []), '',
                     '数据来源：' + data['provenance']['data_kind'],
                     '来源StatePoint SHA256：' + data['statepoint_sha256'],
                     '**专业验收：未进行。** 保留OpenMC原始归一化，未换算实际源强或功率。', '',
@@ -147,7 +151,8 @@ def export_selected_job(job_id: str, format: str, selection: dict):
     return {'job_id': job_id, **result, 'selection_mode': 'selected',
             'selection': {k:series[k] for k in ('tally_id', 'score', 'nuclide', 'filter_selection')},
             'points': len(series['mean']), 'preview_rows': len(preview),
-            'chart': relative(image), 'series_json': chart['series_json'], 'series_csv': chart['series_csv'],
+            'chart': relative(image), 'series_json': chart.get('series_json') or chart['values_json'],
+            'series_csv': chart.get('series_csv') or chart['values_csv'],
             'plot_script': chart['plot_script'],
             'note': '图与正文使用同一选择；正文数表仅预览，完整数据和坐标见配套CSV/JSON。CSV格式导出全部所选数据。'}
 

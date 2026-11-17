@@ -260,6 +260,18 @@
         "tests/fixtures/workflow_mcp_client.py"
       ],
       "gate": "real_mcp"
+    },
+    {
+      "id": "result_bundle",
+      "status": "supported",
+      "surface": "openmc_generate_result_bundle；保留全部原子结果/绘图/报告工具",
+      "input": "成功job_id及明确tally_id；原计分选择/核素/过滤器、mesh层或能量箱、图与报告格式",
+      "output": "新目录中的同源图/完整数据/报告/复现脚本/来源与文件指纹；原输入、StatePoint和旧报告保留",
+      "evidence": [
+        "tests/test_result_bundle.py",
+        "tests/test_result_bundle_real.py"
+      ],
+      "gate": "offline_and_real"
     }
   ],
   "restrictions": [
@@ -336,6 +348,14 @@
       "impact": "新MCP传输默认每完整文件5 MiB、ZIP展开/所选文件总量5 MiB，大小限制不影响已有服务端大文件计算。仅登记产物/已上传文件，宿主本地读写由调用方提供。",
       "override": "MC_TRANSFER_CONFIG独立配置可提高整文件/整包上限；无本地读写能力时由用户运行宿主标准MCP脚本或沿已有文件通道。",
       "user_decision": "用户2026-11-12确认默认5 MiB可配置、仅MCP函数，不增加浏览器或HTTP文件接口。"
+    },
+    {
+      "id": "result_bundle_explicit_tally",
+      "capability": "result_bundle",
+      "kind": "required_field",
+      "impact": "新整合入口需要明确tally_id，避免自动把首个计分当业务目标；不改变原工具的默认行为或能力",
+      "override": "不知道计分时先用openmc_read_results；任意分析继续使用原plot_results/plot_mesh/export_report、原始数据和脚本",
+      "user_decision": "2026-11-17用户授权按前轮“作业编号+计分编号”的结果包入口实施，保留原工具和灵活性；仅作用于该新增入口"
     }
   ],
   "stabilization": {

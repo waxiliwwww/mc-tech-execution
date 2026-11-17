@@ -1,5 +1,7 @@
 # MC技术执行工具包
 
+常见结果交付可用 `openmc_generate_result_bundle` 一次生成同源图、完整数据、报告、脚本和指纹清单；不重算，原单项工具及自定义分析保留。见[使用手册](docs/toolkit-usage.html)。
+
 为OpenMC提供模型接入、受控参数化建模、输入校验、命名作业、扫描、结果图表和报告管理。可独立用CLI，也可作为标准MCP服务接DSH等宿主，不绑定模型或智能体。
 
 **从 [工具包总览](docs/index.html) 开始。** 源码下载/解压后用浏览器打开 `docs/index.html`，无需文档服务器。日常阅读固定为五份：
@@ -12,7 +14,7 @@
 | [架构设计](docs/toolkit.html) | 理解模型准备、作业管理、结果分析的机制、源码职责和扩展位置 |
 | [接口参考](docs/reference.html) | 按工具名、用途或参数搜索实际Schema及返回含义 |
 
-服务端使用Linux/WSL，适配OpenMC 0.16.0，源码版本0.17.0。初次准备在完整源码包根目录执行 `./quickstart.sh`；首次需网络并下载运行时、数据与依赖，准备条件及可选安装见部署说明。[OpenMC公开接口覆盖清单](docs/index.html#api-coverage)按九个官方模块列出具体接口、工具落点和范围。计算和产物默认在本包 `workspace/`，路径属于服务器。
+服务端使用Linux/WSL，适配OpenMC 0.16.0，源码版本0.18.0。初次准备在完整源码包根目录执行 `./quickstart.sh`；首次需网络并下载运行时、数据与依赖，准备条件及可选安装见部署说明。[OpenMC公开接口覆盖清单](docs/index.html#api-coverage)按九个官方模块列出具体接口、工具落点和范围。计算和产物默认在本包 `workspace/`，路径属于服务器。
 
 `./scripts/test-mcp.sh` 自启临时服务，核对版本和完整工具定义后自动停止；带测试命令的用法见[部署手册的测试入口](docs/deployment.html#test-session)。`./verify.sh --tools-only` 通过该入口做工具工程检查；`./package.sh` 生成 `dist/` 压缩包与对应版本清单/摘要，`./scripts/verify-package.sh <压缩包路径>` 校验这份交付物；`./cleanup.sh` 默认只预览。工程检查、归档校验、分发和维护各有用途，具体步骤在手册对应章节。
 

@@ -26,16 +26,18 @@ def options(style, format, title):
 
 def plot_results(job_id: str, tally_id: int | None = None, score: str | None = None,
                  nuclide: str | None = None, filter_selection: list | None = None,
-                 style: str = 'line', format: str = 'png', title: str | None = None) -> dict:
+                 style: str = 'line', format: str = 'png', title: str | None = None,
+                 _output_dir: Path | None = None) -> dict:
     from openmc_tools import verified_result
     options(style, format, title)
     target, record, point = verified_result(job_id)
+    target = _output_dir if _output_dir is not None else target
     filename = output_name('plot', {'job_id': job_id, 'statepoint': point.name,
                                     'source_sha256': record['output_files'][point.name],
                                     'tally_id': tally_id, 'score': score, 'nuclide': nuclide,
                                     'filter_selection': filter_selection, 'style': style,
                                     'title': title, 'format': format}, format)
-    params = {'statepoint': 'work/' + point.name, 'filename': filename, 'tally_id': tally_id,
+    params = {'statepoint': str(point) if _output_dir is not None else 'work/' + point.name, 'filename': filename, 'tally_id': tally_id,
               'score': score, 'nuclide': nuclide, 'filter_selection': filter_selection,
               'style': style, 'provenance': record['provenance'], 'title': title,
               'max_points': record['runtime'].get('max_plot_points', 20000),
@@ -50,7 +52,7 @@ def plot_results(job_id: str, tally_id: int | None = None, score: str | None = N
 def plot_mesh(job_id: str, tally_id: int | None = None, score: str | None = None,
               energy_bin: int | None = None, level: int | None = None, format: str = 'png',
               title: str | None = None, x_label: str | None = None, y_label: str | None = None,
-              colorbar_label: str | None = None) -> dict:
+              colorbar_label: str | None = None, _output_dir: Path | None = None) -> dict:
     from openmc_tools import verified_result
     options('line', format, title)
     for name, value in (('energy_bin', energy_bin), ('level', level)):
@@ -61,13 +63,16 @@ def plot_mesh(job_id: str, tally_id: int | None = None, score: str | None = None
             raise Error(name + '须为不超过200字的文本或省略')
     target, record, point = verified_result(job_id)
     tally_input = 'work/model.xml' if (target / 'work/model.xml').is_file() else 'work/tallies.xml'
+    if _output_dir is not None:
+        tally_input = str(target / tally_input)
+        target = _output_dir
     filename = output_name('mesh', {'job_id': job_id, 'statepoint': point.name,
                                     'source_sha256': record['output_files'][point.name],
                                     'tallies_xml': tally_input, 'tally_id': tally_id,
                                     'score': score, 'energy_bin': energy_bin, 'level': level,
                                     'title': title, 'x_label': x_label, 'y_label': y_label,
                                     'colorbar_label': colorbar_label, 'format': format}, format)
-    params = {'statepoint': 'work/' + point.name, 'tallies_xml': tally_input, 'filename': filename,
+    params = {'statepoint': str(point) if _output_dir is not None else 'work/' + point.name, 'tallies_xml': tally_input, 'filename': filename,
               'tally_id': tally_id, 'score': score, 'energy_bin': energy_bin, 'level': level,
               'provenance': record['provenance'], 'source_sha256': record['output_files'][point.name],
               'title': title, 'x_label': x_label, 'y_label': y_label,

@@ -11,6 +11,7 @@ from openmc_jobs import cancel as cancel_job, status as job_status
 from openmc_scan import list_parameters, prepare_case, submit_scan, status as scan_status, cancel as cancel_scan
 from openmc_plots import plot_convergence, plot_mesh, plot_results, plot_scan
 from openmc_reports import export_scan
+from result_bundle import generate_result_bundle
 from openmc_artifacts import list_artifacts
 from openmc_knowledge import list_sources, read as read_knowledge
 from openmc_examples import prepare_example
@@ -54,6 +55,17 @@ TOOLS = [
      "inputSchema": schema({"case_id": TEXT}, ["case_id"]), "outputSchema": OUTPUT, "function": get_case},
 ]
 TOOLS += [
+    {"name":"openmc_generate_result_bundle", "description":"只分析成功作业，一次生成同一计分选择的图、完整JSON/CSV、报告、独立绘图脚本和来源/文件SHA256清单。不重新求解，不把大数组交给模型重排。另存新结果包，不覆盖旧报告；默认auto对完整规则网格生成热图，其余选项用series。任意筛选/核素可用series；3D层与能量箱须明确。原单项工具/原始StatePoint/脚本保持可用，适合复杂自定义分析。默认Markdown；PDF/DOC需Office。返回服务器产物路径，下载仍沿现有限额。",
+     "inputSchema":schema({"job_id":TEXT,**RESULT_SELECTION,
+         "tally_id":{"type":"integer","minimum":1,"description":"必需的计分ID，取openmc_read_results的tallies[].id，避免默认选错量。"},
+         "view":{"type":"string","enum":["auto","series","mesh"],"default":"auto","description":"auto完整单网格用mesh，否则series。series保留任意原有filter_selection/nuclide；mesh沿用规则网格工具的二维层限制。"},
+         "level":{"type":"integer","minimum":0,"description":"mesh视图3D网格的零基z层号；不投影。"},
+         "energy_bin":{"type":"integer","minimum":0,"description":"mesh视图的零基能量箱；不自动积分。"},
+         "style":{"type":"string","enum":["line","bar"],"default":"line","description":"series视图线/柱图；mesh用默认值。"},
+         "image_format":{"type":"string","enum":["png","svg"],"default":"png","description":"图像格式，默认png；svg适合后续编辑。"},
+         "report_formats":{"type":"array","minItems":1,"uniqueItems":True,"items":{"type":"string","enum":["markdown","csv","docx","pdf","doc"]},"description":"默认[markdown]；指定所需格式，不额外生成所有格式。"},
+         "title":{"type":"string","maxLength":200}},["job_id","tally_id"]),
+     "outputSchema":OUTPUT,"function":generate_result_bundle,"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
     {"name": "openmc_environment", "description": "检查OpenMC运行时、API与可执行程序版本；安装成功不代表专业计算验收。",
      "inputSchema": schema({}), "outputSchema": OUTPUT, "function": environment},
     {"name": "openmc_create_model", "description": "用公开API创建一个新算例目录。synthetic-mgxs使用合成截面做工程联调；pwr-pin-cell为官方示例，需核数据。不会覆盖已有目录，不是微调模型生成。",

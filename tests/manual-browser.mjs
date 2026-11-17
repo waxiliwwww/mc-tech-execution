@@ -43,6 +43,11 @@ try {
   assert.equal(await skillLink.count(),1);
   assert.ok((await fs.readFile(path.join(root,'skills/openmc-workflows/SKILL.md'),'utf8')).startsWith('---'));
   await shot('11-agent-skill');
+  await page.goto(url('toolkit-usage.html#result-bundle'));await anchor('result-bundle');
+  assert.match(await page.locator('#result-bundle').innerText(),/openmc_generate_result_bundle/);
+  assert.match(await page.locator('#result-bundle').innerText(),/不重新计算/);
+  assert.match(await page.locator('#result-bundle').innerText(),/原单项工具/);
+  await shot('13-result-bundle');
   await page.goto(url('toolkit-usage.html#replot'));await anchor('replot');
   assert.match(await page.locator('#replot').innerText(),/plot_script/);
   assert.match(await page.locator('#replot').innerText(),/--font-size 16/);

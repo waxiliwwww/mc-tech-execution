@@ -1,5 +1,6 @@
 """List local outputs with checksums; registered outputs; MCP transfer lives in file_transfer."""
 import mimetypes
+from pathlib import Path
 
 import openmc_jobs as jobs
 from openmc_runtime import Error, relative, workspace
@@ -22,6 +23,17 @@ def artifact_files(kind: str, identifier: str):
         for suffix in ('png', 'svg', 'json', 'csv', 'py'):
             paths.extend(target.glob(f'{prefix}-*.{suffix}'))
     if kind == 'job':
+        # Only atomically published bundles are artifacts, never pending stages.
+        import json
+        for manifest in target.glob('bundles/bundle-*/manifest.json'):
+            if manifest.is_symlink() or manifest.parent.is_symlink() or (target/'bundles').is_symlink():continue
+            try:data=json.loads(manifest.read_text())
+            except (OSError, ValueError):continue
+            if data.get('state') != 'complete':continue
+            paths.append(manifest)
+            for name in data.get('files', {}):
+                if name != Path(name).name:raise Error('结果包产物路径无效')
+                paths.append(manifest.parent / name)
         for name in record.get('output_files', {}):
             path = target / 'work' / name
             if not path.resolve().is_relative_to((target / 'work').resolve()):raise Error('产物记录路径无效')

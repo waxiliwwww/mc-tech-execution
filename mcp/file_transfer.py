@@ -268,6 +268,11 @@ def _sources(kind,identifier):
         if not path.is_file() or path.is_symlink():continue
         path=path_in_workspace(rel,internal=True)
         expected=record.get('output_files',{}).get(path.relative_to(target/'work').as_posix()) if kind=='job' and path.is_relative_to(target/'work') else None
+        if kind=='job' and path.is_relative_to(target/'bundles') and path.name!='manifest.json':
+            manifest=path.parent/'manifest.json'
+            try:expected=json.loads(manifest.read_text())['files'][path.name]['sha256']
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                raise Error('结果包清单缺失或损坏，未准备下载；原始结果不改') from exc
         result[rel]=(path,expected)
     return target,result
 

@@ -45,5 +45,6 @@
 | 计分变更后派生/扫描不得丢计分，拒绝时不得改源输入；发布失败须回滚 | `tests/test_tally_workflow_real.py` + `tests/test_workflow_boundaries.py` |
 | 完成态状态和读结果使用同一StatePoint与k策略，摘要不得隐藏非有限/零标准差告警 | `tests/test_domain_mcp_real.py` + `tests/test_keff_summary_fallback.py` |
 | 科研图的数据、坐标和误差不得被样式更改；下载的JSON/脚本可在包外重画 | `test_plot_reproduction.PlotReproduction` + `test_selected_report_real.SelectedReportReal` + `test_file_transfer_mcp.FileTransferMCP` |
+| 结果包不得重算、覆盖旧报告、丢失计分选择或发布半成品；图/报告/数据与来源一致，原工具继续可用 | `test_result_bundle_real.ResultBundleReal` |
 
 - 2026-11-08稳定化范围以docs/development-plan.html及同一capability-baseline为准：六能力族的合法变化/连续操作不能缩为五条固定例题；合同缺项独立记录。证据复用须核对源码影响、输入/依赖、终态和原始产物；缺证不报完整稳定。收口后集中发布/解压验证，新增功能或重要取舍先确认。
