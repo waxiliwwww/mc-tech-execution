@@ -78,6 +78,10 @@ class RealScanReports(unittest.TestCase):
         original = ET.parse(self.workspace / 'base/materials.xml').getroot()
         self.assertEqual(original.find('material/density').attrib, {'value': '1.0', 'units': 'macro'})
         for row in self.completed['cases']:
+            diff = row['parameter_diff']
+            self.assertTrue(diff['verified'])
+            self.assertEqual({r['name']:r['found'] for r in diff['readback']}, row['parameters'])
+            self.assertTrue(all(r['match'] for r in diff['readback']))
             folder = self.workspace / '.mc-jobs' / row['job_id'] / 'work'
             material = ET.parse(folder / 'materials.xml').getroot().find('material')
             self.assertIsNotNone(material.find('macroscopic'), 'OpenMC XML roundtrip must not erase macro data')
@@ -256,6 +260,42 @@ else:
         self.assertEqual(self.wait(status['active_job_id'], 'job')['state'], 'cancelled')
         self.assertEqual(sum('job_id' in r for r in self.call('openmc_scan_status', {'scan_id': scan})['cases']), 1)
         self.evidence('real-scan-launch-crash-window.json', status)
+
+    def test_scan_rejects_update_that_did_not_reach_disk_before_any_submission(self):
+        # Fault only the updater; real SDK reads the actual unchanged XML, and
+        # the normal scanner/submission lifecycle remains in use.
+        before_jobs = set((self.workspace / '.mc-jobs').iterdir())
+        before_input = (self.workspace / 'base/materials.xml').read_bytes()
+        driver = self.work / 'skipped_update_driver.py'
+        driver.write_text('''import json,os,subprocess,sys,threading
+sys.path.insert(0,sys.argv[1])
+import openmc_scan as scans,openmc_jobs as jobs
+if len(sys.argv)>3:
+    original=scans.api
+    def skip_write(action,*args,**kwargs):
+        if action=='update-parameters':return {'changes':[]}
+        return original(action,*args,**kwargs)
+    scans.api=skip_write
+    scans.run(sys.argv[3])
+else:
+    def spawn(directory,script,identifier):
+        with (directory/'worker.log').open('ab') as log:
+            child=subprocess.Popen([sys.executable,__file__,sys.argv[1],sys.argv[2],identifier],stdout=log,stderr=log,start_new_session=True)
+        jobs.update(directory,worker_pid=child.pid,worker_identity=jobs.identity(child.pid))
+        threading.Thread(target=child.wait,daemon=True).start()
+    jobs.spawn_worker=spawn
+    print(json.dumps(scans.submit_scan('base',{sys.argv[2]:[.7,.9]},stop_on_error=True)))
+''')
+        submitted = subprocess.check_output([sys.executable, str(driver), str(ROOT / 'mcp'), self.density], env=self.env, text=True)
+        scan_id = json.loads(submitted)['scan_id']
+        result = self.wait(scan_id)
+        self.assertEqual(result['state'], 'failed', result)
+        self.assertEqual([r['state'] for r in result['cases']], ['failed', 'not_run'])
+        self.assertIn('读回', result['cases'][0]['error'])
+        self.assertFalse(any(r.get('job_id') for r in result['cases']))
+        self.assertEqual(set((self.workspace / '.mc-jobs').iterdir()), before_jobs)
+        self.assertEqual((self.workspace / 'base/materials.xml').read_bytes(), before_input)
+        self.evidence('real-scan-readback-rejects-skipped-write.json', result)
 
     def test_reports_are_real_formats_and_contain_results(self):
         from pypdf import PdfReader

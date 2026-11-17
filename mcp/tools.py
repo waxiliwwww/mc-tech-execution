@@ -130,7 +130,7 @@ TOOLS += [
                             "threads": {"type": "integer", "minimum": 1, "maximum": 64}, "stop_on_error": {"type": "boolean"},
                             "name": {"type": "string", "minLength": 1, "maxLength": 120, "description": "可选扫描名称；子作业名称为名称[index]，按零基组合编号派生，身份仍为各自job_id。"}}, ['case_dir', 'axes']),
      "outputSchema": OUTPUT, "function": submit_scan, "annotations": WRITE},
-    {"name": "openmc_scan_status", "description": "查询计算参数批次的逐组合状态、作业编号、结果/失败与计数。completed仅表示每个组合完成；partial/failed/cancelled保留，不自动重新提交。",
+    {"name": "openmc_scan_status", "description": "查询计算参数批次的逐组合状态、作业编号、结果/失败与计数；cases[].parameter_diff给出修改后落盘读回，verified只表示请求参数生效，不是物理正确性。旧记录缺此字段时未核实。completed仅表示每个组合完成；partial/failed/cancelled保留，不自动重新提交。",
      "inputSchema": schema({"scan_id": TEXT}, ['scan_id']), "outputSchema": OUTPUT, "function": scan_status},
     {"name": "openmc_cancel_scan", "description": "取消当前扫描计算并阻止后续组合提交；查询终态确认取消完成。",
      "inputSchema": schema({"scan_id": TEXT}, ['scan_id']), "outputSchema": OUTPUT, "function": cancel_scan,

@@ -4,7 +4,7 @@
 
 | 目标 | 工具与交接 | 判断与边界 |
 | --- | --- | --- |
-| 多参数组合 | `openmc_list_parameters` → `openmc_submit_scan` → `openmc_scan_status` → `openmc_plot_scan` / `openmc_export_scan_report` | 使用发现的参数键，确认组合数与资源。逐组合失败也须报告；统计设置对比不作物理趋势判断。 |
+| 多参数组合 | `openmc_list_parameters` → `openmc_submit_scan` → `openmc_scan_status` → `openmc_plot_scan` / `openmc_export_scan_report` | 使用发现的参数键，确认组合数与资源。逐组合检查parameter_diff.verified及落盘值；失败/未运行项须报告。每点核对后才提交，不把请求值当实际值；统计设置对比不作物理趋势判断。 |
 | 官方例题 | `openmc_list_official_examples`（limit=10, summary=true）→ `openmc_get_official_example` → `openmc_prepare_official_example` → `openmc_run_example_step` / `openmc_example_status` → `openmc_read_example_results` | 按描述返回的实际步骤顺序与前置条件执行；included不等于已验证。保留example实例、步骤与job编号的区别。内部work目录不直接当普通业务模型改参入口。 |
 | STEP几何 | `openmc_inspect_step` → `openmc_convert_cad` → `openmc_build_dagmc_model` → 普通预览/校核/计算 | 用户明确材料标签/组成/密度、尺寸单位与缩放、源/边界。CAD形状不足以确定物理模型，先核对部署的CAD环境；不能把简单STEP工程测试称为复杂组件验证。 |
 | 燃耗 | `openmc_configure_depletion` → `openmc_submit_job(mode="deplete")` → `openmc_read_depletion` | 先核对链文件、可燃耗材料体积、功率、时间步和单位；不要根据名称猜体积，也不把不同时间步的k混为同一结果。 |
