@@ -24,6 +24,6 @@
 
 异机文件交接见 [使用手册](docs/toolkit-usage.html#file-transfer)：MCP函数上传、有限预览和分块下载，默认完整文件5 MiB可配；`examples/transfer_files.py` 在宿主直接读写字节，不通过模型复述文件。
 
-通过智能体使用时，只需连接MCP；服务在instructions直接提供Skill中的核心工作流，完整章节通过 `openmc_get_workflow` 按需读取，任务指引与随包 [openmc-workflows Skill](skills/openmc-workflows/SKILL.md)同源。[使用方法与可选本地安装](docs/deployment.html#agent-skill)见部署页。宿主自动采纳需现场验证；本轮未启用官方Skills扩展或修改宿主/模型配置。
+通过智能体使用时，只需连接MCP；服务在instructions直接提供Skill中的核心工作流，完整章节通过 `openmc_get_workflow` 按需读取，任务指引与随包 [openmc-workflows Skill](skills/openmc-workflows/SKILL.md)同源。[使用方法与可选本地安装](docs/deployment.html#agent-skill)见部署页。核心指引按改参、扫描、绘图/报告等用户目标优先路由已有MCP能力，无需点名MCP；自然语言触发排查见部署页。宿主自动采纳需现场验证；本轮未启用官方Skills扩展或修改宿主/模型配置。
 
 绘图统一采用科研样式，图旁提供完整JSON/CSV和独立Python复现脚本；无需重新计算即可调整字号、标签、尺寸并导出PNG/SVG。模板选择、取回与重画见[使用手册](docs/toolkit-usage.html#replot)。
