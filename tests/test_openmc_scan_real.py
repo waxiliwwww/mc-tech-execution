@@ -195,11 +195,20 @@ class RealScanReports(unittest.TestCase):
         self.call('openmc_prepare_case', {'case_dir': 'base', 'target_dir': 'interruption', 'parameters': {'settings.particles': 3000000, 'settings.batches': 100}})
         scan = self.call('openmc_submit_scan', {'case_dir': 'interruption', 'axes': {self.density: [.7, .9]}})['scan_id']
         record_path = self.workspace / '.mc-scans' / scan / 'job.json'
-        for _ in range(100):
+        # active_job_id is reserved before submit creates the child record.
+        # This scenario kills a monitor with an actually running child; the
+        # adjacent crash-window test covers interruption during submission.
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline:
             record = json.loads(record_path.read_text())
-            if record.get('active_job_id'):break
+            child_id = record.get('active_job_id')
+            child_record = self.workspace / '.mc-jobs' / (child_id or '') / 'job.json'
+            if child_id and child_record.is_file():
+                child = self.call('openmc_job_status', {'job_id': child_id})
+                if child['state'] == 'running':break
             time.sleep(.05)
-        self.assertTrue(record.get('active_job_id'))
+        else:
+            self.fail('Monitor interruption requires a running child, got: ' + json.dumps(record))
         os.kill(record['worker_pid'], signal.SIGKILL)
         time.sleep(.1)
         status = self.call('openmc_scan_status', {'scan_id': scan})
