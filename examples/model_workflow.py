@@ -2,7 +2,7 @@
 """Run your declarative model or imported XML through the same CLI/MCP tools.
 
 No provider/model is called. --spec accepts user data rather than an example ID.
-See docs/domain-workflows.html for units, model scope and expected outputs.
+See docs/toolkit-usage.html for units, model scope and expected outputs.
 """
 import argparse
 import asyncio

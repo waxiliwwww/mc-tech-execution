@@ -48,6 +48,35 @@ def copy_inputs(source: Path, target: Path):
     shutil.copytree(source, target, ignore=lambda _d, names: [n for n in names if jobs.is_old_output(n)])
 
 
+def apply_and_verify_parameters(case: Path, parameters: dict, runtime: dict | None = None) -> dict:
+    """One readback gate for explicit derivation and each scan point.
+
+    The update response is not evidence that requested values reached disk.
+    Query the public parameter adapter again before publication/submission.
+    """
+    result = api('update-parameters', case, {'parameters': parameters}, runtime)
+    found = {item['name']: item.get('current')
+             for item in api('parameters', case, {}, runtime).get('parameters', [])}
+    changes = result.get('changes', [])
+    readback = []
+    for name, expected in parameters.items():
+        actual = found.get(name)
+        if (isinstance(expected, (int, float)) and not isinstance(expected, bool)
+                and isinstance(actual, (int, float)) and not isinstance(actual, bool)):
+            match = math.isclose(float(actual), float(expected), rel_tol=1e-12, abs_tol=1e-15)
+        else:
+            match = actual == expected
+        readback.append({'name': name, 'expected': expected, 'found': actual, 'match': bool(match)})
+    verified = all(item['match'] for item in readback)
+    if not verified:
+        raise Error('修改后读回不一致；未发布派生副本或提交扫描子作业：' + json.dumps(readback, ensure_ascii=False))
+    result['parameter_diff'] = {
+        'changes': changes, 'readback': readback, 'verified': True,
+        'note': 'changes为应用时刻前后值；readback逐项核对请求值与重新读取的落盘值。'
+                '不一致或读取失败时不发布派生副本或提交扫描子作业；通过不表示专业正确性。'}
+    return result
+
+
 def prepare_case(case_dir: str, target_dir: str, parameters: dict) -> dict:
     import tempfile
     from openmc_import import publish_directory
@@ -64,26 +93,7 @@ def prepare_case(case_dir: str, target_dir: str, parameters: dict) -> dict:
     temporary = holder / 'model'
     try:
         copy_inputs(source, temporary)
-        result = api('update-parameters', temporary, {'parameters': parameters})
-        found = {item['name']: item.get('current')
-                 for item in api('parameters', temporary, {}).get('parameters', [])}
-        changes = result.get('changes', [])
-        readback = []
-        for name, expected in parameters.items():
-            actual = found.get(name)
-            if (isinstance(expected, (int, float)) and not isinstance(expected, bool)
-                    and isinstance(actual, (int, float)) and not isinstance(actual, bool)):
-                match = math.isclose(float(actual), float(expected), rel_tol=1e-12, abs_tol=1e-15)
-            else:
-                match = actual == expected
-            readback.append({'name': name, 'expected': expected, 'found': actual, 'match': bool(match)})
-        verified = all(item['match'] for item in readback)
-        if not verified:
-            raise Error('修改后读回不一致，未发布目标副本：' + json.dumps(readback, ensure_ascii=False))
-        result['parameter_diff'] = {
-            'changes': changes, 'readback': readback, 'verified': True,
-            'note': 'changes为应用时刻前后值；readback逐项核对请求值与重新读取的落盘值。'
-                    '不一致或读取失败时不发布目标副本；通过不表示专业正确性。'}
+        result = apply_and_verify_parameters(temporary, parameters)
         source_info = provenance(temporary)
         publish_directory(temporary, target)
         return {'case_dir': target_dir, **result, 'provenance': source_info}
@@ -237,13 +247,14 @@ def run(scan_id):
             try:
                 case = target / 'cases' / str(index); case.parent.mkdir(exist_ok=True)
                 copy_inputs(target / 'baseline', case)
-                api('update-parameters', case, {'parameters': item['parameters']}, record['runtime'])
+                applied = apply_and_verify_parameters(case, item['parameters'], record['runtime'])
                 # Serialise cancellation with submission and recording the new calculation ID.
                 with (target / 'record.lock').open('a') as lock:
                     fcntl.flock(lock, fcntl.LOCK_EX); latest = jobs.read(target)
                     if stopped or latest.get('cancel_requested'):break
                     child_id = uuid.uuid4().hex
-                    latest['cases'][index].update(state='preparing', job_id=child_id)
+                    latest['cases'][index].update(state='preparing', job_id=child_id,
+                        parameter_diff={k:v for k,v in applied['parameter_diff'].items() if k != 'note'})
                     latest['active_job_id'] = child_id
                     atomic_json(target / 'job.json', latest)
                     child = jobs.submit(relative(case), threads=record['threads'], _runtime=record['runtime'], _internal=True, _job_id=child_id,

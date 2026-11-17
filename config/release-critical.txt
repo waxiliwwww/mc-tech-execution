@@ -79,3 +79,6 @@ test_plot_reproduction.PlotReproduction
 # Task-level composition must preserve selection, reports, native mapping and download/replay
 test_result_bundle_real.ResultBundleReal
 test_mesh_bin_selection_real.MeshBinSelectionReal
+
+# Scans must verify actual parameter readback before reserving/submitting any child.
+test_openmc_scan_real.RealScanReports.test_scan_rejects_update_that_did_not_reach_disk_before_any_submission

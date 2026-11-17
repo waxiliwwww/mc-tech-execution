@@ -69,7 +69,7 @@
         "openmc_plot_scan"
       ],
       "input": "已发现参数的笛卡尔组合",
-      "output": "逐组合作业、状态、结果与曲线",
+      "output": "逐组合参数差异/落盘读回、作业、状态、结果与曲线；旧记录缺读回字段不冒充已验证",
       "evidence": [
         "tests/test_openmc_scan_real.py",
         "tests/test_tool_contracts.py"
