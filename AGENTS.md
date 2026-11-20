@@ -33,6 +33,7 @@
 
 | 规则 | 由什么拦住 |
 |---|---|
+| 可选执行说明须核对当前条件与复制快照，过期不得启动；原提交兼容，回执不冒充人工同意 | `tests/test_execution_preview.py` + `tests/test_execution_preview_real.py` |
 | 关键测试须有真实执行记录与成功终态，名字出现在正文不算执行 | `tests/test_release_evidence_gate.py` + `scripts/check-release-evidence.py` |
 | 选择参数须适用，已发现error不得在提交/扫描/修复重算消失，正常日志不得误报 | `tests/test_mesh_selection.py` + `tests/test_semantic_submission.py` + `tests/test_submission_semantic_real.py` + `tests/test_diagnostic_attribution.py` |
 | 复测不复用旧服务；版本/完整工具定义不符不得执行；正常/失败/超时/中断清理自有进程 | `scripts/test-mcp.sh` → `scripts/mcp_test_session.py` + `tests/test_mcp_test_session.py`；真实MCP会话复用check_discovery |

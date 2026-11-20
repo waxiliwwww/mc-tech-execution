@@ -192,7 +192,7 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
            _internal: bool = False, _job_id: str | None = None, _expected_inputs: dict | None = None,
            _example_workflow: dict | None = None, _preserve_outputs: bool = False,
            name: str | None = None, _input_integrity: dict | None = None,
-           _example_case_dir: str | None = None) -> dict:
+           _example_case_dir: str | None = None, _expected_execution: dict | None = None) -> dict:
     name = checked_name(name)
     if not sys.platform.startswith('linux'):
         raise Error('本地持久作业目前支持Linux/WSL；其他系统请在Linux服务器部署MCP')
@@ -244,7 +244,8 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
                     lambda _directory, names: [n for n in names if skip_output(n)])
     input_files = {str(p.relative_to(copied)): file_hash(p) for p in copied.rglob('*') if p.is_file()}
     if _expected_inputs is not None and input_files != _expected_inputs:
-        raise Error('输入在校核与快照之间发生变化，未启动计算；保留未完成目录供核对')
+        if _expected_execution is not None:shutil.rmtree(directory)
+        raise Error('输入在校核与快照之间发生变化，未启动计算；请重新预览并核对')
     if _example_workflow is None:
         # Check the actual immutable submission copy, not just the caller's
         # earlier validation. This covers direct, scan-child and repair reruns.
@@ -263,6 +264,16 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
     if _example_workflow is None:
         from openmc_model_context import comparison_context
         record['model_context'] = comparison_context(copied,cfg,input_files)
+        from openmc_execution import preview_id,receipt
+        context=record['model_context']
+        if _expected_execution is not None:
+            # checked is the wrapper status, not part of model_context's identity.
+            actual={k:v for k,v in context.items() if k!='checked'}
+            if not context.get('checked') or preview_id(actual,copied,relative(source),mode,threads)!=_expected_execution['preview_id']:
+                shutil.rmtree(directory)
+                raise Error('快照或外部执行条件已改变，未启动；请重新预览并核对')
+        record['execution_receipt']=receipt(context,relative(source),mode,threads,_expected_execution)
+
     if _example_workflow is not None:
         record['example_workflow'] = _example_workflow
     if _example_case_dir is not None:
@@ -274,6 +285,7 @@ def submit(case_dir: str, mode: str = 'run', threads: int = 1, _runtime: dict | 
     spawn_worker(directory, 'openmc_jobs.py', job_id)
     return {'job_id': job_id, 'name': name, 'state': read(directory)['state'],
             'case_dir': record['case_dir'], 'work_dir': relative(copied),
+            **({'execution_receipt':record['execution_receipt']} if 'execution_receipt' in record else {}),
             'provenance': record['provenance'], 'next': '使用openmc_job_status查询，提交不等于计算完成。'}
 
 
@@ -494,7 +506,7 @@ def status(job_id: str) -> dict:
     result = {key: value[key] for key in ('job_id', 'name', 'state', 'mode', 'case_dir', 'work_dir', 'submitted_at',
               'started_at', 'finished_at', 'exit_code', 'error', 'provenance', 'log_truncated',
               'process_cleanup', 'cancel_requested', 'input_integrity', 'step_input_dir',
-              'backend', 'cluster_job_id', 'slurm_submission_id', 'remote_runtime', 'path_changes') if key in value}
+              'backend', 'cluster_job_id', 'slurm_submission_id', 'remote_runtime', 'path_changes','execution_receipt') if key in value}
     result['log_tail'] = tail
     result['progress'] = _progress(directory, value)
     result['input_files'] = sorted(value.get('input_files', {}))

@@ -293,11 +293,19 @@ def execute(action: str, params: dict) -> dict:
         if action == 'render-report':return render_docx(params)
         with openmc.StatePoint(params['statepoint'], autolink=False) as point:
             return selected_series(point, params)
-    if action in ('parameters', 'check-parameters', 'update-parameters'):
+    if action in ('parameters', 'execution-summary', 'check-parameters', 'update-parameters'):
         from openmc_parameters import apply, checked, describe, load_model, write_parameters
         from openmc_model_spec import checked_declarative_spec, mapped_declarative_spec
-        baseline=checked_declarative_spec() if action != 'parameters' else None
+        baseline=checked_declarative_spec() if action not in ('parameters','execution-summary') else None
         model = load_model()
+        if action == 'execution-summary':
+            from openmc_scientific_checks import safe_assess,advisories_warnings
+            science=safe_assess(model)
+            return {'parameters':describe(model),'settings':{key:getattr(model.settings,key) for key in
+                    ('run_mode','energy_mode','particles','batches','inactive','generations_per_batch','seed')},
+                    'tallies':[{'id':t.id,'name':t.name,'scores':t.scores,'nuclides':t.nuclides,
+                                'filters':[filter_summary(f) for f in t.filters]} for t in list(model.tallies or [])[:20]],
+                    'tallies_truncated':len(model.tallies or [])>20,'warnings':advisories_warnings(science)}
         if action == 'parameters':
             return {'parameters': describe(model), 'note': '仅列当前适配器支持的公开属性；sum密度及未适配表面不提供修改入口。'}
         if action == 'check-parameters':

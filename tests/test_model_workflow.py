@@ -26,7 +26,7 @@ class WorkflowReceipts(unittest.TestCase):
                     'openmc_inspect_model':{'ready':fail!='missing_dependency','problems':[{'reference':'missing.h5'}] if fail=='missing_dependency' else []},
                     'openmc_import_model':{'case_dir':'cases/example','server_path':'/server/workspace/cases/example'},
                     'openmc_list_parameters':{'parameters':[]},
-                    'openmc_preview_input':{'manifest_complete':True,'input_hashes':{'geometry.xml':'abc'},'files':[{'name':'geometry.xml','present':True,'sha256':'abc'}]},
+                    'openmc_preview_input':{'execution_preview':{'preview_id':'b'*64},'manifest_complete':True,'input_hashes':{'geometry.xml':'abc'},'files':[{'name':'geometry.xml','present':True,'sha256':'abc'}]},
                     'openmc_validate_inputs':{'structure_valid':True,'semantic':{'ok':True}},
                     'openmc_submit_job':{'job_id':'a'*32,'state':'queued'},
                     'openmc_read_results':{'keff':{'mean':1.1,'std_dev':0.01},'tallies':[{'id':1,'scores':['flux']}]},
@@ -98,7 +98,7 @@ class WorkflowReceipts(unittest.TestCase):
 
     def test_success_preserves_human_and_json_output(self):
         code,out,err=self.invoke();self.assertEqual(code,0,err);self.assertIn('模型工作流完成',out)
-        self.assertIn('/report.md',out);self.assertEqual(json.loads(self.path.read_text())['state'],'completed')
+        self.assertIn('/report.md',out);self.assertEqual(next(args for name,args in self.calls if name=='openmc_submit_job')['preview_id'],'b'*64);self.assertEqual(json.loads(self.path.read_text())['state'],'completed')
         code,out,err=self.invoke(machine=True);self.assertEqual(code,0,err)
         self.assertEqual(json.loads(out)['runs'][0]['job']['job_id'],'a'*32)
 

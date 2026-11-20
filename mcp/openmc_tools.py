@@ -492,7 +492,7 @@ def _preview_summary(roots: dict) -> dict:
     return summary
 
 
-def preview_input(case_dir: str, include_content: bool = False) -> dict:
+def preview_input(case_dir: str, include_content: bool = False, mode: str | None = None, threads: int = 1) -> dict:
     """提交前看清输入：逐文件截断预览、指纹与结构摘要；只读，不作物理判定。"""
     directory = path_in_workspace(case_dir)
     if not directory.is_dir():
@@ -556,13 +556,20 @@ def preview_input(case_dir: str, include_content: bool = False) -> dict:
                 except ET.ParseError as exc:
                     entry['parse_error'] = str(exc)[:200]
         files.append(entry)
-    return {'case_dir': case_dir, 'files': files, 'summary': _preview_summary(roots),
+    result = {'case_dir': case_dir, 'files': files, 'summary': _preview_summary(roots),
             'problems': problems, 'manifest_complete': not problems,
             'input_hashes': {item['name']: item['sha256'] for item in files if item.get('sha256')},
             'manifest_policy': 'ordinary_job_snapshot', 'provenance': provenance(directory),
             'professional_acceptance': False, 'workspace': str(workspace()), 'location': 'server',
             'note': '列出普通作业将复制的算例文件及指纹（不包含外部部署核数据库）；文本截断预览，大文件/资源只列指纹。'
                     '应将完整input_hashes与提交快照双向比较，不只是检查预览中已有的子集；不代表几何、核数据或物理正确。'}
+
+    if mode is not None:
+        if problems:raise Error('输入清单不完整，不能生成执行说明；先修正problems')
+        from openmc_execution import describe
+        result['execution_preview']=describe(directory,config(),result['input_hashes'],mode,threads)
+    elif threads!=1:raise Error('指定执行线程数时请同时传mode=run，启用执行说明')
+    return result
 
 
 GEOMETRY_CHECK_MAX_BATCHES = 2
@@ -833,7 +840,14 @@ def require_semantic_submission(semantic: dict) -> None:
         raise Error('输入语义检查失败，未启动作业：' + details + '；先修正输入并调用openmc_validate_inputs复核')
 
 
-def submit_job(case_dir: str, mode: str = 'run', threads: int = 1, name: str | None = None) -> dict:
+def submit_job(case_dir: str, mode: str = 'run', threads: int = 1, name: str | None = None, preview_id: str | None = None) -> dict:
+    expected=None
+    cfg=config()
+    if preview_id is not None:
+        if not isinstance(preview_id,str) or not re.fullmatch('[a-f0-9]{64}',preview_id):raise Error('preview_id须为执行说明返回的64位编号')
+        prepared=preview_input(case_dir,mode=mode,threads=threads)
+        expected=prepared['execution_preview']
+        if expected['preview_id']!=preview_id:raise Error('执行说明已过期或条件不同，未提交；请重新预览并核对，不自动沿用新参数')
     validation = validate_inputs(case_dir, semantic_check=True)
     if not validation['structure_valid']:
         raise Error('输入结构检查失败：' + '; '.join(validation['problems']))
@@ -843,7 +857,8 @@ def submit_job(case_dir: str, mode: str = 'run', threads: int = 1, name: str | N
         raise Error('OpenMC可执行程序不可用或版本不符；先调用openmc_environment并按部署文档修正')
     from openmc_model_spec import declarative_integrity
     integrity = declarative_integrity(path_in_workspace(case_dir))
-    submitted = jobs.submit(case_dir, mode, threads, name=name, _input_integrity=integrity)
+    submitted = jobs.submit(case_dir, mode, threads, name=name, _input_integrity=integrity,
+                            **({'_runtime':cfg,'_expected_inputs':prepared['input_hashes'],'_expected_execution':expected} if expected else {}))
     if integrity is not None:
         submitted['input_integrity'] = integrity
     return submitted

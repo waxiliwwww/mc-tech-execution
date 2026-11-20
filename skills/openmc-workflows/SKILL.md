@@ -21,6 +21,7 @@ metadata:
 - 先用openmc_environment核对服务、引擎、工作区及漂移状态。客户端路径不是服务端路径；异机文件先上传，原生XML及相对依赖到位后再导入。
 - 修改前用openmc_list_parameters发现实际参数键、单位和范围。密度10.5必须明确材料与单位；macro是宏观截面倍率，不是g/cm³。用户提供几何、材料、源、统计及计分条件，未知条件先问，不从例题猜。
 - 单次改参派生新目录核对读回；多组参数可直接submit_scan并逐项核对parameter_diff，无需宿主逐点改XML；新增计分需要新计算。提交前预览输入及哈希，结构/API/语义校核有错误先处理；未做的检查如实说明。
+- 单次run可在改参/计分最终确定后调用openmc_preview_input(mode="run",threads=实际线程)；用execution_preview.human_summary和实际settings/tallies/核数据说明将怎样执行，必要时按用户反馈修改。已明确授权计算且条件无歧义时，不新增逐次确认；缺条件或有冲突先问。提交传相同目录/mode/threads及preview_id，过期拒绝后先查变化、重新核对，不静默沿用新条件。用job_status.execution_receipt和input_hashes回查。编号不证明人已阅读或同意，不能声称宿主必然显示；原提交入口继续可用。
 - 提交取得job_id后查询终态，提交不等于完成。已知作业与计分的常见交付优先用openmc_generate_result_bundle；图、数据与报告使用同一作业和计分选择，保留标准差、来源、截断与低统计告警；不将工程跑通当物理准确。
 - 交付图、JSON/CSV及复现脚本的清单和实际位置；远程未下载时说明是服务器路径。结果未知先查询，避免重复提交；修复展示diff并取得用户确认后才应用。
 

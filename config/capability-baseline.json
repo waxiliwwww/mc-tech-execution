@@ -309,6 +309,22 @@
         "tests/test_native_model_journey_real.py"
       ],
       "gate": "real_openmc"
+    },
+    {
+      "id": "optional_execution_binding",
+      "status": "supported",
+      "surface": [
+        "openmc_preview_input",
+        "openmc_submit_job",
+        "openmc_job_status"
+      ],
+      "input": "单次run可选mode/threads执行说明及preview_id；原预览与原提交继续兼容",
+      "output": "实际设置/计分/改参读回和核数据摘要；过期拒绝；快照核对与execution_receipt，不冒充用户同意",
+      "evidence": [
+        "tests/test_execution_preview.py",
+        "tests/test_execution_preview_real.py"
+      ],
+      "gate": "offline_and_real"
     }
   ],
   "restrictions": [

@@ -566,10 +566,11 @@
 <p class="source">函数：<a href="../mcp/openmc_tools.py">mcp/openmc_tools.py</a>。</p></details>
 <details class="tool" id="openmc_submit_job"><summary>openmc_submit_job
 <span class="tool-purpose">快照输入后提交本地OpenMC计算/绘图/几何调试，立即返回作业编号；随后查询终态与产物。geometry-debug按原particles/batches完整运行并增加重叠检查开销，不是轻量检查；轻量探测用openmc_validate_inputs(geometry_check=true)。plot需要已有绘图定义，缺失时提交前提示，查看几何可用openmc_view_geometry。声明式模型会在input_integrity中报告mc-case指纹是否与当前XML/spec一致；不一致只提示、不自动拦截。Linux/WSL运行，不代表提交即完成。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>mode</td><td>string</td><td>否</td><td>&quot;run&quot;</td><td>run执行计算；plot调用OpenMC几何绘图；geometry-debug执行几何调试。只有成功计算产物可用于读取计分结果。省略时run。</td><td>—</td></tr><tr><td>threads</td><td>integer</td><td>否</td><td>1</td><td>每个本地OpenMC计算使用的线程数；受当前Schema范围约束，不表示同时运行多少计算。省略时使用函数默认值。</td><td>—</td></tr><tr><td>name</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选用户任务名，最多120字符，拒绝控制符；名称可重复，身份仍为job_id，可用openmc_list_jobs按精确名称查询。</td><td>—</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>preview_id</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选执行说明编号，取自preview_input(mode=run,threads=本次线程数)；提供则核对输入/依赖/配置与资源，过期停止；不是用户同意凭证。省略保持原提交方式，回执明示未绑定。</td><td>—</td></tr><tr><td>mode</td><td>string</td><td>否</td><td>&quot;run&quot;</td><td>run执行计算；plot调用OpenMC几何绘图；geometry-debug执行几何调试。只有成功计算产物可用于读取计分结果。省略时run。</td><td>—</td></tr><tr><td>threads</td><td>integer</td><td>否</td><td>1</td><td>每个本地OpenMC计算使用的线程数；受当前Schema范围约束，不表示同时运行多少计算。省略时使用函数默认值。</td><td>—</td></tr><tr><td>name</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选用户任务名，最多120字符，拒绝控制符；名称可重复，身份仍为job_id，可用openmc_list_jobs按精确名称查询。</td><td>—</td></tr></tbody></table></div>
 <h3>返回怎么看</h3><p>job_id用于继续查询；初始state只表示请求受理，不能直接读取尚未完成的结果。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>job_id</td><td>计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。</td></tr><tr><td>state</td><td>操作或计算的当前状态；提交受理、计算完成与专业结果正确分别判断。</td></tr><tr><td>provenance</td><td>数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
+<div class="table-wrap"><table><thead><tr><th>判读字段</th><th>含义与继续条件</th></tr></thead><tbody><tr><td>preview_id / execution_receipt</td><td>可选传预览编号，须同case_dir/mode/threads。输入、运行配置或外部数据身份变化则拒绝；提交快照再次核对。回执preview_bound/binding_verified说明绑定范围，不提供编号仍兼容，不能声称核对过先前预览。</td></tr></tbody></table></div>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
@@ -581,6 +582,11 @@
       &quot;examples&quot;: [
         &quot;cases/my-case&quot;
       ]
+    },
+    &quot;preview_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;pattern&quot;: &quot;^[a-f0-9]{64}$&quot;,
+      &quot;description&quot;: &quot;可选执行说明编号，取自preview_input(mode=run,threads=本次线程数)；提供则核对输入/依赖/配置与资源，过期停止；不是用户同意凭证。省略保持原提交方式，回执明示未绑定。&quot;
     },
     &quot;mode&quot;: {
       &quot;type&quot;: &quot;string&quot;,
@@ -637,6 +643,7 @@
 <h3>返回怎么看</h3><p>state为实际当前状态，error/log_tail等用于诊断；failed/cancelled/interrupted均不算完成结果。progress节按日志尾部解析最新批次/k/平均k、Combined k、RESULTS的Collision/Track-length/Absorption估计、总批数与elapsed_seconds；Combined失效时摘要按Absorption→Collision→Track-length→批次Average回退并标keff_source；仅本征值批次表可解析，解析不到时如实说明，不替代read_results统计量。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>job_id</td><td>计算编号；将实际返回值传给状态、结果、图表、报告或产物接口。</td></tr><tr><td>state</td><td>操作或计算的当前状态；提交受理、计算完成与专业结果正确分别判断。</td></tr><tr><td>provenance</td><td>数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。</td></tr><tr><td>progress</td><td>日志解析的末批/代、最近k、平均k、Combined k与提示；熵列可缺失，不替代StatePoint结果。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
+<div class="table-wrap"><table><thead><tr><th>判读字段</th><th>含义与继续条件</th></tr></thead><tbody><tr><td>execution_receipt</td><td>单次普通作业保存的提交条件；核对preview_id、settings、tallies与input_hashes。仅绑定本次条件，不代表宿主展示、用户同意或专业正确；不锁定外部核数据库。</td></tr></tbody></table></div>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
@@ -3067,10 +3074,11 @@
 <p class="source">函数：<a href="../mcp/openmc_tools.py">mcp/openmc_tools.py</a>。</p></details>
 <details class="tool" id="openmc_preview_input"><summary>openmc_preview_input
 <span class="tool-purpose">提交前查看普通作业将复制的完整输入清单（XML、mc-case.json和相对资源），返回大小、SHA256及有限文本预览。大文件/二进制只列指纹；manifest_complete和problems说明清单是否完整，input_hashes用于与提交快照作完整比较。只读，拒绝符号链接；清单不含外部部署核数据库，也不证明物理正确。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>include_content</td><td>boolean</td><td>否</td><td>false</td><td>默认false：只预览有限XML正文，总共最多8000字符、每文件最多2000字符，源码/JSON/schema只列哈希。true按需返回文本预览，每文件最多20000字符；超2MiB仍只列哈希。</td><td>—</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>算例目录，相对服务端MC_WORKSPACE（默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。</td><td>&quot;cases/my-case&quot;</td></tr><tr><td>mode</td><td>string</td><td>否</td><td>省略时见说明</td><td>显式传run生成本次单次计算的execution_preview，读取实际设置、改参记录与校核摘要；省略仅原清单预览，不生成说明编号。</td><td>—</td></tr><tr><td>threads</td><td>integer</td><td>否</td><td>1</td><td>mode=run时预计使用的线程数，默认1；绑定提交须传相同值。不是预计运行时长。</td><td>—</td></tr><tr><td>include_content</td><td>boolean</td><td>否</td><td>false</td><td>默认false：只预览有限XML正文，总共最多8000字符、每文件最多2000字符，源码/JSON/schema只列哈希。true按需返回文本预览，每文件最多20000字符；超2MiB仍只列哈希。</td><td>—</td></tr></tbody></table></div>
 <h3>返回怎么看</h3><p>files逐项含present/bytes/sha256；默认XML每文件预览最多2000字符、总共8000字符，源码/JSON只列指纹；include_content=true按需预览文本，每文件最多2万字符，超2MiB仍不返回正文；summary为运行设置、材料核素、几何与tally计数摘要；problems列缺失文件与被拒符号链接。预览不代表输入正确。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>case_dir</td><td>输入目录，相对服务端MC_WORKSPACE；生成/修改后用此目录继续校核或计算。</td></tr><tr><td>workspace</td><td>服务端绝对数据根；工作区相对路径以它为基准。</td></tr><tr><td>provenance</td><td>数据/例题及执行来源标识；合成数据和公开例题不表示指定业务验收。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
+<div class="table-wrap"><table><thead><tr><th>判读字段</th><th>含义与继续条件</th></tr></thead><tbody><tr><td>execution_preview (mode=run时)</td><td>尚未提交；读取实际settings、tallies、parameter_changes.current、核数据和检查范围，human_summary供宿主呈现。preview_id仅绑定条件，不证明人已确认；省略mode保持原清单预览。</td></tr></tbody></table></div>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
@@ -3082,6 +3090,20 @@
       &quot;examples&quot;: [
         &quot;cases/my-case&quot;
       ]
+    },
+    &quot;mode&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;run&quot;
+      ],
+      &quot;description&quot;: &quot;显式传run生成本次单次计算的execution_preview，读取实际设置、改参记录与校核摘要；省略仅原清单预览，不生成说明编号。&quot;
+    },
+    &quot;threads&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 1,
+      &quot;maximum&quot;: 64,
+      &quot;description&quot;: &quot;mode=run时预计使用的线程数，默认1；绑定提交须传相同值。不是预计运行时长。&quot;,
+      &quot;default&quot;: 1
     },
     &quot;include_content&quot;: {
       &quot;type&quot;: &quot;boolean&quot;,

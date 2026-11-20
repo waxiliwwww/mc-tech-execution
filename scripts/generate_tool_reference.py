@@ -12,6 +12,15 @@ from tools import TOOLS
 
 
 RETURN_NOTES = {
+    'openmc_preview_input': [
+        ['execution_preview (mode=run时)', '尚未提交；读取实际settings、tallies、parameter_changes.current、核数据和检查范围，human_summary供宿主呈现。preview_id仅绑定条件，不证明人已确认；省略mode保持原清单预览。'],
+    ],
+    'openmc_submit_job': [
+        ['preview_id / execution_receipt', '可选传预览编号，须同case_dir/mode/threads。输入、运行配置或外部数据身份变化则拒绝；提交快照再次核对。回执preview_bound/binding_verified说明绑定范围，不提供编号仍兼容，不能声称核对过先前预览。'],
+    ],
+    'openmc_job_status': [
+        ['execution_receipt', '单次普通作业保存的提交条件；核对preview_id、settings、tallies与input_hashes。仅绑定本次条件，不代表宿主展示、用户同意或专业正确；不锁定外部核数据库。'],
+    ],
     'openmc_read_results': [
         ['tallies[].filter_signatures', '完整分箱身份用于逐bin对比，未将所有边界塞入摘要。null表示实例路径或外部mesh定义不可核实，不代表数值读取失败；此时不宣称两作业同箱。'],
     ],

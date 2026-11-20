@@ -85,3 +85,6 @@ test_openmc_scan_real.RealScanReports.test_scan_rejects_update_that_did_not_reac
 
 # 自有模型依赖绑定、异常批次续算与原生箱比较完整旅程
 test_native_model_journey_real.NativeModelJourney
+
+# Optional execution preview must reject stale conditions before any compute and match the actual snapshot.
+test_execution_preview_real.ExecutionPreviewReal

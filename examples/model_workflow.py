@@ -111,7 +111,7 @@ async def workflow(args):
                 output['current_case_dir']=directory;output.pop('current_job_id',None)
                 run={'case_dir':directory,'state':'preparing','chart':None};output['runs'].append(run)
                 print('2/5 预览、API与语义检查：'+directory,file=sys.stderr)
-                preview=await step('preview','openmc_preview_input',{'case_dir':directory},run,'preview')
+                preview=await step('preview','openmc_preview_input',{'case_dir':directory,'mode':'run','threads':args.threads},run,'preview')
                 expected=verified_preview_hashes(preview)
                 validation=await step('validate','openmc_validate_inputs',{'case_dir':directory,
                     'api_check':True,'semantic_check':True},run,'validation')
@@ -119,7 +119,8 @@ async def workflow(args):
                     raise RuntimeError('输入检查未通过，停止提交：'+json.dumps(validation,ensure_ascii=False))
                 print('3/5 命名提交并等终态（本次调用明确要求执行计算）',file=sys.stderr)
                 name=args.name if index==0 else args.name+' / changed'
-                submitted=await step('submit','openmc_submit_job',{'case_dir':directory,'name':name,'threads':args.threads},run,'submitted')
+                submitted=await step('submit','openmc_submit_job',{'case_dir':directory,'name':name,'threads':args.threads,
+                    'preview_id':preview['execution_preview']['preview_id']},run,'submitted')
                 identifier=submitted['job_id'];output['current_job_id']=identifier
                 run['state']='submitted';output['stage']='wait_compute';save_receipt(args,output)
                 status=await wait_job(call,identifier,args.timeout)
