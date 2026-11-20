@@ -63,6 +63,23 @@ def verify_metadata_inputs(root: Path, record: dict) -> dict:
     return checked
 
 
+def delivery_summary(destination, job_id, selection, normalization, source_hash, filenames, warnings):
+    """Render recorded facts once; do not infer physical causes or host downloads."""
+    score = selection['score']
+    unit = {'flux': 'particle-cm/source（原始通量计分；未除以体积）',
+            'fission': 'reactions/source（每个源粒子的裂变反应计分）'}.get(
+                score, '未在本摘要中定义；按原始计分及专业依据解释，不能从名称猜测')
+    lines = [f"作业 {job_id}：已完成；本结果包未重新求解。",
+             '实际选择：' + json.dumps(selection, ensure_ascii=False, separators=(',', ':')),
+             '原始单位：' + unit, '归一化：' + normalization,
+             '未换算功率或实际源强；不是每秒物理量，未作专业验收。',
+             '来源 StatePoint SHA256：' + source_hash,
+             '以下是MCP服务器完整路径，尚未下载到宿主；宿主异机时须通过文件交接取回：']
+    lines += [label + '：' + str(destination / name) for label, name in filenames]
+    lines += ['注意：' + warning for warning in warnings]
+    return '\n'.join(lines)
+
+
 def generate_result_bundle(job_id: str, tally_id: int, score: str | None = None,
                            nuclide: str | None = None, filter_selection: list | None = None,
                            view: str = 'auto', level: int | None = None,
@@ -149,6 +166,16 @@ def generate_result_bundle(job_id: str, tally_id: int, score: str | None = None,
         verify_metadata_inputs(root,record)
         if latest_point != point or latest['output_files'][latest_point.name] != source_hash:
             raise Error('生成期间原始结果选择改变，未发布结果包')
+        warnings = list(dict.fromkeys(warnings))
+        filenames = [('图', chart['image']),
+                     ('完整JSON', Path(chart.get('values_json') or chart['series_json']).name),
+                     ('完整CSV', Path(chart.get('values_csv') or chart['series_csv']).name),
+                     ('复现脚本', Path(chart['plot_script']).name)]
+        filenames += [('报告(' + r['format'] + ')', r['file']) for r in reports]
+        filenames += [('来源清单', 'manifest.json'), ('交付摘要', 'delivery.md')]
+        summary = delivery_summary(destination, job_id, resolved, series['normalization'],
+                                   source_hash, filenames, warnings)
+        (stage / 'delivery.md').write_text(summary + '\n', encoding='utf-8')
         files = {p.name:{'sha256':jobs.file_hash(p),'bytes':p.stat().st_size}
                  for p in sorted(stage.iterdir()) if p.is_file()}
         request = {'job_id':job_id,**selection,'view':view,'level':level,'energy_bin':energy_bin,
@@ -178,6 +205,7 @@ def generate_result_bundle(job_id: str, tally_id: int, score: str | None = None,
                 'plot_script':relative(destination/Path(chart['plot_script']).name),
                 'reports':[{**r,'path':relative(destination/r['file'])} for r in reports],
                 'manifest':relative(destination/'manifest.json'),'artifacts':artifacts,
+                'delivery_summary':summary,'delivery_file':relative(destination/'delivery.md'),
                 'warnings':manifest['warnings'],
                 'scientific_status':{k:v.get('status','unverified') for k,v in overview.get('scientific_checks',{}).items() if isinstance(v,dict)},
                 'statistical_adequacy':overview.get('statistical_adequacy',{}),'professional_acceptance':False,

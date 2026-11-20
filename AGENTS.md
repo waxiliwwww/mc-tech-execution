@@ -46,6 +46,7 @@
 | 计分变更后派生/扫描不得丢计分，拒绝时不得改源输入；发布失败须回滚 | `tests/test_tally_workflow_real.py` + `tests/test_workflow_boundaries.py` |
 | 完成态状态和读结果使用同一StatePoint与k策略，摘要不得隐藏非有限/零标准差告警 | `tests/test_domain_mcp_real.py` + `tests/test_keff_summary_fallback.py` |
 | 科研图的数据、坐标和误差不得被样式更改；下载的JSON/脚本可在包外重画 | `test_plot_reproduction.PlotReproduction` + `test_selected_report_real.SelectedReportReal` + `test_file_transfer_mcp.FileTransferMCP` |
+| 结果包交付摘要保留完整服务器路径、原始单位和不确定警告，下载与原文一致，不替宿主声称已取回 | 发布关键项`tests/test_result_bundle_real.py` + `tests/test_result_bundle_delivery.py`（既有作业回放及实际MCP下载） |
 | 结果包不得重算、覆盖旧报告、丢失计分选择或发布半成品；图/报告/数据与来源一致，原工具继续可用 | `test_result_bundle_real.ResultBundleReal` |
 | 单次改参与扫描共用落盘读回；更新器未写入不得启动子作业，参数验证不冒充专业正确性 | `test_openmc_scan_real.RealScanReports.test_scan_rejects_update_that_did_not_reach_disk_before_any_submission` + `test_openmc_prepare_diff` |
 

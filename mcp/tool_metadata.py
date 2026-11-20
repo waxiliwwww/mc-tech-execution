@@ -101,7 +101,7 @@ EXAMPLES = {
 }
 
 RESULTS = {
-    'openmc_generate_result_bundle':'state=complete表示整包已原子发布；selection为实际量/过滤选择，source关联原始StatePoint SHA256及记录的输入指纹，checked_metadata_input_hashes列本次核对的XML/标记文件；chart/data_json/data_csv/plot_script/reports/manifest是服务端位置，artifacts给大小与SHA256。未求解或自动下载；原单项工具继续可用。',
+    'openmc_generate_result_bundle':'state=complete表示整包已原子发布；selection为实际量/过滤选择，source关联原始StatePoint SHA256及记录的输入指纹，checked_metadata_input_hashes列本次核对的XML/标记文件；chart/data_json/data_csv/plot_script/reports/manifest是服务端位置，artifacts给大小与SHA256。delivery_summary为工具生成的完整服务器路径、原始单位/归一化与警告摘要，delivery_file为同文delivery.md，优先引用，不缩写路径或臆断零值原因。未求解或自动下载；原单项工具继续可用。',
     'openmc_update_tally':'before/after说明具体计分改动；changed_files列输入修改，declarative_source_synchronized说明声明式源同步；已提交作业快照不变。',
     'openmc_delete_tally':'tally_id为已删除的计分；before保留原定义，其余计分与旧作业快照保留，重新计算才反映删除。',
     'diagnose_log': 'findings含证据行号和规则提示；空列表不表示输入正确。',

@@ -12,6 +12,7 @@ from tools import TOOLS
 
 
 RETURN_NOTES = {
+    'openmc_generate_result_bundle': [['delivery_summary / delivery_file', '工具生成的可引用摘要及同文delivery.md：完整服务器路径、实际选择、原始单位/归一化、来源SHA256与警告。按原MCP文件工具取回；不证明宿主展示、模型引用或用户已下载。']],
     'openmc_preview_input': [
         ['execution_preview (mode=run时)', '尚未提交；读取实际settings、tallies、parameter_changes.current、核数据和检查范围，human_summary供宿主呈现。preview_id仅绑定条件，不证明人已确认；省略mode保持原清单预览。'],
     ],

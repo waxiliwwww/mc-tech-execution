@@ -61,6 +61,8 @@ metadata:
 ## 结果与交付
 
 - 成功作业及计分已明确时，用`openmc_generate_result_bundle(job_id,tally_id,score,...)`生成同源图/完整数据/报告/独立脚本及清单；未知计分先读结果摘要。不要为画图把全量数组搬入模型再自行reshape，沿包内程序保留坐标映射和来源。默认auto对完整规则网格用mesh，其余series；用nuclide/filter_selection、层/能量箱和按需report_formats表达用户选择，不猜条件。检查state=complete、selection/points、source、warnings及产物实际位置；manifest保留完整检查信息，完整不是专业验收。
+- 结果包的`delivery_summary`由工具按实际选择、完整服务器路径、原始单位/归一化及告警直接生成；优先引用，保留路径原文，不把服务器位置称为已下载。`delivery_file`为可取回的同文`delivery.md`。零值原因保持原警告的不确定性，不改成确定归因；该摘要不保证宿主展示或用户已取回文件。
+
 - 结果包另存新目录，未重新求解、未覆盖旧报告或自动下载；按返回paths取回，传输限额不变。若需要任意筛选、单独操作或自定义分析，继续用下面的原单项工具、数据和脚本，不强制走整合入口。
 
 - 需要逐项处理或尚不知道计分时，用 `openmc_read_results(job_id)`发现成功作业已有的计分和维度；它只接收job_id/max_values/detail，不接收计分选择参数。然后把 `tally_id`、`score`、`nuclide`及适用过滤选择传给绘图/报告工具。保留均值、标准差、来源、维度和截断信息；不能用截断预览冒充全量。网格预览非零优先，按preview_indices/preview_points关联箱号和坐标，不把返回数组顺序直接当网格顺序。

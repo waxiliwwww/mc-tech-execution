@@ -41,6 +41,19 @@ class ResultBundleReal(unittest.TestCase):
             self.assertEqual(hashlib.sha256((folder/name).read_bytes()).hexdigest(),entry['sha256'])
         self.assertEqual(bundle['source']['sha256'],hashlib.sha256(next((self.record/'work').glob('statepoint.*.h5')).read_bytes()).hexdigest())
         self.assertFalse(list(self.record.glob('bundles/.pending-*')))
+        # This class is release-critical, so a normal release also guards
+        # delivery facts without requiring a separate historical-job fixture.
+        summary=bundle['delivery_summary']
+        self.assertEqual((folder/'delivery.md').read_text(),summary+'\n')
+        self.assertEqual(self.workspace/bundle['delivery_file'],folder/'delivery.md')
+        for key in ('chart','data_json','data_csv','plot_script','manifest','delivery_file'):
+            self.assertIn(str(self.workspace/bundle[key]),summary)
+        for report in bundle['reports']:self.assertIn(str(self.workspace/report['path']),summary)
+        for warning in bundle['warnings']:self.assertIn(warning,summary)
+        self.assertIn(bundle['source']['sha256'],summary)
+        self.assertIn('尚未下载',summary)
+        if bundle['selection']['score']=='flux':self.assertIn('particle-cm/source',summary)
+        if bundle['selection']['score']=='fission':self.assertIn('reactions/source',summary)
         return folder,manifest
 
     def test_mesh_package_keeps_selection_image_report_and_sources_identical(self):
