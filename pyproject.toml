@@ -14,6 +14,7 @@ requires-python = ">=3.10"
 mc-agent-tools = "mc_agent_tools.launcher:main"
 mc-agent-tools-serve = "mc_agent_tools.launcher:serve"
 mc-agent-tools-stdio = "mc_agent_tools.launcher:stdio"
+mc-agent-tools-transfer = "mc_agent_tools.launcher:transfer"
 
 [tool.setuptools]
 package-dir = { "mc_agent_tools" = "mcp" }
@@ -32,3 +33,6 @@ mc_agent_tools = ["service.config.json", "requirements.txt", "UPSTREAM.json", "R
 [tool.setuptools.data-files]
 "share/mc-agent-tools/skills/openmc-workflows" = ["skills/openmc-workflows/SKILL.md"]
 "share/mc-agent-tools/skills/openmc-workflows/references" = ["skills/openmc-workflows/references/file-transfer.md", "skills/openmc-workflows/references/extended-tasks.md"]
+
+"share/mc-agent-tools" = ["VERSION"]
+"share/mc-agent-tools/config" = ["config/file-transfer-tools.json"]

@@ -23,6 +23,8 @@ jobs:
           python mcp/cli.py list > /tmp/source-tools.json
           mc-agent-tools list > /tmp/tools.json
           python -c "import json;d=json.load(open('/tmp/tools.json'));s=json.load(open('/tmp/source-tools.json'));assert d['tools']==s['tools'],'installed tool schemas differ from source';print('installed/source schemas match:',len(d['tools']))"
+          mc-agent-tools-transfer --help
+          python -c "from mc_agent_tools.host_transfer import client_data; p=client_data(); assert (p/'VERSION').read_text().strip() == open('VERSION').read().strip(); print('installed host transfer version/contract found')"
 
   windows-launcher:
     runs-on: windows-latest

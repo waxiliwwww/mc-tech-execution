@@ -5559,6 +5559,78 @@
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/workflow_guidance.py">mcp/workflow_guidance.py</a>。</p></details>
+<details class="tool" id="openmc_run_case"><summary>openmc_run_case
+<span class="tool-purpose">用户要改参并计算、或向同一原网格追加flux/fission时优先使用：在新副本内改参、保留原网格/过滤/已有score并追加mesh_scores、读回核对、生成最终执行说明；submit=true才按该快照提交run，默认只准备不计算。唯一已有网格可自动定位，多个/没有则needs_selection且不写盘。原模型/旧作业不变。每次target_dir须为新目录，重复已有目标不再提交；回复未知先查询原作业。复杂新网格/非网格/燃耗/扫描继续用原工具。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>case_dir</td><td>string</td><td>是</td><td>不可省略</td><td>已有算例，相对服务器MC_WORKSPACE；原输入不改。</td><td>—</td></tr><tr><td>target_dir</td><td>string</td><td>是</td><td>不可省略</td><td>尚不存在的新副本目录，相对服务器MC_WORKSPACE，须在原算例之外；后续沿返回目录继续。</td><td>—</td></tr><tr><td>parameters</td><td>object</td><td>否</td><td>省略时见说明</td><td>可选，键取list_parameters，保留原单位；不猜材料。</td><td>—</td></tr><tr><td>mesh_scores</td><td>array</td><td>否</td><td>省略时见说明</td><td>给同一已有网格追加这些score，保留原score/过滤；不是全局计分。</td><td>—</td></tr><tr><td>tally_id</td><td>integer</td><td>否</td><td>省略时见说明</td><td>多个网格时须按用户选择指定；只有一个网格可省略，不能指向全局计分。</td><td>—</td></tr><tr><td>submit</td><td>boolean</td><td>否</td><td>false</td><td>用户已明确授权计算且条件确定时true，否则只准备。</td><td>—</td></tr><tr><td>threads</td><td>integer</td><td>否</td><td>1</td><td>本次run的线程数，默认1；不扩大用户资源授权。</td><td>—</td></tr><tr><td>name</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选作业名，供丢回复后list_jobs查找；身份仍为job_id。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>用户要改参并计算、或向同一原网格追加flux/fission时优先使用：在新副本内改参、保留原网格/过滤/已有score并追加mesh_scores、读回核对、生成最终执行说明；submit=true才按该快照提交run，默认只准备不计算。唯一已有网格可自动定位，多个/没有则needs_selection且不写盘。原模型/旧作业不变。每次target_dir须为新目录，重复已有目标不再提交；回复未知先查询原作业。复杂新网格/非网格/燃耗/扫描继续用原工具。</p>
+<details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;case_dir&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;已有算例，相对服务器MC_WORKSPACE；原输入不改。&quot;
+    },
+    &quot;target_dir&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;尚不存在的新副本目录，相对服务器MC_WORKSPACE，须在原算例之外；后续沿返回目录继续。&quot;
+    },
+    &quot;parameters&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;additionalProperties&quot;: {
+        &quot;type&quot;: &quot;number&quot;
+      },
+      &quot;description&quot;: &quot;可选，键取list_parameters，保留原单位；不猜材料。&quot;
+    },
+    &quot;mesh_scores&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;minItems&quot;: 1,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;,
+        &quot;minLength&quot;: 1
+      },
+      &quot;description&quot;: &quot;给同一已有网格追加这些score，保留原score/过滤；不是全局计分。&quot;
+    },
+    &quot;tally_id&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 1,
+      &quot;description&quot;: &quot;多个网格时须按用户选择指定；只有一个网格可省略，不能指向全局计分。&quot;
+    },
+    &quot;submit&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;,
+      &quot;default&quot;: false,
+      &quot;description&quot;: &quot;用户已明确授权计算且条件确定时true，否则只准备。&quot;
+    },
+    &quot;threads&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 1,
+      &quot;maximum&quot;: 64,
+      &quot;description&quot;: &quot;本次run的线程数，默认1；不扩大用户资源授权。&quot;,
+      &quot;default&quot;: 1
+    },
+    &quot;name&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;maxLength&quot;: 120,
+      &quot;description&quot;: &quot;可选作业名，供丢回复后list_jobs查找；身份仍为job_id。&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;case_dir&quot;,
+    &quot;target_dir&quot;
+  ],
+  &quot;additionalProperties&quot;: false
+}
+</code></pre></details>
+<details><summary>输出 Schema</summary><pre><code>
+{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;description&quot;: &quot;用户要改参并计算、或向同一原网格追加flux/fission时优先使用：在新副本内改参、保留原网格/过滤/已有score并追加mesh_scores、读回核对、生成最终执行说明；submit=true才按该快照提交run，默认只准备不计算。唯一已有网格可自动定位，多个/没有则needs_selection且不写盘。原模型/旧作业不变。每次target_dir须为新目录，重复已有目标不再提交；回复未知先查询原作业。复杂新网格/非网格/燃耗/扫描继续用原工具。&quot;
+}
+</code></pre></details>
+<p class="source">函数：<a href="../mcp/agent_run.py">mcp/agent_run.py</a>。</p></details>
 <section id="semantic-submission"><h2>提交与诊断的错误判定</h2><p>普通计算、扫描和修复重算使用相同的静态语义错误判据：已识别的 error 级问题在提交前拒绝，报出 kind、位置和修正方向；扫描子作业的提交副本也会再次检查。warning、科学条件未核实或检查不完整不会自动成为硬拒绝。这不表示已完成物理校核。官方例题的 prepare/data 是类型化程序步骤，不能把它们当作现成的原生模型检查。</p><p>网格图的 energy_bin 仅适用于含 EnergyFilter 的计分，无该过滤器时必须省略；单层网格的 level 仅允许 0 或省略。正常 DAGMC/MOAB 初始化和“无错误”摘要不作为故障证据。具体错误优先于同段泛化症状，其他段的独立故障保留。</p></section>
 <footer>由 scripts/generate_tool_reference.py 从实际注册表生成 · 无需联网或启动服务</footer>
 </main></body></html>

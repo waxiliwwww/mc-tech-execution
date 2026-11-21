@@ -16,6 +16,8 @@ import sys
 import unittest
 import uuid
 import zipfile
+import xml.etree.ElementTree as ET
+from unittest.mock import patch
 
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
@@ -125,9 +127,12 @@ class AgentWorkflowsReal(unittest.IsolatedAsyncioTestCase):
 
     async def test_01_complete_request_changes_density_and_delivers_both_scores(self):
         async with self.session() as call:
-            base,before=await self.base(call);changed=await self.variant(call,base)
-            await call('openmc_update_tally',{'case_dir':changed,'tally_id':1,'scores':['flux','fission']})
-            job,inputs=await self.submit(call,changed);await self.finished(call,job,inputs)
+            base,before=await self.base(call)
+            run=await call('openmc_run_case',{'case_dir':base,'target_dir':self.prefix+'/complete','parameters':{'materials.1.density':10.5},'mesh_scores':['flux','fission'],'submit':True,'name':self.prefix})
+            self.assertTrue(run['mesh_check']['verified']);self.assertTrue(run['parameter_diff']['verified'])
+            job=run['job_id'];inputs=run['input_hashes'];await self.finished(call,job,inputs)
+            material=next(n for n in ET.parse(self.workspace/'.mc-jobs'/job/'work/materials.xml').getroot().iter('material') if n.get('id')=='1')
+            self.assertEqual(float(material.find('density').get('value')),10.5)
             for score in ['flux','fission']:
                 b=await self.bundle(call,job,score);self.verify_download(await host.download(call,self.download_args(b,score+'.zip')),b)
             self.assertEqual(hashes(self.workspace/base),before)
@@ -143,16 +148,57 @@ class AgentWorkflowsReal(unittest.IsolatedAsyncioTestCase):
             # Scripted user chooses material 1; no claim that an LLM asked this.
             await self.variant(call,base);self.assertEqual(self.job_ids(),jobs)
 
-    async def test_03_amendment_rejects_stale_preview_and_executes_latest_tallies(self):
+    async def test_03_amendment_executes_original_grid_not_existing_global(self):
         async with self.session() as call:
-            base,before=await self.base(call);changed=await self.variant(call,base);jobs=self.job_ids()
-            old=await call('openmc_preview_input',{'case_dir':changed,'mode':'run'})
-            self.assertEqual(self.job_ids(),jobs)
-            await call('openmc_update_tally',{'case_dir':changed,'tally_id':1,'scores':['flux','fission']})
-            error=await call('openmc_submit_job',{'case_dir':changed,'preview_id':old['execution_preview']['preview_id']},fail=True)
-            self.assertIn('过期',error);self.assertEqual(self.job_ids(),jobs)
-            job,inputs=await self.submit(call,changed);await self.finished(call,job,inputs)
-            await self.bundle(call,job,'fission');self.assertEqual(hashes(self.workspace/base),before)
+            base,_=await self.base(call)
+            await call('openmc_define_tally',{'case_dir':base,'tally_id':2,'scores':['flux'],'name':'global'})
+            before=hashes(self.workspace/base);jobs=self.job_ids()
+            prepared=await call('openmc_run_case',{'case_dir':base,'target_dir':self.prefix+'/prepared','parameters':{'materials.1.density':10.1},'mesh_scores':['flux']})
+            self.assertFalse(prepared['submitted']);self.assertEqual(self.job_ids(),jobs)
+            kept=hashes(self.workspace/prepared['case_dir'])
+            # User now asks to add fission to that same grid, then authorizes run.
+            args={'case_dir':prepared['case_dir'],'target_dir':self.prefix+'/final','mesh_scores':['fission'],'submit':True,'name':self.prefix}
+            run=await call('openmc_run_case',args);job=run['job_id']
+            await self.finished(call,job,run['input_hashes'])
+            bundle=await self.bundle(call,job,'fission')
+            self.verify_download(await host.download(call,self.download_args(bundle,'追加裂变.zip')),bundle)
+            runtime=json.loads(Path(os.environ['MC_TEST_OPENMC_CONFIG']).read_text())
+            oracle=json.loads(await asyncio.to_thread(subprocess.check_output,runtime['python_command']+['-c',
+                'import openmc,json,sys,pathlib;p=openmc.StatePoint(str(next(pathlib.Path(sys.argv[1]).glob("statepoint.*.h5"))),autolink=False);print(json.dumps({str(i):{"scores":list(t.scores),"filters":[type(f).__name__ for f in t.filters]} for i,t in p.tallies.items()}))',str(self.workspace/'.mc-jobs'/job/'work')],text=True))
+            self.assertIn('fission',oracle['1']['scores']);self.assertIn('MeshFilter',oracle['1']['filters'])
+            self.assertEqual(oracle['2']['scores'],['flux']);self.assertEqual(oracle['2']['filters'],[])
+            (self.evidence/'native-tallies.json').write_text(json.dumps(oracle,indent=2))
+            error=await call('openmc_run_case',args,fail=True)
+            self.assertIn('已存在',error);self.assertEqual(self.job_ids()-jobs,{job})
+            self.assertEqual(hashes(self.workspace/base),before);self.assertEqual(hashes(self.workspace/prepared['case_dir']),kept)
+
+    async def test_03b_multiple_grids_require_selection_without_writes(self):
+        async with self.session() as call:
+            base,_=await self.base(call)
+            await call('openmc_define_tally',{'case_dir':base,'tally_id':3,'scores':['flux'],'filters':[{'type':'mesh','mesh_id':30,'dimension':[2,2,1],'lower_left':[-.63,-.63,-1.0],'upper_right':[.63,.63,1.0]}]})
+            before=hashes(self.workspace/base);jobs=self.job_ids();target=self.prefix+'/ambiguous'
+            result=await call('openmc_run_case',{'case_dir':base,'target_dir':target,'mesh_scores':['fission'],'submit':True})
+            self.assertEqual(result['state'],'needs_selection');self.assertFalse(result['submitted'])
+            self.assertEqual({t['id'] for t in result['mesh_candidates']},{1,3})
+            self.assertEqual(hashes(self.workspace/base),before);self.assertEqual(self.job_ids(),jobs);self.assertFalse((self.workspace/target).exists())
+
+    async def test_03c_wrong_global_write_is_caught_before_publication_or_compute(self):
+        async with self.session() as call:
+            base,_=await self.base(call)
+            await call('openmc_define_tally',{'case_dir':base,'tally_id':2,'scores':['flux']})
+            before=hashes(self.workspace/base);jobs=self.job_ids();target=self.prefix+'/wrong-global'
+            import openmc_tools
+            from agent_run import run_case
+            import business
+            original=openmc_tools.update_tally
+            def wrong(case,tally_id,**args):return original(case,2,**args)
+            # Recreate the observed defect at the mutation boundary. All SDK,
+            # XML writes and readback remain real; no solver is needed to reject.
+            with patch.object(business,'WORKSPACE',self.workspace),patch.object(openmc_tools,'update_tally',wrong):
+                with self.assertRaisesRegex(Exception,'读回不一致'):
+                    await asyncio.to_thread(run_case,base,target,mesh_scores=['fission'],submit=True)
+            self.assertFalse((self.workspace/target).exists());self.assertEqual(self.job_ids(),jobs)
+            self.assertEqual(hashes(self.workspace/base),before)
 
     async def test_04_client_disconnect_reconnects_existing_job_without_resubmission(self):
         async with self.session() as call:
@@ -194,7 +240,6 @@ class AgentWorkflowsReal(unittest.IsolatedAsyncioTestCase):
             prepared=await call('openmc_prepare_download',{'kind':'job','identifier':job,'paths':[bundle['data_json']]})
             destination=self.evidence/'已准备数据.json'
             raw=await asyncio.to_thread(subprocess.check_output,[sys.executable,str(ROOT/'examples/transfer_files.py'),
-                '--mcp-url',os.environ['MC_TEST_MCP_URL'],'download','--transfer-id',prepared['transfer_id'],
-                '--output',str(destination)],cwd=ROOT,text=True)
+                '--mcp-url',os.environ['MC_TEST_MCP_URL'],'receive',prepared['transfer_id'],str(destination)],cwd=ROOT,text=True)
             delivered=json.loads(raw);self.assertTrue(delivered['local_file_verified'])
             self.assertEqual(destination.read_bytes(),(self.workspace/bundle['data_json']).read_bytes())

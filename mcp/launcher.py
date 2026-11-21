@@ -41,3 +41,11 @@ def stdio(argv=None) -> int:
     _prepare()
     import stdio_service
     return stdio_service.main()
+
+
+def transfer(argv=None) -> int:
+    """Host-only file client; importing this entry never starts the server."""
+    _prepare()
+    import host_transfer
+    if argv is not None:sys.argv=[sys.argv[0],*argv]
+    return host_transfer.main()

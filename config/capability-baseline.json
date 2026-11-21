@@ -325,6 +325,21 @@
         "tests/test_execution_preview_real.py"
       ],
       "gate": "offline_and_real"
+    },
+    {
+      "id": "composed_agent_run",
+      "status": "supported",
+      "surface": [
+        "openmc_run_case",
+        "mc-agent-tools-transfer receive"
+      ],
+      "input": "已有模型、新副本、已发现参数、同一网格score及明确计算授权；已准备下载ID和本机目标",
+      "output": "读回参数/原网格确认、最新绑定作业；宿主字节校验保存/断点接续，原工具兼容",
+      "evidence": [
+        "tests/test_agent_workflow_real.py",
+        "tests/test_file_transfer_client.py"
+      ],
+      "gate": "offline_and_real"
     }
   ],
   "restrictions": [
@@ -409,6 +424,14 @@
       "impact": "新整合入口需要明确tally_id，避免自动把首个计分当业务目标；不改变原工具的默认行为或能力",
       "override": "不知道计分时先用openmc_read_results；任意分析继续使用原plot_results/plot_mesh/export_report、原始数据和脚本",
       "user_decision": "2026-11-17用户授权按前轮“作业编号+计分编号”的结果包入口实施，保留原工具和灵活性；仅作用于该新增入口"
+    },
+    {
+      "id": "composed_existing_mesh",
+      "capability": "composed_agent_run",
+      "kind": "guarded",
+      "impact": "仅新组合入口要求全新target_dir；mesh_scores只追加原网格，多个/无网格未明确时不修改或提交。默认不计算。",
+      "migration": "复杂新网格/非网格/燃耗等继续用原工具；明确已有网格可传tally_id；上次回复丢失先查询原作业。",
+      "user_decision": "2026-11-21用户授权两项修复，不改DSH，保留原能力；不替用户决定物理条件。"
     }
   ],
   "stabilization": {

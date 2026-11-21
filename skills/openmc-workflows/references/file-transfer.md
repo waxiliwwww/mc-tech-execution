@@ -17,7 +17,7 @@
 
 ## 已提供的客户端
 
-工具包 `examples/transfer_files.py`直接处理字节，不经过语言模型。它应在拥有源/目标文件的宿主机器运行，需要Python及MCP客户端依赖；命令行用其`--help`查询。它会核对服务版本与文件工具定义，地址通过`--mcp-url`提供，鉴权用`MCP_AUTH_TOKEN`环境变量，不在聊天中索取密钥。
+安装工具包提供固定入口`mc-agent-tools-transfer`；源码包保留`python <工具包>/examples/transfer_files.py`同源入口。两者直接处理字节，不经过语言模型。它应在拥有源/目标文件的宿主机器运行，需要Python及MCP客户端依赖；命令行用其`--help`查询。它会核对服务版本与文件工具定义，地址通过`--mcp-url`提供，鉴权用`MCP_AUTH_TOKEN`环境变量，不在聊天中索取密钥。
 
 只有服务端包时，不要假设宿主机器也有此脚本；需要将随包客户端及其依赖放到宿主，或使用宿主等效本地文件能力。完整安装与示例在工具包 `docs/deployment.html#file-transfer-config`和`docs/toolkit-usage.html#file-transfer`。
 
@@ -29,8 +29,10 @@
 ```sh
 python /工具包/examples/transfer_files.py --mcp-url <实际MCP地址> download job <job_id> '<结果包path>' '<另一个path>' --output '<本机成果.zip>'
 ```
-若已调用openmc_prepare_download并拿到transfer_id，直接接着下载，不必再次准备：
+若已调用openmc_prepare_download并拿到transfer_id，优先按host_action执行固定receive入口。URL、编号、目标各为一个参数，目录由客户端创建，不拼mkdir/&&，不必再次准备：
 ```sh
-python /工具包/examples/transfer_files.py --mcp-url <实际MCP地址> download --transfer-id <transfer_id> --output '<本机成果.zip>'
+mc-agent-tools-transfer --mcp-url '<实际MCP地址>' receive '<transfer_id>' '<本机成果.zip>'
 ```
 断线后原命令及回执恢复。普通结果包路径不必先list_artifacts；完整文件已保存时只重试清理。宿主缺少本地执行/写入能力时说明未取回，不在模型上下文手工拼字节。
+
+客户端安装在实际宿主的Python环境中：`python -m pip install <同版源码包.tar.gz>`（会安装MCP依赖；安装须在该环境已获授权）。源码方式用`python <工具包>/examples/transfer_files.py --mcp-url <地址> receive <transfer_id> <本机目标>`。旧`download --transfer-id ... --output ...`和按kind/identifier/paths方式继续可用。receive只是固定参数入口，同一回执恢复；输出JSON的file/sha256/local_file_verified才是本机交付证据，host_action不是执行回执。

@@ -373,4 +373,7 @@ TOOLS += TRANSFER_TOOLS
 from workflow_guidance import WORKFLOW_TOOLS
 TOOLS += WORKFLOW_TOOLS
 
+from agent_run import RUN_TOOLS
+TOOLS += RUN_TOOLS
+
 prepare_tools(TOOLS)

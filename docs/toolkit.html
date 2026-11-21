@@ -7,7 +7,7 @@ section[id],details[id]{scroll-margin-top:28px}
 details{border:1px solid var(--line);background:var(--panel);padding:14px 20px;margin:18px 0;border-radius:8px}summary{cursor:pointer;font-weight:650;color:var(--accent)}details[open]>summary{margin-bottom:20px}details details{background:var(--bg)}summary:focus-visible{outline:3px solid #f6cc72;outline-offset:4px}.module-links{display:flex;flex-wrap:wrap;gap:12px 24px;margin:18px 0}.planned-row td:first-child{color:#efc67d}
 
 .diagram-title{margin:24px 0 8px;font-size:18px;color:var(--accent)}
-</style></head><body><main>
+</style></head><body><main><p>Agent常见改参/同一网格追加通过openmc_run_case组合已有参数更新、计分更新、读回、执行说明及绑定提交；不重写物理建模能力，不替代原子工具。组合始终派生新副本，避免回复未知后重复提交。宿主文件逻辑统一在host_transfer.py，安装入口和examples/transfer_files.py共享实现；远端MCP只返回下载会话/host_action，不写宿主文件。</p>
 <nav aria-label="文档导航"><a href="index.html">工具包总览</a><a href="toolkit-usage.html">使用手册</a><a href="deployment.html">部署与接入</a><a href="toolkit.html" aria-current="page">架构设计</a><a href="reference.html">接口参考</a></nav>
 <p class="eyebrow">面向开发者 · 实现基线0.22.0 · 2026-11-21</p><h1>MC工具包架构设计</h1>
 <p class="lead">本包在OpenMC之上组织模型输入、计算作业和结果分析。CLI与MCP共用领域实现，宿主负责自然语言编排；本包负责模型和文件交接、后台计算及可追查的产物。下面从总图展开各模块，说明常见任务怎样落实到源码与运行过程。</p>
