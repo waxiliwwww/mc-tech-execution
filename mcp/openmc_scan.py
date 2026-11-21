@@ -38,7 +38,9 @@ def list_parameters(case_dir: str) -> dict:
     from openmc_tools import validate_inputs
     checked = validate_inputs(case_dir)
     if not checked['structure_valid']:raise Error('输入结构无效：' + '; '.join(checked['problems']))
-    return {'case_dir': case_dir, **api('parameters', path_in_workspace(case_dir), {})}
+    from openmc_runtime import file_location
+    return {'case_dir': case_dir, **file_location(path_in_workspace(case_dir)),
+            **api('parameters', path_in_workspace(case_dir), {})}
 
 
 def copy_inputs(source: Path, target: Path):
@@ -98,7 +100,8 @@ def prepare_case(case_dir: str, target_dir: str, parameters: dict) -> dict:
         result = apply_and_verify_parameters(temporary, parameters)
         source_info = provenance(temporary)
         publish_directory(temporary, target)
-        return {'case_dir': target_dir, **result, 'provenance': source_info}
+        from openmc_runtime import file_location
+        return {'case_dir': target_dir, **file_location(target), **result, 'provenance': source_info}
     finally:
         if holder.exists():shutil.rmtree(holder)
 

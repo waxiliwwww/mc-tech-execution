@@ -484,7 +484,7 @@ def _final_keff(directory, record):
         return {'keff':None,'warnings':['最终StatePoint的k未能核实：'+str(exc)]}
 
 
-def status(job_id: str) -> dict:
+def _status_snapshot(job_id: str) -> dict:
     directory = job_directory(job_id)
     value = read(directory)
     if value['state'] not in TERMINAL and value.get('worker_pid'):
@@ -560,6 +560,24 @@ def status(job_id: str) -> dict:
     else:
         result['human_summary'] = value['state']
     return {'human_summary': result.pop('human_summary'), **result}
+
+
+def status(job_id: str, wait_seconds: int = 0) -> dict:
+    """Bound waiting in this call; never submit/cancel or interpret timeout as failure."""
+    if type(wait_seconds) is not int or not 0 <= wait_seconds <= 30:
+        raise Error('wait_seconds须为0..30整数秒；默认立即返回；等待到期不取消或重算作业')
+    start = time.monotonic()
+    result = _status_snapshot(job_id)
+    while wait_seconds and result['state'] not in TERMINAL:
+        remaining = wait_seconds - (time.monotonic() - start)
+        if remaining <= 0:break
+        time.sleep(min(.25, remaining))
+        result = _status_snapshot(job_id)
+    if wait_seconds:
+        result['wait'] = {'requested_seconds':wait_seconds, 'elapsed_seconds':round(time.monotonic()-start,3),
+                          'timed_out':result['state'] not in TERMINAL,
+                          'note':'等待到期仍使用原job_id继续查询；未取消、未重新提交。'}
+    return result
 
 
 def cancel(job_id: str) -> dict:

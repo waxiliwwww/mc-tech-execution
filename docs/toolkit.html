@@ -9,7 +9,7 @@ details{border:1px solid var(--line);background:var(--panel);padding:14px 20px;m
 .diagram-title{margin:24px 0 8px;font-size:18px;color:var(--accent)}
 </style></head><body><main>
 <nav aria-label="文档导航"><a href="index.html">工具包总览</a><a href="toolkit-usage.html">使用手册</a><a href="deployment.html">部署与接入</a><a href="toolkit.html" aria-current="page">架构设计</a><a href="reference.html">接口参考</a></nav>
-<p class="eyebrow">面向开发者 · 实现基线0.21.1 · 2026-11-20</p><h1>MC工具包架构设计</h1>
+<p class="eyebrow">面向开发者 · 实现基线0.22.0 · 2026-11-21</p><h1>MC工具包架构设计</h1>
 <p class="lead">本包在OpenMC之上组织模型输入、计算作业和结果分析。CLI与MCP共用领域实现，宿主负责自然语言编排；本包负责模型和文件交接、后台计算及可追查的产物。下面从总图展开各模块，说明常见任务怎样落实到源码与运行过程。</p>
 <p class="minor">当前执行后端为Linux/WSL本地进程。Slurm适配已有实现及受控调度验证，真实集群尚待账号联调。本文解释系统机制；具体命令与结果阅读见<a href="toolkit-usage.html">使用说明</a>。</p>
 <div class="jump"><a href="#architecture">总体架构</a><a href="#scenarios">常见场景</a><a href="#inputs">M1模型准备</a><a href="#jobs">M2作业管理</a><a href="#results">M3结果分析</a><a href="#developer">运行与扩展</a></div>

@@ -63,7 +63,7 @@ def verify_metadata_inputs(root: Path, record: dict) -> dict:
     return checked
 
 
-def delivery_summary(destination, job_id, selection, normalization, source_hash, filenames, warnings):
+def delivery_summary(destination, job_id, selection, normalization, source_hash, filenames, warnings, data_quality=None):
     """Render recorded facts once; do not infer physical causes or host downloads."""
     score = selection['score']
     unit = {'flux': 'particle-cm/source（原始通量计分；未除以体积）',
@@ -75,7 +75,12 @@ def delivery_summary(destination, job_id, selection, normalization, source_hash,
              '未换算功率或实际源强；不是每秒物理量，未作专业验收。',
              '来源 StatePoint SHA256：' + source_hash,
              '以下是MCP服务器完整路径，尚未下载到宿主；宿主异机时须通过文件交接取回：']
+    if data_quality:
+        lines.insert(2, '所选完整数据：' + str(data_quality['points']) + '箱；均值为零'
+                     + str(data_quality['zero_mean_bins']) + '箱；均值不可用'
+                     + str(data_quality['unavailable_mean_bins']) + '箱。零箱数只属于本次选择，不确定零值原因。')
     lines += [label + '：' + str(destination / name) for label, name in filenames]
+    if warnings:lines += ['重要提醒（本次结果；不能省略或改成确定原因）：']
     lines += ['注意：' + warning for warning in warnings]
     return '\n'.join(lines)
 
@@ -173,8 +178,12 @@ def generate_result_bundle(job_id: str, tally_id: int, score: str | None = None,
                      ('复现脚本', Path(chart['plot_script']).name)]
         filenames += [('报告(' + r['format'] + ')', r['file']) for r in reports]
         filenames += [('来源清单', 'manifest.json'), ('交付摘要', 'delivery.md')]
+        quality = {'points':len(series['mean']),
+                   'zero_mean_bins':sum(v == 0 for v in series['mean']),
+                   'unavailable_mean_bins':sum(v is None for v in series['mean']),
+                   'zero_mean_std_bins':sum(v == 0 and e == 0 for v,e in zip(series['mean'],series['std_dev']))}
         summary = delivery_summary(destination, job_id, resolved, series['normalization'],
-                                   source_hash, filenames, warnings)
+                                   source_hash, filenames, warnings, quality)
         (stage / 'delivery.md').write_text(summary + '\n', encoding='utf-8')
         files = {p.name:{'sha256':jobs.file_hash(p),'bytes':p.stat().st_size}
                  for p in sorted(stage.iterdir()) if p.is_file()}
@@ -186,7 +195,7 @@ def generate_result_bundle(job_id: str, tally_id: int, score: str | None = None,
                     'checked_metadata_input_hashes':checked_inputs,
                     'metadata_inputs_verified':True if checked_inputs else None},'normalization':series['normalization'],
                     'provenance':record['provenance'],'professional_acceptance':False,
-                    'warnings':list(dict.fromkeys(warnings)),
+                    'warnings':list(dict.fromkeys(warnings)), 'data_quality':quality,
                     'scientific_checks':overview.get('scientific_checks',{}),
                     'statistical_adequacy':overview.get('statistical_adequacy',{}),'files':files,
                     'manifest_note':'files是本包其他文件的SHA256；manifest自身指纹由产物清单返回。'}
@@ -205,7 +214,7 @@ def generate_result_bundle(job_id: str, tally_id: int, score: str | None = None,
                 'plot_script':relative(destination/Path(chart['plot_script']).name),
                 'reports':[{**r,'path':relative(destination/r['file'])} for r in reports],
                 'manifest':relative(destination/'manifest.json'),'artifacts':artifacts,
-                'delivery_summary':summary,'delivery_file':relative(destination/'delivery.md'),
+                'delivery_summary':summary,'delivery_file':relative(destination/'delivery.md'),'data_quality':quality,
                 'warnings':manifest['warnings'],
                 'scientific_status':{k:v.get('status','unverified') for k,v in overview.get('scientific_checks',{}).items() if isinstance(v,dict)},
                 'statistical_adequacy':overview.get('statistical_adequacy',{}),'professional_acceptance':False,

@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import math
+import difflib
+import json
 
 SETTINGS = {'particles': ('integer', 1, 'particles/generation'),
             'batches': ('integer', 2, 'batches'), 'inactive': ('integer', 0, 'batches'),
@@ -66,7 +68,17 @@ def checked(model, parameters):
     specs = {item['name']: item for item in describe(model)}
     for name, value in parameters.items():
         if name not in specs:
-            raise ValueError('不支持的参数：' + name + '；先调用openmc_list_parameters')
+            # Suggest actual model fields, never silently choose an object or convert units.
+            field = name.rsplit('.', 1)[-1]
+            matches = [key for key in specs if key.rsplit('.', 1)[-1] == field]
+            if not matches:matches = difflib.get_close_matches(name, specs, n=6, cutoff=.35)
+            candidates = [{k:specs[key][k] for k in ('name','object','current','unit','note') if k in specs[key]}
+                          for key in matches[:6]]
+            raise ValueError('不支持的参数：' + name + '；未修改输入。实际候选：'
+                             + json.dumps(candidates, ensure_ascii=False)
+                             + ('；另有候选，请调用openmc_list_parameters查看完整列表。' if len(matches)>6 else '')
+                             + '；按对象和单位选择真实name；材料有歧义或单位不适用时询问用户，不自动套用。'
+                             + '完整参数见openmc_list_parameters。')
         spec = specs[name]
         if type(value) not in (int, float) or not math.isfinite(value):
             raise ValueError(name + '须为有限数值')

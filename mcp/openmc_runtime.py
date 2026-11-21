@@ -21,7 +21,9 @@ def workspace() -> Path:
 
 def path_in_workspace(value: str, *, exists: bool = True, internal: bool = False) -> Path:
     if not isinstance(value, str) or not value or Path(value).is_absolute():
-        raise Error("路径须为MC_WORKSPACE内的相对路径")
+        raise Error("路径须为MC_WORKSPACE内的相对路径；服务器工作区=" + str(workspace())
+                    + "；客户端文件不会自动上传。服务器已有输入使用相对目录，例如cases/model；"
+                    "本机文件先用文件客户端上传，再使用上传返回的目录，不猜临时目录。")
     parts = Path(value).parts
     if any(p == '..' or (p.startswith('.mc-') and not internal) for p in parts):
         raise Error("不能访问上级目录或内部作业记录")

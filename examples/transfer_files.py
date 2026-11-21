@@ -102,19 +102,41 @@ async def upload(call,args):
     return {'message':'上传完成，长度与SHA256校验通过','receipt':str(rp.resolve()),**result}
 
 
+async def saved_download(call, target, rp, r):
+    result = r['result']
+    cleanup = {'state':'closed'}
+    try:await call('openmc_close_transfer',{'direction':'download','transfer_id':r['transfer_id']})
+    except Exception as exc:
+        cleanup = {'state':'pending', 'reason':type(exc).__name__,
+                   'note':'本地文件已校验保存；暂存关闭未确认，可按同一回执重试，不需要重算或重新下载。'}
+    return {'message':'下载文件已保存，长度与SHA256校验通过','file':str(target),
+            'bytes':result['size_bytes'],'sha256':result['sha256'], 'receipt':str(rp.resolve()),
+            'archive_paths':result.get('archive_paths',[]),'local_file_verified':True,'transfer_cleanup':cleanup}
+
+
 async def download(call,args):
+    transfer_id=getattr(args,'transfer_id',None)
+    if transfer_id and any(getattr(args,k,None) for k in ('kind','identifier','paths')):
+        raise ValueError('已有transfer_id与kind/identifier/paths二选一，不混用')
+    if not transfer_id and not all(getattr(args,k,None) for k in ('kind','identifier','paths')):
+        raise ValueError('下载需kind identifier paths，或--transfer-id使用已准备的会话')
     target=Path(args.output).resolve();target.parent.mkdir(parents=True,exist_ok=True)
     rp=Path(args.receipt or str(target)+'.mc-download.json')
-    identity={'direction':'download','url':args.mcp_url,'kind':args.kind,'identifier':args.identifier,'paths':args.paths,'output':str(target)}
+    identity={'direction':'download','url':args.mcp_url,'output':str(target)}
+    identity.update({'transfer_id':transfer_id} if transfer_id else {'kind':args.kind,'identifier':args.identifier,'paths':args.paths})
     r=receipt(rp,identity)
     # If publication succeeded but acknowledgement/close failed, finish idempotently.
     if target.exists():
         result=r.get('result',{})
         if not target.is_file() or not result or target.stat().st_size!=result['size_bytes'] or digest(target)!=result['sha256']:
             raise ValueError('目标已有文件且不能证明属于本次下载，未覆盖；选择新的 --output')
-        await call('openmc_close_transfer',{'direction':'download','transfer_id':r['transfer_id']})
-        return {'message':'本次文件已完整保存，重复调用未覆盖','file':str(target),'sha256':result['sha256']}
-    status=await call('openmc_prepare_download',{'kind':args.kind,'identifier':args.identifier,'paths':args.paths,'request_id':r['request_id']})
+        done = await saved_download(call,target,rp,r)
+        done['message'] = '本次文件已完整保存，重复调用未覆盖'
+        return done
+    if transfer_id:
+        status=await call('openmc_download_status',{'transfer_id':transfer_id})
+    else:
+        status=await call('openmc_prepare_download',{'kind':args.kind,'identifier':args.identifier,'paths':args.paths,'request_id':r['request_id']})
     r.update(transfer_id=status['transfer_id'],result=status);save(rp,r)
     part=target.with_name(target.name+'.part')
     offset=part.stat().st_size if part.exists() else 0
@@ -133,9 +155,7 @@ async def download(call,args):
     try:os.link(part,target)
     except OSError as exc:raise ValueError('无法无覆盖发布文件；目标需支持硬链接（如本地NTFS/ext4），完整.part已保留。换本地目录后重试；不覆盖已有文件。') from exc
     part.unlink()
-    await call('openmc_close_transfer',{'direction':'download','transfer_id':r['transfer_id']})
-    return {'message':'下载完成，分块及完整SHA256校验通过','file':str(target),'bytes':status['size_bytes'],
-            'sha256':status['sha256'],'receipt':str(rp.resolve()),'archive_paths':status.get('archive_paths',[])}
+    return await saved_download(call,target,rp,r)
 
 
 async def run(args):
@@ -185,7 +205,7 @@ def main():
     p.add_argument('--mcp-url',required=True,help='实际MCP地址，例如 http://127.0.0.1:8770/mcp；鉴权用MCP_AUTH_TOKEN环境变量')
     sub=p.add_subparsers(dest='command',required=True)
     u=sub.add_parser('upload');u.add_argument('file');u.add_argument('--archive',action='store_true',help='按ZIP模型包解压');u.add_argument('--receipt')
-    d=sub.add_parser('download');d.add_argument('kind',choices=['job','scan','upload']);d.add_argument('identifier');d.add_argument('paths',nargs='+');d.add_argument('--output',required=True);d.add_argument('--receipt')
+    d=sub.add_parser('download');d.add_argument('kind',choices=['job','scan','upload'],nargs='?');d.add_argument('identifier',nargs='?');d.add_argument('paths',nargs='*');d.add_argument('--transfer-id',help='沿用已准备的下载会话，不重新选文件或准备快照');d.add_argument('--output',required=True);d.add_argument('--receipt')
     v=sub.add_parser('preview');v.add_argument('kind',choices=['job','scan','upload']);v.add_argument('identifier');v.add_argument('path')
     c=sub.add_parser('close');c.add_argument('direction',choices=['upload','download']);c.add_argument('transfer_id')
     args=p.parse_args()

@@ -75,3 +75,16 @@ class FileTransferClient(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(ValueError,'不同'):await host.upload(self.call,args)
         args.mcp_url='http://test/mcp';Path(args.file).write_bytes(b'second')
         with self.assertRaisesRegex(ValueError,'不同'):await host.upload(self.call,args)
+
+    async def test_local_file_remains_delivered_when_only_close_acknowledgement_is_lost(self):
+        args=self.uargs();raw=b'actual local bytes';Path(args.file).write_bytes(raw)
+        uploaded=await host.upload(self.call,args);download=self.dargs(uploaded)
+        async def lose_close(name,data):
+            if name=='openmc_close_transfer':raise ConnectionError('close acknowledgement lost')
+            return await self.call(name,data)
+        result=await host.download(lose_close,download)
+        self.assertTrue(result['local_file_verified']);self.assertEqual(result['transfer_cleanup']['state'],'pending')
+        self.assertEqual(Path(result['file']).read_bytes(),raw)
+        repeated=await host.download(self.call,download)
+        self.assertTrue(repeated['local_file_verified']);self.assertEqual(repeated['transfer_cleanup']['state'],'closed')
+        self.assertEqual(Path(result['file']).read_bytes(),raw)

@@ -1,84 +1,60 @@
 ---
 name: openmc-workflows
-description: 当用户要求OpenMC模型导入、建模、改密度/温度/尺寸、校核、计算、参数扫描、通量/能谱绘图、报告或失败诊断时，优先使用已连接的OpenMC Forge MCP；无需用户点名MCP。只解释概念时不启动计算，不替用户决定未知物理条件。
+description: 用户要OpenMC模型接入、建模、改参计算、扫描、结果绘图报告或失败诊断时，用已连接的OpenMC Forge MCP组织完整任务，自己处理参数发现、路径、等待和文件交接；只询问必要业务条件。概念解释不计算，不替用户决定物理条件。
 metadata:
   toolkit: openmc-forge
 ---
 
 # OpenMC任务工作流
 
-前置：需要已连接的OpenMC Forge MCP服务；文件传输另需宿主本地文件读写能力或随包客户端。不要求在宿主安装OpenMC。
+用户表达需求、补充必要业务信息、取得成果；Agent负责内部操作。需要已连接的OpenMC Forge MCP；技能不启动服务、不改模型配置、不安装依赖。优先复用已有模型、完成作业和结果，只有用户要求计算才准备新作业。
 
-通过MCP读取本技能时，相对参考分别调用 `openmc_get_workflow(chapter="files")` 或 `chapter="advanced"`，无需宿主本地文件；资源客户端也可按返回URI读取。
-
-把用户目标落实为可回查的模型、作业和产物。优先复用已有结果；用户要求计算时才准备新作业。技能不启动服务、不更换模型配置，也不自动安装依赖。
+通过MCP读本技能时，文件交接调用 `openmc_get_workflow(chapter="files")`，扩展任务用 `chapter="advanced"`；独立安装可读下述相对参考。参数以当前工具定义为准，不一次加载全部Schema或例题清单。
 
 ## 连接时速查
 
-- 用户要求OpenMC模型导入、建模/改参、校核、计算/扫描、结果绘图/报告或失败诊断时，优先使用已连接的对应MCP工具，无需用户说“用MCP”。不要先用Shell/Python重写已有能力；单纯概念解释不启动计算。工具未连接、缺能力或调用失败时，说明具体原因再选择CLI/脚本后备；执行结果未知先查询，不重复提交。
-- 按目标选入口：“改密度/温度/尺寸”先openmc_list_parameters再openmc_prepare_case；“比较多组参数/参数扫描”用openmc_submit_scan；“已有结果出图和报告”先确认job_id/计分，优先openmc_generate_result_bundle。只改字体、配色或尺寸时复用plot_script及原始数据，不重新求解。自定义分析可使用原单项工具或脚本，保留选择、坐标和来源。
-- 先确认任务是接入已有模型、新建/改参计算，还是只分析已有结果。只分析已有作业时复用job_id，不重新求解；缺计分不能后处理补造。
-- 先用openmc_environment核对服务、引擎、工作区及漂移状态。客户端路径不是服务端路径；异机文件先上传，原生XML及相对依赖到位后再导入。
-- 修改前用openmc_list_parameters发现实际参数键、单位和范围。密度10.5必须明确材料与单位；macro是宏观截面倍率，不是g/cm³。用户提供几何、材料、源、统计及计分条件，未知条件先问，不从例题猜。
-- 单次改参派生新目录核对读回；多组参数可直接submit_scan并逐项核对parameter_diff，无需宿主逐点改XML；新增计分需要新计算。提交前预览输入及哈希，结构/API/语义校核有错误先处理；未做的检查如实说明。
-- 单次run可在改参/计分最终确定后调用openmc_preview_input(mode="run",threads=实际线程)；用execution_preview.human_summary和实际settings/tallies/核数据说明将怎样执行，必要时按用户反馈修改。已明确授权计算且条件无歧义时，不新增逐次确认；缺条件或有冲突先问。提交传相同目录/mode/threads及preview_id，过期拒绝后先查变化、重新核对，不静默沿用新条件。用job_status.execution_receipt和input_hashes回查。编号不证明人已阅读或同意，不能声称宿主必然显示；原提交入口继续可用。
-- 提交取得job_id后查询终态，提交不等于完成。已知作业与计分的常见交付优先用openmc_generate_result_bundle；图、数据与报告使用同一作业和计分选择，保留标准差、来源、截断与低统计告警；不将工程跑通当物理准确。
-- 交付图、JSON/CSV及复现脚本时，沿用工具给出的完整路径或可用链接，不把文件名、job_id或路径缩成省略号；只列用户实际需要打开的几项，其余给完整清单入口。远程未下载时说明是服务器路径。结果未知先查询，避免重复提交；修复展示diff并取得用户确认后才应用。
+- 接入、建模/改参、计算/扫描、绘图/报告和诊断优先用对应MCP，无需用户点名；不先用Shell重写已有工具。连接/能力不足时说明原因再选CLI/脚本后备。概念解释不计算。
+- 首次连接用 `openmc_environment`核对服务身份、引擎和工作区；同连接无漂移信号时复用，不反复探查。代码/版本漂移先请管理员处理。cross_sections_env_set只说明环境变量，实际核数据按模型检查。
+- 自己发现参数名、路径、计分ID和调用顺序，不让用户回答内部字段问题。只问影响本次任务的对象、单位、物理条件、计分选择和未明确的重要资源取舍；明确授权和条件不逐步确认。
+- 用 `openmc_list_parameters`的object名称/ID、current、unit映射请求。多个材料均可能符合时展示候选让用户选，不默认取第一个。macro是无量纲宏观截面倍率，不是g/cm³；单位冲突先问，不套数值，不按名称猜物理角色。
+- 工作区已有有效模型直接发现参数、`openmc_prepare_case`派生并核对读回，不重复导入；已有计分满足目标就保留。中途追加后先修改再做最终预览，过期preview_id不能沿用。明确授权且无歧义的任务继续，不逐步审批。
+- 保存原job_id，用 `openmc_job_status(wait_seconds=30)`有界等待；宿主可用随包follow_job.py连续跟踪，断线/到期沿原编号接续，不重投、不自动扩大规模。
+- 已知作业/计分直接 `openmc_generate_result_bundle`；核对selection、data_quality和warnings，保留完整路径、原始单位和不确定性。用户要文件就用字节客户端实际下载并校验，计算完成、成果生成、文件交付分别报告；服务器路径不等于本机文件，下载失败不重算。
 
-## 先识别环境和入口
+## 按条件选择步骤
 
-- 首次操作调用 `openmc_environment`：区分工具包运行服务版本和OpenMC引擎版本，检查漂移/需重启状态、工作区与API/可执行程序。发现漂移先请管理员处理；工具列出不证明在线。跨平台的服务名前缀不同，按当前宿主发现的实际工具名调用。
-- `cross_sections_configured=false`只表示环境变量未配置；结合返回的核数据候选、模型实际引用及后续校核判断，不能单凭此值拒绝连续能模型或认定数据已齐。
-- 已有模型：提供服务端工作区中的原生 `model.xml` 或分离XML及相对依赖，再调用 `openmc_import_model`。导入不会执行用户Python。只有Python脚本时，先请用户用适用环境导出原生输入；不要假设导入工具会运行它。
-- 新建模型：公开模板用 `openmc_create_model`；组合新模型先用 `openmc_model_capabilities` 查看范围，确需生成spec时用 `detail="full"`取得当前Schema，再用 `openmc_build_model`。不要凭记忆构造旧Schema或把示例堆型当成全部能力。
-- 只分析结果：取得已有 `job_id`，查询状态后直接进入结果处理，不为出图重新求解。
+| 当前条件 | Agent处理 |
+|---|---|
+| 文件在本机，服务在另一环境 | 通过宿主字节客户端上传，使用返回目录。客户端路径不会自动上传；见[文件交接](references/file-transfer.md)。 |
+| 工作区已有有效原生输入 | 可直接发现参数、派生副本，不必每次检查/导入。依赖不明或跨服务器接入时才用 `openmc_inspect_model`，按真实绑定 `openmc_import_model`；ready仅证明依赖存在。 |
+| 明确参数修改 | `openmc_prepare_case`创建副本，核对parameter_diff.verified和case_dir，保留原模型。错误按实际候选修正，歧义问用户。 |
+| 新建模型 | 模板用 `openmc_create_model`；组合模型先 `openmc_model_capabilities`，需要时取当前完整Schema后 `openmc_build_model`。用户Python需先在适用环境导出原生输入，import不会执行脚本。 |
+| 已有计分满足要求 | 保留。新增/调整用 `openmc_define_tally`、`openmc_update_tally`，确需删除才 `openmc_delete_tally`。不每轮重复定义。 |
+| 修改和计分最终确定 | 需执行说明/绑定条件时 `openmc_preview_input(mode="run",threads=实际线程)`，默认不取全文。用户中途追加后，先修改再更新预览，不沿用旧preview_id。 |
+| 用户明确要求计算，条件和资源无歧义 | 用 `openmc_submit_job`继续提交，不逐步审批。提交本身保留结构/语义检查；额外API/几何检查按需用 `openmc_validate_inputs`。错误不能绕过，未做的检查如实说明。 |
+| 已有作业或提交结果未知 | 保存/查询原job_id，不重复提交。已有结果分析不重算，旧作业缺计分不能靠后处理补造。 |
 
-缺少材料组成/密度、几何尺寸/单位、边界、源、统计设置或计分目标时，只询问影响当前任务的必要条件。用户明确选择公开练习可沿用其已声明默认设置；未知业务条件不能套用例题默认值。
+执行说明仅绑定输入、核数据定位、配置和线程，不是用户同意凭证。绑定提交传同case_dir/mode/threads及preview_id；过期时查明变化再核对，不自动沿用新条件。原直接提交仍可用。未知物理条件不套例题默认值，不为收敛擅自扩大统计规模。
 
-## 从输入到作业
+## 等待和接续
 
-1. **文件到位。** 客户端路径不是服务器路径。异机先走[文件交接](references/file-transfer.md)；不要让用户把MB级Base64贴到模型上下文。服务器已有输入可直接使用，不必再次上传。
-2. **发现再改参。** `openmc_list_parameters(case_dir)`给出本模型支持的键、当前值、单位和范围。用这些键调用 `openmc_prepare_case(case_dir,target_dir,parameters)`，读取差异及 `parameter_diff.verified`；不猜键、不覆盖源目录。材料密度的`macro`单位是宏观截面倍率，不是g/cm³。能导入不等于所有参数都能修改。
-3. **明确计分。** 按用户目标用 `openmc_define_tally`追加，已有ID用 `openmc_update_tally`或`openmc_delete_tally`。确认材料/几何对象、能量箱、网格边界和单位；使用返回的 `tally_id`。改计分后需新计算，旧作业不会新增结果。
-4. **预览及校核。** `openmc_preview_input`查看摘要、完整输入清单和哈希；`problems`应为空且`manifest_complete=true`。`openmc_validate_inputs(api_check=true)`检查结构、API与语义；错误先处理，未检查/未完成项和警告如实报告。模型生成或API解析成功不等于几何、物理已验证。
-5. **提交并跟踪。** 在用户认可的任务及资源范围内调用 `openmc_submit_job`，指定可识别名称；保存 `job_id`。用 `openmc_job_status`查到终态与退出码，核对预览和提交/终态 `input_hashes`。运行中可按用户要求 `openmc_cancel_job`。提交回执不是完成。
+- `openmc_job_status(job_id,wait_seconds=30)`最多等待30秒至终态，默认0立即返回。到期仍运行不是失败，不取消或重投；进度/日志解析不到就说明未知，不编预计时间。
+- 有宿主执行能力时，让随包 `examples/follow_job.py --mcp-url <地址> --job-id <原编号> --timeout <等待秒数> --receipt <本机回执>`连续等待，减少模型反复查询。它不提交、不取消；到期或中断后沿同一命令/编号继续。只有服务端包时不能假设宿主已有脚本和依赖。
+- 断开回来先查原编号；编号不在上下文时用 `openmc_list_jobs`按任务名称找，多个候选核对后选，不猜“最新一个”。completed才处理结果，failed/interrupted先诊断，cancelled不算成功。取消仍查真实终态和process_cleanup。
+- 在已有任务上下文保留：来源/当前副本、最新要求、对象和单位、参数差异、job_id、必要时preview_id和输入指纹、结果选择、传输回执及本机目标。不另建台账，不要求用户抄内部编号。
 
-长计算按用户或部署者确定的粒子数、批次、线程、数量与时限执行。未约定大规模资源时先询问规模；不要为了“看起来收敛”擅自扩大计算。
+## 从结果到可用文件
 
-## 已有模型的受控改参与批量计算
+1. 选择未知时 `openmc_read_results`发现tally/score/维度；它不接收计分选择参数。已知选择直接 `openmc_generate_result_bundle`，无需先读全结果或再list_artifacts。同作业/计分生成图、完整数据、报告、脚本和清单；原单项绘图/报告、自定义分析继续可用。
+2. 核对state、selection、source、normalization及data_quality。data_quality只统计本次选择的完整箱数、零均值/不可用箱；不同score不能共用计数，不确定零值原因。3D层、能量箱和MeshFilter从1起始的[i,j,k]按当前Schema，不用截断预览冒充完整数组。
+3. 优先沿用工具的delivery_summary和同文delivery_file，完整路径不缩写。重要警告说明影响及下一步；保留低统计、非有限、零标准差的不确定性，不能把“可能”改为“确定”。原始flux为particle-cm/source，未除体积不写每平方厘米；fission为reactions/source，未换算源强/功率不写每秒。统计误差不证明源收敛或专业准确率。
+4. 用户要文件就继续[文件交接](references/file-transfer.md)，用包返回的实际路径下载；宿主校验并保存后才给本机位置。不能止于服务端路径。无宿主文件能力时明确“成果已生成，文件尚未取回”及缺少的能力，不伪造已下载。
+5. 分别报告计算终态、成果生成和文件交付。下载失败沿同一回执/原成果恢复，不重新出包或求解。已校验保存但暂存关闭未确认时，说明文件已可用、暂存清理待重试。工具摘要仍不保证模型忠实呈现或宿主直接展示。
 
-跨服务器或依赖不明时，先用openmc_inspect_model列problems/warnings；让用户或部署者提供原引用到服务器真实绝对文件的dependency_bindings。同一绑定复查后交openmc_import_model，只改导入副本，不猜路径、不搬整库。ready仅指依赖存在，继续既有API/语义检查；材料/表面object名称来自原模型，须结合用户目标确认，不按名字猜物理角色。
+改图用取回的plot_script及同名JSON/CSV，在客户端用NumPy/Matplotlib重画并保持目录关系，不重新计算，不覆盖原包。图表可改样式，数据、坐标和误差不改。
 
-采用工具包处理已有模型时，导入一次，再发现本模型实际支持的参数；信息足够就使用返回的单位、差异和校核结果，不为同一事实反复读取全部XML或全套工具Schema。普通执行说明保持include_content默认值，不为罗列参数请求源码/spec/schema全文；只在定位具体输入问题时按需读取正文。用户仍可选择原生Python/Shell完成特殊分析。
+## 扩展与失败
 
-- 单个变化走prepare_case，多个指定值走submit_scan；不要先为每个扫描点手写XML或重复准备相同副本。先确认参数、单位、组合数和资源；原计分满足目标就保留，不额外新增计分。
-- 以preview_input的清单/摘要展示即将使用的输入，再validate_inputs；未做的检查明确说明。普通改参检查parameter_diff.verified；扫描终态逐项检查cases[].parameter_diff.verified和job_id，有失败/未运行项就说明，不只播报总状态。
-- 参数读回只证明请求值已落盘，不证明所有专业条件。几何、材料与核数据适用性等仍按已有校核及专业依据处理，不把成功标志解释成物理正确。
-- 批次终止且用户明确确认后，openmc_resume_scan仅续失败/未跑项，成功项复用job_id。先确认原子作业终态与process_cleanup.verified_empty；未知先查，不盲重投。重复原scan_id返回同一续算编号；再次失败查新编号。输入/依赖/配置改变或旧记录缺身份时新建批次，保留旧证据，不自动重试。外部HDF5仅核对路径/大小/mtime/inode，不冒充全库字节或专业验证。
-- 用job_compare核对需要比较的计分定义及不确定度；查看comparison.parameters实际变化和提交时nuclear_data；缺记录明示未核实。逐箱按原始索引对齐，complete=false只覆盖共有预览箱，不能当全量；定义或归一化不一致时不要自行拼接成物理对比。结果包和扫描报告按需交付，保留原始数据，不为凑完整而重算。
-- 最后给用户实际答复：改了哪些参数/单位、保留了什么、哪些作业完成或失败、结果与误差、警告、scan_id/job_id及文件位置。读到结果后应组织交付答复，不把继续寻找工具当作完成；若预算/时间不足，如实交代已完成位置和原编号，不重复提交。
+扫描、官方例题、CAD、燃耗、Slurm及修复按需读[扩展任务](references/extended-tasks.md)。特殊分析可用原生Python/Shell，保留来源和选择。失败先区分输入、依赖/环境、工具及传输，保留原记录；结果未知先查询。修复实际diff需确认后才 `apply_repair`，计算授权不等于接受未知修复。新资源和真实模型调用先明确预算，不自动重试扩大范围。
 
-## 结果与交付
-
-- 成功作业及计分已明确时，用`openmc_generate_result_bundle(job_id,tally_id,score,...)`生成同源图/完整数据/报告/独立脚本及清单；未知计分先读结果摘要。不要为画图把全量数组搬入模型再自行reshape，沿包内程序保留坐标映射和来源。默认auto对完整规则网格用mesh，其余series；用nuclide/filter_selection、层/能量箱和按需report_formats表达用户选择，不猜条件。检查state=complete、selection/points、source、warnings及产物实际位置；manifest保留完整检查信息，完整不是专业验收。
-- 结果包的`delivery_summary`由工具按实际选择、完整服务器路径、原始单位/归一化及告警直接生成；优先引用，保留路径原文，不把服务器位置称为已下载。`delivery_file`为可取回的同文`delivery.md`。零值原因保持原警告的不确定性，不改成确定归因；该摘要不保证宿主展示或用户已取回文件。
-
-- 结果包另存新目录，未重新求解、未覆盖旧报告或自动下载；按返回paths取回，传输限额不变。若需要任意筛选、单独操作或自定义分析，继续用下面的原单项工具、数据和脚本，不强制走整合入口。
-
-- 需要逐项处理或尚不知道计分时，用 `openmc_read_results(job_id)`发现成功作业已有的计分和维度；它只接收job_id/max_values/detail，不接收计分选择参数。然后把 `tally_id`、`score`、`nuclide`及适用过滤选择传给绘图/报告工具。保留均值、标准差、来源、维度和截断信息；不能用截断预览冒充全量。网格预览非零优先，按preview_indices/preview_points关联箱号和坐标，不把返回数组顺序直接当网格顺序。
-- 规则网格用 `openmc_plot_mesh`（3D须明确层，带能量过滤按需选箱）；其他支持选择用 `openmc_plot_results`。`openmc_export_report`沿用同一结果选择。同作业同格式导出会覆盖原报告；需要保留旧版时先安排归档或选择其他格式，不把重复导出当作新版本。图表样式可由用户后续分析调整，核心是数据、选择和来源一致。
-- 绘图模板：计分曲线/柱图、能谱、扫描、网格及k历史共用科研样式，返回`plot_template`和`plot_script`。模板只组织已有数据；能谱保留箱积分值与eV上下界，不自动除以能宽；网格并排显示原始计分及相对标准差；k图分别显示活跃估计与累计均值，样本标准误不校正相关性，不能当源收敛判据。
-- 调整图先复用输出，勿重新提交计算。取回同名`.py`、`.json`和`.csv`并保持目录关系；在有NumPy/Matplotlib的客户端运行`python <plot_script文件名> --output revised.svg --font-size 16 --title "标题"`，也可用`--xlabel/--ylabel/--width/--height/--dpi/--font/--style-file`。脚本默认生成`*-replot.png`，不覆盖原图，不依赖OpenMC、MCP或包内路径。保持原始JSON/CSV不变；改归一化、分箱、筛选或拟合属于额外分析，须明确方法和来源，不能伪称只是换样式。字体/库版本不同时外观可有差异。
-- 报告正文通常只预览20点；完整核对读关联CSV/JSON，不能要求正文包含最后一个点。热图CSV/报告预览9位有效数字，普通曲线CSV按浮点序列化精度；用同一显示精度或原生数据核对，不比较字符串格式。
-- 零均值、非有限值、零标准差及低统计警告都保留；不补零、不改报更好看的估计器。统计误差不能替代源收敛或参考解准确率结论。
-- `openmc_list_artifacts`取得服务端位置、大小、SHA256；`matches_recorded_output=null`表示无记录可比，不等于不一致。需要取回文件时按[文件交接](references/file-transfer.md)。
-- 数值解释沿用实际数据的单位和归一化记录，不根据“flux”名称补成每平方厘米通量。原始flux计分为particle-cm/source；未明确除以网格体积，就不能写成particle/cm²/source。未换算功率或实际源强时也不写成每秒通量；不确定时保留“原始计分”并指出未换算步骤。
-- 向用户交付：模型/作业标识、这次输入及改动、执行终态、所选量与单位/归一化、关键告警、可打开的图和报告位置。远程尚未下载时明确是服务端路径；不要声称用户本机已有文件。
-
-## 按任务深入与失败接续
-
-扫描、官方例题、CAD、燃耗、Slurm及修复按需读取[扩展任务](references/extended-tasks.md)。不要一次加载全部能力Schema或例题清单。
-
-传输或提交结果未知时，先查原传输ID/作业记录，不盲目重复写入或计算。失败保留原记录：诊断日志，区分输入错误、核数据/运行环境缺失和工具问题。修复必须展示实际diff并取得用户明确确认后才 `apply_repair`；不能把本技能或一次计算请求当作修复授权。
-
-正式使用说明在完整工具包中的 `docs/index.html`（不在独立安装的技能目录内）；用户操作、部署、接口分别见其稳定导航。技能可单独安装，不依赖包外个人目录；详细工具参数以当前MCP定义为准。
+完整使用、部署和接口在随包docs稳定导航；技能可独立安装，不依赖个人目录。

@@ -12,7 +12,7 @@ from tools import TOOLS
 
 
 RETURN_NOTES = {
-    'openmc_generate_result_bundle': [['delivery_summary / delivery_file', '工具生成的可引用摘要及同文delivery.md：完整服务器路径、实际选择、原始单位/归一化、来源SHA256与警告。按原MCP文件工具取回；不证明宿主展示、模型引用或用户已下载。']],
+    'openmc_generate_result_bundle': [['delivery_summary / delivery_file', 'data_quality按本次完整选择统计箱数、零均值/不可用箱，不确定原因。工具生成的可引用摘要及同文delivery.md：完整服务器路径、实际选择、原始单位/归一化、来源SHA256与警告。按原MCP文件工具取回；不证明宿主展示、模型引用或用户已下载。']],
     'openmc_preview_input': [
         ['execution_preview (mode=run时)', '尚未提交；读取实际settings、tallies、parameter_changes.current、核数据和检查范围，human_summary供宿主呈现。preview_id仅绑定条件，不证明人已确认；省略mode保持原清单预览。'],
     ],
@@ -20,6 +20,7 @@ RETURN_NOTES = {
         ['preview_id / execution_receipt', '可选传预览编号，须同case_dir/mode/threads。输入、运行配置或外部数据身份变化则拒绝；提交快照再次核对。回执preview_bound/binding_verified说明绑定范围，不提供编号仍兼容，不能声称核对过先前预览。'],
     ],
     'openmc_job_status': [
+        ['wait_seconds / wait', '可选0..30秒等待至终态，默认立即返回。wait.timed_out不代表计算失败，不取消/重算；可用随包follow_job.py在宿主连续跟进。'],
         ['execution_receipt', '单次普通作业保存的提交条件；核对preview_id、settings、tallies与input_hashes。仅绑定本次条件，不代表宿主展示、用户同意或专业正确；不锁定外部核数据库。'],
     ],
     'openmc_read_results': [

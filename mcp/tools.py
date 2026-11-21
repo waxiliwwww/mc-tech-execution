@@ -86,7 +86,7 @@ TOOLS += [
      "outputSchema": OUTPUT, "function": submit_job,
      "annotations": {"readOnlyHint": False, "destructiveHint": False}},
     {"name": "openmc_job_status", "description": "用户询问计算是否完成、需要接续已有作业或提交结果未知时，按作业编号查询真实终态、退出码、日志尾部与产物；服务重启后仍可查询，未知终态不冒充成功。",
-     "inputSchema": schema({"job_id": TEXT}, ["job_id"]), "outputSchema": OUTPUT, "function": job_status},
+     "inputSchema": schema({"job_id": TEXT, "wait_seconds":{"type":"integer","minimum":0,"maximum":30,"description":"可选有界等待至终态，0立即返回（兼容旧调用），最多30秒。到期仍运行不是失败；沿同一job_id继续，不能重新提交。"}}, ["job_id"]), "outputSchema": OUTPUT, "function": job_status},
     {"name": "openmc_cancel_job", "description": "请求取消本工具管理的作业，查询到cancelled才表示取消完成；重复取消不会重新执行。",
      "inputSchema": schema({"job_id": TEXT}, ["job_id"]), "outputSchema": OUTPUT, "function": cancel_job,
      "annotations": {"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True}},
