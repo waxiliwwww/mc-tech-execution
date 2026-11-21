@@ -91,3 +91,4 @@ test_execution_preview_real.ExecutionPreviewReal
 
 # Agent工作流五场景：真实MCP/OpenMC、文件字节及故障接续；不是模型遵循证明。
 test_agent_workflow_real.AgentWorkflowsReal
+test_result_value_rows_real.ResultValueRowsReal

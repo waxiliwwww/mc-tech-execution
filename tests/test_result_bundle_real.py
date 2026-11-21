@@ -44,6 +44,13 @@ class ResultBundleReal(unittest.TestCase):
         # This class is release-critical, so a normal release also guards
         # delivery facts without requiring a separate historical-job fixture.
         summary=bundle['delivery_summary']
+        self.assertEqual(bundle['input_materials']['status'], 'verified')
+        self.assertTrue(bundle['input_materials']['materials'])
+        self.assertEqual(manifest['selected_value_rows'], bundle['selected_value_rows'])
+        self.assertIn(bundle['selected_table'], summary)
+        for row in bundle['selected_value_rows']:
+            self.assertEqual(row['score'], bundle['selection']['score'])
+            self.assertEqual(row['nuclide'], bundle['selection']['nuclide'])
         self.assertEqual((folder/'delivery.md').read_text(),summary+'\n')
         self.assertEqual(self.workspace/bundle['delivery_file'],folder/'delivery.md')
         for key in ('chart','data_json','data_csv','plot_script','manifest','delivery_file'):

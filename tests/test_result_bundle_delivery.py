@@ -40,6 +40,17 @@ class ExistingResultDelivery(unittest.IsolatedAsyncioTestCase):
                     r=await session.call_tool(name,args);self.assertFalse(r.isError,str(r))
                     return r.structuredContent or json.loads(r.content[0].text)
                 bundle=await call('openmc_generate_result_bundle',{'job_id':self.job,'tally_id':1,'score':score,'view':view})
+                result=await call('openmc_read_results',{'job_id':self.job,'detail':'full'})
+                self.assertEqual(result['input_materials']['status'], 'verified')
+                self.assertEqual(bundle['input_materials']['materials'],result['input_materials']['materials'][:20])
+                self.assertIn(bundle['selected_table'],bundle['delivery_summary'])
+                tally=next(t for t in result['tallies'] if t['id']==1)
+                for row in bundle['selected_value_rows']:
+                    if 'mesh_bin' not in row:continue
+                    native=next(r for r in tally['value_rows'] if r['score']==score and r['nuclide']==row['nuclide']
+                                and any(f.get('bin')==row['mesh_bin'] for f in r['filter_bins']))
+                    self.assertEqual(native['mean'],row['mean'])
+                    self.assertEqual(native['std_dev'],row['std_dev'])
                 summary=bundle['delivery_summary']
                 self.assertEqual(summary,(self.workspace/bundle['delivery_file']).read_text().rstrip('\n'))
                 for key in ['chart','data_json','data_csv','plot_script','manifest','delivery_file']:

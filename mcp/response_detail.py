@@ -14,6 +14,12 @@ def project(value, detail, kind):
         result['spec_fields'] = list(schema.get('properties', {}))
         omitted.append('spec_schema')
     elif kind == 'results':
+        materials = result.get('input_materials', {})
+        if len(materials.get('materials', [])) > 20:
+            materials['total_materials'] = len(materials['materials'])
+            materials['materials'] = materials['materials'][:20]
+            materials['truncated'] = True
+            omitted.append('input_materials.materials beyond first 20')
         temp = (result.get('scientific_checks') or {}).get('temperature')
         if temp and 'materials' in temp:
             records = temp.pop('materials')

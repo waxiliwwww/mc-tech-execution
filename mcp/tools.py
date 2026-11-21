@@ -55,7 +55,7 @@ TOOLS = [
      "inputSchema": schema({"case_id": TEXT}, ["case_id"]), "outputSchema": OUTPUT, "function": get_case},
 ]
 TOOLS += [
-    {"name":"openmc_generate_result_bundle", "description":"用户要已有计算结果的图、完整数据和报告时优先使用本工具；已知job_id与tally_id即可组织交付。只分析成功作业，一次生成同一计分选择的图、完整JSON/CSV、报告、独立绘图脚本和来源/文件SHA256清单。不重新求解，不把大数组交给模型重排。另存新结果包，不覆盖旧报告；默认auto对完整规则网格生成热图，其余选项用series。任意筛选/核素可用series；3D层与能量箱须明确。原单项工具/原始StatePoint/脚本保持可用，适合复杂自定义分析。默认Markdown；PDF/DOC需Office。返回服务器产物路径，下载仍沿现有限额。",
+    {"name":"openmc_generate_result_bundle", "description":"用户要已有计算结果的图、完整数据和报告时优先使用本工具；已知job_id与tally_id即可组织交付。只分析成功作业，一次生成同一计分选择的图、完整JSON/CSV、报告、独立绘图脚本和来源/文件SHA256清单。selected_table/selected_value_rows直接给出坐标与值配对的最多20行，input_materials附核实的提交密度和单位；最终答复直接引用，不重排扁平数组。不重新求解，不把大数组交给模型重排。另存新结果包，不覆盖旧报告；默认auto对完整规则网格生成热图，其余选项用series。任意筛选/核素可用series；3D层与能量箱须明确。原单项工具/原始StatePoint/脚本保持可用，适合复杂自定义分析。默认Markdown；PDF/DOC需Office。返回服务器产物路径，下载仍沿现有限额。",
      "inputSchema":schema({"job_id":TEXT,**RESULT_SELECTION,
          "tally_id":{"type":"integer","minimum":1,"description":"必需的计分ID，取openmc_read_results的tallies[].id，避免默认选错量。"},
          "view":{"type":"string","enum":["auto","series","mesh"],"default":"auto","description":"auto完整单网格用mesh，否则series。series保留任意原有filter_selection/nuclide；mesh沿用规则网格工具的二维层限制。"},
@@ -90,7 +90,7 @@ TOOLS += [
     {"name": "openmc_cancel_job", "description": "请求取消本工具管理的作业，查询到cancelled才表示取消完成；重复取消不会重新执行。",
      "inputSchema": schema({"job_id": TEXT}, ["job_id"]), "outputSchema": OUTPUT, "function": cancel_job,
      "annotations": {"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True}},
-    {"name": "openmc_read_results", "description": "用户要查看已有计算结果或尚不知道计分ID时，通过官方StatePoint读取已成功计算的keff及tally均值/标准差；保留计分维度、数据来源和截断说明，不进行专业验收。",
+    {"name": "openmc_read_results", "description": "用户要查看已有计算结果或尚不知道计分ID时，通过官方StatePoint读取已成功计算的keff及tally均值/标准差；value_rows逐行绑定原生过滤箱、核素、score、均值和标准差（最多20行），不要从多score扁平数组重排坐标；input_materials给出指纹核验的提交材料密度和原单位，ao/wo不是密度。保留维度、来源和截断说明，不进行专业验收。",
      "inputSchema": schema({"job_id": TEXT, "max_values": {"type": "integer", "minimum": 1, "maximum": 10000}}, ["job_id"]),
      "outputSchema": OUTPUT, "function": read_results},
     {"name": "openmc_export_report", "description": "导出Markdown/CSV/PDF/DOCX或真实Word97 DOC。传任一结果选择参数时，图/数表/完整CSV及JSON沿用同一选择；正文预览最多20点，CSV保留全部所选点。全部省略时保留旧全作业摘要。PDF/DOC需LibreOffice。同作业同格式覆盖，留多版须归档。",

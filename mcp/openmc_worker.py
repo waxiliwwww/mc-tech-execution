@@ -19,6 +19,39 @@ def numpy_scalar(value):
     raise TypeError('Unsupported JSON result type: ' + type(value).__name__)
 
 
+def tally_value_rows(tally, indices, limit=20):
+    """Bind each raw value to its native filter bins, nuclide and score once."""
+    import numpy as np
+    def plain(value):
+        if isinstance(value, (tuple, list, np.ndarray)):
+            return [plain(v) for v in value]
+        if isinstance(value, np.generic):
+            value = value.item()
+        return None if isinstance(value, float) and not math.isfinite(value) else value
+    mean, std = tally.mean, tally.std_dev
+    rows = []
+    for raw_index in indices[:limit]:
+        flat_bin, nuclide_index, score_index = np.unravel_index(int(raw_index), mean.shape)
+        positions = np.unravel_index(flat_bin, tuple(f.num_bins for f in tally.filters)) if tally.filters else ()
+        filters = []
+        for position, (item, bin_index) in enumerate(zip(tally.filters, positions)):
+            entry = {'filter_index': position, 'type': type(item).__name__, 'bin_index': int(bin_index)}
+            # Distribcell bins enumerate cell IDs, not the distributed instances.
+            # EnergyFunctionFilter deliberately exposes no bins at all.
+            bins = getattr(item, 'bins', None)
+            if type(item).__name__ != 'DistribcellFilter' and bins is not None and len(bins) == item.num_bins:
+                entry['bin'] = plain(bins[bin_index])
+                if type(item).__name__ in ('MeshFilter', 'MeshBornFilter') and isinstance(entry['bin'], list):
+                    entry['bin'] += [1] * (3 - len(entry['bin']))
+            else:
+                entry['bin_note'] = '原生实例序号；未推断物理坐标。'
+            filters.append(entry)
+        rows.append({'raw_index': int(raw_index), 'score': tally.scores[score_index],
+                     'nuclide': str(tally.nuclides[nuclide_index]), 'filter_bins': filters,
+                     'mean': plain(mean.ravel()[raw_index]), 'std_dev': plain(std.ravel()[raw_index])})
+    return rows
+
+
 def _mesh_bounds(mesh):
     """Return regular-mesh bounds as 3-D cm, padding missing dimensions with zero."""
     lower = [float(v) for v in mesh.lower_left]
@@ -606,6 +639,9 @@ def execute(action: str, params: dict) -> dict:
                                 'filter_signatures': [filter_identity(f) for f in tally.filters],
                                 'shape': list(tally.mean.shape), 'mean': preview,
                                 'std_dev': preview_std, 'preview_indices': selected,
+                                'value_rows': tally_value_rows(tally, selected),
+                                'value_rows_truncated': len(selected) > 20,
+                                'value_rows_note': '每行绑定原生分箱、核素、计分和统计值；规则网格MeshFilter.bin为1-based [i,j,k]，其他类型保留原生bin，无bin时仅给序号。最多20行；不要按多score扁平数组重建坐标。',
                                 'preview_policy': policy,
                                 'zero_mean_std_values': zero_unscored,
                                 'zero_values': int(np.count_nonzero(np.isfinite(flat) & (flat == 0))),

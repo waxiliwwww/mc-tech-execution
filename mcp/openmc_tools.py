@@ -1005,6 +1005,8 @@ def read_results(job_id: str, max_values: int = 1000, detail: str = 'summary') -
                                 f"预览{len(tally.get('mean', []))}值；preview_indices给出实际序号，"
                                 '未展示的值不等于0。')
     data['warnings'] = warnings
+    from result_facts import submitted_materials
+    data['input_materials'] = submitted_materials(directory, record)
     data.update(job_id=job_id, provenance=status['provenance'],
                 statepoint=relative(point), statepoint_sha256=hashlib.sha256(point.read_bytes()).hexdigest(),
                 statepoint_context=_statepoint_context(directory, record, point),

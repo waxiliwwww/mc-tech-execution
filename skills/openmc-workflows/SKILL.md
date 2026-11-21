@@ -20,6 +20,7 @@ metadata:
 - 常见改参/同一原网格补计分优先 `openmc_run_case`：case_dir为当前模型，target_dir为新副本，parameters用已发现键，mesh_scores只追加到同一已有网格；默认submit=false只准备，用户明确要求计算才submit=true。包内完成派生、读回、最终预览和绑定提交，不再拆开新增全局计分。多个/没有网格时needs_selection，向用户确认；复杂/新网格等仍用原工具。中途追加从已准备副本再派生新target_dir，带上新增要求后再算；不在计算完成后改输入冒充新结果。
 - 保存原job_id，用 `openmc_job_status(wait_seconds=30)`有界等待；宿主可用随包follow_job.py连续跟踪，断线/到期沿原编号接续，不重投、不自动扩大规模。
 - 已知作业/计分直接 `openmc_generate_result_bundle`；核对selection、data_quality和warnings，保留完整路径、原始单位和不确定性。用户要文件就用宿主固定命令 `mc-agent-tools-transfer --mcp-url <实际地址> receive <transfer_id> <本机目标>`实际下载并校验；无需拼接mkdir，路径分别引用，计算完成、成果生成、文件交付分别报告；服务器路径不等于本机文件，下载失败不重算。
+- 数值表直接引用结果包的selected_table/selected_value_rows，或read_results的tallies[].value_rows；每行已绑定分箱、核素、score和误差，不按多score的扁平mean数组重排坐标。用户问实际密度时查input_materials（status=verified），逐材料保留value和units；ao/wo是核素比例，不能据此判断密度未知。摘要材料列表截断时用read_results(detail="full")；旧服务没有此字段才查原job_status的execution_receipt.parameter_changes或已核实提交输入，不能把当前算例配置冒充提交值。无法核实时明确缺口。
 
 ## 按条件选择步骤
 

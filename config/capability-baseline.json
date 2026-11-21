@@ -271,10 +271,13 @@
       "status": "supported",
       "surface": "openmc_generate_result_bundle；保留全部原子结果/绘图/报告工具",
       "input": "成功job_id及明确tally_id；原计分选择/核素/过滤器、mesh层或能量箱、图与报告格式",
-      "output": "新目录中的同源图/完整数据/报告/复现脚本/来源与文件指纹；原输入、StatePoint和旧报告保留",
+      "output": "新目录中的同源图/完整数据/报告/复现脚本/来源与文件指纹；原输入、StatePoint和旧报告保留；逐行绑定原生分箱/核素/score与统计值，结果包可直接引用所选值表；指纹核验的提交材料密度及原单位，无指纹/已改变明确未核实。",
       "evidence": [
         "tests/test_result_bundle.py",
-        "tests/test_result_bundle_real.py"
+        "tests/test_result_bundle_real.py",
+        "tests/test_result_facts.py",
+        "tests/test_result_value_rows_real.py",
+        "tests/test_result_bundle_delivery.py"
       ],
       "gate": "offline_and_real"
     },
