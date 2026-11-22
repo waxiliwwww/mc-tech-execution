@@ -63,6 +63,7 @@ class ResultSemantics(unittest.TestCase):
         self.assertIn('不是事件计数',statement)
         self.assertIn('不能仅据零值断言',statement)
         self.assertIn('没有对应证据时不指定成因',interpretation_summary(facts))
+        self.assertIn('不增补可能成因清单或零估计概率判断',statement)
 
     def test_fixed_source_does_not_get_eigenvalue_source_convergence_diagnosis(self):
         facts=interpretation([{'id':2,'scores':['fission']}],'fixed source',{})

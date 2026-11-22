@@ -9,8 +9,8 @@ def zero_value_note():
     """A tally estimate is not an event counter or a cause diagnosis."""
     return ('零值只表示该计分的统计估计为0；即使均值和标准差均为0，成因也未确定。'
             '不能仅据零值断言没有裂变事件、没有径迹贡献、物理量为零，或认定为统计不足的正常表现。'
-            'tracklength计分是径迹估计，不是事件计数。需另查估计器、核素/材料与几何、源覆盖和滤波选择，'
-            '没有对应证据时不指定成因。')
+            'tracklength计分是径迹估计，不是事件计数。当前未做成因诊断；没有对应证据时不指定成因，'
+            '也不增补可能成因清单或零估计概率判断。若需定位，应另取独立诊断证据。')
 
 
 def material_source_summary(materials):
