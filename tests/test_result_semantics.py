@@ -53,6 +53,17 @@ class ResultSemantics(unittest.TestCase):
         self.assertIn('未作工程源强/功率换算',facts['normalization'])
         self.assertNotIn('未归一化',facts['normalization'])
 
+    def test_zero_estimates_do_not_establish_events_tracks_or_low_statistics_cause(self):
+        facts=interpretation([{'id':1,'scores':['fission'],'estimator':'tracklength',
+                              'zero_values':2,'zero_mean_std_values':2}],'eigenvalue',{})
+        evidence=facts['zero_value_evidence']
+        self.assertEqual(evidence['cause_status'],'not_determined')
+        statement=evidence['statement']
+        self.assertIn('成因也未确定',statement)
+        self.assertIn('不是事件计数',statement)
+        self.assertIn('不能仅据零值断言',statement)
+        self.assertIn('没有对应证据时不指定成因',interpretation_summary(facts))
+
     def test_fixed_source_does_not_get_eigenvalue_source_convergence_diagnosis(self):
         facts=interpretation([{'id':2,'scores':['fission']}],'fixed source',{})
         self.assertEqual(facts['source_convergence']['status'],'not_applicable')

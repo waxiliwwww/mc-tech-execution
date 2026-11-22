@@ -633,7 +633,7 @@ def execute(action: str, params: dict) -> dict:
             keff = point.keff if point.run_mode == 'eigenvalue' else None
             tallies = []
             for tally in point.tallies.values():
-                from result_facts import score_semantics
+                from result_facts import score_semantics, zero_value_note
                 mesh = _mesh_descriptor(tally)
                 indices, policy = _mesh_indices(tally.mean, limit, mesh)
                 selected = [int(index) for index in indices]
@@ -642,7 +642,7 @@ def execute(action: str, params: dict) -> dict:
                 flat = np.asarray(tally.mean).ravel()
                 zero_unscored = int(np.count_nonzero(np.isfinite(flat) & (flat == 0) & (np.asarray(tally.std_dev).ravel() == 0)))
                 if zero_unscored:
-                    warnings.append(f'tally {tally.id}：{zero_unscored}/{flat.size}个计分值均值和标准差均为0；可能是无贡献、统计不足或多群分箱错配，不等于物理量为零；请核对滤波边界和原始数据。')
+                    warnings.append(f'tally {tally.id}：{zero_unscored}/{flat.size}个计分值均值和标准差均为0；' + zero_value_note())
                 tallies.append({'id': tally.id, 'name': tally.name, 'scores': tally.scores,
                                 'unit_context': tally_unit_context(tally),
                                 'score_semantics': [score_semantics(s, tally_unit_context(tally)) for s in tally.scores],

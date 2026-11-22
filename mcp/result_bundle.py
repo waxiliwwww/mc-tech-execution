@@ -86,6 +86,9 @@ def delivery_summary(destination, job_id, selection, normalization, source_hash,
     if warnings:lines += ['重要提醒（本次结果；不能省略或改成确定原因）：']
     lines += ['注意：' + warning for warning in warnings]
     if input_materials:
+        if not (result_interpretation or {}).get('material_source_summary'):
+            from result_facts import material_source_summary
+            lines.append(material_source_summary(input_materials))
         lines.append('提交材料密度（原始单位；不是核素比例或燃耗步后密度）：')
         if input_materials['status'] == 'verified':
             for material in input_materials['materials'][:20]:
@@ -200,7 +203,7 @@ def generate_result_bundle(job_id: str, tally_id: int, score: str | None = None,
         series['unit_context'] = tally.get('unit_context', {})
         facts = interpretation([{**tally, 'scores':[resolved['score']],
                                 'score_semantics':[s for s in tally.get('score_semantics', []) if s['score'] == resolved['score']]}],
-                               overview.get('run_mode'), overview.get('statistical_adequacy'))
+                               overview.get('run_mode'), overview.get('statistical_adequacy'), overview.get('input_materials'))
         fact_summary = interpretation_summary(facts)
         rows = selected_value_rows(series)
         table = value_table(rows)

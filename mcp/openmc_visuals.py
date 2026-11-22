@@ -326,12 +326,9 @@ def draw_mesh(series, path: Path, params):
     zero_bins = int(np.count_nonzero(zero_mask))
     statistics = mesh_statistics(series['values'], series['errors'])
     low_bins = statistics['low_statistics_bins']
-    zero_note = ('有' + str(int(zero_bins)) + '/' + str(int(zero_mask.size))
-                 + '个网格箱的统计均值为0；这只表示本次抽样该箱没有计分，'
-                   '不能判断物理量严格为0或断言没有径迹贡献。')
-    if zero_bins and zero_bins == zero_mask.size:
-        zero_note = ('全部' + str(int(zero_bins)) + '个网格箱的统计均值为0；'
-                     '先核对源位置、网格范围与计分选择，不要把这张图当作物理结论。')
+    from result_facts import zero_value_note
+    zero_note = ('有' + str(zero_bins) + '/' + str(int(zero_mask.size))
+                 + '个网格箱统计均值为0；' + zero_value_note())
     low_note = None
     if low_bins:
         maximum = statistics['max_relative_std']

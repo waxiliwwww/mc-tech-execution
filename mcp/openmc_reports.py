@@ -100,7 +100,7 @@ def export_selected_job(job_id: str, format: str, selection: dict, *,
     chosen = next(t for t in tallies if t['id'] == series['tally_id'])
     selected = {**chosen, 'scores':[series['score']],
                 'score_semantics':[s for s in chosen.get('score_semantics', []) if s['score'] == series['score']]}
-    data['result_interpretation'] = interpretation([selected], data.get('run_mode'), data.get('statistical_adequacy'))
+    data['result_interpretation'] = interpretation([selected], data.get('run_mode'), data.get('statistical_adequacy'), data.get('input_materials'))
     data['result_summary'] = interpretation_summary(data['result_interpretation'])
     # Every format uses the same metadata from the submitted input snapshot.
     # In particular, binary reports must not lose the header at this branch.

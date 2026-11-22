@@ -15,6 +15,8 @@ class MeshZero(unittest.TestCase):
                         x_label='x (cm)',y_label='y (cm)',title='flux',colorbar_label='raw flux')
             result=draw_mesh(series,path,{'provenance':{'data_kind':'unit_plot_fixture'}})
             self.assertEqual(result['zero_bins'],2);self.assertTrue(result['warnings'])
+            self.assertIn('成因也未确定',result['warnings'][0])
+            self.assertNotIn('本次抽样该箱没有计分',result['warnings'][0])
             data=json.loads(path.with_suffix('.json').read_text())
             self.assertEqual(data['zero_bins'],2);self.assertEqual(data['values'],[[0.,2.],[None,-0.]])
             with path.with_suffix('.csv').open() as stream:

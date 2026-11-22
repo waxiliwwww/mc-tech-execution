@@ -5,6 +5,21 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 
+def zero_value_note():
+    """A tally estimate is not an event counter or a cause diagnosis."""
+    return ('零值只表示该计分的统计估计为0；即使均值和标准差均为0，成因也未确定。'
+            '不能仅据零值断言没有裂变事件、没有径迹贡献、物理量为零，或认定为统计不足的正常表现。'
+            'tracklength计分是径迹估计，不是事件计数。需另查估计器、核素/材料与几何、源覆盖和滤波选择，'
+            '没有对应证据时不指定成因。')
+
+
+def material_source_summary(materials):
+    """Quote the verified submitted input digest in full, never a current case."""
+    if materials.get('status') != 'verified':
+        return '材料来源未核实：' + materials.get('reason', '缺少提交输入指纹或核验依据。')
+    return ('材料来源文件：' + materials['source_file'] + '\n材料来源文件SHA256：' + materials['sha256'])
+
+
 def score_semantics(score, context=None):
     """Raw, unconverted units only; response/derivative units are not guessed.
 
@@ -27,7 +42,7 @@ def score_semantics(score, context=None):
                           '本摘要未定义该score的单位；保留原值，另查专业依据，不从名称猜测。')}
 
 
-def interpretation(tallies, run_mode, adequacy):
+def interpretation(tallies, run_mode, adequacy, input_materials=None):
     scores = []
     for tally in tallies:
         available = tally.get('score_semantics') or [score_semantics(s, tally.get('unit_context')) for s in tally['scores']]
@@ -37,6 +52,8 @@ def interpretation(tallies, run_mode, adequacy):
     return {'terminology': 'score是计分类型；nuclide是核素/汇总范围。nuclide=total表示所有核素汇总；'
                           '只有scores中实际出现total时，score=total才表示合法的总反应计分。',
             'scores': scores,
+            'material_source_summary': material_source_summary(input_materials) if input_materials else None,
+            'zero_value_evidence': {'cause_status':'not_determined', 'statement':zero_value_note()},
             'source_convergence': {
                 'status': 'not_verified' if applicable or not run_mode else 'not_applicable',
                 'statement': ('源收敛未验证；本工具仅作相对σ分级和批次设置提示，未执行源收敛诊断。'
@@ -52,7 +69,9 @@ def interpretation_summary(facts):
         unit = item['raw_unit'] or '未定义（需核实）'
         lines.append(f"tally {item['tally_id']}：score={item['score']}（{item['meaning']}）；原始单位={unit}；{item['unit_note']}")
     source = facts['source_convergence']
+    if facts.get('material_source_summary'):lines.append(facts['material_source_summary'])
     lines += [facts['normalization'], source['statement']]
+    if facts.get('zero_value_evidence'):lines.append(facts['zero_value_evidence']['statement'])
     if source['status'] == 'not_verified':
         lines.append(source['evidence_limit'])
     return '\n'.join(lines)

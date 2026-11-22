@@ -211,6 +211,8 @@ def render(data, output, *, font_path=None, style_file=None, font_size=None,
                 unavailable = sum(value is None for value in data['std_dev'])
                 if missing or unavailable:
                     note += f' · missing values: {missing}; unavailable uncertainties: {unavailable}'
+            if template == 'mesh' and data.get('zero_bins', 0):
+                note += ' · zero estimate: cause undetermined; not a physical-zero conclusion'
             if template == 'convergence':
                 note += ' · sample SE does not establish source convergence'
             figure.supxlabel(note, fontsize=9, color='#666666')

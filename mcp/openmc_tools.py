@@ -1013,7 +1013,7 @@ def read_results(job_id: str, max_values: int = 1000, detail: str = 'summary') -
                 statistical_adequacy=statistical_adequacy(data.get('keff'), data, status.get('progress')),
                 professional_acceptance=False)
     from result_facts import interpretation, interpretation_summary
-    data['result_interpretation'] = interpretation(data.get('tallies', []), data.get('run_mode'), data['statistical_adequacy'])
+    data['result_interpretation'] = interpretation(data.get('tallies', []), data.get('run_mode'), data['statistical_adequacy'], data['input_materials'])
     data['result_summary'] = interpretation_summary(data['result_interpretation'])
     atomic_json(directory / 'results.json', data)
     from response_detail import project

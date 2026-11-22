@@ -45,6 +45,15 @@ class ExistingResultDelivery(unittest.IsolatedAsyncioTestCase):
                 self.assertIn('particle-cm/source',result['result_summary'])
                 self.assertIn('reactions/source',result['result_summary'])
                 self.assertIn('源收敛未验证',result['result_summary'])
+                expected_material_hash=hashlib.sha256((self.source/'work/materials.xml').read_bytes()).hexdigest()
+                for message in (result['result_summary'],bundle['result_summary'],bundle['delivery_summary']):
+                    self.assertIn('材料来源文件SHA256：'+expected_material_hash,message.splitlines())
+                    self.assertIn('成因也未确定',message)
+                    self.assertNotIn('可能是无贡献、统计不足',message)
+                self.assertEqual(result['result_interpretation']['zero_value_evidence']['cause_status'],'not_determined')
+                for warning in result['warnings']:
+                    if '均值和标准差均为0' in warning:self.assertIn('成因也未确定',warning)
+
                 self.assertEqual(bundle['result_interpretation']['source_convergence']['status'],'not_verified')
                 self.assertIn(bundle['result_summary'],bundle['delivery_summary'])
                 expected_unit='particle-cm/source' if score=='flux' else 'reactions/source'
@@ -52,6 +61,12 @@ class ExistingResultDelivery(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(result['input_materials']['status'], 'verified')
                 self.assertEqual(bundle['input_materials']['materials'],result['input_materials']['materials'][:20])
                 self.assertIn(bundle['selected_table'],bundle['delivery_summary'])
+                for report in bundle['reports']:
+                    if report['format']=='markdown':
+                        text=(self.workspace/report['path']).read_text()
+                        self.assertIn(expected_material_hash,text)
+                        self.assertIn('成因也未确定',text)
+
                 tally=next(t for t in result['tallies'] if t['id']==1)
                 for row in bundle['selected_value_rows']:
                     if 'mesh_bin' not in row:continue
@@ -69,7 +84,7 @@ class ExistingResultDelivery(unittest.IsolatedAsyncioTestCase):
                 self.assertIn('未换算功率或实际源强',summary);self.assertIn('未作专业验收',summary)
                 self.assertIn(bundle['normalization'],summary);self.assertIn(bundle['source']['sha256'],summary)
                 for warning in bundle['warnings']:self.assertIn(warning,summary)
-                if score=='fission' and view=='mesh':self.assertIn('不能判断物理量',summary)
+                if score=='fission' and view=='mesh':self.assertIn('没有对应证据时不指定成因',summary)
                 self.assertIn('particle-cm/source' if score=='flux' else 'reactions/source',summary)
                 self.assertNotIn('particle/cm²/source',summary)
                 # Native source identity and values are preserved by the old result tools.

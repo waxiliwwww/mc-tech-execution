@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'mcp'))
-from result_facts import submitted_materials, selected_value_rows, value_table
+from result_facts import submitted_materials, selected_value_rows, value_table, interpretation, interpretation_summary
 
 
 class ResultFacts(unittest.TestCase):
@@ -24,6 +24,23 @@ class ResultFacts(unittest.TestCase):
             self.assertEqual(submitted_materials(root, record)['status'], 'unavailable')
             self.assertEqual(submitted_materials(root, record)['materials'], [])
             self.assertEqual(submitted_materials(root, {})['status'], 'unavailable')
+
+    def test_material_source_digest_is_complete_and_unverified_input_has_no_invented_digest(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);(root/'work').mkdir()
+            raw=b'<materials><material id="1"><density units="g/cm3" value="10.1"/></material></materials>'
+            (root/'work/materials.xml').write_bytes(raw);expected=hashlib.sha256(raw).hexdigest()
+            record={'input_files':{'materials.xml':expected}}
+            materials=submitted_materials(root,record)
+            facts=interpretation([{'id':1,'scores':['flux']}],'eigenvalue',{},materials)
+            summary=interpretation_summary(facts)
+            self.assertIn('材料来源文件：materials.xml',summary.splitlines())
+            self.assertIn('材料来源文件SHA256：'+expected,summary.splitlines())
+            (root/'work/materials.xml').write_bytes(raw+b'changed')
+            unavailable=submitted_materials(root,record)
+            summary=interpretation_summary(interpretation([], 'eigenvalue',{},unavailable))
+            self.assertIn('材料来源未核实',summary)
+            self.assertNotIn(expected,summary)
 
     def test_model_xml_and_symlink_are_not_confused_with_current_case(self):
         with tempfile.TemporaryDirectory() as temporary:
