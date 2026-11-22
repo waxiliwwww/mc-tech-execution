@@ -48,6 +48,8 @@ class ExistingResultDelivery(unittest.IsolatedAsyncioTestCase):
                 expected_batch='批次设置：总批次=8；非活跃批次(inactive)=2；活跃批次(active)=6。'
                 for message in (result['result_summary'],bundle['result_summary'],bundle['delivery_summary']):
                     self.assertIn(expected_batch,message)
+                    self.assertIn('k_eff统计：',message)
+                    self.assertIn('相对标准差=1.524%',message)
                 self.assertEqual(result['batch_settings']['active_batches'],6)
 
                 for message in (result['result_summary'],bundle['result_summary'],bundle['delivery_summary']):
