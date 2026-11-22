@@ -37,6 +37,17 @@ def batch_settings_summary(progress):
                         '这是批次设置，不将realizations实现数或代数混作批次数；不是源收敛标准。'}
 
 
+def precision_summary(adequacy):
+    data = adequacy or {}
+    mean, sigma = data.get('mean'), data.get('std_dev')
+    if not (type(mean) in (int,float) and type(sigma) in (int,float)
+            and math.isfinite(mean) and math.isfinite(sigma) and mean > 0 and sigma > 0):
+        return None
+    return (f'k_eff统计：均值={mean:.9g}；绝对标准差={sigma:.9g}；相对标准差={100*sigma/abs(mean):.4g}%。'
+            '相对标准差=绝对标准差/均值的绝对值；绝对标准差不能直接当百分数。'
+            '该比例只属于k_eff，不代表网格逐箱相对误差。')
+
+
 def professional_acceptance_status():
     return {'status':'not_performed_by_toolkit', 'result':None,
             'statement':'本工具未执行专业验收；professional_acceptance=false表示本工具未提供专业验收结论，不表示验收失败或不合格。'}
@@ -84,6 +95,7 @@ def interpretation(tallies, run_mode, adequacy, input_materials=None, batch_sett
     return {'terminology': 'score是计分类型；nuclide是核素/汇总范围。nuclide=total表示所有核素汇总；'
                           '只有scores中实际出现total时，score=total才表示合法的总反应计分。',
             'scores': scores,
+            'statistical_precision_summary': precision_summary(adequacy),
             'batch_settings': batch_settings or batch_settings_summary({**source, 'run_mode':run_mode}),
             'professional_acceptance_status': professional_acceptance_status(),
             'mesh_indexing': [{'tally_id':t['id'], **mesh_indexing_contract(t['mesh']['dimension'])}
@@ -111,6 +123,7 @@ def interpretation_summary(facts):
         lines.append('首箱[1,1,1]→0；末箱'+str(mesh['last']['bin'])+'→'+str(mesh['last']['mesh_offset']))
     if facts.get('professional_acceptance_status'):lines.append(facts['professional_acceptance_status']['statement'])
     if facts.get('batch_settings', {}).get('status')=='available':lines.append(facts['batch_settings']['statement'])
+    if facts.get('statistical_precision_summary'):lines.append(facts['statistical_precision_summary'])
     source = facts['source_convergence']
     if facts.get('material_source_summary'):lines.append(facts['material_source_summary'])
     lines += [facts['normalization'], source['statement']]

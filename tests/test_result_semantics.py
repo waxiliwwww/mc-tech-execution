@@ -121,6 +121,13 @@ class ResultSemantics(unittest.TestCase):
         self.assertEqual(batch['status'],'not_applicable')
         self.assertNotIn('active_batches',batch)
 
+    def test_precision_summary_labels_k_and_divides_sigma_by_mean(self):
+        facts=interpretation([], 'eigenvalue', {'mean':1.562939523552621,'std_dev':.023819683854745994})
+        text=facts['statistical_precision_summary']
+        self.assertIn('相对标准差=1.524%',text)
+        self.assertIn('绝对标准差不能直接当百分数',text)
+        self.assertIn('只属于k_eff',text)
+
     def test_fixed_source_does_not_get_eigenvalue_source_convergence_diagnosis(self):
         facts=interpretation([{'id':2,'scores':['fission']}],'fixed source',{})
         self.assertEqual(facts['source_convergence']['status'],'not_applicable')
