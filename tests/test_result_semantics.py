@@ -94,6 +94,33 @@ class ResultSemantics(unittest.TestCase):
         self.assertIn('本工具未执行专业验收',state['statement'])
         self.assertIn('不表示验收失败',interpretation_summary(facts))
 
+    def test_batch_summary_labels_total_inactive_and_active_without_negative_parentheses(self):
+        from result_facts import batch_settings_summary
+        for total,inactive in ((8,2),(80,20),(8,0)):
+            progress={'run_mode':'eigenvalue','batches_total':total,'inactive':inactive}
+            from openmc_tools import _source_convergence
+            source=_source_convergence(progress)
+            batch=batch_settings_summary(progress)
+            self.assertEqual((batch['batches_total'],batch['inactive'],batch['active_batches']),(total,inactive,total-inactive))
+            self.assertEqual(source['batch_settings'],batch)
+            self.assertIn(f'非活跃批次(inactive)={inactive}',batch['statement'])
+            self.assertIn(f'活跃批次(active)={total-inactive}',batch['statement'])
+            self.assertNotIn('非inactive',batch['statement'])
+            facts=interpretation([], 'eigenvalue', {'source_convergence':source})
+            self.assertIn(batch['statement'],interpretation_summary(facts))
+            self.assertIn('不是源收敛标准',batch['statement'])
+
+    def test_unknown_and_non_eigenvalue_batches_are_not_invented(self):
+        from result_facts import batch_settings_summary
+        for progress in (None,{},[],{'run_mode':'eigenvalue','batches_total':8,'inactive':8},
+                         {'run_mode':'eigenvalue','batches_total':True,'inactive':0}):
+            batch=batch_settings_summary(progress)
+            self.assertEqual(batch['status'],'unavailable')
+            self.assertNotIn('active_batches',batch)
+        batch=batch_settings_summary({'run_mode':'fixed source','batches_total':8,'inactive':0})
+        self.assertEqual(batch['status'],'not_applicable')
+        self.assertNotIn('active_batches',batch)
+
     def test_fixed_source_does_not_get_eigenvalue_source_convergence_diagnosis(self):
         facts=interpretation([{'id':2,'scores':['fission']}],'fixed source',{})
         self.assertEqual(facts['source_convergence']['status'],'not_applicable')

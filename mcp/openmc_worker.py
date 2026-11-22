@@ -675,7 +675,9 @@ def execute(action: str, params: dict) -> dict:
             from openmc_scientific_checks import assess_directory, advisories_warnings
             science = assess_directory()
             warnings.extend(advisories_warnings(science))
-            return {'scientific_checks':science, 'openmc_version': list(point.version), 'run_mode': point.run_mode,
+            from result_facts import batch_settings_summary
+            return {'batch_settings':batch_settings_summary({'run_mode':point.run_mode, 'batches_total':int(point.n_batches), 'inactive':int(point.n_inactive or 0) if point.run_mode=='eigenvalue' else 0}),
+                    'scientific_checks':science, 'openmc_version': list(point.version), 'run_mode': point.run_mode,
                     'particles': point.n_particles, 'realizations': point.n_realizations,
                     'keff': keff_block,
                     'tallies': tallies, 'max_values_per_tally': limit, 'warnings': warnings}

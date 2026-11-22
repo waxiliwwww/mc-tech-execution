@@ -35,6 +35,7 @@ class WorkflowGuidance(unittest.TestCase):
         self.assertIn('(i-1)+nx*(j-1)+nx*ny*(k-1)',visible)
         self.assertIn('professional_acceptance=false不表示验收失败',visible)
         self.assertIn('本工具未执行',visible)
+        self.assertIn('批次数直接引用batch_settings.statement',visible)
 
     def test_unknown_files_and_missing_installation_fail_without_fallback(self):
         for chapter in ['../SKILL.md','/etc/passwd','unknown','start/../files']:

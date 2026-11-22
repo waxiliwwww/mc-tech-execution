@@ -2,7 +2,7 @@
 name: openmc-workflows
 description: 用户要OpenMC模型接入、建模、改参计算、扫描、结果绘图报告或失败诊断时，用已连接的OpenMC Forge MCP组织完整任务，自己处理参数发现、路径、等待和文件交接；只询问必要业务条件。概念解释不计算，不替用户决定物理条件。
 metadata:
-  version: "0.24.4"
+  version: "0.24.5"
   toolkit: openmc-forge
 ---
 
@@ -24,6 +24,7 @@ metadata:
 - 数值表直接引用结果包的selected_table/selected_value_rows，或read_results的tallies[].value_rows；每行已绑定分箱、核素、score和误差，不按多score的扁平mean数组重排坐标。用户问实际密度时查input_materials（status=verified），逐材料保留value和units；ao/wo是核素比例，不能据此判断密度未知。摘要材料列表截断时用read_results(detail="full")；旧服务没有此字段才查原job_status的execution_receipt.parameter_changes或已核实提交输入，不能把当前算例配置冒充提交值。无法核实时明确缺口。
 - 术语、单位和源收敛说明直接引用result_summary/result_interpretation：score是计分类型，nuclide=total是所有核素汇总；scores实际包含total时，score=total是合法总反应计分，不能把两种轴混写。最终答复逐score保留raw_unit，不能只写per-source或让不同score共用单位；普通flux为particle-cm/source（未除体积），fission为reactions/source。单位待核实时照原文说明，不套普通单位。归一化标题使用“每源粒子归一化的原始计分；未作工程源强/功率换算”，不能笼统写“未归一化”。材料来源直接引用result_summary/result_interpretation.material_source_summary；所有引用的SHA256（材料输入、StatePoint、成果文件均包括）保留64位，不以省略号或前缀替代。没有核验依据时说明未核实，不补造指纹。零值解释直接沿用zero_value_evidence：成因未确定，tracklength不是事件计数；不能把mean=0/std_dev=0改写成没有裂变事件、没有径迹贡献或低统计的正常表现。仅在有独立诊断证据时说明具体成因及依据。工具未做成因诊断时，最终答复只说明成因未确定，不自行补充“可能与……有关”的成因清单或低统计增加本次零估计概率等判断；核查建议写为待执行动作，不把动作对象改写成本次可能成因。源收敛not_verified只写“未验证”，批次/相对σ阈值不证明已收敛或未收敛，不能断言系统偏差存在、已消除或大小。
 
+- 批次数直接引用batch_settings.statement：总批次、非活跃(inactive)、活跃(active)分别列出，活跃=总−非活跃；不用“非inactive的某批”等否定括号，不把inactive数量写成active，不将realizations或代数当批次。优先原样引用已核实摘要，不补写用户没问的括号或推导；设置缺失或非适用模式明确未知/不适用，不猜数量。
 - 结果表述基准：反应score使用工具meaning中的“反应计分/估计”，保留raw_unit；reactions/source不是实际裂变事件计数，不能把tracklength写成事件计数器。网格直接用value_rows/selected_table；不额外推导用户没问的扁平公式。确需说明时引用mesh_indexing：1-based[i,j,k]对应0-based mesh_offset=(i-1)+nx*(j-1)+nx*ny*(k-1)，首箱为0；此offset只在该RegularMesh内，不是包含其他filter/核素/score轴的数组序号。专业验收引用professional_acceptance_status：本工具未执行、没有结论；旧professional_acceptance=false不表示验收失败，不能写成“不合格/验收未通过”。作业计算失败与专业验收状态分别说明。
 
 ## 按条件选择步骤

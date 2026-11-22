@@ -899,16 +899,14 @@ def _source_convergence(progress):
     if not isinstance(progress, dict) or progress.get('run_mode') != 'eigenvalue':
         return {'status': 'not_available',
                 'reason': '当前结果没有可用的本征值批次设置；未评估源收敛'}
-    total = progress.get('batches_total')
-    inactive = progress.get('inactive')
-    if (type(total) is not int or type(inactive) is not int
-            or total <= 0 or inactive < 0 or inactive >= total):
-        return {'status': 'not_available',
-                'reason': '批次设置缺失或不可解释；未评估源收敛'}
-    active = total - inactive
+    from result_facts import batch_settings_summary
+    batches = batch_settings_summary(progress)
+    if batches['status'] != 'available':
+        return {'status':'not_available', 'reason':'批次设置缺失或不可解释；未评估源收敛'}
+    total, inactive, active = (batches[k] for k in ('batches_total','inactive','active_batches'))
     low = inactive < SOURCE_MIN_INACTIVE or active < SOURCE_MIN_ACTIVE
     result = {'status': 'heuristic_low_inactive' if low else 'heuristic_ok',
-              'batches_total': total, 'inactive': inactive, 'active_batches': active,
+              'batches_total': total, 'inactive': inactive, 'active_batches': active, 'batch_settings':batches,
               'thresholds': {'min_active_batches': SOURCE_MIN_ACTIVE,
                              'min_inactive_batches': SOURCE_MIN_INACTIVE},
               'note': '按inactive/活跃批次数做的低统计风险提示，阈值不是收敛标准。源收敛未验证；'
@@ -1013,7 +1011,7 @@ def read_results(job_id: str, max_values: int = 1000, detail: str = 'summary') -
                 statistical_adequacy=statistical_adequacy(data.get('keff'), data, status.get('progress')),
                 professional_acceptance=False)
     from result_facts import interpretation, interpretation_summary
-    data['result_interpretation'] = interpretation(data.get('tallies', []), data.get('run_mode'), data['statistical_adequacy'], data['input_materials'])
+    data['result_interpretation'] = interpretation(data.get('tallies', []), data.get('run_mode'), data['statistical_adequacy'], data['input_materials'], data.get('batch_settings'))
     data['result_summary'] = interpretation_summary(data['result_interpretation'])
     atomic_json(directory / 'results.json', data)
     from response_detail import project

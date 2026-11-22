@@ -511,6 +511,8 @@ def _status_snapshot(job_id: str) -> dict:
     result['professional_acceptance_status'] = professional_acceptance_status()
     result['log_tail'] = tail
     result['progress'] = _progress(directory, value)
+    from result_facts import batch_settings_summary
+    result['batch_settings'] = batch_settings_summary(result['progress'])
     result['input_files'] = sorted(value.get('input_files', {}))
     result['input_hashes'] = dict(value.get('input_files', {}))
     result['files'] = sorted(value.get('output_files', {}))

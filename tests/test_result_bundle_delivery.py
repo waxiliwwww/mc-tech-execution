@@ -45,6 +45,11 @@ class ExistingResultDelivery(unittest.IsolatedAsyncioTestCase):
                 self.assertIn('particle-cm/source',result['result_summary'])
                 self.assertIn('reactions/source',result['result_summary'])
                 self.assertIn('源收敛未验证',result['result_summary'])
+                expected_batch='批次设置：总批次=8；非活跃批次(inactive)=2；活跃批次(active)=6。'
+                for message in (result['result_summary'],bundle['result_summary'],bundle['delivery_summary']):
+                    self.assertIn(expected_batch,message)
+                self.assertEqual(result['batch_settings']['active_batches'],6)
+
                 for message in (result['result_summary'],bundle['result_summary'],bundle['delivery_summary']):
                     self.assertIn('不表示验收失败',message)
                     self.assertIn('(i-1) + nx*(j-1) + nx*ny*(k-1)',message)
@@ -71,6 +76,7 @@ class ExistingResultDelivery(unittest.IsolatedAsyncioTestCase):
                     if report['format']=='markdown':
                         text=(self.workspace/report['path']).read_text()
                         self.assertIn(expected_material_hash,text)
+                        self.assertIn(expected_batch,text)
                         self.assertIn('成因也未确定',text)
 
                 tally=next(t for t in result['tallies'] if t['id']==1)
@@ -98,6 +104,8 @@ class ExistingResultDelivery(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(manifest['files']['delivery.md']['sha256'],hashlib.sha256((summary+'\n').encode()).hexdigest())
                 status=await call('openmc_job_status',{'job_id':self.job})
                 self.assertEqual(status['state'],'completed')
+                self.assertEqual(status['batch_settings']['active_batches'],6)
+                self.assertIn(expected_batch,status['batch_settings']['statement'])
                 self.assertIsNone(status['professional_acceptance_status']['result'])
                 self.assertEqual(status['professional_acceptance_status']['status'],'not_performed_by_toolkit')
                 download=await call('openmc_prepare_download',{'kind':'job','identifier':self.job,'paths':[bundle['delivery_file']]})

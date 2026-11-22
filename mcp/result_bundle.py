@@ -203,7 +203,7 @@ def generate_result_bundle(job_id: str, tally_id: int, score: str | None = None,
         series['unit_context'] = tally.get('unit_context', {})
         facts = interpretation([{**tally, 'scores':[resolved['score']],
                                 'score_semantics':[s for s in tally.get('score_semantics', []) if s['score'] == resolved['score']]}],
-                               overview.get('run_mode'), overview.get('statistical_adequacy'), overview.get('input_materials'))
+                               overview.get('run_mode'), overview.get('statistical_adequacy'), overview.get('input_materials'), overview.get('batch_settings'))
         fact_summary = interpretation_summary(facts)
         rows = selected_value_rows(series)
         table = value_table(rows)

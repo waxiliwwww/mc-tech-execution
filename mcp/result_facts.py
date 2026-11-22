@@ -20,6 +20,23 @@ def material_source_summary(materials):
     return ('材料来源文件：' + materials['source_file'] + '\n材料来源文件SHA256：' + materials['sha256'])
 
 
+def batch_settings_summary(progress):
+    """Configured batches, not realizations or a source-convergence criterion."""
+    progress = progress if isinstance(progress, dict) else {}
+    mode = progress.get('run_mode')
+    if mode and mode != 'eigenvalue':
+        return {'status':'not_applicable', 'statement':'非本征值模式，不套用inactive/active批次分解。'}
+    total, inactive = progress.get('batches_total'), progress.get('inactive')
+    if (mode != 'eigenvalue' or type(total) is not int or type(inactive) is not int
+            or total <= 0 or inactive < 0 or inactive >= total):
+        return {'status':'unavailable', 'statement':'本征值批次设置缺失或不可解释，不推算批次数。'}
+    active = total - inactive
+    return {'status':'available', 'batches_total':total, 'inactive':inactive, 'active_batches':active,
+            'statement':f'批次设置：总批次={total}；非活跃批次(inactive)={inactive}；活跃批次(active)={active}。'
+                        f'活跃批次=总批次−非活跃批次（{total}−{inactive}={active}）。'
+                        '这是批次设置，不将realizations实现数或代数混作批次数；不是源收敛标准。'}
+
+
 def professional_acceptance_status():
     return {'status':'not_performed_by_toolkit', 'result':None,
             'statement':'本工具未执行专业验收；professional_acceptance=false表示本工具未提供专业验收结论，不表示验收失败或不合格。'}
@@ -57,7 +74,7 @@ def score_semantics(score, context=None):
                           '本摘要未定义该score的单位；保留原值，另查专业依据，不从名称猜测。')}
 
 
-def interpretation(tallies, run_mode, adequacy, input_materials=None):
+def interpretation(tallies, run_mode, adequacy, input_materials=None, batch_settings=None):
     scores = []
     for tally in tallies:
         available = tally.get('score_semantics') or [score_semantics(s, tally.get('unit_context')) for s in tally['scores']]
@@ -67,6 +84,7 @@ def interpretation(tallies, run_mode, adequacy, input_materials=None):
     return {'terminology': 'score是计分类型；nuclide是核素/汇总范围。nuclide=total表示所有核素汇总；'
                           '只有scores中实际出现total时，score=total才表示合法的总反应计分。',
             'scores': scores,
+            'batch_settings': batch_settings or batch_settings_summary({**source, 'run_mode':run_mode}),
             'professional_acceptance_status': professional_acceptance_status(),
             'mesh_indexing': [{'tally_id':t['id'], **mesh_indexing_contract(t['mesh']['dimension'])}
                               for t in tallies if (t.get('mesh') or {}).get('type')=='RegularMesh'],
@@ -92,6 +110,7 @@ def interpretation_summary(facts):
                      + mesh['formula'] + '；' + mesh['scope'])
         lines.append('首箱[1,1,1]→0；末箱'+str(mesh['last']['bin'])+'→'+str(mesh['last']['mesh_offset']))
     if facts.get('professional_acceptance_status'):lines.append(facts['professional_acceptance_status']['statement'])
+    if facts.get('batch_settings', {}).get('status')=='available':lines.append(facts['batch_settings']['statement'])
     source = facts['source_convergence']
     if facts.get('material_source_summary'):lines.append(facts['material_source_summary'])
     lines += [facts['normalization'], source['statement']]

@@ -61,3 +61,5 @@
 | 所有引用来源指纹完整；零估计不推断事件/径迹或统计不足成因，查询/图/报告同源 | `tests/test_result_facts.py` + `tests/test_result_semantics.py` + `tests/test_mesh_zero.py` + `tests/test_result_bundle_delivery.py`；错误摘要负对照、既有StatePoint回放与真实Agent预算复测分别取证 |
 
 | 反应估计不作实际事件计数；RegularMesh输入1基/offset0基且不当全数组序号；未做专业验收不解释为失败，规则首次连接可见 | `tests/test_result_semantics.py` + `tests/fixtures/result_value_rows_check.py` + `tests/test_result_bundle_delivery.py` + `tests/test_workflow_guidance.py`；三项错误含义负对照与实际握手验证 |
+
+| 批次总数/非活跃/活跃正向同源，设置不混同realizations/代数，未知不补数，固定源不套分解 | `tests/test_result_semantics.py` + `tests/test_result_bundle_delivery.py` + `tests/test_workflow_guidance.py`；旧矛盾括号负对照及既有StatePoint/真实Agent验证 |
