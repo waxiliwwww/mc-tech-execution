@@ -41,7 +41,7 @@ def mesh_report_series(data: dict) -> dict:
     note = '网格选择：level=' + str(data.get('level')) + '；energy_bounds_eV=' + json.dumps(data.get('energy_bounds'))
     return {'tally_id':data['tally_id'], 'score':data['score'], 'nuclide':data['nuclide'],
             'filter_selection':[], 'selection_note':note, 'mean':mean, 'std_dev':std,
-            'x':list(range(len(mean))), 'x_label':'Selected mesh bin (i + nx*j; coordinates in mesh JSON)',
+            'x':list(range(len(mean))), 'x_label':'Selected 0-based slice bin (i0 + nx*j0; i0,j0 start at 0)',
             'coordinate_note':'按values[j][i]读取，i变化最快；原生坐标见同名JSON/CSV。',
             'mesh_indices':indices, 'mesh_centers':centers, 'normalization':data['normalization']}
 

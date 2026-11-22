@@ -51,6 +51,9 @@ def tally_value_rows(tally, indices, limit=20):
                 entry['bin'] = plain(bins[bin_index])
                 if type(item).__name__ in ('MeshFilter', 'MeshBornFilter') and isinstance(entry['bin'], list):
                     entry['bin'] += [1] * (3 - len(entry['bin']))
+                    if type(item.mesh).__name__ == 'RegularMesh':
+                        entry.update(bin_base=1, bin_index_base=0,
+                                     bin_index_scope='本MeshFilter内箱序号，不是mean数组扁平序号。')
             else:
                 entry['bin_note'] = '原生实例序号；未推断物理坐标。'
             filters.append(entry)
@@ -271,10 +274,12 @@ def _mesh_descriptor(tally):
     shape = [int(v) for v in np.asarray(tally.mean).shape]
     direct = bool(shape and shape[0] == cells and all(v == 1 for v in shape[1:]))
     lower, upper = _mesh_bounds(mesh)
+    from result_facts import mesh_indexing_contract
     return {'id': int(mesh.id), 'type': 'RegularMesh', 'dimension': dimension,
+            'indexing_contract': mesh_indexing_contract(dimension),
             'lower_left': lower, 'upper_right': upper, 'unit': 'cm',
             'cells': cells, 'shape': shape,
-            'indexing': ('flat = i + nx*j + nx*ny*k (C order, i fastest)' if direct else
+            'indexing': ('1-based [i,j,k] -> 0-based mesh offset = (i-1) + nx*(j-1) + nx*ny*(k-1); i fastest' if direct else
                          'flat index includes non-mesh filter dimensions; select one bin before mapping'),
             'coordinate_status': 'mappable' if direct else 'not_direct'}
 

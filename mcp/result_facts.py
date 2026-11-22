@@ -20,6 +20,20 @@ def material_source_summary(materials):
     return ('材料来源文件：' + materials['source_file'] + '\n材料来源文件SHA256：' + materials['sha256'])
 
 
+def professional_acceptance_status():
+    return {'status':'not_performed_by_toolkit', 'result':None,
+            'statement':'本工具未执行专业验收；professional_acceptance=false表示本工具未提供专业验收结论，不表示验收失败或不合格。'}
+
+
+def mesh_indexing_contract(dimension):
+    dimension = list(dimension) + [1] * (3-len(dimension))
+    return {'dimension':dimension, 'bin_base':1, 'mesh_offset_base':0, 'order':'i_fastest',
+            'formula':'(i-1) + nx*(j-1) + nx*ny*(k-1)',
+            'first':{'bin':[1,1,1], 'mesh_offset':0},
+            'last':{'bin':dimension, 'mesh_offset':math.prod(dimension)-1},
+            'scope':'RegularMesh内的0-based箱序号；不是含其他filter、核素和score轴的mean数组扁平序号。'}
+
+
 def score_semantics(score, context=None):
     """Raw, unconverted units only; response/derivative units are not guessed.
 
@@ -37,6 +51,7 @@ def score_semantics(score, context=None):
         unit = None
     return {'score': score, 'meaning': label, 'raw_unit': unit,
             'unit_status': 'documented' if unit else 'not_defined_here',
+            'estimator_note': ('反应计分是估计值，不等于本次实际发生事件的计数；tracklength为径迹估计。' if score in ('fission','total') else None),
             'unit_note': ('单位须结合响应函数、导数或multiply_density设置另行核实；未套用普通计分单位。'
                           if modified else 'OpenMC原始计分；未作体积、源强或功率换算。' if unit else
                           '本摘要未定义该score的单位；保留原值，另查专业依据，不从名称猜测。')}
@@ -52,6 +67,9 @@ def interpretation(tallies, run_mode, adequacy, input_materials=None):
     return {'terminology': 'score是计分类型；nuclide是核素/汇总范围。nuclide=total表示所有核素汇总；'
                           '只有scores中实际出现total时，score=total才表示合法的总反应计分。',
             'scores': scores,
+            'professional_acceptance_status': professional_acceptance_status(),
+            'mesh_indexing': [{'tally_id':t['id'], **mesh_indexing_contract(t['mesh']['dimension'])}
+                              for t in tallies if (t.get('mesh') or {}).get('type')=='RegularMesh'],
             'material_source_summary': material_source_summary(input_materials) if input_materials else None,
             'zero_value_evidence': {'cause_status':'not_determined', 'statement':zero_value_note()},
             'source_convergence': {
@@ -68,6 +86,12 @@ def interpretation_summary(facts):
     for item in facts['scores']:
         unit = item['raw_unit'] or '未定义（需核实）'
         lines.append(f"tally {item['tally_id']}：score={item['score']}（{item['meaning']}）；原始单位={unit}；{item['unit_note']}")
+        if item.get('estimator_note'):lines.append(item['estimator_note'])
+    for mesh in facts.get('mesh_indexing', []):
+        lines.append(f"tally {mesh['tally_id']}：网格bin=[i,j,k]从1起始；mesh_offset从0起始；"
+                     + mesh['formula'] + '；' + mesh['scope'])
+        lines.append('首箱[1,1,1]→0；末箱'+str(mesh['last']['bin'])+'→'+str(mesh['last']['mesh_offset']))
+    if facts.get('professional_acceptance_status'):lines.append(facts['professional_acceptance_status']['statement'])
     source = facts['source_convergence']
     if facts.get('material_source_summary'):lines.append(facts['material_source_summary'])
     lines += [facts['normalization'], source['statement']]

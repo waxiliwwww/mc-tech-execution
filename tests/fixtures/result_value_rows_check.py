@@ -23,6 +23,15 @@ for reverse in (False, True):
             filters=[type(f) for f in tally.filters], filter_bins=[(b,) for b in native_bins])
         assert tally.get_values(value='mean', **arguments).item() == row['mean'], row
         assert tally.get_values(value='std_dev', **arguments).item() == row['std_dev'], row
+        for entry in row['filter_bins']:
+            if entry['type']!='MeshFilter':continue
+            assert entry['bin_base']==1 and entry['bin_index_base']==0
+            i,j,k=entry['bin'];nx,ny,nz=mesh.dimension
+            expected=list(filters[0].bins).index(tuple(entry['bin']))
+            correct=(i-1)+nx*(j-1)+nx*ny*(k-1)
+            assert entry['bin_index']==expected==correct
+            assert i+nx*j+nx*ny*k != expected  # Original missing-minus-one mutant.
+
     # A coordinate-swap mutant must fail against the independent SDK oracle.
     wrong = dict(rows[4]); wrong['filter_bins'] = rows[8]['filter_bins']
     bins = [tuple(e['bin']) if isinstance(e['bin'],list) else e['bin'] for e in wrong['filter_bins']]

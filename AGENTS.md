@@ -59,3 +59,5 @@
 | 每源归一化不混同工程换算；旧回执必须重验本机字节，路径与SHA完整，暂存失败不撤销已交付文件 | `tests/test_result_semantics.py` + `tests/test_file_transfer_client.py`（实际字节与损坏反例）；真实Agent最终答复另需预算复测 |
 
 | 所有引用来源指纹完整；零估计不推断事件/径迹或统计不足成因，查询/图/报告同源 | `tests/test_result_facts.py` + `tests/test_result_semantics.py` + `tests/test_mesh_zero.py` + `tests/test_result_bundle_delivery.py`；错误摘要负对照、既有StatePoint回放与真实Agent预算复测分别取证 |
+
+| 反应估计不作实际事件计数；RegularMesh输入1基/offset0基且不当全数组序号；未做专业验收不解释为失败，规则首次连接可见 | `tests/test_result_semantics.py` + `tests/fixtures/result_value_rows_check.py` + `tests/test_result_bundle_delivery.py` + `tests/test_workflow_guidance.py`；三项错误含义负对照与实际握手验证 |

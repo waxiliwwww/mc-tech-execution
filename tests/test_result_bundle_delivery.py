@@ -45,6 +45,12 @@ class ExistingResultDelivery(unittest.IsolatedAsyncioTestCase):
                 self.assertIn('particle-cm/source',result['result_summary'])
                 self.assertIn('reactions/source',result['result_summary'])
                 self.assertIn('源收敛未验证',result['result_summary'])
+                for message in (result['result_summary'],bundle['result_summary'],bundle['delivery_summary']):
+                    self.assertIn('不表示验收失败',message)
+                    self.assertIn('(i-1) + nx*(j-1) + nx*ny*(k-1)',message)
+                self.assertFalse(result['professional_acceptance'])
+                if score=='fission':self.assertIn('不等于本次实际发生事件的计数',bundle['result_summary'])
+
                 expected_material_hash=hashlib.sha256((self.source/'work/materials.xml').read_bytes()).hexdigest()
                 for message in (result['result_summary'],bundle['result_summary'],bundle['delivery_summary']):
                     self.assertIn('材料来源文件SHA256：'+expected_material_hash,message.splitlines())
@@ -92,6 +98,8 @@ class ExistingResultDelivery(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(manifest['files']['delivery.md']['sha256'],hashlib.sha256((summary+'\n').encode()).hexdigest())
                 status=await call('openmc_job_status',{'job_id':self.job})
                 self.assertEqual(status['state'],'completed')
+                self.assertIsNone(status['professional_acceptance_status']['result'])
+                self.assertEqual(status['professional_acceptance_status']['status'],'not_performed_by_toolkit')
                 download=await call('openmc_prepare_download',{'kind':'job','identifier':self.job,'paths':[bundle['delivery_file']]})
                 blob=bytearray()
                 while len(blob)<download['size_bytes']:

@@ -29,6 +29,13 @@ class WorkflowGuidance(unittest.TestCase):
             skill.write_text('# Skill without required core')
             with self.assertRaises(ToolExecutionError):guide.server_instructions()
 
+    def test_result_contract_rules_are_visible_in_the_first_connection(self):
+        visible=guide.server_instructions()
+        self.assertIn('反应计分/估计',visible)
+        self.assertIn('(i-1)+nx*(j-1)+nx*ny*(k-1)',visible)
+        self.assertIn('professional_acceptance=false不表示验收失败',visible)
+        self.assertIn('本工具未执行',visible)
+
     def test_unknown_files_and_missing_installation_fail_without_fallback(self):
         for chapter in ['../SKILL.md','/etc/passwd','unknown','start/../files']:
             with self.assertRaises(ToolExecutionError):guide.get_workflow(chapter)

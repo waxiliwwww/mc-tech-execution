@@ -507,6 +507,8 @@ def _status_snapshot(job_id: str) -> dict:
               'started_at', 'finished_at', 'exit_code', 'error', 'provenance', 'log_truncated',
               'process_cleanup', 'cancel_requested', 'input_integrity', 'step_input_dir',
               'backend', 'cluster_job_id', 'slurm_submission_id', 'remote_runtime', 'path_changes','execution_receipt') if key in value}
+    from result_facts import professional_acceptance_status
+    result['professional_acceptance_status'] = professional_acceptance_status()
     result['log_tail'] = tail
     result['progress'] = _progress(directory, value)
     result['input_files'] = sorted(value.get('input_files', {}))

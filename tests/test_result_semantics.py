@@ -65,6 +65,35 @@ class ResultSemantics(unittest.TestCase):
         self.assertIn('没有对应证据时不指定成因',interpretation_summary(facts))
         self.assertIn('不增补可能成因清单或零估计概率判断',statement)
 
+    def test_reaction_scores_remain_estimates_not_observed_event_counts(self):
+        for score in ('fission','total'):
+            item=score_semantics(score)
+            self.assertEqual(item['raw_unit'],'reactions/source')
+            self.assertIn('估计值',item['estimator_note'])
+            self.assertIn('不等于本次实际发生事件的计数',item['estimator_note'])
+            text=interpretation_summary(interpretation([{'id':1,'scores':[score]}],'eigenvalue',{}))
+            self.assertIn(item['estimator_note'],text)
+
+    def test_mesh_contract_separates_one_based_bins_and_zero_based_mesh_offsets(self):
+        facts=interpretation([{'id':7,'scores':['flux'],
+            'mesh':{'type':'RegularMesh','dimension':[2,3,4]}}],'eigenvalue',{})
+        mesh=facts['mesh_indexing'][0]
+        self.assertEqual((mesh['bin_base'],mesh['mesh_offset_base']),(1,0))
+        self.assertEqual(mesh['first'],{'bin':[1,1,1],'mesh_offset':0})
+        self.assertEqual(mesh['last'],{'bin':[2,3,4],'mesh_offset':23})
+        self.assertEqual(mesh['formula'],'(i-1) + nx*(j-1) + nx*ny*(k-1)')
+        self.assertIn('不是含其他filter',mesh['scope'])
+        self.assertIn(mesh['formula'],interpretation_summary(facts))
+        self.assertEqual(interpretation([{'id':8,'scores':['flux']}],'eigenvalue',{})['mesh_indexing'],[])
+
+    def test_missing_professional_acceptance_is_not_a_failed_evaluation(self):
+        facts=interpretation([], 'eigenvalue', {})
+        state=facts['professional_acceptance_status']
+        self.assertEqual(state['status'],'not_performed_by_toolkit')
+        self.assertIsNone(state['result'])
+        self.assertIn('本工具未执行专业验收',state['statement'])
+        self.assertIn('不表示验收失败',interpretation_summary(facts))
+
     def test_fixed_source_does_not_get_eigenvalue_source_convergence_diagnosis(self):
         facts=interpretation([{'id':2,'scores':['fission']}],'fixed source',{})
         self.assertEqual(facts['source_convergence']['status'],'not_applicable')
