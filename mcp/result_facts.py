@@ -43,7 +43,7 @@ def interpretation(tallies, run_mode, adequacy):
                               if applicable or not run_mode else '该运行模式不适用本征值源收敛判定。'),
                 'evidence_limit': '批次阈值不是收敛标准；不能据此判断已收敛或未收敛，也不能断言系统偏差存在、已消除或大小。',
                 'batch_advisory': source.get('status', 'not_available')},
-            'normalization': 'source指每个源粒子；原始计分不是每秒物理量，未换算工程功率或实际源强。'}
+            'normalization': '每源粒子归一化的原始计分；未作工程源强/功率换算。source指每个源粒子，不是每秒物理量。'}
 
 
 def interpretation_summary(facts):

@@ -47,6 +47,12 @@ class ResultSemantics(unittest.TestCase):
             self.assertNotIn('源未收敛的系统偏差',summary)
             self.assertFalse(adequacy['source_convergence']['verified'])
 
+    def test_normalization_distinguishes_per_source_from_engineering_conversion(self):
+        facts=interpretation([{'id':1,'scores':['flux']}],'eigenvalue',{})
+        self.assertIn('每源粒子归一化',facts['normalization'])
+        self.assertIn('未作工程源强/功率换算',facts['normalization'])
+        self.assertNotIn('未归一化',facts['normalization'])
+
     def test_fixed_source_does_not_get_eigenvalue_source_convergence_diagnosis(self):
         facts=interpretation([{'id':2,'scores':['fission']}],'fixed source',{})
         self.assertEqual(facts['source_convergence']['status'],'not_applicable')

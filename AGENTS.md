@@ -55,3 +55,5 @@
 | score/nuclide分轴、原始单位和源收敛证据边界同源；保留total合法计分，阈值不冒充收敛诊断 | `tests/test_result_semantics.py` + `tests/test_statistical_source_gate.py` + 发布关键项 `tests/test_result_value_rows_real.py` / `tests/test_result_bundle_real.py` |
 
 - 2026-11-08稳定化范围以docs/development-plan.html及同一capability-baseline为准：六能力族的合法变化/连续操作不能缩为五条固定例题；合同缺项独立记录。证据复用须核对源码影响、输入/依赖、终态和原始产物；缺证不报完整稳定。收口后集中发布/解压验证，新增功能或重要取舍先确认。
+
+| 每源归一化不混同工程换算；旧回执必须重验本机字节，路径与SHA完整，暂存失败不撤销已交付文件 | `tests/test_result_semantics.py` + `tests/test_file_transfer_client.py`（实际字节与损坏反例）；真实Agent最终答复另需预算复测 |

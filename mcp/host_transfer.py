@@ -119,16 +119,44 @@ async def upload(call,args):
     return {'message':'上传完成，长度与SHA256校验通过','receipt':str(rp.resolve()),**result}
 
 
+def verify_saved_download(target, rp, r):
+    """Rehash actual host bytes, including legacy receipts; no server contact."""
+    result = r.get('result', {})
+    if (not target.is_file() or not result or target.stat().st_size != result['size_bytes']
+            or digest(target) != result['sha256']):
+        raise ValueError('目标已有文件且不能证明属于本次下载，未覆盖；文件缺失或长度/SHA256不符，保留现场核查')
+    verified = {'file':str(target), 'bytes':result['size_bytes'], 'sha256':result['sha256'],
+                'local_file_verified':True}
+    r['host_verification'] = verified
+    save(rp, r)  # Persist host proof BEFORE a possibly lost close acknowledgement.
+    summary = ('本机文件已保存并重新核对长度与完整SHA256。\n'
+               '本机完整路径：' + str(target) + '\nSHA256：' + result['sha256'])
+    return {'message':'本机文件长度与SHA256校验通过', **verified,
+            'receipt':str(rp.resolve()), 'archive_paths':result.get('archive_paths',[]),
+            'delivery_summary':summary}
+
+
+def verify_download_receipt(args):
+    rp = Path(args.receipt).resolve()
+    r = json.loads(rp.read_text())
+    if r['request'].get('direction') != 'download':
+        raise ValueError('需要下载回执，不接受上传回执')
+    target = Path(r['request']['output']).resolve()
+    done = verify_saved_download(target, rp, r)
+    done['transfer_cleanup'] = r.get('transfer_cleanup', {'state':'not_checked'})
+    return done
+
+
 async def saved_download(call, target, rp, r):
-    result = r['result']
+    done = verify_saved_download(target, rp, r)
     cleanup = {'state':'closed'}
     try:await call('openmc_close_transfer',{'direction':'download','transfer_id':r['transfer_id']})
     except Exception as exc:
         cleanup = {'state':'pending', 'reason':type(exc).__name__,
                    'note':'本地文件已校验保存；暂存关闭未确认，可按同一回执重试，不需要重算或重新下载。'}
-    return {'message':'下载文件已保存，长度与SHA256校验通过','file':str(target),
-            'bytes':result['size_bytes'],'sha256':result['sha256'], 'receipt':str(rp.resolve()),
-            'archive_paths':result.get('archive_paths',[]),'local_file_verified':True,'transfer_cleanup':cleanup}
+    r['transfer_cleanup'] = cleanup
+    save(rp, r)
+    return {**done, 'transfer_cleanup':cleanup}
 
 
 async def download(call,args):
@@ -144,9 +172,6 @@ async def download(call,args):
     r=receipt(rp,identity)
     # If publication succeeded but acknowledgement/close failed, finish idempotently.
     if target.exists():
-        result=r.get('result',{})
-        if not target.is_file() or not result or target.stat().st_size!=result['size_bytes'] or digest(target)!=result['sha256']:
-            raise ValueError('目标已有文件且不能证明属于本次下载，未覆盖；选择新的 --output')
         done = await saved_download(call,target,rp,r)
         done['message'] = '本次文件已完整保存，重复调用未覆盖'
         return done
@@ -195,7 +220,7 @@ async def run(args):
 
 @contextmanager
 def local_lock(args):
-    if args.command not in ('upload','download'):
+    if args.command not in ('upload','download','verify-download'):
         yield;return
     base=Path(args.receipt or (str(Path(args.file).resolve())+'.mc-upload.json' if args.command=='upload' else str(Path(args.output).resolve())+'.mc-download.json'))
     base.parent.mkdir(parents=True,exist_ok=True)
@@ -219,7 +244,7 @@ def local_lock(args):
 
 def main():
     p=argparse.ArgumentParser(description='宿主侧标准MCP文件交接；不调用模型。断线后原命令重跑，保留回执和.part。')
-    p.add_argument('--mcp-url',required=True,help='实际MCP地址，例如 http://127.0.0.1:8770/mcp；鉴权用MCP_AUTH_TOKEN环境变量')
+    p.add_argument('--mcp-url',help='实际MCP地址，例如 http://127.0.0.1:8770/mcp；鉴权用MCP_AUTH_TOKEN环境变量')
     sub=p.add_subparsers(dest='command',required=True)
     u=sub.add_parser('upload');u.add_argument('file');u.add_argument('--archive',action='store_true',help='按ZIP模型包解压');u.add_argument('--receipt')
     d=sub.add_parser('download');d.add_argument('kind',choices=['job','scan','upload'],nargs='?');d.add_argument('identifier',nargs='?');d.add_argument('paths',nargs='*');d.add_argument('--transfer-id',help='沿用已准备的下载会话，不重新选文件或准备快照');d.add_argument('--output',required=True);d.add_argument('--receipt')
@@ -227,11 +252,16 @@ def main():
     c=sub.add_parser('close');c.add_argument('direction',choices=['upload','download']);c.add_argument('transfer_id')
     receive=sub.add_parser('receive',help='接续已准备的下载：receive TRANSFER_ID OUTPUT；自行创建父目录，无需拼接mkdir')
     receive.add_argument('transfer_id');receive.add_argument('output');receive.add_argument('--receipt')
+    verify=sub.add_parser('verify-download',help='离线重新核验已有本机文件和下载回执；不连接服务器、不下载、不求解')
+    verify.add_argument('--receipt',required=True)
     args=p.parse_args()
+    if args.command!='verify-download' and not args.mcp_url:p.error('此命令需要 --mcp-url')
     if args.command=='receive':
         args.command='download';args.kind=None;args.identifier=None;args.paths=[]
     try:
-        with local_lock(args):print(json.dumps(asyncio.run(run(args)),ensure_ascii=False,indent=2))
+        with local_lock(args):
+            result=verify_download_receipt(args) if args.command=='verify-download' else asyncio.run(run(args))
+            print(json.dumps(result,ensure_ascii=False,indent=2))
     except Exception as exc:
         print('文件交接未完成：'+error_text(exc)+'\n保留回执和.part；连接恢复后重跑同一命令。完整性或业务错误先按原因处理。',file=sys.stderr);return 1
     return 0

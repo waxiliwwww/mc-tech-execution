@@ -2,6 +2,7 @@
 name: openmc-workflows
 description: 用户要OpenMC模型接入、建模、改参计算、扫描、结果绘图报告或失败诊断时，用已连接的OpenMC Forge MCP组织完整任务，自己处理参数发现、路径、等待和文件交接；只询问必要业务条件。概念解释不计算，不替用户决定物理条件。
 metadata:
+  version: "0.24.2"
   toolkit: openmc-forge
 ---
 
@@ -19,9 +20,9 @@ metadata:
 - 用 `openmc_list_parameters`的object名称/ID、current、unit映射请求。多个材料均可能符合时展示候选让用户选，不默认取第一个。macro是无量纲宏观截面倍率，不是g/cm³；单位冲突先问，不套数值，不按名称猜物理角色。
 - 常见改参/同一原网格补计分优先 `openmc_run_case`：case_dir为当前模型，target_dir为新副本，parameters用已发现键，mesh_scores只追加到同一已有网格；默认submit=false只准备，用户明确要求计算才submit=true。包内完成派生、读回、最终预览和绑定提交，不再拆开新增全局计分。多个/没有网格时needs_selection，向用户确认；复杂/新网格等仍用原工具。中途追加从已准备副本再派生新target_dir，带上新增要求后再算；不在计算完成后改输入冒充新结果。
 - 保存原job_id，用 `openmc_job_status(wait_seconds=30)`有界等待；宿主可用随包follow_job.py连续跟踪，断线/到期沿原编号接续，不重投、不自动扩大规模。
-- 已知作业/计分直接 `openmc_generate_result_bundle`；核对selection、data_quality和warnings，保留完整路径、原始单位和不确定性。用户要文件就用宿主固定命令 `mc-agent-tools-transfer --mcp-url <实际地址> receive <transfer_id> <本机目标>`实际下载并校验；无需拼接mkdir，路径分别引用，计算完成、成果生成、文件交付分别报告；服务器路径不等于本机文件，下载失败不重算。
+- 已知作业/计分直接 `openmc_generate_result_bundle`；核对selection、data_quality和warnings，保留完整路径、原始单位和不确定性。用户要文件就用宿主固定命令 `mc-agent-tools-transfer --mcp-url <实际地址> receive <transfer_id> <本机目标>`实际下载并校验；无需拼接mkdir，路径分别引用，计算完成、成果生成、文件交付分别报告；服务器路径不等于本机文件，下载失败不重算。最终交付直接引用宿主客户端delivery_summary中的本机完整路径和完整64位SHA256，每项单行，不缩写、不用目录树拼路径。已有旧下载回执先用宿主`mc-agent-tools-transfer verify-download --receipt <原回执>`离线重新核验；result.local_file_verified=false是服务端视角，不是本机失败或未核验的结论，详见files章节。
 - 数值表直接引用结果包的selected_table/selected_value_rows，或read_results的tallies[].value_rows；每行已绑定分箱、核素、score和误差，不按多score的扁平mean数组重排坐标。用户问实际密度时查input_materials（status=verified），逐材料保留value和units；ao/wo是核素比例，不能据此判断密度未知。摘要材料列表截断时用read_results(detail="full")；旧服务没有此字段才查原job_status的execution_receipt.parameter_changes或已核实提交输入，不能把当前算例配置冒充提交值。无法核实时明确缺口。
-- 术语、单位和源收敛说明直接引用result_summary/result_interpretation：score是计分类型，nuclide=total是所有核素汇总；scores实际包含total时，score=total是合法总反应计分，不能把两种轴混写。最终答复逐score保留raw_unit，不能只写per-source或让不同score共用单位；普通flux为particle-cm/source（未除体积），fission为reactions/source。单位待核实时照原文说明，不套普通单位。源收敛not_verified只写“未验证”，批次/相对σ阈值不证明已收敛或未收敛，不能断言系统偏差存在、已消除或大小。
+- 术语、单位和源收敛说明直接引用result_summary/result_interpretation：score是计分类型，nuclide=total是所有核素汇总；scores实际包含total时，score=total是合法总反应计分，不能把两种轴混写。最终答复逐score保留raw_unit，不能只写per-source或让不同score共用单位；普通flux为particle-cm/source（未除体积），fission为reactions/source。单位待核实时照原文说明，不套普通单位。归一化标题使用“每源粒子归一化的原始计分；未作工程源强/功率换算”，不能笼统写“未归一化”。源收敛not_verified只写“未验证”，批次/相对σ阈值不证明已收敛或未收敛，不能断言系统偏差存在、已消除或大小。
 
 ## 按条件选择步骤
 

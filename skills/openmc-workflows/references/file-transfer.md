@@ -15,6 +15,12 @@
 2. 小文本/图像用 `openmc_preview_file`；完整报告或选定产物用 `openmc_prepare_download`取得下载会话，再 `openmc_download_chunk`。恢复先查 `openmc_download_status`，按offset续传。
 3. 宿主将字节写入本地文件并核对完整SHA256，确认实际存在后才能给用户本地路径。客户端返回local_file_verified=true及实际file；transfer_cleanup.state=pending只说明暂存关闭未确认，本机文件仍可用，沿原回执重试清理，不重新下载或计算。`openmc_close_transfer`关闭不再需要的暂存；不要删除科学任务原始证据。
 
+## 已有文件与旧回执
+
+`mc-agent-tools-transfer verify-download --receipt <原下载回执>`在拥有文件的宿主离线执行，按回执中的目标重算长度及完整SHA256；无需MCP地址，不连接服务器、不重新下载或计算。新旧回执均支持。失败时保留文件和回执，不宣称已交付；成功后将host_verification写入原回执，输出可直接引用的delivery_summary。result是服务端快照，保留原样；其中local_file_verified=false只说明服务端不能核验宿主，不表示本机未下载或校验失败。不能只看旧标志，也不能只信历史host_verification；需要确认已有文件时执行本次重新核验。transfer_cleanup与本机完整性是不同状态，旧回执未记录清理则not_checked，不据此推断已关闭或失败。
+
+最终交付引用宿主校验摘要：本机完整路径保持单行（有空格也不拆分或写成目录树），SHA256保留全部64位，不能省略为前缀或省略号。不能把客户端摘要中的本机路径换成服务端路径。
+
 ## 已提供的客户端
 
 安装工具包提供固定入口`mc-agent-tools-transfer`；源码包保留`python <工具包>/examples/transfer_files.py`同源入口。两者直接处理字节，不经过语言模型。它应在拥有源/目标文件的宿主机器运行，需要Python及MCP客户端依赖；命令行用其`--help`查询。它会核对服务版本与文件工具定义，地址通过`--mcp-url`提供，鉴权用`MCP_AUTH_TOKEN`环境变量，不在聊天中索取密钥。

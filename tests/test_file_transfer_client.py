@@ -88,3 +88,40 @@ class FileTransferClient(unittest.IsolatedAsyncioTestCase):
         repeated=await host.download(self.call,download)
         self.assertTrue(repeated['local_file_verified']);self.assertEqual(repeated['transfer_cleanup']['state'],'closed')
         self.assertEqual(Path(result['file']).read_bytes(),raw)
+
+
+    async def test_legacy_receipt_rehash_is_offline_and_keeps_server_snapshot(self):
+        args=self.uargs();raw=b'legacy real file';Path(args.file).write_bytes(raw)
+        uploaded=await host.upload(self.call,args);download=self.dargs(uploaded)
+        done=await host.download(self.call,download)
+        rp=Path(done['receipt']);legacy=json.loads(rp.read_text())
+        legacy.pop('host_verification');legacy.pop('transfer_cleanup')
+        legacy['result']['local_file_verified']=False
+        host.save(rp,legacy);snapshot=legacy['result'].copy()
+        verified=host.verify_download_receipt(argparse.Namespace(receipt=str(rp)))
+        expected=hashlib.sha256(raw).hexdigest()
+        self.assertTrue(verified['local_file_verified'])
+        self.assertEqual(verified['sha256'],expected)
+        self.assertIn('本机完整路径：'+str(Path(download.output).resolve()),verified['delivery_summary'].splitlines())
+        self.assertIn('SHA256：'+expected,verified['delivery_summary'].splitlines())
+        saved=json.loads(rp.read_text())
+        self.assertEqual(saved['result'],snapshot)
+        self.assertEqual(saved['host_verification']['sha256'],expected)
+        self.assertEqual(verified['transfer_cleanup']['state'],'not_checked')
+        before=rp.read_bytes()
+        Path(download.output).write_bytes(b'legacy real fail')  # Same length; stale host flag must not pass.
+        with self.assertRaisesRegex(ValueError,'SHA256'):
+            host.verify_download_receipt(argparse.Namespace(receipt=str(rp)))
+        self.assertEqual(rp.read_bytes(),before)
+
+    async def test_host_proof_is_durable_even_when_close_reply_is_lost(self):
+        args=self.uargs();Path(args.file).write_bytes(b'persist proof')
+        uploaded=await host.upload(self.call,args);download=self.dargs(uploaded)
+        async def lose_close(name,data):
+            if name=='openmc_close_transfer':raise ConnectionError('lost acknowledgement')
+            return await self.call(name,data)
+        done=await host.download(lose_close,download)
+        saved=json.loads(Path(done['receipt']).read_text())
+        self.assertTrue(saved['host_verification']['local_file_verified'])
+        self.assertEqual(saved['host_verification']['sha256'],done['sha256'])
+        self.assertEqual(saved['transfer_cleanup']['state'],'pending')
