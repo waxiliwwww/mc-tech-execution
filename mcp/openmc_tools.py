@@ -911,11 +911,11 @@ def _source_convergence(progress):
               'batches_total': total, 'inactive': inactive, 'active_batches': active,
               'thresholds': {'min_active_batches': SOURCE_MIN_ACTIVE,
                              'min_inactive_batches': SOURCE_MIN_INACTIVE},
-              'note': '按inactive/活跃批次数做的低成本提示，不是entropy收敛检验，'
-                      '也不证明系统误差已消失。'}
+              'note': '按inactive/活跃批次数做的低统计风险提示，阈值不是收敛标准。源收敛未验证；'
+                      '不能据此判断已收敛或未收敛，也不能判断系统偏差是否存在、已消除或大小。'}
     if low:
-        result['downgrade'] = ('inactive过少或活跃批次不足；相对σ不能覆盖源未收敛的'
-                               '系统偏差，统计分级降为预览')
+        result['downgrade'] = ('inactive过少或活跃批次不足；源收敛未验证，'
+                               '相对σ不能评估可能存在的源分布偏差，统计分级降为预览')
     return result
 
 
@@ -954,7 +954,7 @@ def statistical_adequacy(keff, data, progress=None) -> dict:
         result['downgraded_from'] = grade
         result['grade'] = 'low_statistics_preview'
         result['reason'] = source['downgrade']
-        result['note'] = ('相对σ看似可用，但批次设置提示源可能未收敛；'
+        result['note'] = ('相对σ看似可用，但批次设置仅提示风险，源收敛未验证；'
                           '只降级为预览，不拒绝读取结果。' + source['note'])
     return result
 
@@ -1012,6 +1012,9 @@ def read_results(job_id: str, max_values: int = 1000, detail: str = 'summary') -
                 statepoint_context=_statepoint_context(directory, record, point),
                 statistical_adequacy=statistical_adequacy(data.get('keff'), data, status.get('progress')),
                 professional_acceptance=False)
+    from result_facts import interpretation, interpretation_summary
+    data['result_interpretation'] = interpretation(data.get('tallies', []), data.get('run_mode'), data['statistical_adequacy'])
+    data['result_summary'] = interpretation_summary(data['result_interpretation'])
     atomic_json(directory / 'results.json', data)
     from response_detail import project
     return project(data, detail, 'results')

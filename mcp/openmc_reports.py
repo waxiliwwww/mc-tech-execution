@@ -95,7 +95,13 @@ def export_selected_job(job_id: str, format: str, selection: dict, *,
     image = target / chart['image']
     series = _series if _series is not None else json.loads(image.with_suffix('.json').read_text())
     data = read_results(job_id, max_values=1, detail='full')
-    data.pop('tallies')  # The unselected job preview is not the requested report data.
+    tallies = data.pop('tallies')  # The unselected job preview is not the requested report data.
+    from result_facts import interpretation, interpretation_summary
+    chosen = next(t for t in tallies if t['id'] == series['tally_id'])
+    selected = {**chosen, 'scores':[series['score']],
+                'score_semantics':[s for s in chosen.get('score_semantics', []) if s['score'] == series['score']]}
+    data['result_interpretation'] = interpretation([selected], data.get('run_mode'), data.get('statistical_adequacy'))
+    data['result_summary'] = interpretation_summary(data['result_interpretation'])
     # Every format uses the same metadata from the submitted input snapshot.
     # In particular, binary reports must not lose the header at this branch.
     metadata = _report_metadata(job_target)
@@ -122,6 +128,7 @@ def export_selected_job(job_id: str, format: str, selection: dict, *,
                     '运行时间：' + str(runtime_info['started_at'] or '未记录') + ' → ' + str(runtime_info['finished_at'] or '未记录') + '（' + duration + '）',
                     '随机种子：' + str(metadata['seed'] or '未记录'),
                     '结果选择：' + selection_label(series),
+                    data['result_summary'],
                     '过滤条件：' + json.dumps(series['filter_selection'], ensure_ascii=False),
                     *([series['selection_note']] if series.get('selection_note') else []), '',
                     '数据来源：' + data['provenance']['data_kind'],

@@ -48,6 +48,11 @@ class ResultBundleReal(unittest.TestCase):
         self.assertTrue(bundle['input_materials']['materials'])
         self.assertEqual(manifest['selected_value_rows'], bundle['selected_value_rows'])
         self.assertIn(bundle['selected_table'], summary)
+        self.assertIn(bundle['result_summary'], summary)
+        self.assertIn('nuclide=total表示所有核素汇总', bundle['result_summary'])
+        self.assertEqual(bundle['result_interpretation']['source_convergence']['status'], 'not_verified')
+        self.assertIn('源收敛未验证', bundle['result_summary'])
+        self.assertNotIn('系统偏差未消除', bundle['result_summary'])
         for row in bundle['selected_value_rows']:
             self.assertEqual(row['score'], bundle['selection']['score'])
             self.assertEqual(row['nuclide'], bundle['selection']['nuclide'])

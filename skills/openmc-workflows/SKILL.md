@@ -21,6 +21,7 @@ metadata:
 - 保存原job_id，用 `openmc_job_status(wait_seconds=30)`有界等待；宿主可用随包follow_job.py连续跟踪，断线/到期沿原编号接续，不重投、不自动扩大规模。
 - 已知作业/计分直接 `openmc_generate_result_bundle`；核对selection、data_quality和warnings，保留完整路径、原始单位和不确定性。用户要文件就用宿主固定命令 `mc-agent-tools-transfer --mcp-url <实际地址> receive <transfer_id> <本机目标>`实际下载并校验；无需拼接mkdir，路径分别引用，计算完成、成果生成、文件交付分别报告；服务器路径不等于本机文件，下载失败不重算。
 - 数值表直接引用结果包的selected_table/selected_value_rows，或read_results的tallies[].value_rows；每行已绑定分箱、核素、score和误差，不按多score的扁平mean数组重排坐标。用户问实际密度时查input_materials（status=verified），逐材料保留value和units；ao/wo是核素比例，不能据此判断密度未知。摘要材料列表截断时用read_results(detail="full")；旧服务没有此字段才查原job_status的execution_receipt.parameter_changes或已核实提交输入，不能把当前算例配置冒充提交值。无法核实时明确缺口。
+- 术语、单位和源收敛说明直接引用result_summary/result_interpretation：score是计分类型，nuclide=total是所有核素汇总；scores实际包含total时，score=total是合法总反应计分，不能把两种轴混写。最终答复逐score保留raw_unit，不能只写per-source或让不同score共用单位；普通flux为particle-cm/source（未除体积），fission为reactions/source。单位待核实时照原文说明，不套普通单位。源收敛not_verified只写“未验证”，批次/相对σ阈值不证明已收敛或未收敛，不能断言系统偏差存在、已消除或大小。
 
 ## 按条件选择步骤
 
@@ -46,7 +47,7 @@ metadata:
 
 ## 从结果到可用文件
 
-1. 选择未知时 `openmc_read_results`发现tally/score/维度；它不接收计分选择参数。已知选择直接 `openmc_generate_result_bundle`，无需先读全结果或再list_artifacts。同作业/计分生成图、完整数据、报告、脚本和清单；原单项绘图/报告、自定义分析继续可用。
+1. 选择未知或只需结果事实时 `openmc_read_results(max_values=20)`发现tally/score/维度，并取result_summary；它不接收计分选择参数。已知选择直接 `openmc_generate_result_bundle`，无需先读全结果或再list_artifacts。同作业/计分生成图、完整数据、报告、脚本和清单；原单项绘图/报告、自定义分析继续可用。预览之外的完整数值用结果包或原生数据，不以20行冒充完整数组。
 2. 核对state、selection、source、normalization及data_quality。data_quality只统计本次选择的完整箱数、零均值/不可用箱；不同score不能共用计数，不确定零值原因。3D层、能量箱和MeshFilter从1起始的[i,j,k]按当前Schema，不用截断预览冒充完整数组。
 3. 优先沿用工具的delivery_summary和同文delivery_file，完整路径不缩写。重要警告说明影响及下一步；保留低统计、非有限、零标准差的不确定性，不能把“可能”改为“确定”。原始flux为particle-cm/source，未除体积不写每平方厘米；fission为reactions/source，未换算源强/功率不写每秒。统计误差不证明源收敛或专业准确率。
 4. 用户要文件就继续[文件交接](references/file-transfer.md)，用包返回的实际路径下载；宿主校验并保存后才给本机位置。不能止于服务端路径。无宿主文件能力时明确“成果已生成，文件尚未取回”及缺少的能力，不伪造已下载。

@@ -52,5 +52,6 @@
 
 | 普通作业等待超时不取消/重投；材料歧义不自动选取；下载失败沿原成果续传，本机已保存与清理待确认分开 | `tests/test_agent_workflow_support.py` + `tests/test_agent_workflow_real.py` + `tests/test_file_transfer_client.py` |
 | 同一原网格追加须进入实际计算快照；准备不算、歧义不写盘、重复目标不重投；宿主固定入口与旧客户端同源 | `tests/test_agent_workflow_real.py` + `tests/test_file_transfer_client.py`；客户端安装/真实下载另保留回执 |
+| score/nuclide分轴、原始单位和源收敛证据边界同源；保留total合法计分，阈值不冒充收敛诊断 | `tests/test_result_semantics.py` + `tests/test_statistical_source_gate.py` + 发布关键项 `tests/test_result_value_rows_real.py` / `tests/test_result_bundle_real.py` |
 
 - 2026-11-08稳定化范围以docs/development-plan.html及同一capability-baseline为准：六能力族的合法变化/连续操作不能缩为五条固定例题；合同缺项独立记录。证据复用须核对源码影响、输入/依赖、终态和原始产物；缺证不报完整稳定。收口后集中发布/解压验证，新增功能或重要取舍先确认。

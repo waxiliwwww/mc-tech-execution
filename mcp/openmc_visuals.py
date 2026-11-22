@@ -570,6 +570,8 @@ def render_docx(params):
     for warning in params.get('warnings', data.get('warnings', [])):
         document.add_paragraph('提示：' + warning)
     series = data.get('selected_series')
+    if data.get('result_summary'):
+        document.add_paragraph(data['result_summary'])
     if series is not None:
         document.add_paragraph('结果选择：' + selection_label(series))
         document.add_paragraph('过滤条件：' + json.dumps(series['filter_selection'], ensure_ascii=False))

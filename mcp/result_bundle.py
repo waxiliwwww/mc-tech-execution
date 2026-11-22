@@ -16,7 +16,7 @@ from openmc_runtime import Error, atomic_json, file_location, relative
 from openmc_import import publish_directory
 from openmc_plots import options, plot_mesh, plot_results
 from openmc_reports import export_selected_job
-from result_facts import selected_value_rows, value_table
+from result_facts import selected_value_rows, value_table, score_semantics, interpretation, interpretation_summary
 
 
 def mesh_report_series(data: dict) -> dict:
@@ -64,18 +64,20 @@ def verify_metadata_inputs(root: Path, record: dict) -> dict:
     return checked
 
 
-def delivery_summary(destination, job_id, selection, normalization, source_hash, filenames, warnings, data_quality=None, input_materials=None, selected_table=None):
+def delivery_summary(destination, job_id, selection, normalization, source_hash, filenames, warnings, data_quality=None, input_materials=None, selected_table=None, result_interpretation=None):
     """Render recorded facts once; do not infer physical causes or host downloads."""
     score = selection['score']
-    unit = {'flux': 'particle-cm/source（原始通量计分；未除以体积）',
-            'fission': 'reactions/source（每个源粒子的裂变反应计分）'}.get(
-                score, '未在本摘要中定义；按原始计分及专业依据解释，不能从名称猜测')
+    info = next((s for s in (result_interpretation or {}).get('scores', []) if s['score'] == score), score_semantics(score))
+    unit = (info['raw_unit'] + '（' + info['meaning'] + '）' if info['raw_unit'] else
+            '未在本摘要中定义；' + info['unit_note'])
     lines = [f"作业 {job_id}：已完成；本结果包未重新求解。",
              '实际选择：' + json.dumps(selection, ensure_ascii=False, separators=(',', ':')),
              '原始单位：' + unit, '归一化：' + normalization,
              '未换算功率或实际源强；不是每秒物理量，未作专业验收。',
              '来源 StatePoint SHA256：' + source_hash,
              '以下是MCP服务器完整路径，尚未下载到宿主；宿主异机时须通过文件交接取回：']
+    if result_interpretation:
+        lines.insert(2, interpretation_summary(result_interpretation))
     if data_quality:
         lines.insert(2, '所选完整数据：' + str(data_quality['points']) + '箱；均值为零'
                      + str(data_quality['zero_mean_bins']) + '箱；均值不可用'
@@ -195,11 +197,16 @@ def generate_result_bundle(job_id: str, tally_id: int, score: str | None = None,
                    'zero_mean_bins':sum(v == 0 for v in series['mean']),
                    'unavailable_mean_bins':sum(v is None for v in series['mean']),
                    'zero_mean_std_bins':sum(v == 0 and e == 0 for v,e in zip(series['mean'],series['std_dev']))}
+        series['unit_context'] = tally.get('unit_context', {})
+        facts = interpretation([{**tally, 'scores':[resolved['score']],
+                                'score_semantics':[s for s in tally.get('score_semantics', []) if s['score'] == resolved['score']]}],
+                               overview.get('run_mode'), overview.get('statistical_adequacy'))
+        fact_summary = interpretation_summary(facts)
         rows = selected_value_rows(series)
         table = value_table(rows)
         materials = overview['input_materials']
         summary = delivery_summary(destination, job_id, resolved, series['normalization'],
-                                   source_hash, filenames, warnings, quality, materials, table)
+                                   source_hash, filenames, warnings, quality, materials, table, facts)
         (stage / 'delivery.md').write_text(summary + '\n', encoding='utf-8')
         files = {p.name:{'sha256':jobs.file_hash(p),'bytes':p.stat().st_size}
                  for p in sorted(stage.iterdir()) if p.is_file()}
@@ -213,6 +220,7 @@ def generate_result_bundle(job_id: str, tally_id: int, score: str | None = None,
                     'provenance':record['provenance'],'professional_acceptance':False,
                     'warnings':list(dict.fromkeys(warnings)), 'data_quality':quality,
                     'input_materials':materials, 'selected_value_rows':rows, 'selected_table':table,
+                    'result_interpretation':facts, 'result_summary':fact_summary,
                     'scientific_checks':overview.get('scientific_checks',{}),
                     'statistical_adequacy':overview.get('statistical_adequacy',{}),'files':files,
                     'manifest_note':'files是本包其他文件的SHA256；manifest自身指纹由产物清单返回。'}
@@ -229,6 +237,7 @@ def generate_result_bundle(job_id: str, tally_id: int, score: str | None = None,
                                    'total_materials':len(materials['materials']),
                                    'truncated':len(materials['materials']) > 20},
                 'selected_value_rows':rows, 'selected_table':table,
+                'result_interpretation':facts, 'result_summary':fact_summary,
                 'chart':relative(destination/chart['image']),
                 'data_json':relative(destination/Path(chart.get('values_json') or chart['series_json']).name),
                 'data_csv':relative(destination/Path(chart.get('values_csv') or chart['series_csv']).name),

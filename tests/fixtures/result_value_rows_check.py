@@ -40,4 +40,15 @@ row = tally_value_rows(tally, [0])[0]
 assert row['mean'] == 7. and row['std_dev'] == .3
 assert 'bin' not in row['filter_bins'][0]
 assert row['filter_bins'][0]['bin_index'] == 0
+assert row['raw_unit'] is None  # Response-function dimensions are not recorded as ordinary flux units.
 print('EnergyFunctionFilter without native bins remains readable.')
+
+tally = openmc.Tally(); tally.scores = ['flux','fission','total']; tally.nuclides = ['total']
+tally._mean = np.array([[[1.,2.,3.]]]); tally._std_dev = np.array([[[.1,.2,.3]]])
+tally._results_read = True; tally._derived = True
+rows = tally_value_rows(tally,[0,1,2])
+assert [r['raw_unit'] for r in rows] == ['particle-cm/source','reactions/source','reactions/source']
+assert rows[2]['score'] == rows[2]['nuclide'] == 'total'  # Distinct, simultaneously legal axes.
+tally.multiply_density = False
+assert tally_value_rows(tally,[1])[0]['raw_unit'] is None
+print('Native total score, total nuclide scope and modified-unit contexts remain distinct.')

@@ -28,7 +28,8 @@ class SourceConvergenceAdvisory(unittest.TestCase):
         self.assertEqual(low['grade'], 'low_statistics_preview')
         self.assertEqual(low['downgraded_from'], 'engineering_estimate')
         self.assertEqual(low['source_convergence']['active_batches'], 8)
-        self.assertIn('源未收敛', low['reason'])
+        self.assertIn('源收敛未验证', low['reason'])
+        self.assertNotIn('源未收敛的系统偏差', low['reason'])
 
     def test_enough_active_batches_keep_sigma_grade(self):
         keff = {'mean': 1.324349, 'std_dev': 0.001500}
@@ -38,6 +39,8 @@ class SourceConvergenceAdvisory(unittest.TestCase):
         self.assertEqual(enough['grade'], 'engineering_estimate')
         self.assertNotIn('downgraded_from', enough)
         self.assertEqual(enough['source_convergence']['status'], 'heuristic_ok')
+        self.assertFalse(enough['source_convergence']['verified'])
+        self.assertIn('源收敛未验证', enough['source_convergence']['note'])
 
     def test_missing_batches_is_not_a_convergence_claim(self):
         value = tools.statistical_adequacy(

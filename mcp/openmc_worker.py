@@ -19,9 +19,17 @@ def numpy_scalar(value):
     raise TypeError('Unsupported JSON result type: ' + type(value).__name__)
 
 
+def tally_unit_context(tally):
+    return {'response_weighted': any(type(f).__name__ == 'EnergyFunctionFilter' for f in tally.filters),
+            'derivative': getattr(tally, 'derivative', None) is not None,
+            'multiply_density': getattr(tally, 'multiply_density', True)}
+
+
 def tally_value_rows(tally, indices, limit=20):
     """Bind each raw value to its native filter bins, nuclide and score once."""
     import numpy as np
+    from result_facts import score_semantics
+    units = {score: score_semantics(score, tally_unit_context(tally))['raw_unit'] for score in tally.scores}
     def plain(value):
         if isinstance(value, (tuple, list, np.ndarray)):
             return [plain(v) for v in value]
@@ -47,6 +55,7 @@ def tally_value_rows(tally, indices, limit=20):
                 entry['bin_note'] = '原生实例序号；未推断物理坐标。'
             filters.append(entry)
         rows.append({'raw_index': int(raw_index), 'score': tally.scores[score_index],
+                     'raw_unit': units[tally.scores[score_index]],
                      'nuclide': str(tally.nuclides[nuclide_index]), 'filter_bins': filters,
                      'mean': plain(mean.ravel()[raw_index]), 'std_dev': plain(std.ravel()[raw_index])})
     return rows
@@ -624,6 +633,7 @@ def execute(action: str, params: dict) -> dict:
             keff = point.keff if point.run_mode == 'eigenvalue' else None
             tallies = []
             for tally in point.tallies.values():
+                from result_facts import score_semantics
                 mesh = _mesh_descriptor(tally)
                 indices, policy = _mesh_indices(tally.mean, limit, mesh)
                 selected = [int(index) for index in indices]
@@ -634,6 +644,8 @@ def execute(action: str, params: dict) -> dict:
                 if zero_unscored:
                     warnings.append(f'tally {tally.id}：{zero_unscored}/{flat.size}个计分值均值和标准差均为0；可能是无贡献、统计不足或多群分箱错配，不等于物理量为零；请核对滤波边界和原始数据。')
                 tallies.append({'id': tally.id, 'name': tally.name, 'scores': tally.scores,
+                                'unit_context': tally_unit_context(tally),
+                                'score_semantics': [score_semantics(s, tally_unit_context(tally)) for s in tally.scores],
                                 'nuclides': tally.nuclides, 'estimator': tally.estimator,
                                 'filters': [filter_summary(f) for f in tally.filters],
                                 'filter_signatures': [filter_identity(f) for f in tally.filters],
