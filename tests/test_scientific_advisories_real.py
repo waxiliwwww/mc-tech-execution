@@ -32,7 +32,10 @@ class ScientificAdvisoriesReal(unittest.TestCase):
                 self.assertEqual(status['state'],'completed')
                 result=call('openmc_read_results',{'job_id':submitted['job_id']})
                 tally=next(t for t in result['tallies'] if t['id']==23)
-                self.assertGreater(tally['zero_mean_std_values'],0);self.assertTrue(any('不等于物理量为零' in w for w in result['warnings']))
+                self.assertGreater(tally['zero_mean_std_values'],0)
+                zero_warning=next((w for w in result['warnings'] if '物理量为零' in w), '')
+                self.assertRegex(zero_warning, r'(不能|不等于|不代表).*物理量为零')
+                self.assertRegex(zero_warning, r'成因.*(未确定|未知|不能确定)')
                 self.assertEqual(result['scientific_checks']['energy_groups']['status'],'mismatch')
                 call('openmc_create_model',{'case_dir':'ce','template':'pwr-pin-cell'})
                 original={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in (workspace/'ce').glob('*.xml')}

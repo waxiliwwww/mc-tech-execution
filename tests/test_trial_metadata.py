@@ -28,7 +28,7 @@ class SerializedMetadata(unittest.TestCase):
         tally._derived=True;tally._mean=np.arange(30000,dtype=float).reshape(10000,1,3)
         tally._std_dev=np.ones((10000,1,3))
         class Point:
-            tallies={tally.id:tally};run_mode='fixed source';version=(0,16,0);n_particles=200;n_realizations=8
+            tallies={tally.id:tally};run_mode='fixed source';version=(0,16,0);n_particles=200;n_realizations=8;n_batches=8;n_inactive=None
             def __enter__(self):return self
             def __exit__(self,*a):pass
         with patch.object(openmc,'StatePoint',return_value=Point()):
