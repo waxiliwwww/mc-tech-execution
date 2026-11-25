@@ -475,7 +475,7 @@ SLURM_TOOLS=[
  *[{'name':'openmc_slurm_'+name,'description':description,'inputSchema':_schema({'submission_id':ID},['submission_id']),'function':function}
  for name,description,function in [
  ('submit','上传已准备快照并调用sbatch；同一编号不重复提交。回执丢失标未知，先status按唯一任务名核对。会实际访问管理员配置的登录节点。',submit_slurm),
- ('status','查询已有Slurm准备/作业，squeue与sacct分开确认排队/运行/终态；队列消失不视为完成。结果仍在远端，completed后需collect。',status_slurm),
+ ('status','查询已有Slurm准备/作业，scontrol/squeue查询活动状态，sacct确认会计终态及退出码；队列消失不视为完成。结果仍在远端，completed后需collect。',status_slurm),
  ('cancel','取消尚未提交的准备或请求scancel；不删除输入/产物，实际取消终态需status确认。',cancel_slurm),
  ('collect','将确认终态的远端原始结果按输入/输出SHA256取回本工具服务端，原子发布普通job_id供结果/图/报告工具使用；不提供客户端网络下载，不删除远端数据。',collect_slurm)]],
 ]

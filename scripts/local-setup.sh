@@ -9,7 +9,7 @@ flock -n 9 || { printf '已有本地环境准备进程；请等待完成后重�
 mc_local_quiet=0
 mc_local_workspace=''
 mc_local_install=0
-mc_local_cad=0
+mc_local_cad=1
 mc_local_office=0
 mc_local_args=()
 while [[ $# -gt 0 ]]; do
@@ -22,9 +22,10 @@ while [[ $# -gt 0 ]]; do
     --no-connection-output) mc_local_quiet=1;shift ;;
     --install-runtime) mc_local_install=1;shift ;;
     --with-cad) mc_local_cad=1;shift ;;
+    --skip-cad) mc_local_cad=0;shift ;;
     --with-office) mc_local_office=1;shift ;;
     -h|--help)
-      printf '用法：bash scripts/local-setup.sh [--workspace 目录] [--openmc-prefix 已有环境] [--install-runtime] [--with-cad] [--with-office]\n已有config/openmc.local.json时默认复用；否则准备基础计算和绘图，首次需网络并下载OpenMC及核数据。可选CAD/Office按需安装。不会启动HTTP或修改宿主设置。\n';exit 0 ;;
+      printf '用法：bash scripts/local-setup.sh [--workspace 目录] [--openmc-prefix 已有环境] [--install-runtime] [--skip-cad] [--with-office]\n已有config/openmc.local.json时默认复用；否则准备基础计算和绘图，首次需网络并下载OpenMC及核数据。默认准备cadquery和cad_to_dagmc转换环境；--skip-cad显式跳过，Office按需安装。不会启动HTTP或修改宿主设置。\n';exit 0 ;;
     *) printf '未知选项：%s\n' "$1" >&2;exit 2 ;;
   esac
 done

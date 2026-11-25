@@ -33,6 +33,7 @@
 
 | 规则 | 由什么拦住 |
 |---|---|
+| 正常setup默认准备cadquery/cad_to_dagmc，显式跳过和旧标志兼容；MCP普通启动不安装 | `tests/test_local_install.py` 的实际Shell分派反例 + `tests/test_install_cad.py`；新装/复用默认、skip及旧with-cad六组合，旧默认必须变红 |
 | 可选执行说明须核对当前条件与复制快照，过期不得启动；原提交兼容，回执不冒充人工同意 | `tests/test_execution_preview.py` + `tests/test_execution_preview_real.py` |
 | 关键测试须有真实执行记录与成功终态，名字出现在正文不算执行 | `tests/test_release_evidence_gate.py` + `scripts/check-release-evidence.py` |
 | 选择参数须适用，已发现error不得在提交/扫描/修复重算消失，正常日志不得误报 | `tests/test_mesh_selection.py` + `tests/test_semantic_submission.py` + `tests/test_submission_semantic_real.py` + `tests/test_diagnostic_attribution.py` |

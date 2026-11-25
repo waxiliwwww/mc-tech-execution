@@ -106,7 +106,8 @@ class Launcher {
                 Console.WriteLine(((AssemblyInformationalVersionAttribute)Attribute.GetCustomAttribute(Assembly.GetExecutingAssembly(),typeof(AssemblyInformationalVersionAttribute))).InformationalVersion); return 0;
             }
             if (mode == "--help" || mode == "help" || mode == "-h") {
-                Console.WriteLine("OpenMC Forge: setup [--distribution NAME] [--root /linux/package] [--workspace /linux/workspace] [--openmc-prefix /linux/env] [--install-runtime] [--with-cad] [--with-office]");
+                Console.WriteLine("OpenMC Forge: setup [--distribution NAME] [--root /linux/package] [--workspace /linux/workspace] [--openmc-prefix /linux/env] [--install-runtime] [--skip-cad] [--with-office]");
+                Console.WriteLine("Setup includes cadquery and cad_to_dagmc by default; --skip-cad opts out.");
                 Console.WriteLine("Run setup once, then configure the MCP host with the JSON printed by config. No arguments starts stdio. Linux: bash scripts/local-setup.sh; bash mcp/stdio.sh. HTTP remains available.");
                 return 0;
             }
@@ -120,7 +121,7 @@ class Launcher {
                     if (++i >= args.Length || args[i].Length == 0)throw new ArgumentException("Missing value for " + option);
                     if (option == "--distribution" || option == "--root" || option == "--workspace") { config[option.Substring(2)] = args[i]; if(option=="--root")config["managed"]="false"; }
                     else { setup.Add(option); setup.Add(args[i]); }
-                } else if (option == "--install-runtime" || option == "--with-cad" || option == "--with-office") setup.Add(option);
+                } else if (option == "--install-runtime" || option == "--with-cad" || option == "--skip-cad" || option == "--with-office") setup.Add(option);
                 else throw new ArgumentException("Unknown option: " + option);
             }
             if (mode == "stdio" && args.Length != 1 && args.Length != 0) throw new ArgumentException("Run setup to change configuration; stdio takes no options.");

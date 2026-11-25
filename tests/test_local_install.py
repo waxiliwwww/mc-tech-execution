@@ -7,6 +7,7 @@ import importlib.util
 import json
 from pathlib import Path
 import shutil
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -18,6 +19,13 @@ installer=load('install_local');extras=load('install_local_extras')
 
 class LocalInstall(unittest.TestCase):
     def setUp(self):
+        original_path=sys.path[:];original_modules=set(sys.modules)
+        def restore_source_imports():
+            sys.path[:]=original_path
+            for name in set(sys.modules)-original_modules:
+                file=getattr(sys.modules[name],'__file__',None)
+                if file and Path(file).is_relative_to(self.root):sys.modules.pop(name,None)
+        self.addCleanup(restore_source_imports)
         self.temp=tempfile.TemporaryDirectory(prefix='mc install 中文 spaces ');self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name);self.source=self.root/'source';self.source.mkdir()
         shutil.copytree(ROOT/'mcp',self.source/'mcp',ignore=shutil.ignore_patterns('.venv','logs','__pycache__'))
@@ -64,6 +72,28 @@ class LocalInstall(unittest.TestCase):
         with patch.object(extras,'ROOT',self.root):extras.install(office=True)
         result=json.loads(path.read_text())
         for key in ['python_command','openmc_command','nuclear_data_library']:self.assertEqual(result[key],value[key])
+
+    def test_cad_default_and_explicit_skip_reach_fresh_and_reused_installers(self):
+        # Execute the actual dispatcher. External installers record arguments;
+        # dependency installation/conversion have their own real probes/tests.
+        import os,subprocess,sys,shlex
+        for existing in (False,True):
+            for option in (None,'--with-cad','--skip-cad'):
+                with self.subTest(existing=existing,option=option),tempfile.TemporaryDirectory() as tmp:
+                    root=Path(tmp);(root/'scripts').mkdir();(root/'mcp/.venv/bin').mkdir(parents=True);(root/'config').mkdir()
+                    shutil.copy2(ROOT/'scripts/local-setup.sh',root/'scripts/local-setup.sh')
+                    (root/'mcp/setup.sh').write_text('#!/bin/bash\nexit 0\n')
+                    (root/'quickstart.sh').write_text('#!/bin/bash\nprintf "%s\\n" "$@" > "$SETUP_DISPATCH_RECEIPT"\n')
+                    (root/'scripts/install_local_extras.py').write_text('import os,sys\nfrom pathlib import Path\nPath(os.environ["SETUP_DISPATCH_RECEIPT"]).write_text("\\n".join(sys.argv[1:]))\n')
+                    python=root/'mcp/.venv/bin/python';python.write_text('#!/bin/bash\nif [[ "$1" == scripts/install_local_extras.py ]]; then exec '+shlex.quote(sys.executable)+' "$@"; fi\ncat > /dev/null\n');python.chmod(0o755)
+                    if existing:(root/'config/openmc.local.json').write_text('{"existing":"untouched"}')
+                    receipt=root/'dispatch.txt'
+                    result=subprocess.run(['bash',str(root/'scripts/local-setup.sh')]+([option] if option else []),env={**os.environ,'SETUP_DISPATCH_RECEIPT':str(receipt)},capture_output=True,text=True)
+                    self.assertEqual(result.returncode,0,result.stderr)
+                    flags=receipt.read_text().splitlines() if receipt.exists() else []
+                    if existing:self.assertEqual('--cad' in flags,option!='--skip-cad')
+                    else:self.assertEqual('--skip-cad' in flags,option=='--skip-cad')
+                    if existing:self.assertEqual((root/'config/openmc.local.json').read_text(),'{"existing":"untouched"}')
 
     def test_setup_summary_explicitly_allows_no_cad_installation(self):
         original={'openmc_command':['existing-openmc']}

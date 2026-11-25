@@ -2,7 +2,7 @@
 name: openmc-workflows
 description: 用户要OpenMC模型接入、建模、改参计算、扫描、结果绘图报告或失败诊断时，用已连接的OpenMC Forge MCP组织完整任务，自己处理参数发现、路径、等待和文件交接；只询问必要业务条件。概念解释不计算，不替用户决定物理条件。
 metadata:
-  version: "0.25.0"
+  version: "0.25.1"
   toolkit: openmc-forge
 ---
 

@@ -5076,9 +5076,9 @@
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_slurm.py">mcp/openmc_slurm.py</a>。</p></details>
 <details class="tool" id="openmc_slurm_status"><summary>openmc_slurm_status
-<span class="tool-purpose">查询已有Slurm准备/作业，squeue与sacct分开确认排队/运行/终态；队列消失不视为完成。结果仍在远端，completed后需collect。</span></summary>
+<span class="tool-purpose">查询已有Slurm准备/作业，scontrol/squeue查询活动状态，sacct确认会计终态及退出码；队列消失不视为完成。结果仍在远端，completed后需collect。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>submission_id</td><td>string</td><td>是</td><td>不可省略</td><td>openmc_slurm_prepare返回的submission_id；不是数字cluster_job_id。collect后返回可供普通结果工具使用的job_id。</td><td>—</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>查询已有Slurm准备/作业，squeue与sacct分开确认排队/运行/终态；队列消失不视为完成。结果仍在远端，completed后需collect。</p>
+<h3>返回怎么看</h3><p>查询已有Slurm准备/作业，scontrol/squeue查询活动状态，sacct确认会计终态及退出码；队列消失不视为完成。结果仍在远端，completed后需collect。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
@@ -5098,7 +5098,7 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;查询已有Slurm准备/作业，squeue与sacct分开确认排队/运行/终态；队列消失不视为完成。结果仍在远端，completed后需collect。&quot;
+  &quot;description&quot;: &quot;查询已有Slurm准备/作业，scontrol/squeue查询活动状态，sacct确认会计终态及退出码；队列消失不视为完成。结果仍在远端，completed后需collect。&quot;
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_slurm.py">mcp/openmc_slurm.py</a>。</p></details>
