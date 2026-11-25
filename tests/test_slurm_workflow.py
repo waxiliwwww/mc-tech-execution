@@ -38,7 +38,7 @@ class SlurmWorkflow(unittest.TestCase):
         self.p={'transport':'local','remote_root':str(self.root/'remote scratch'),'python_command':[sys.executable],
                 'openmc_command':[sys.executable,str(ROOT/'tests/fixtures/slurm_solver.py')],
                 'commands':{key:[sys.executable,str(ROOT/'tests/fixtures/slurm_scheduler.py'),key]
-                            for key in ('sbatch','squeue','sacct','scancel')},'environment_setup':[]}
+                            for key in ('sbatch','squeue','sacct','scancel','scontrol')},'environment_setup':[]}
         self.profile=self.root/'cluster.json';self.write_profile()
         patch.dict(os.environ,{'MC_OPENMC_CONFIG':str(self.runtime),'MC_SLURM_CONFIG':str(self.profile),
                               'SLURM_FIXTURE_ROOT':str(self.root/'scheduler')}).start()
@@ -58,6 +58,18 @@ class SlurmWorkflow(unittest.TestCase):
     def rows(self):return json.loads((self.root/'scheduler/scheduler.json').read_text())
     def set_state(self,identifier,state,code='0:0'):
         path=self.root/'scheduler/scheduler.json';rows=self.rows();rows[identifier].update(state=state,exit=code);path.write_text(json.dumps(rows))
+
+    def test_existing_site_script_is_optional_reference_not_executed_or_overwritten(self):
+        source_script=self.case/'in.slurm'
+        source_script.write_text('#!/bin/bash\nexit 97\n# user site reference, not executable input\n')
+        before=self.hashes(self.case)
+        value=self.prepare();ref=value['reference_script']
+        self.assertEqual(ref['path'],str(source_script));self.assertFalse(ref['executed'])
+        self.assertEqual(ref['sha256'],before['in.slurm'])
+        snapshot=slurm.directory(value['submission_id'])/'input/in.slurm'
+        self.assertNotEqual(snapshot.read_text(),source_script.read_text())
+        slurm.submit_slurm(value['submission_id']);slurm.collect_slurm(value['submission_id'])
+        self.assertEqual(self.hashes(self.case),before)
 
     def test_offline_prepare_to_completed_collect_is_same_input_and_bytes(self):
         prepared=self.prepare(name='组件远程测试',resources={'cpus_per_task':3,'time':'00:05:00','partition':'cpu','memory_mb':512})
@@ -131,7 +143,7 @@ class SlurmWorkflow(unittest.TestCase):
         s=self.prepare()['submission_id'];sub=slurm.submit_slurm(s)
         self.set_state(sub['cluster_job_id'],'COMPLETED','0:9');self.assertEqual(slurm.status_slurm(s)['state'],'failed')
         s=self.prepare()['submission_id'];slurm.submit_slurm(s)
-        (Path(self.load(s)['remote_dir'])/'.forge-result.json').unlink()
+        (Path(self.load(s)['remote_dir'])/'.forge-exit-code').unlink()
         with self.assertRaisesRegex(Error,'没有计算完成收据'):slurm.collect_slurm(s)
 
     def test_remote_changed_inputs_or_outputs_do_not_publish_results(self):
@@ -153,7 +165,7 @@ class SlurmWorkflow(unittest.TestCase):
 
     def test_resource_validation_covers_related_fields_before_preparation(self):
         for resources in ({'cpus_per_task':0},{'cpus_per_task':True},{'memory_mb':-1},{'time':'never'},
-                          {'partition':'cpu\n#SBATCH --nodes=99'},{'account':'a b'},{'qos':'-q'},{'nodes':10}):
+                          {'partition':'cpu\n#SBATCH --nodes=99'},{'account':'a b'},{'qos':'-q'},{'nodes':0},{'ntasks':False}):
             with self.subTest(resources=resources),self.assertRaises(Error):self.prepare(resources=resources)
         self.assertFalse((self.work/'.mc-slurm').exists())
 
@@ -272,10 +284,23 @@ class SlurmWorkflow(unittest.TestCase):
     def test_old_solver_and_scheduler_logs_are_not_immutable_model_inputs(self):
         (self.case/'solver.log').write_text('old log')
         (self.case/'slurm-1000.out').write_text('old scheduler output')
+        (self.case/'slurm-1000.err').write_text('old scheduler error')
         s=self.prepare()['submission_id'];r=self.load(s)
-        self.assertNotIn('solver.log',r['input_hashes']);self.assertNotIn('slurm-1000.out',r['input_hashes'])
+        self.assertNotIn('solver.log',r['input_hashes']);self.assertNotIn('slurm-1000.out',r['input_hashes']);self.assertNotIn('slurm-1000.err',r['input_hashes'])
+        self.assertEqual((self.case/'slurm-1000.err').read_text(),'old scheduler error')
         slurm.submit_slurm(s);self.assertEqual(slurm.collect_slurm(s)['state'],'completed')
         self.assertEqual((self.case/'solver.log').read_text(),'old log')
+
+    def test_pre_scontrol_record_accepts_limits_only_without_rerouting_commands(self):
+        self.p['commands'].pop('scontrol');self.write_profile()
+        original=slurm.profile();original['commands'].pop('scontrol')
+        old_limit=original['max_transfer_bytes']
+        self.p['max_transfer_bytes']=old_limit+12345;self.write_profile()
+        effective=slurm._transfer_profile({'profile':original})
+        self.assertEqual(effective['max_transfer_bytes'],old_limit+12345)
+        self.assertNotIn('scontrol',effective['commands'])
+        self.p['commands']['squeue']=['different-command'];self.write_profile()
+        self.assertEqual(slurm._transfer_profile({'profile':original}),original)
 
     def test_operational_timeout_changes_apply_to_query_and_cancel(self):
         os.environ['SLURM_FIXTURE_MODE']='hold'
@@ -317,3 +342,74 @@ class SlurmWorkflow(unittest.TestCase):
         self.assertFalse(found['openmc_slurm_submit']['annotations']['readOnlyHint'])
         import asyncio
         with self.assertRaises(Exception):asyncio.run(execute_tool(found['openmc_slurm_prepare'],{'case_dir':'cases/my input','resources':{'cpus_per_task':0}}))
+
+    def test_default_script_is_available_without_user_template(self):
+        value=self.prepare();script=value['batch_script']
+        self.assertEqual(value['resource_summary']['ntasks'],1)
+        self.assertIn('#SBATCH --job-name=openmc',script)
+        self.assertIn('#SBATCH --nodes=1',script)
+        self.assertIn('export OMP_NUM_THREADS=1',script)
+        self.assertNotIn('forge-runner.py',script)
+        self.assertNotIn('#SBATCH --partition=',script)
+        self.assertTrue((slurm.directory(value['submission_id'])/'input/in.slurm').is_file())
+        self.assertFalse((self.root/'scheduler').exists())
+
+    def test_site_defaults_and_per_task_overrides_are_frozen_without_config_updates(self):
+        self.p['resource_defaults']={'cpus_per_task':2,'time':'01:00:00','partition':'CPU'};self.write_profile()
+        original=self.profile.read_bytes();value=self.prepare(resources={'cpus_per_task':3})
+        self.assertEqual(value['resource_summary']['cpus_per_task'],3)
+        self.assertIn('#SBATCH --partition=CPU',value['batch_script'])
+        self.assertIn('#SBATCH --time=01:00:00',value['batch_script'])
+        self.assertEqual(self.profile.read_bytes(),original)
+        self.p['resource_defaults']['partition']='other';self.write_profile()
+        slurm.submit_slurm(value['submission_id'])
+        self.assertIn('#SBATCH --partition=CPU',(Path(value['remote_dir'])/'in.slurm').read_text())
+
+    def test_mpi_resources_reach_confirmed_launcher_separately_from_threads(self):
+        self.p['mpi_command']=[sys.executable,str(ROOT/'tests/fixtures/slurm_mpi.py')];self.write_profile()
+        value=self.prepare(name='现场计算',resources={'nodes':1,'ntasks':3,'cpus_per_task':2})
+        self.assertIn('#SBATCH --ntasks=3',value['batch_script'])
+        self.assertIn('#SBATCH --cpus-per-task=2',value['batch_script'])
+        slurm.submit_slurm(value['submission_id']);slurm.collect_slurm(value['submission_id'])
+        out=json.loads((self.work/'.mc-jobs'/value['submission_id']/'work/controlled-mpi.json').read_text())
+        self.assertEqual(out,{'processes':3,'threads':'2','real_mpi':False})
+        self.assertEqual(self.hashes(self.case),self.original)
+
+    def test_unknown_mpi_launcher_and_duplicate_rank_flags_stop_before_preparation(self):
+        with self.assertRaisesRegex(Error,'MPI'):self.prepare(resources={'ntasks':2})
+        self.assertFalse((self.work/'.mc-slurm').exists())
+        self.p['mpi_command']=['mpirun','-np','32'];self.write_profile()
+        with self.assertRaisesRegex(Error,'不要重复指定'):self.prepare(resources={'ntasks':36})
+
+    def test_same_visible_name_recovers_lost_reply_by_submission_marker(self):
+        os.environ['SLURM_FIXTURE_MODE']='hold'
+        first=self.prepare(name='openmc')['submission_id'];one=slurm.submit_slurm(first)
+        os.environ['SLURM_FIXTURE_MODE']='receipt_lost'
+        second=self.prepare(name='openmc')['submission_id']
+        with self.assertRaises(Error):slurm.submit_slurm(second)
+        found=slurm.status_slurm(second)
+        self.assertNotEqual(one['cluster_job_id'],found['cluster_job_id'])
+        self.assertEqual(len(self.rows()),2)
+        self.assertEqual({row['name'] for row in self.rows().values()},{'openmc'})
+        slurm.cancel_slurm(second)
+        self.assertEqual(self.rows()[one['cluster_job_id']]['state'],'PENDING')
+        self.assertEqual(slurm.status_slurm(second)['state'],'cancelled')
+
+    def test_long_and_other_slurm_time_formats_are_not_limited_to_three_hour_digits(self):
+        for time in ('1000:57:57','60','10:30','2-03','2-03:10','2-03:10:20'):
+            with self.subTest(time=time):self.assertEqual(slurm._resources({'time':time})['time'],time)
+
+    def test_legacy_prepared_runner_and_result_receipt_remain_collectable(self):
+        import base64,shlex
+        value=self.prepare();identifier=value['submission_id'];directory=slurm.directory(identifier)
+        snapshot=directory/'input';(snapshot/'in.slurm').unlink()
+        shutil.copy2(ROOT/'mcp/slurm_remote.py',snapshot/'forge-runner.py')
+        (snapshot/'slurm-previous.err').write_text('old input already frozen by legacy prepare')
+        payload={'directory':value['remote_dir'],'argv':self.p['openmc_command']+['-s','1'],'max_log_bytes':2048,'expected_version':'0.16.0'}
+        encoded=base64.b64encode(json.dumps(payload).encode()).decode()
+        (snapshot/'forge-job.sh').write_text('#!/bin/bash\n#SBATCH --job-name=forge-'+identifier+'\nset -e\ncd '+shlex.quote(value['remote_dir'])+'\n'+shlex.join([sys.executable,'forge-runner.py','solve',encoded])+'\n')
+        record=self.load(identifier);record.pop('batch_script_name');record['input_hashes']=self.hashes(snapshot)
+        slurm.atomic_json(directory/'job.json',record)
+        slurm.submit_slurm(identifier)
+        self.assertEqual(slurm.collect_slurm(identifier)['state'],'completed')
+        self.assertTrue((Path(value['remote_dir'])/'.forge-result.json').is_file())

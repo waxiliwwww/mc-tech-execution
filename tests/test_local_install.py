@@ -64,3 +64,19 @@ class LocalInstall(unittest.TestCase):
         with patch.object(extras,'ROOT',self.root):extras.install(office=True)
         result=json.loads(path.read_text())
         for key in ['python_command','openmc_command','nuclear_data_library']:self.assertEqual(result[key],value[key])
+
+    def test_setup_summary_explicitly_allows_no_cad_installation(self):
+        original={'openmc_command':['existing-openmc']}
+        message=extras.cad_status(original)
+        self.assertIn('未安装/未配置',message)
+        self.assertIn('基础XML计算仍可用',message)
+        self.assertIn('cadquery',message);self.assertIn('cad_to_dagmc',message)
+        self.assertEqual(original,{'openmc_command':['existing-openmc']})
+
+    def test_setup_summary_distinguishes_import_failure_from_usable_dependencies(self):
+        program=self.root/'cad-probe';program.write_text('#!/bin/sh\necho ImportError: controlled-missing-cad >&2\nexit 1\n');program.chmod(0o755)
+        cfg={'cad_python_command':[str(program)]}
+        self.assertIn('检查失败',extras.cad_status(cfg))
+        program.write_text('#!/bin/sh\nexit 0\n')
+        text=extras.cad_status(cfg)
+        self.assertIn('依赖已检查',text);self.assertIn('DAGMC输运还须确认',text)

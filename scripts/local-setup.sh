@@ -67,6 +67,10 @@ save(local,{'workspace':str(workspace)})
 entry={'command':'/bin/bash','args':[str(root/'mcp/stdio.sh')]}
 save(root/'config/stdio-connection.local.json',{'mcpServers':{'openmc-forge':entry}})
 print('准备完成。工作区：'+str(workspace))
+sys.path.insert(0,str(root/'scripts'))
+from install_local_extras import cad_status
+from openmc_runtime import config
+print(cad_status(config()))
 if sys.argv[3] != '1':
  print('宿主连接配置（按宿主要求导入，不自动修改）：')
  print(json.dumps({'mcpServers':{'openmc-forge':entry}},ensure_ascii=False,indent=2))

@@ -40,7 +40,7 @@ def _argv(value, key):
 
 def profile():
     source = os.environ.get('MC_SLURM_CONFIG')
-    if not source: raise Error('Slurm尚未配置：复制config/slurm.example.json到私有位置，设置MC_SLURM_CONFIG；不会修改现有OpenMC配置')
+    if not source: raise Error('Slurm尚未配置：无需自备脚本，工具有内置默认模板；仍需确认集群入口/工作目录及OpenMC环境。可复制config/slurm.example.json到私有位置并设置MC_SLURM_CONFIG；不会猜测站点或修改现有OpenMC配置')
     try: p = json.loads(Path(source).read_text())
     except (OSError, ValueError) as exc: raise Error('MC_SLURM_CONFIG无法读取') from exc
     if p.get('transport') not in ('ssh', 'local'): raise Error('transport须为ssh或local（登录节点）')
@@ -55,8 +55,13 @@ def profile():
         _argv(p.setdefault('ssh_command', ['ssh', '-o', 'BatchMode=yes']), 'ssh_command')
     _argv(p.setdefault('python_command', ['python3']), 'python_command')
     _argv(p.setdefault('openmc_command', ['openmc']), 'openmc_command')
+    if p.get('mpi_command') is not None:
+        _argv(p['mpi_command'], 'mpi_command')
+        if any(v in ('-n','-np','--np','--ntasks') or v.startswith(('--ntasks=','--np=')) for v in p['mpi_command']):
+            raise Error('mpi_command只填写已确认的启动器和固定选项，进程数统一填写resources.ntasks，不要重复指定')
+    if not isinstance(p.get('resource_defaults', {}), dict):raise Error('resource_defaults须为资源对象')
     commands = p.setdefault('commands', {})
-    for key in ('sbatch', 'squeue', 'sacct', 'scancel'): _argv(commands.setdefault(key, [key]), key)
+    for key in ('sbatch', 'squeue', 'sacct', 'scancel', 'scontrol'): _argv(commands.setdefault(key, [key]), key)
     for key, default in [('command_timeout_seconds', 30), ('transfer_timeout_seconds', 600), ('max_transfer_bytes', 2*1024**3)]:
         if type(p.setdefault(key, default)) is not int or p[key] <= 0: raise Error(key + '须为正整数')
     setup = p.setdefault('environment_setup', [])
@@ -87,7 +92,7 @@ def locked(submission_id):
 
 def _summary(record):
     return {k: record.get(k) for k in ('submission_id','name','case_dir','state','cluster_job_id','remote_dir',
-            'scheduler_state','scheduler_exit_code','submitted_at','collected_job_id','cancel_requested','last_error')}
+            'scheduler_state','scheduler_exit_code','scheduler_reason','submitted_at','collected_job_id','cancel_requested','last_error')}
 
 
 def _persist(d, r): atomic_json(d/'job.json', r)
@@ -133,12 +138,14 @@ def _command(p, directory, key, args):
     return value['stdout']
 
 
-def _resources(resources):
-    r = {'cpus_per_task':1,'time':'00:10:00', **(resources or {})}
-    if set(r)-{'cpus_per_task','time','memory_mb','partition','account','qos'}: raise Error('未知资源字段')
+def _resources(resources, defaults=None):
+    r = {'nodes':1,'ntasks':1,'cpus_per_task':1,'time':'00:10:00', **(defaults or {}), **(resources or {})}
+    if set(r)-{'nodes','ntasks','cpus_per_task','time','memory_mb','partition','account','qos'}: raise Error('未知资源字段')
+    for key in ('nodes','ntasks'):
+        if type(r[key]) is not int or r[key]<1:raise Error(key+'须为正整数')
     if type(r['cpus_per_task']) is not int or r['cpus_per_task']<1: raise Error('cpus_per_task须为正整数')
     if 'memory_mb' in r and (type(r['memory_mb']) is not int or r['memory_mb']<1): raise Error('memory_mb须为正整数')
-    if not isinstance(r['time'],str) or not re.fullmatch(r'(?:\d+-)?\d{1,3}:[0-5]\d:[0-5]\d',r['time']): raise Error('time须为HH:MM:SS或D-HH:MM:SS')
+    if not isinstance(r['time'],str) or not re.fullmatch(r'(?:\d+(?::[0-5]\d(?::[0-5]\d)?)?|\d+-\d{1,2}(?::[0-5]\d(?::[0-5]\d)?)?)',r['time']): raise Error('time须为Slurm时间格式，如分钟数、HH:MM:SS或D-HH:MM:SS；上限按队列确认')
     for k in ('partition','account','qos'):
         if k in r and (not isinstance(r[k],str) or not re.fullmatch(r'[A-Za-z0-9_.-]+',r[k]) or r[k].startswith('-')): raise Error(k+'须为集群资源名称，不含空白或控制字符')
     return r
@@ -180,23 +187,39 @@ def _map_paths(snapshot, p):
     return changes
 
 
-def _script(remote_dir, p, r, identifier, log_limit):
-    lines=['#!/usr/bin/env bash', '#SBATCH --job-name=forge-'+identifier, '#SBATCH --ntasks=1',
-           '#SBATCH --cpus-per-task='+str(r['cpus_per_task']), '#SBATCH --time='+r['time'],
-           '#SBATCH --output=slurm-%j.out']
+def _script(remote_dir, p, r, identifier, log_limit, name=None):
+    lines=['#!/usr/bin/env bash', '#SBATCH --job-name='+shlex.quote(name or 'openmc'),
+           '#SBATCH --comment=forge-'+identifier, '#SBATCH --nodes='+str(r['nodes']),
+           '#SBATCH --ntasks='+str(r['ntasks']), '#SBATCH --cpus-per-task='+str(r['cpus_per_task']),
+           '#SBATCH --time='+r['time'], '#SBATCH --output=slurm-%j.out', '#SBATCH --error=slurm-%j.err']
     for key,flag in [('memory_mb','mem'),('partition','partition'),('account','account'),('qos','qos')]:
         if key in r:lines.append('#SBATCH --'+flag+'='+str(r[key]))
     lines += ['set -euo pipefail','cd -- '+shlex.quote(remote_dir)]
     if p.get('cross_sections'):lines += ['export OPENMC_CROSS_SECTIONS='+shlex.quote(p['cross_sections'])]
     lines += p['environment_setup']
-    payload={'directory':remote_dir,'argv':p['openmc_command']+['-s',str(r['cpus_per_task'])], 'max_log_bytes':log_limit,'expected_version':config()['expected_version']}
-    encoded=base64.b64encode(json.dumps(payload).encode()).decode()
-    lines += [shlex.join(p['python_command']+['forge-runner.py','solve',encoded])]
+    lines += ['export OMP_NUM_THREADS='+str(r['cpus_per_task'])]
+    version=shlex.join(p['openmc_command']+['--version'])
+    pattern=r'(^|[^0-9.])'+re.escape(config()['expected_version'])+r'([^0-9.]|$)'
+    lines += [version+' > .forge-version.txt 2>&1 || { cat .forge-version.txt | tee solver.log; exit 2; }',
+              'grep -Eq '+shlex.quote(pattern)+' .forge-version.txt || { echo 远端OpenMC版本不符或无法核实 | tee solver.log; cat .forge-version.txt | tee -a solver.log; exit 2; }']
+    command=p['openmc_command']+['-s',str(r['cpus_per_task'])]
+    if r['ntasks']>1:command=p['mpi_command']+['-n',str(r['ntasks'])]+command
+    # OpenMC runs directly; only small exit/hash records follow the command.
+    # Drain logs after the cap so a full log never kills an otherwise valid run.
+    lines += ['set +e',shlex.join(command)+' 2>&1 | { head -c '+str(log_limit)+' | tee solver.log || { cat >/dev/null; exit 1; }; extra=$(wc -c); if (( extra > 0 )); then : > .forge-log-truncated; fi; }',
+              'codes=("${PIPESTATUS[@]}")', 'solver_code=${codes[0]}',
+              'if (( solver_code == 0 && codes[1] != 0 )); then solver_code=${codes[1]}; fi', 'set -e',
+              "find . -type f ! -name '.forge-*' ! -name 'slurm-*.out' ! -name 'slurm-*.err' -print0 | sort -z | xargs -0 -r sha256sum -z > .forge-files.sha256.tmp",
+              'mv -- .forge-files.sha256.tmp .forge-files.sha256',
+              "printf '%s\n' \"$solver_code\" > .forge-exit-code.tmp",
+              'mv -- .forge-exit-code.tmp .forge-exit-code', 'exit "$solver_code"']
     return '\n'.join(lines)+'\n'
 
 
 def prepare_slurm(case_dir: str, resources: dict | None = None, name: str | None = None) -> dict:
-    p=profile();r=_resources(resources);name=jobs.checked_name(name)
+    p=profile();r=_resources(resources,p.get('resource_defaults'));name=jobs.checked_name(name)
+    if r['ntasks']>1 and not p.get('mpi_command'):
+        raise Error('本次要求多个MPI进程；请先确认OpenMC支持MPI，并在站点配置mpi_command填写已确认的启动器（如["mpirun"]或["srun"]）。没有现场脚本也可使用内置单进程模板；不会猜测MPI环境。')
     from openmc_tools import validate_inputs, require_semantic_submission, _semantic_summary
     checked=validate_inputs(case_dir, semantic_check=True)
     if not checked['structure_valid']:raise Error('输入结构检查失败：'+str(checked['problems']))
@@ -206,6 +229,9 @@ def prepare_slurm(case_dir: str, resources: dict | None = None, name: str | None
     for path in source.rglob('*'):
         if path.is_symlink() or (not path.is_file() and not path.is_dir()):raise Error('输入包含符号链接或特殊文件')
         if path.name in CONTROL or path.name.startswith('.forge-'):raise Error('算例包含Slurm控制文件；请选择纯模型输入')
+    reference_script=({'path':str(source/'in.slurm'),'sha256':jobs.file_hash(source/'in.slurm'),
+                       'executed':False,'note':'源in.slurm仅作可选参考，原文件保留；快照使用工具按当前站点配置生成的新脚本，不自动采用参考设置。'}
+                      if (source/'in.slurm').is_file() else None)
     cfg=config()
     from openmc_storage import check_submission_space
     disk=check_submission_space(source, workspace(), cfg, False, jobs.is_old_output)
@@ -213,21 +239,20 @@ def prepare_slurm(case_dir: str, resources: dict | None = None, name: str | None
     root=path_in_workspace('.mc-slurm',exists=False,internal=True);root.mkdir(exist_ok=True)
     staging=Path(tempfile.mkdtemp(prefix='.preparing-',dir=root));snapshot=staging/'input'
     try:
-        shutil.copytree(source,snapshot,ignore=lambda d,n:[x for x in n if jobs.is_old_output(x) or x in ('views','__pycache__','solver.log','worker.log') or (x.startswith('slurm-') and x.endswith('.out'))])
+        shutil.copytree(source,snapshot,ignore=lambda d,n:[x for x in n if (Path(d)==source and x=='in.slurm') or jobs.is_old_output(x) or x in ('views','__pycache__','solver.log','worker.log') or (x.startswith('slurm-') and x.endswith(('.out','.err')))])
         # Recheck the actual snapshot with the same admission rule as local jobs.
         require_semantic_submission(_semantic_summary(snapshot,[x.name for x in snapshot.glob('*.xml')],cfg))
         original={str(x.relative_to(snapshot)):jobs.file_hash(x) for x in snapshot.rglob('*') if x.is_file()}
         changes=_map_paths(snapshot,p)
         remote_dir=str(PurePosixPath(p['remote_root'])/identifier)
-        script=_script(remote_dir,p,r,identifier,cfg['max_log_bytes'])
-        (snapshot/'forge-job.sh').write_text(script)
-        shutil.copyfile(HELPER,snapshot/'forge-runner.py')
+        script=_script(remote_dir,p,r,identifier,cfg['max_log_bytes'],name)
+        (snapshot/'in.slurm').write_text(script)
         inputs={str(x.relative_to(snapshot)):jobs.file_hash(x) for x in snapshot.rglob('*') if x.is_file()}
         size=sum(x.stat().st_size for x in snapshot.rglob('*') if x.is_file())
         if size>p['max_transfer_bytes']:raise Error('输入超过Slurm配置max_transfer_bytes；调整部署配置或整理依赖')
         record={'submission_id':identifier,'case_dir':case_dir,'name':name,'state':'prepared','resources':r,
-                'remote_dir':remote_dir,'profile':p,'created_at':time.time(),'cluster_job_id':None,
-                'original_input_hashes':original,'input_hashes':inputs,'path_changes':changes,
+                'remote_dir':remote_dir,'profile':p,'batch_script_name':'in.slurm','created_at':time.time(),'cluster_job_id':None,
+                'reference_script':reference_script,'original_input_hashes':original,'input_hashes':inputs,'path_changes':changes,
                 'provenance':provenance(source,cfg),'runtime':cfg,'disk_admission':disk}
         atomic_json(staging/'job.json',record)
         from openmc_import import publish_directory
@@ -235,8 +260,8 @@ def prepare_slurm(case_dir: str, resources: dict | None = None, name: str | None
     except BaseException:
         if staging.exists():shutil.rmtree(staging)
         raise
-    return {**_summary(record),'batch_script':script,'input_hashes':inputs,'path_changes':changes,
-            'directory':str(root/identifier),'network_used':False,'professional_acceptance':False,
+    return {**_summary(record),'reference_script':reference_script,'batch_script':script,'input_hashes':inputs,'path_changes':changes,
+            'directory':str(root/identifier),'resource_summary':r,'execution_summary':f"{name or 'openmc'}：{r['nodes']}节点，{r['ntasks']}个计算进程，每进程{r['cpus_per_task']}线程，队列{r.get('partition','站点默认')}，时限{r['time']}；使用内置Slurm模板与当前站点配置。",'network_used':False,'professional_acceptance':False,
             'next':'检查批处理脚本、资源和输入哈希；确认集群配置后调用openmc_slurm_submit。prepare未连接或提交集群。'}
 
 
@@ -259,7 +284,7 @@ def submit_slurm(submission_id: str) -> dict:
             except Error as exc:r['last_error']=str(exc);_persist(d,r);raise
         r.update(state='submitting',submitted_at=time.time(),last_error=None);_persist(d,r)
         try:
-            out=_command(p,r['remote_dir'],'sbatch',['--parsable','forge-job.sh']).strip()
+            out=_command(p,r['remote_dir'],'sbatch',['--parsable',r.get('batch_script_name','forge-job.sh')]).strip()
             match=re.fullmatch(r'(\d+)(?:;[A-Za-z0-9_.-]+)?',out)
             if not match:raise Error('sbatch未返回可识别编号；先按原submission_id查询，不重交')
             r.update(cluster_job_id=match.group(1),state='queued');_persist(d,r)
@@ -269,23 +294,37 @@ def submit_slurm(submission_id: str) -> dict:
 
 def _query(r):
     p=_transfer_profile(r);jid=r.get('cluster_job_id')
-    args=['--noheader','--format=%i|%T'] + (['--jobs='+jid] if jid else ['--name=forge-'+r['submission_id']])
+    native=r.get('batch_script_name')=='in.slurm'
+    tag='forge-'+r['submission_id']
+    job_name=(r.get('name') or 'openmc') if native else tag
+    args=['--noheader','--format=%i|%T'+('|%k' if native and not jid else '')] + (['--jobs='+jid] if jid else ['--name='+job_name])
     try:queue=_command(p,r['remote_dir'],'squeue',args);queue_error=None
     except Error as exc:queue='';queue_error=str(exc)
     queued=[line.strip().split('|') for line in queue.splitlines() if line.strip()]
-    query=['--noheader','--parsable2','--format=JobIDRaw,State,ExitCode', '--starttime='+(datetime.fromtimestamp(r.get('submitted_at',r['created_at']),timezone.utc)-timedelta(days=1)).strftime('%Y-%m-%d')]
-    query += ['--jobs='+jid] if jid else ['--name=forge-'+r['submission_id']]
+    if native and not jid:queued=[row for row in queued if len(row)>2 and row[2]==tag]
+    query=['--noheader','--parsable2','--format=JobIDRaw,State,ExitCode'+(',Comment' if native and not jid else ''), '--starttime='+(datetime.fromtimestamp(r.get('submitted_at',r['created_at']),timezone.utc)-timedelta(days=1)).strftime('%Y-%m-%d')]
+    query += ['--jobs='+jid] if jid else ['--name='+job_name]
     # Query terminal accounting even if queue has not disappeared yet.
     try:
         accounting=_command(p,r['remote_dir'],'sacct',query)
         rows=[line.strip().split('|') for line in accounting.splitlines() if line.strip()]
+        if native and not jid:rows=[row for row in rows if len(row)>3 and row[3]==tag]
         accounting_error=None
     except Error as exc:rows=[];accounting_error=str(exc)
     ids={row[0] for row in queued+rows if len(row)>=2 and re.fullmatch(r'\d+',row[0]) and (jid is None or row[0]==jid)}
     if jid is None:
         if len(ids)!=1:
-            r.update(state='submission_unknown',last_error='按唯一任务名未找到唯一集群编号；联系运维核对，不能据此认定未提交或重交');return
+            r.update(state='submission_unknown',last_error='按原提交标记未找到唯一集群编号；联系运维核对，不能据此认定未提交或重交');return
         jid=ids.pop();r['cluster_job_id']=jid
+    if native and jid:
+        try:
+            control=_command(p,r['remote_dir'],'scontrol',['show','job','--oneliner',jid])
+            fields=dict(re.findall(r'(?:^|\s)([A-Za-z]+)=([^\s]+)',control))
+            if fields.get('JobId')==jid and fields.get('JobState'):
+                queued=[[jid,fields['JobState']]]
+                r['scheduler_reason']=fields.get('Reason')
+        except Error:
+            pass  # Existing queue/accounting queries remain valid on older sites.
     row=next((x for x in rows if len(x)>=3 and x[0]==jid),None)
     q=next((x for x in queued if len(x)>=2 and x[0]==jid),None)
     accounting_state=row[1].split()[0].rstrip('+').upper() if row else ''
@@ -341,7 +380,10 @@ def _transfer_profile(record):
         current=profile()
         identity=set(saved)|set(current)
         limits={'max_transfer_bytes','transfer_timeout_seconds','command_timeout_seconds'}
-        if any(saved.get(k)!=current.get(k) for k in identity-limits):
+        # Older records predate optional scontrol. Its implicit default is not
+        # an endpoint change; explicitly changed command prefixes still are.
+        saved_identity={**saved,'commands':{'scontrol':['scontrol'],**saved.get('commands',{})}}
+        if any(saved_identity.get(k)!=current.get(k) for k in identity-limits):
             return effective  # A different active profile never reroutes an existing task.
         for key in limits:effective[key]=current[key]
     return effective
@@ -357,7 +399,7 @@ def collect_slurm(submission_id: str) -> dict:
         _query(r);_persist(d,r)
         if r['state'] not in TERMINAL:raise Error('集群终态未确认，不能收集为已完成结果；先查询状态')
         receipt=_remote(p,'inventory',{'directory':r['remote_dir'],'allow_failed':r['state']!='completed',
-                        'inputs':r['input_hashes'],'exit_code':int((r.get('scheduler_exit_code') or '1:0').split(':')[0])})
+                        'inputs':r['input_hashes'],'shell_receipt':r.get('batch_script_name')=='in.slurm','exit_code':int((r.get('scheduler_exit_code') or '1:0').split(':')[0])})
         if receipt['input_hashes']!=r['input_hashes']:raise Error('远端计算输入与准备快照不一致')
         if r['state']=='completed' and receipt['exit_code']!=0:raise Error('Slurm成功但求解器退出码非零；保留冲突证据，不发布成功结果')
         outputs=receipt['outputs']
@@ -418,16 +460,18 @@ def collect_slurm(submission_id: str) -> dict:
 def _schema(properties, required):return {'type':'object','properties':properties,'required':required,'additionalProperties':False}
 ID={'type':'string','pattern':'^[a-f0-9]{32}$','description':'openmc_slurm_prepare返回的submission_id；不是数字cluster_job_id。collect后返回可供普通结果工具使用的job_id。'}
 RESOURCES=_schema({
- 'cpus_per_task':{'type':'integer','minimum':1,'description':'单个Slurm任务申请的CPU数，同时作为OpenMC线程数，默认1；本路径不提交MPI多节点。'},
- 'time':{'type':'string','description':'集群墙钟时限HH:MM:SS或D-HH:MM:SS，默认00:10:00；按实际集群限额填写。'},
+ 'nodes':{'type':'integer','minimum':1,'description':'申请的节点数；默认取站点resource_defaults，未配置时1。'},
+ 'ntasks':{'type':'integer','minimum':1,'description':'计算进程总数；默认取站点设置，未配置时1。大于1需确认MPI版OpenMC，并配置mpi_command；不是每进程线程数。'},
+ 'cpus_per_task':{'type':'integer','minimum':1,'description':'每个计算进程的CPU/线程数，同时设置OMP_NUM_THREADS和OpenMC -s；与ntasks分开，默认取站点配置，未配置时1。'},
+ 'time':{'type':'string','description':'集群运行时限，支持Slurm分钟数、HH:MM:SS等格式；默认取站点配置，未配置时00:10:00。实际可用上限由队列决定。'},
  'memory_mb':{'type':'integer','minimum':1,'description':'可选内存申请MiB，省略使用集群默认值。'},
  **{k:{'type':'string','description':v} for k,v in [('partition','集群分区名称，由运维提供。'),('account','集群计费/项目account，非登录用户名。'),('qos','可选集群QOS，由运维提供。')]}
 },[])
-RESOURCES['description']='资源请求；省略CPU和time时用1线程/10分钟，其余采用集群默认。不要照抄不属于自己的分区或account。'
+RESOURCES['description']='资源请求；优先复用已确认的站点resource_defaults，本次字段覆盖同名默认值。无站点资源默认时用1节点/1进程/1线程/10分钟，队列使用站点默认；没有现场脚本也可用内置模板，但集群入口、环境和本次资源仍须明确。'
 SLURM_TOOLS=[
- {'name':'openmc_slurm_prepare','description':'离线校核并快照已有模型，生成Slurm脚本与资源/输入哈希，绝不连接或提交集群。先配置独立MC_SLURM_CONFIG；此能力不代表真实HPC已验证。',
+ {'name':'openmc_slurm_prepare','description':'离线校核并快照已有模型，使用内置默认模板和站点设置生成普通in.slurm，返回资源摘要与输入哈希，绝不连接或提交集群。现场脚本可选参考，不是使用前提；先明确MC_SLURM_CONFIG中的集群入口与环境。此能力不代表真实HPC已验证。',
   'inputSchema':_schema({'case_dir':{'type':'string','minLength':1,'description':'已有模型在MC_WORKSPACE内的相对目录，先生成/导入、预览并按需要校核。'},'resources':RESOURCES,
-  'name':{'type':'string','minLength':1,'maxLength':120,'description':'可选用户任务名；真实集群以forge-唯一编号定位，保留此显示名称。'}},['case_dir']), 'function':prepare_slurm},
+  'name':{'type':'string','minLength':1,'maxLength':120,'description':'Slurm可见任务名，省略为openmc；同名任务由内部提交记录和job ID区分，不用名称猜取消目标。'}},['case_dir']), 'function':prepare_slurm},
  *[{'name':'openmc_slurm_'+name,'description':description,'inputSchema':_schema({'submission_id':ID},['submission_id']),'function':function}
  for name,description,function in [
  ('submit','上传已准备快照并调用sbatch；同一编号不重复提交。回执丢失标未知，先status按唯一任务名核对。会实际访问管理员配置的登录节点。',submit_slurm),

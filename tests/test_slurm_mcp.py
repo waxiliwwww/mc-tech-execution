@@ -17,7 +17,7 @@ class SlurmMCP(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix='slurm mcp harness ') as tmp:
             folder=Path(tmp);cfg={'transport':'ssh','host':'controlled.invalid','ssh_command':[sys.executable,str(ROOT/'tests/fixtures/slurm_ssh.py')],
                 'remote_root':str(folder/'remote'),'python_command':[sys.executable],
-                'commands':{name:[sys.executable,str(ROOT/'tests/fixtures/slurm_scheduler.py'),name] for name in ('sbatch','squeue','sacct','scancel')}}
+                'commands':{name:[sys.executable,str(ROOT/'tests/fixtures/slurm_scheduler.py'),name] for name in ('sbatch','squeue','sacct','scancel','scontrol')}}
             env={k:v for k,v in os.environ.items() if not k.startswith(('MC_','MCP_','SLURM_'))}
             if real:
                 actual=json.loads(Path(os.environ['MC_TEST_OPENMC_CONFIG']).read_text())

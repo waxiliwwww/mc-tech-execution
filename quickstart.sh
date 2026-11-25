@@ -108,6 +108,13 @@ else
   printf '[5/5] 按选项跳过Office准备；PDF/DOC须另行配置，DOCX无需转换组件。\n'
 fi
 ./mc.sh call openmc_environment
+mcp/.venv/bin/python - <<'PY'
+import sys,json
+from pathlib import Path
+sys.path.insert(0,'scripts')
+from install_local_extras import cad_status
+print(cad_status(json.loads(Path('config/openmc.local.json').read_text())))
+PY
 printf '\n环境准备完成。下一步：\n'
 printf '  1) 启动 MCP 服务（前台保持运行）：./mcp/start.sh\n'
 printf '     启动输出会给出 MCP 地址、传输协议、鉴权方式、内置工具数量和事件日志路径。\n'

@@ -36,6 +36,9 @@ class WorkflowGuidance(unittest.TestCase):
         self.assertIn('professional_acceptance=false不表示验收失败',visible)
         self.assertIn('本工具未执行',visible)
         self.assertIn('批次数直接引用batch_settings.statement',visible)
+        self.assertIn('脚本是可选参考，不是前提',visible)
+        self.assertIn('没有参考脚本就用内置保守模板',visible)
+        self.assertIn('仅询问缺失或变化的信息',visible)
 
     def test_unknown_files_and_missing_installation_fail_without_fallback(self):
         for chapter in ['../SKILL.md','/etc/passwd','unknown','start/../files']:

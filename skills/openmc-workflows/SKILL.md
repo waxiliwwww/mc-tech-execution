@@ -2,7 +2,7 @@
 name: openmc-workflows
 description: 用户要OpenMC模型接入、建模、改参计算、扫描、结果绘图报告或失败诊断时，用已连接的OpenMC Forge MCP组织完整任务，自己处理参数发现、路径、等待和文件交接；只询问必要业务条件。概念解释不计算，不替用户决定物理条件。
 metadata:
-  version: "0.24.5"
+  version: "0.25.0"
   toolkit: openmc-forge
 ---
 
@@ -28,7 +28,10 @@ metadata:
 - 批次数直接引用batch_settings.statement：总批次、非活跃(inactive)、活跃(active)分别列出，活跃=总−非活跃；不用“非inactive的某批”等否定括号，不把inactive数量写成active，不将realizations或代数当批次。优先原样引用已核实摘要，不补写用户没问的括号或推导；设置缺失或非适用模式明确未知/不适用，不猜数量。
 - 结果表述基准：反应score使用工具meaning中的“反应计分/估计”，保留raw_unit；reactions/source不是实际裂变事件计数，不能把tracklength写成事件计数器。网格直接用value_rows/selected_table；不额外推导用户没问的扁平公式。确需说明时引用mesh_indexing：1-based[i,j,k]对应0-based mesh_offset=(i-1)+nx*(j-1)+nx*ny*(k-1)，首箱为0；此offset只在该RegularMesh内，不是包含其他filter/核素/score轴的数组序号。专业验收引用professional_acceptance_status：本工具未执行、没有结论；旧professional_acceptance=false不表示验收失败，不能写成“不合格/验收未通过”。作业计算失败与专业验收状态分别说明。
 
+- 使用Slurm时，现场已跑通的脚本是可选参考，不是前提。先复用已确认的站点信息；配置文件可读时再参考，离线prepare返回的摘要和脚本用于核对。没有参考脚本就用内置保守模板，说明打算申请的节点、进程、每进程线程、队列和时限，仅询问缺失或变化的信息。模板不能替代未知的集群入口、OpenMC和核数据库环境；不擅自套用示例站点路径，不把“36核”猜成36个MPI进程。详见扩展任务中的Slurm段。
+
 ## 按条件选择步骤
+
 
 | 当前条件 | Agent处理 |
 |---|---|

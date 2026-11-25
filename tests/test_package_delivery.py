@@ -47,6 +47,18 @@ class PackageDelivery(unittest.TestCase):
         before={str(p.relative_to(self.root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in self.root.rglob('*') if p.is_file()}
         result=self.verify();self.assertEqual(result.returncode,0,result.stderr);self.assertIn('校验成功',result.stdout)
         self.assertEqual(before,{str(p.relative_to(self.root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in self.root.rglob('*') if p.is_file()})
+    def test_documented_accuracy_entry_is_shipped_and_runs_help_after_extraction(self):
+        shutil.copy2(ROOT/'accuracy.sh',self.root/'accuracy.sh')
+        shutil.copy2(ROOT/'scripts/accuracy_baseline.py',self.root/'scripts/accuracy_baseline.py')
+        result=self.package();self.assertEqual(result.returncode,0,result.stderr)
+        out=self.root/'extracted';out.mkdir()
+        with tarfile.open(self.archive) as archive:
+            self.assertEqual(archive.extractfile('mc-tech-execution/accuracy.sh').read(),(ROOT/'accuracy.sh').read_bytes())
+            archive.extractall(out,filter='data')
+        help_result=subprocess.run(['bash',str(out/'mc-tech-execution/accuracy.sh'),'--help'],capture_output=True,text=True)
+        self.assertEqual(help_result.returncode,0,help_result.stderr)
+        self.assertIn('--only',help_result.stdout)
+
     def test_registered_fault_input_and_log_assets_are_shipped(self):
         # The registry is the consumer contract, independently of packager roots.
         shutil.copy2(ROOT/'config/fault-samples.json',self.root/'config/fault-samples.json')

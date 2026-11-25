@@ -12,6 +12,22 @@ sys.path.insert(0,str(ROOT/'mcp'))
 from openmc_runtime import atomic_json
 
 
+def cad_status(cfg):
+    """Read-only dependency check for setup output; never installs or converts."""
+    command=cfg.get('cad_python_command')
+    if not command:
+        return 'CAD转换：未安装/未配置（基础XML计算仍可用）。STEP转换需要cadquery和cad_to_dagmc；需要时用现有 --with-cad 或 --cad-only 补装。'
+    from openmc_cad import _cad_env
+    try:
+        probe=subprocess.run(command+['-c','import cadquery, cad_to_dagmc'],env=_cad_env(cfg),
+                             capture_output=True,text=True,timeout=30)
+    except (OSError,subprocess.TimeoutExpired) as exc:
+        return 'CAD转换依赖检查失败：'+type(exc).__name__+'；基础XML计算仍可用。请检查cadquery/cad_to_dagmc环境。'
+    if probe.returncode:
+        return 'CAD转换依赖检查失败：'+(probe.stderr.strip().splitlines() or ['无法导入cadquery/cad_to_dagmc'])[-1][:250]+'；基础XML计算仍可用。'
+    return 'CAD转换依赖已检查：cadquery和cad_to_dagmc可导入。完整转换以小STEP探针为准；DAGMC输运还须确认OpenMC引擎支持。'
+
+
 def install(cad=False,office=False):
     path=ROOT/'config/openmc.local.json';cfg=json.loads(path.read_text())
     if cad:

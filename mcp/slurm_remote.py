@@ -103,7 +103,25 @@ def execute(action, p):
     if action == 'inventory':
         receipt_path = root / '.forge-result.json'
         current = files(root)
-        if receipt_path.is_file():
+        if p.get('shell_receipt') and (root/'.forge-exit-code').is_file():
+            sealed={}
+            for item in (root/'.forge-files.sha256').read_bytes().split(b'\0'):
+                if not item:continue
+                if len(item)<67 or item[64:66] not in (b'  ',b' *'):raise ValueError('远端指纹记录不完整')
+                name=item[66:].decode('utf-8');name=name[2:] if name.startswith('./') else name
+                if name in sealed:raise ValueError('远端指纹重复')
+                expected=item[:64].decode('ascii')
+                if not re.fullmatch('[a-f0-9]{64}',expected):raise ValueError('远端指纹无效')
+                if current.get(name,{}).get('sha256')!=expected:raise ValueError('远端原始结果或输入已变化：'+name)
+                sealed[name]=current[name]
+            if not set(p['inputs'])<=set(sealed):raise ValueError('远端输入指纹记录不完整')
+            code=int((root/'.forge-exit-code').read_text().strip())
+            version=(root/'.forge-version.txt').read_text(errors='replace').strip()[:2000]
+            receipt={'exit_code':code,'input_hashes':p['inputs'],'changed_inputs':[],
+                     'outputs':{name:item for name,item in sealed.items() if name not in p['inputs']},
+                     'log_truncated':(root/'.forge-log-truncated').exists(),'finished_at':(root/'.forge-exit-code').stat().st_mtime,
+                     'receipt_source':'slurm_script_exit_and_sha256','runtime':{'openmc_version_output':version,'nuclear_data_verified':False}}
+        elif not p.get('shell_receipt') and receipt_path.is_file():
             receipt = json.loads(receipt_path.read_text())
         elif p.get('allow_failed'):
             receipt = {'exit_code':p['exit_code'], 'input_hashes':json.loads((root/'.forge-input.json').read_text()),
@@ -120,7 +138,7 @@ def execute(action, p):
         # Scheduler stdout may be flushed after the solver seals its outputs.
         # It is collected at the confirmed scheduler terminal, not solver-sealed.
         for name,item in current.items():
-            if name.startswith('slurm-') and name.endswith('.out'):receipt['outputs'][name]=item
+            if name not in receipt['input_hashes'] and name.startswith('slurm-') and name.endswith(('.out','.err')):receipt['outputs'][name]=item
         return receipt
     if action == 'fetch':
         # Caller rechecks sizes and SHA256 after transport; never tar.extractall.
