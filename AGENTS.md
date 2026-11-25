@@ -33,6 +33,7 @@
 
 | 规则 | 由什么拦住 |
 |---|---|
+| 集群先查材料/站点、队列按需查，原任务列表不冒充实时；断线沿原回执、到期无重投/取消，资源不默默忽略 | `tests/test_slurm_context.py` + `tests/test_slurm_client.py` + `tests/test_slurm_mcp.py`；真实MCP与受控丢回复，真实HPC/Agent行为分别取证 |
 | 正常setup默认准备cadquery/cad_to_dagmc，显式跳过和旧标志兼容；MCP普通启动不安装 | `tests/test_local_install.py` 的实际Shell分派反例 + `tests/test_install_cad.py`；新装/复用默认、skip及旧with-cad六组合，旧默认必须变红 |
 | 可选执行说明须核对当前条件与复制快照，过期不得启动；原提交兼容，回执不冒充人工同意 | `tests/test_execution_preview.py` + `tests/test_execution_preview_real.py` |
 | 关键测试须有真实执行记录与成功终态，名字出现在正文不算执行 | `tests/test_release_evidence_gate.py` + `scripts/check-release-evidence.py` |

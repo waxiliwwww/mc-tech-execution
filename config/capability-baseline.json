@@ -216,13 +216,18 @@
         "openmc_slurm_submit",
         "openmc_slurm_status",
         "openmc_slurm_cancel",
-        "openmc_slurm_collect"
+        "openmc_slurm_collect",
+        "openmc_environment",
+        "openmc_list_jobs",
+        "examples/slurm_workflow.py"
       ],
       "input": "已有模型、内置普通Slurm模板、可选站点脚本参考、站点默认与本次覆盖资源；节点/进程/线程分开。MPI需确认引擎和mpi_command；仅受控调度验证，真实MPI/集群未验",
-      "output": "离线快照/in.slurm与资源摘要，原用户任务名/内部标记/集群编号；直接OpenMC和完成文件指纹，SHA256核验取回，保留旧准备记录兼容",
+      "output": "离线快照/in.slurm与资源摘要，原用户任务名/内部标记/集群编号；直接OpenMC和完成文件指纹，SHA256核验取回，保留旧准备记录兼容；既有环境入口可选队列与只读参考，离线查找原Slurm记录，原回执有界跟踪/连接与取回恢复；不新增MCP工具",
       "evidence": [
         "tests/test_slurm_workflow.py",
-        "tests/test_slurm_mcp.py"
+        "tests/test_slurm_mcp.py",
+        "tests/test_slurm_context.py",
+        "tests/test_slurm_client.py"
       ],
       "gate": "offline_and_real"
     },
@@ -444,6 +449,14 @@
       "impact": "新增ntasks>1路径要求已确认的mpi_command；原单进程OpenMP路径不变，不猜MPI启动器或是否MPI构建。",
       "migration": "不需要MPI时用默认ntasks=1；需要时管理员配置mpi_command启动器前缀，进程数只填resources.ntasks。",
       "user_decision": "2026-11-25用户确认Slurm流程简化方案；未知站点信息询问，不擅自猜。"
+    },
+    {
+      "id": "slurm_receipt_resume_binding",
+      "capability": "slurm_adapter",
+      "kind": "guarded",
+      "impact": "同回执限原服务/任务及参数；显式原ID的新资源/名称须有原回执依据且一致，不静默忽略或写成已应用。",
+      "migration": "继续原任务省略新资源/名称；新计算使用新请求和新回执。原无资源的ID接续保持支持。",
+      "user_decision": "2026-11-25用户确认减少操作负担及原任务恢复，禁止未知状态重投；本条恢复资源说明真实性。"
     }
   ],
   "stabilization": {

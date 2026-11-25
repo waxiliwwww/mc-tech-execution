@@ -10,6 +10,7 @@ from datetime import datetime, timezone, timedelta
 import fcntl
 import hashlib
 import json
+import math
 import os
 from pathlib import Path, PurePosixPath
 import re
@@ -43,6 +44,7 @@ def profile():
     if not source: raise Error('Slurm尚未配置：无需自备脚本，工具有内置默认模板；仍需确认集群入口/工作目录及OpenMC环境。可复制config/slurm.example.json到私有位置并设置MC_SLURM_CONFIG；不会猜测站点或修改现有OpenMC配置')
     try: p = json.loads(Path(source).read_text())
     except (OSError, ValueError) as exc: raise Error('MC_SLURM_CONFIG无法读取') from exc
+    if not isinstance(p,dict):raise Error('MC_SLURM_CONFIG须为JSON对象')
     if p.get('transport') not in ('ssh', 'local'): raise Error('transport须为ssh或local（登录节点）')
     root = p.get('remote_root', '')
     if not isinstance(root, str) or not root.startswith('/') or '..' in PurePosixPath(root).parts or any(c in root for c in '\r\n\0'):
@@ -61,6 +63,7 @@ def profile():
             raise Error('mpi_command只填写已确认的启动器和固定选项，进程数统一填写resources.ntasks，不要重复指定')
     if not isinstance(p.get('resource_defaults', {}), dict):raise Error('resource_defaults须为资源对象')
     commands = p.setdefault('commands', {})
+    if not isinstance(commands,dict):raise Error('commands须为调度命令对象')
     for key in ('sbatch', 'squeue', 'sacct', 'scancel', 'scontrol'): _argv(commands.setdefault(key, [key]), key)
     for key, default in [('command_timeout_seconds', 30), ('transfer_timeout_seconds', 600), ('max_transfer_bytes', 2*1024**3)]:
         if type(p.setdefault(key, default)) is not int or p[key] <= 0: raise Error(key + '须为正整数')
@@ -73,6 +76,133 @@ def profile():
         if key in p and (not isinstance(p[key], str) or not p[key].startswith('/') or any(c in p[key] for c in '\r\n\0')):
             raise Error(key + '须为集群绝对路径')
     return p
+
+
+def _reference_materials(reference):
+    result={'status':'not_provided','scripts':[],'note':'先复用已确认的站点信息；没有现场资料也可使用内置模板。'}
+    if reference is None:return result
+    try:
+        source=path_in_workspace(reference)
+        if source.is_file(): candidates=[source]
+        elif source.is_dir():
+            candidates=sorted((v for v in source.iterdir() if v.suffix.lower() in ('.slurm','.sbatch','.sh')),key=lambda v:(v.name!='in.slurm',v.suffix.lower() not in ('.slurm','.sbatch'),v.name))
+        else:raise Error('资料路径不是普通文件或目录')
+        result.update(status='not_found',note='该位置未发现可参考的Slurm脚本；说明后可沿用已确认设置及默认模板。')
+        for path in candidates[:12]:
+            if path.is_symlink() or not path.is_file():raise Error('参考资料含符号链接或特殊文件')
+            if path.stat().st_size>65536:
+                result['scripts'].append({'path':relative(path),'status':'too_large','note':'参考脚本超过64KiB，未读取或执行；请缩小资料范围。'});continue
+            with path.open('rb') as stream:raw=stream.read(65537)
+            if len(raw)>65536:raise Error('参考脚本在读取时超过64KiB，未执行')
+            content=raw.decode('utf-8-sig')
+            if source.is_dir() and path.suffix.lower()=='.sh' and '#SBATCH' not in content:continue
+            resources={};unhandled=[];notes=[];per_node=None;name=None
+            mapping={'--nodes':'nodes','-N':'nodes','--ntasks':'ntasks','-n':'ntasks','--cpus-per-task':'cpus_per_task','-c':'cpus_per_task','--time':'time','-t':'time','--partition':'partition','-p':'partition','--account':'account','-A':'account','--qos':'qos'}
+            directive_prefix=True
+            for line in content.splitlines():
+                stripped=line.lstrip()
+                if stripped and not stripped.startswith('#'):directive_prefix=False
+                if not stripped.startswith('#SBATCH'):continue
+                if not directive_prefix:
+                    unhandled.append('首条执行命令之后的SBATCH未被Slurm采用：'+line);continue
+                try:tokens=shlex.split(line.lstrip()[7:],comments=True)
+                except ValueError:unhandled.append(line);continue
+                i=0
+                while i<len(tokens):
+                    token=tokens[i];i+=1;key,sep,value=token.partition('=')
+                    if not sep and key.startswith('-') and not key.startswith('--') and len(key)>2:key,value=key[:2],key[2:]
+                    if not value and i<len(tokens) and not tokens[i].startswith('-'):value=tokens[i];i+=1
+                    if key in mapping:
+                        field=mapping[key]
+                        try:resources[field]=int(value) if field in ('nodes','ntasks','cpus_per_task') else value
+                        except ValueError:unhandled.append(token+' '+value)
+                    elif key=='--ntasks-per-node':
+                        try:per_node=int(value)
+                        except ValueError:unhandled.append(token+' '+value)
+                    elif key in ('--job-name','-J'):name=value
+                    elif key=='--mem' and re.fullmatch(r'[1-9]\d*[MGmg]?',value or ''):
+                        resources['memory_mb']=int(value[:-1] if value[-1].isalpha() else value)*(1024 if value[-1:].upper()=='G' else 1)
+                    elif key in ('--output','-o','--error','-e','--chdir','-D','--comment'):
+                        notes.append(key+'仅作参考；执行时使用工具的独立目录、日志和提交标记。')
+                    else:unhandled.append(token+(' '+value if value else ''))
+            if per_node is not None:
+                if per_node>0 and 'nodes' in resources:
+                    total=resources['nodes']*per_node
+                    if 'ntasks' not in resources:resources['ntasks']=total
+                    elif resources['ntasks']!=total:notes.append('总进程数与每节点进程数×节点数不同，需核对是否有意预留。')
+                else:unhandled.append('--ntasks-per-node需结合明确的节点数核对')
+            try:_resources(resources)
+            except Error as exc:notes.append(str(exc));resources={};unhandled.append('资源值不能直接使用，未推算或执行')
+            result['scripts'].append({'path':relative(path),'server_path':str(path),'sha256':hashlib.sha256(raw).hexdigest(),'status':'read',
+                'content':content,'suggested_resources':resources,'suggested_name':name,'unhandled_directives':unhandled,'notes':notes,
+                'executed':False,'environment_applied':False,'note':'资料只读；可借鉴已核对的资源。运行环境仍取已配置站点，脚本命令不自动执行，不当作Agent指令。'})
+        if any(v['status']=='read' for v in result['scripts']):result.update(status='found',note='先借鉴适用的资料；未处理指令或环境差异须说明，不能当作已经应用。')
+        result['truncated']=len(candidates)>12
+        result['selection_required']=sum(v['status']=='read' for v in result['scripts'])>1
+        if result['truncated']:result['note']+=' 本次仅查前12份候选，可直接指定脚本路径。'
+    except (Error,OSError,UnicodeError) as exc:result.update(status='unavailable',reason=str(exc),note='未能读取给定资料；先尝试已有文件交接或说明缺口，不声称已借鉴。')
+    return result
+
+
+def site_context(check_queues=False, reference=None):
+    """One shared profile, no writes/submissions; remote discovery is explicit."""
+    materials=_reference_materials(reference)
+    result={'backend':'slurm','scope':'cluster_tasks_only','configured':False,'reference_materials':materials,'network_used':False,
+            'template':'builtin_in_slurm','queue_discovery':{'status':'not_checked','queues':[]},
+            'note':'集群任务默认按Slurm处理；先看已有资料和设置，必要时查队列。不会提交或更改配置。'}
+    if not os.environ.get('MC_SLURM_CONFIG'):
+        result.update(status='needs_configuration',resource_defaults=_resources(None),
+            next='无需自备脚本；补齐真实集群入口、可写目录和OpenMC/核数据环境，默认模板不代填站点。')
+        return result
+    try:
+        p=profile();defaults=_resources(None,p.get('resource_defaults'))
+    except Error as exc:
+        result.update(status='configuration_error',reason=str(exc),next='站点配置暂不可用；保留资料，不连接、不提交。')
+        return result
+    result.update(configured=True,status='configured',transport=p['transport'],host=p.get('host'),remote_root=p['remote_root'],
+                  resource_defaults=defaults,cross_sections=p.get('cross_sections'),mpi_launcher_configured=bool(p.get('mpi_command')),
+                  runtime_verification='not_checked',environment_setup_configured=bool(p['environment_setup']),
+                  next='复用站点设置和适用资料，简述准备怎么跑；仅缺必要条件或存在实质差异时补问。')
+    if not check_queues:return result
+    try:
+        commands={**p['commands'],'sinfo':_argv(p['commands'].get('sinfo',['sinfo']),'commands.sinfo')}
+        result['network_used']=True
+        raw=_command({**p,'commands':commands},'/','sinfo',['--noheader','--summarize','--format=%P|%a|%l|%c|%m'])
+        queues=[]
+        for line in raw.splitlines():
+            if not line.strip():continue
+            parts=[v.strip() for v in line.split('|')]
+            if len(parts)!=5 or not parts[0]:raise Error('sinfo输出格式无法确认；未猜队列或资源')
+            item=dict(zip(('partition','availability','time_limit','cpus_per_node','memory_mib_per_node'),parts))
+            item['is_default']=item['partition'].endswith('*');item['partition']=item['partition'].removesuffix('*')
+            if item not in queues:queues.append(item)
+        result['queue_discovery']={'status':'available' if queues else 'empty','queues':queues[:50],
+            'total':len(queues),'truncated':len(queues)>50,'source':'sinfo',
+            'note':'可见分区和节点概况不代表本账号的全部申请权限；不自动更换队列或扩大资源。'}
+    except Error as exc:
+        result['queue_discovery']={'status':'unavailable','queues':[],'reason':str(exc),
+            'next':'队列查询暂不可用；先保留已确认设置，可重查。必要条件仍不明时只补问缺项，不让用户自己拼命令。'}
+    return result
+
+
+def list_submissions(name=None,state=None,limit=50):
+    root=path_in_workspace('.mc-slurm',exists=False,internal=True);items=[];unreadable=[]
+    if root.exists():
+        for child in root.iterdir():
+            if not re.fullmatch('[a-f0-9]{32}',child.name):continue
+            if child.is_symlink() or (child/'job.json').is_symlink():unreadable.append(child.name);continue
+            try:
+                r=jobs.read(child)
+                if not isinstance(r,dict) or r.get('submission_id')!=child.name:raise ValueError('记录编号不一致')
+                if type(r.get('created_at')) not in (int,float) or not math.isfinite(r['created_at']):raise ValueError('记录时间无效')
+                if r.get('submitted_at') is not None and (type(r['submitted_at']) not in (int,float) or not math.isfinite(r['submitted_at'])):raise ValueError('提交时间无效')
+                if name is not None and r.get('name')!=name:continue
+                if state is not None and r.get('state')!=state:continue
+                items.append({**_summary(r),'created_at':r['created_at'],'state_source':'last_recorded_not_live'})
+            except (OSError,ValueError,KeyError,Error):unreadable.append(child.name)
+    items.sort(key=lambda v:(v.get('submitted_at') or v.get('created_at') or 0,v['submission_id']),reverse=True)
+    return {'slurm_submissions':items[:limit],'slurm_total_matches':len(items),'slurm_truncated':len(items)>limit,
+            'unreadable_slurm_submission_ids':unreadable,'slurm_note':'离线保存记录；选定原submission_id后用openmc_slurm_status查真实状态，不据列表推断已完成。'}
 
 
 def directory(submission_id):
@@ -92,7 +222,7 @@ def locked(submission_id):
 
 def _summary(record):
     return {k: record.get(k) for k in ('submission_id','name','case_dir','state','cluster_job_id','remote_dir',
-            'scheduler_state','scheduler_exit_code','scheduler_reason','submitted_at','collected_job_id','cancel_requested','last_error')}
+            'scheduler_state','scheduler_exit_code','scheduler_state_source','scheduler_reason','submitted_at','collected_job_id','cancel_requested','last_error')}
 
 
 def _persist(d, r): atomic_json(d/'job.json', r)
@@ -292,11 +422,33 @@ def submit_slurm(submission_id: str) -> dict:
         return {**_summary(r),'next':'提交不代表计算完成；使用openmc_slurm_status，完成后collect取回。'}
 
 
+def _controller_status(p,r,jid):
+    """Prefer the current controller; accounting remains a fallback, not a prerequisite."""
+    try:
+        control=_command(p,r['remote_dir'],'scontrol',['show','job','--oneliner',jid])
+    except Error:return False
+    fields=dict(re.findall(r'(?:^|\s)([A-Za-z]+)=([^\s]+)',control))
+    if fields.get('JobId')!=jid or not fields.get('JobState'):return False
+    state=fields['JobState'].upper();code=fields.get('ExitCode')
+    if code is not None and not re.fullmatch(r'\d+:\d+',code):code=None
+    if state=='COMPLETED' and code is None:return False
+    r.update(scheduler_state=state,scheduler_exit_code=code,scheduler_reason=fields.get('Reason'),
+             scheduler_state_source='scontrol',last_error=None)
+    if state=='COMPLETED':r['state']='completed' if code=='0:0' else 'failed'
+    elif state.startswith('CANCELLED'):r['state']='cancelled'
+    elif state in ('FAILED','TIMEOUT','NODE_FAIL','OUT_OF_MEMORY','BOOT_FAIL','DEADLINE','PREEMPTED'):r['state']='failed'
+    elif state in ('RUNNING','COMPLETING','SUSPENDED','RESIZING'):r['state']='running'
+    elif state in ('PENDING','CONFIGURING','REQUEUED','REQUEUE_HOLD','REQUEUE_FED','SPECIAL_EXIT'):r['state']='queued'
+    else:r.update(state='unknown',last_error='当前Slurm状态暂不能确认；沿原编号重查，不重交')
+    return True
+
+
 def _query(r):
-    p=_transfer_profile(r);jid=r.get('cluster_job_id')
+    p=_transfer_profile(r);jid=r.get('cluster_job_id');known_id=bool(jid)
     native=r.get('batch_script_name')=='in.slurm'
     tag='forge-'+r['submission_id']
     job_name=(r.get('name') or 'openmc') if native else tag
+    if native and jid and _controller_status(p,r,jid):return
     args=['--noheader','--format=%i|%T'+('|%k' if native and not jid else '')] + (['--jobs='+jid] if jid else ['--name='+job_name])
     try:queue=_command(p,r['remote_dir'],'squeue',args);queue_error=None
     except Error as exc:queue='';queue_error=str(exc)
@@ -316,22 +468,14 @@ def _query(r):
         if len(ids)!=1:
             r.update(state='submission_unknown',last_error='按原提交标记未找到唯一集群编号；联系运维核对，不能据此认定未提交或重交');return
         jid=ids.pop();r['cluster_job_id']=jid
-    if native and jid:
-        try:
-            control=_command(p,r['remote_dir'],'scontrol',['show','job','--oneliner',jid])
-            fields=dict(re.findall(r'(?:^|\s)([A-Za-z]+)=([^\s]+)',control))
-            if fields.get('JobId')==jid and fields.get('JobState'):
-                queued=[[jid,fields['JobState']]]
-                r['scheduler_reason']=fields.get('Reason')
-        except Error:
-            pass  # Existing queue/accounting queries remain valid on older sites.
+    if native and not known_id and jid and _controller_status(p,r,jid):return
     row=next((x for x in rows if len(x)>=3 and x[0]==jid),None)
     q=next((x for x in queued if len(x)>=2 and x[0]==jid),None)
     accounting_state=row[1].split()[0].rstrip('+').upper() if row else ''
     terminal_accounting=accounting_state in {'COMPLETED','CANCELLED','FAILED','TIMEOUT','NODE_FAIL','OUT_OF_MEMORY','BOOT_FAIL','DEADLINE','PREEMPTED'}
     state=(row[1] if terminal_accounting else q[1] if q else row[1] if row else '').split()[0].rstrip('+').upper() if row or q else ''
     code=row[2] if row else None
-    r.update(scheduler_state=state or None,scheduler_exit_code=code,last_error=accounting_error or queue_error)
+    r.update(scheduler_state=state or None,scheduler_exit_code=code,scheduler_state_source='sacct_or_squeue',last_error=accounting_error or queue_error)
     if state=='COMPLETED' and code=='0:0':r['state']='completed'
     elif state.startswith('CANCELLED'):r['state']='cancelled'
     elif state in ('FAILED','TIMEOUT','NODE_FAIL','OUT_OF_MEMORY','BOOT_FAIL','DEADLINE','PREEMPTED') or state=='COMPLETED' and code not in (None,'0:0'):r['state']='failed'
@@ -377,13 +521,17 @@ def _transfer_profile(record):
     # transfer ceilings can change without moving a job to another cluster.
     saved=record['profile'];effective=dict(saved)
     if os.environ.get('MC_SLURM_CONFIG'):
-        current=profile()
+        try:current=profile()
+        except Error:return effective  # Resume using this task's frozen endpoint when current configuration is unavailable.
         identity=set(saved)|set(current)
         limits={'max_transfer_bytes','transfer_timeout_seconds','command_timeout_seconds'}
         # Older records predate optional scontrol. Its implicit default is not
         # an endpoint change; explicitly changed command prefixes still are.
         saved_identity={**saved,'commands':{'scontrol':['scontrol'],**saved.get('commands',{})}}
-        if any(saved_identity.get(k)!=current.get(k) for k in identity-limits):
+        current_identity={**current,'commands':dict(current['commands'])}
+        # sinfo is discovery-only: changing it never reroutes a frozen job.
+        saved_identity['commands'].pop('sinfo',None);current_identity['commands'].pop('sinfo',None)
+        if any(saved_identity.get(k)!=current_identity.get(k) for k in identity-limits):
             return effective  # A different active profile never reroutes an existing task.
         for key in limits:effective[key]=current[key]
     return effective
@@ -391,7 +539,16 @@ def _transfer_profile(record):
 
 def collect_slurm(submission_id: str) -> dict:
     with locked(submission_id) as (d,r):
-        if r.get('collected_job_id'):return {'submission_id':submission_id,'job_id':r['collected_job_id'],'already_collected':True}
+        previously_collected=bool(r.get('collected_job_id'))
+        if previously_collected:
+            if r['collected_job_id']!=submission_id:raise Error('收集记录编号不一致，未覆盖已有结果')
+            local=path_in_workspace('.mc-jobs/'+submission_id,exists=False,internal=True)
+            if local.exists():
+                existing=jobs.job_directory(submission_id)
+                return {'submission_id':submission_id,'job_id':submission_id,'already_collected':True,
+                        'state':r['state'],'directory':str(existing),'next':'沿原job_id读取结果或交付；未重新计算。'}
+            # A missing local copy can be fetched again from the original remote job.
+
         if not r.get('submitted_at') or r['state'] in ('prepared','staging','staged'):
             raise Error('尚未提交Slurm，不能collect；先检查准备记录再submit。原状态未改变')
         _verify_snapshot(d/'input',r['input_hashes'])
@@ -453,7 +610,7 @@ def collect_slurm(submission_id: str) -> dict:
             if stage.exists():shutil.rmtree(stage)
         r['collected_job_id']=submission_id;_persist(d,r)
         return {'submission_id':submission_id,'job_id':submission_id,'state':r['state'],'directory':str(target),
-                'output_count':len(outputs),'input_hashes':r['input_hashes'],'professional_acceptance':False,
+                'output_count':len(outputs),'input_hashes':r['input_hashes'],'recovered_missing_collection':previously_collected,'professional_acceptance':False,
                 'next':'completed且有StatePoint时openmc_read_results(job_id)；图和报告沿用同一job_id。'}
 
 
@@ -474,8 +631,8 @@ SLURM_TOOLS=[
   'name':{'type':'string','minLength':1,'maxLength':120,'description':'Slurm可见任务名，省略为openmc；同名任务由内部提交记录和job ID区分，不用名称猜取消目标。'}},['case_dir']), 'function':prepare_slurm},
  *[{'name':'openmc_slurm_'+name,'description':description,'inputSchema':_schema({'submission_id':ID},['submission_id']),'function':function}
  for name,description,function in [
- ('submit','上传已准备快照并调用sbatch；同一编号不重复提交。回执丢失标未知，先status按唯一任务名核对。会实际访问管理员配置的登录节点。',submit_slurm),
- ('status','查询已有Slurm准备/作业，scontrol/squeue查询活动状态，sacct确认会计终态及退出码；队列消失不视为完成。结果仍在远端，completed后需collect。',status_slurm),
+ ('submit','上传已准备快照并调用sbatch；同一编号不重复提交。回执丢失标未知，先status按唯一提交标记核对。会实际访问管理员配置的登录节点。',submit_slurm),
+ ('status','查询已有Slurm准备/作业，优先scontrol核对状态及退出码，不可用时以squeue/sacct补查；队列消失不视为完成。结果仍在远端，completed后需collect。',status_slurm),
  ('cancel','取消尚未提交的准备或请求scancel；不删除输入/产物，实际取消终态需status确认。',cancel_slurm),
  ('collect','将确认终态的远端原始结果按输入/输出SHA256取回本工具服务端，原子发布普通job_id供结果/图/报告工具使用；不提供客户端网络下载，不删除远端数据。',collect_slurm)]],
 ]

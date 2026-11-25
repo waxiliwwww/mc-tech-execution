@@ -219,10 +219,8 @@ async def run(args):
 
 
 @contextmanager
-def local_lock(args):
-    if args.command not in ('upload','download','verify-download'):
-        yield;return
-    base=Path(args.receipt or (str(Path(args.file).resolve())+'.mc-upload.json' if args.command=='upload' else str(Path(args.output).resolve())+'.mc-download.json'))
+def receipt_lock(base,operation='传输'):
+    base=Path(base)
     base.parent.mkdir(parents=True,exist_ok=True)
     # Keep the tiny lock file: unlinking it while another process waits would
     # allow two locks on different inodes. OS releases the lock after a crash.
@@ -231,16 +229,23 @@ def local_lock(args):
             import msvcrt
             lock.seek(0);lock.write(b'0');lock.flush();lock.seek(0)
             try:msvcrt.locking(lock.fileno(),msvcrt.LK_NBLCK,1)
-            except OSError as exc:raise ValueError('同一回执已有传输进程，请等待该进程结束') from exc
+            except OSError as exc:raise ValueError(f'同一回执已有{operation}进程，请等待该进程结束') from exc
         else:
             import fcntl
             try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-            except BlockingIOError as exc:raise ValueError('同一回执已有传输进程，请等待该进程结束') from exc
+            except BlockingIOError as exc:raise ValueError(f'同一回执已有{operation}进程，请等待该进程结束') from exc
         try:yield
         finally:
             if os.name=='nt':lock.seek(0);msvcrt.locking(lock.fileno(),msvcrt.LK_UNLCK,1)
             else:fcntl.flock(lock,fcntl.LOCK_UN)
 
+
+@contextmanager
+def local_lock(args):
+    if args.command not in ('upload','download','verify-download'):
+        yield;return
+    base=Path(args.receipt or (str(Path(args.file).resolve())+'.mc-upload.json' if args.command=='upload' else str(Path(args.output).resolve())+'.mc-download.json'))
+    with receipt_lock(base):yield
 
 def main():
     p=argparse.ArgumentParser(description='宿主侧标准MCP文件交接；不调用模型。断线后原命令重跑，保留回执和.part。')

@@ -17,7 +17,7 @@ class SlurmMCP(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix='slurm mcp harness ') as tmp:
             folder=Path(tmp);cfg={'transport':'ssh','host':'controlled.invalid','ssh_command':[sys.executable,str(ROOT/'tests/fixtures/slurm_ssh.py')],
                 'remote_root':str(folder/'remote'),'python_command':[sys.executable],
-                'commands':{name:[sys.executable,str(ROOT/'tests/fixtures/slurm_scheduler.py'),name] for name in ('sbatch','squeue','sacct','scancel','scontrol')}}
+                'commands':{name:[sys.executable,str(ROOT/'tests/fixtures/slurm_scheduler.py'),name] for name in ('sbatch','squeue','sacct','scancel','scontrol','sinfo')}}
             env={k:v for k,v in os.environ.items() if not k.startswith(('MC_','MCP_','SLURM_'))}
             if real:
                 actual=json.loads(Path(os.environ['MC_TEST_OPENMC_CONFIG']).read_text())
@@ -34,9 +34,12 @@ class SlurmMCP(unittest.TestCase):
                 messages='\n'.join(p.read_text(errors='replace')[-12000:] for p in output.glob('*.log'))
                 self.fail(result.stdout+result.stderr+messages)
             value=json.loads(receipt.read_text());self.assertFalse(value['real_slurm']);self.assertTrue(value['original_inputs_unchanged'])
+            self.assertTrue(value['queue_discovery_verified']);self.assertTrue(value['original_submission_lookup_verified'])
+            self.assertEqual(value['controlled_reconnect_sessions'],3)
             lifecycle=json.loads((output/'receipt.json').read_text());self.assertTrue(lifecycle['cleanup']['verified_empty'])
             self.assertTrue(lifecycle['port_released'])
-            if real:self.assertTrue(value['native_values_match'])
+            if real:
+                self.assertTrue(value['native_values_match']);self.assertTrue(value['host_file_bytes_verified'])
             evidence=ROOT/'artifacts/runs/20261109-slurm-offline';evidence.mkdir(parents=True,exist_ok=True)
             (evidence/('real-openmc-mcp.json' if real else 'controlled-mcp.json')).write_text(json.dumps({'result':value,'lifecycle':lifecycle},ensure_ascii=False,indent=2))
             # Retain native data and receipts outside the disposable test service.
@@ -47,6 +50,9 @@ class SlurmMCP(unittest.TestCase):
             shutil.copytree(job,retained/'job')
             (retained/'result.json').write_text(receipt.read_text())
             (retained/'lifecycle.json').write_text((output/'receipt.json').read_text())
+            if real:
+                shutil.copy2(value['host_download']['file'],retained/'user-results.zip')
+                shutil.copy2(value['host_download']['receipt'],retained/'host-download.json')
 
     def test_standard_mcp_prepare_submit_collect_with_controlled_transport(self):self.exercise(False)
 

@@ -18,7 +18,13 @@ mode=os.environ.get('SLURM_FIXTURE_MODE','complete')
 with (root/'calls.jsonl').open('a') as log:log.write(json.dumps([action,args])+'\n')
 
 def save():records.write_text(json.dumps(rows))
-if action=='sbatch':
+if action=='sinfo':
+    if mode=='sinfo_error':print('controlled queue lookup unavailable',file=sys.stderr);sys.exit(1)
+    if mode=='sinfo_bad':print('unstructured output');sys.exit(0)
+    print('CPU*|up|1-00:00:00|36|64000')
+    print('CPU*|up|1-00:00:00|36|64000')
+    print('short|up|00:30:00|16|16000')
+elif action=='sbatch':
     identifier=str(1000+len(rows));script=Path(args[-1]).read_text()
     directives={x.split('=',1)[0].split()[-1]:shlex.split(x.split('=',1)[1])[0] for x in script.splitlines() if x.startswith('#SBATCH ') and '=' in x}
     name=directives['--job-name']
@@ -37,14 +43,16 @@ elif action in ('squeue','sacct'):
         if action=='squeue':
             if mode in ('queue_error','queue_only_error'):print('queue unavailable',file=sys.stderr);sys.exit(1)
             if row['state'] in ('PENDING','RUNNING'):print(identifier+'|'+row['state']+('|' + row.get('comment','') if any('%k' in x for x in args) else ''))
-        elif mode not in ('accounting_delay','queue_error'):
+        elif mode not in ('accounting_delay','queue_error','controller_only','controller_missing_exit'):
             print(identifier+'|'+('PENDING' if mode=='stale_accounting' and row['state']=='RUNNING' else row['state'])+'|'+row['exit']+('|' + row.get('comment','') if any('Comment' in x for x in args) else ''))
             print(identifier+'.batch|COMPLETED|0:0') # must not mistake a step for the allocation
 elif action=='scontrol':
     if mode=='slow_queue':time.sleep(2)
     if mode in ('queue_error','queue_only_error','accounting_delay'):sys.exit(1)
     identifier=args[-1];row=rows.get(identifier)
-    if row and row['state'] in ('PENDING','RUNNING'):print('JobId='+identifier+' JobState='+row['state']+' Reason=Resources')
+    if row and mode in ('controller_only','controller_missing_exit'):
+        print('JobId='+identifier+' JobState='+row['state']+(' ExitCode='+row['exit'] if mode=='controller_only' else '')+' Reason=None')
+    elif row and row['state'] in ('PENDING','RUNNING'):print('JobId='+identifier+' JobState='+row['state']+' Reason=Resources')
 elif action=='scancel':
     if mode=='slow_cancel':time.sleep(2)
     rows[args[-1]].update(state='CANCELLED',exit='0:15');save()

@@ -66,8 +66,8 @@ TOOLS += [
          "report_formats":{"type":"array","minItems":1,"uniqueItems":True,"items":{"type":"string","enum":["markdown","csv","docx","pdf","doc"]},"description":"默认[markdown]；指定所需格式，不额外生成所有格式。"},
          "title":{"type":"string","maxLength":200}},["job_id","tally_id"]),
      "outputSchema":OUTPUT,"function":generate_result_bundle,"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
-    {"name": "openmc_environment", "description": "开始OpenMC执行任务时检查连接环境、OpenMC运行时、API与可执行程序版本；安装成功不代表专业计算验收。",
-     "inputSchema": schema({}), "outputSchema": OUTPUT, "function": environment},
+    {"name": "openmc_environment", "description": "开始任务检查OpenMC运行环境；集群任务可在同一入口只读获取站点信息、参考脚本，并显式check_slurm查询Slurm队列。默认不连集群，不提交/改配置；安装成功不代表专业计算验收。",
+     "inputSchema": schema({"check_slurm":{"type":"boolean","default":False,"description":"集群任务需要了解队列时设true：复用MC_SLURM_CONFIG只读调用sinfo，不提交/改配置。默认false仅返回已配置站点信息，不连接Slurm。"},"slurm_reference":{"type":"string","minLength":1,"description":"可选工作区内的现场脚本或资料/模型目录，相对MC_WORKSPACE；先读可借鉴资料，没有也可默认。只读有限的SBATCH资源和原文，不执行、不改站点配置；未处理内容明确列出。"}}), "outputSchema": OUTPUT, "function": environment},
     {"name": "openmc_create_model", "description": "用公开API创建一个新算例目录。synthetic-mgxs使用合成截面做工程联调；pwr-pin-cell为官方示例，需核数据。不会覆盖已有目录，不是微调模型生成。",
      "inputSchema": schema({"case_dir": TEXT, "template": {"type": "string", "enum": ["synthetic-mgxs", "pwr-pin-cell", "pincell-multigroup",
                                                         "assembly-17x17", "core-lattice", "control-rod", "hex-lattice",
@@ -362,7 +362,7 @@ READ_ONLY_TOOLS={
 }
 for _tool in TOOLS:
     if _tool['name'] in READ_ONLY_TOOLS:
-        _tool['annotations']={'readOnlyHint':True,'idempotentHint':True,'openWorldHint':False}
+        _tool['annotations']={'readOnlyHint':True,'idempotentHint':True,'openWorldHint':_tool['name']=='openmc_environment'}
 
 from openmc_slurm import SLURM_TOOLS
 TOOLS += SLURM_TOOLS

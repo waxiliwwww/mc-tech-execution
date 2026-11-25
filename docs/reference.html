@@ -414,16 +414,27 @@
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/result_bundle.py">mcp/result_bundle.py</a>。</p></details>
 <details class="tool" id="openmc_environment"><summary>openmc_environment
-<span class="tool-purpose">开始OpenMC执行任务时检查连接环境、OpenMC运行时、API与可执行程序版本；安装成功不代表专业计算验收。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>无参数</td><td>object</td><td>—</td><td>空对象</td><td>不接受额外参数</td><td>{}</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>MCP调用同时给服务启动快照service（version/startup_version/current_disk_version/version_matches_disk/code_matches_disk/current_code_fingerprint/changed_files/restart_required）和实时探测；任一不一致时warnings给出重启提示，不能把旧进程的工具清单当成磁盘新版本。openmc_version_matches只检查OpenMC；package是CLI调用时磁盘身份，CLI不返回在线服务快照。workspace为服务端绝对工作区；cross_sections_env_set仅检查环境变量，实际核数据须继续模型校核。</p>
+<span class="tool-purpose">开始任务检查OpenMC运行环境；集群任务可在同一入口只读获取站点信息、参考脚本，并显式check_slurm查询Slurm队列。默认不连集群，不提交/改配置；安装成功不代表专业计算验收。</span></summary>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>check_slurm</td><td>boolean</td><td>否</td><td>false</td><td>集群任务需要了解队列时设true：复用MC_SLURM_CONFIG只读调用sinfo，不提交/改配置。默认false仅返回已配置站点信息，不连接Slurm。</td><td>—</td></tr><tr><td>slurm_reference</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选工作区内的现场脚本或资料/模型目录，相对MC_WORKSPACE；先读可借鉴资料，没有也可默认。只读有限的SBATCH资源和原文，不执行、不改站点配置；未处理内容明确列出。</td><td>—</td></tr></tbody></table></div>
+<h3>返回怎么看</h3><p>MCP调用同时给服务启动快照service（version/startup_version/current_disk_version/version_matches_disk/code_matches_disk/current_code_fingerprint/changed_files/restart_required）和实时探测；任一不一致时warnings给出重启提示，不能把旧进程的工具清单当成磁盘新版本。openmc_version_matches只检查OpenMC；package是CLI调用时磁盘身份，CLI不返回在线服务快照。可选check_slurm=true用同一站点连接只读sinfo，默认不连集群；slurm_reference读取工作区脚本/目录并披露可复用资源与未处理项，不执行或修改配置；Slurm状态仅针对集群任务。workspace为服务端绝对工作区；cross_sections_env_set仅检查环境变量，实际核数据须继续模型校核。</p>
 <div class="table-wrap"><table><thead><tr><th>关键返回字段</th><th>含义</th></tr></thead><tbody><tr><td>workspace</td><td>服务端绝对数据根；工作区相对路径以它为基准。</td></tr><tr><td>cross_sections_env_set</td><td>当前进程是否设置OPENMC_CROSS_SECTIONS；false不代表模型或受管核数据库不可用。旧cross_sections_configured保持此含义。</td></tr><tr><td>nuclear_data</td><td>部署候选库/source/index_path/index_exists；未校验模型所需全部文件，模型显式索引可覆盖。</td></tr></tbody></table></div>
 <p class="muted">返回分支可能不同；未声明必填的说明字段不保证每次出现。</p>
 <div class="table-wrap"><table><thead><tr><th>判读字段</th><th>含义与继续条件</th></tr></thead><tbody><tr><td>expected_version / api_version / executable_version_output</td><td>OpenMC引擎的预期/API/可执行程序版本，不是工具包服务版本。</td></tr><tr><td>openmc_version_matches</td><td>只检查OpenMC可执行程序版本，不是工具包服务版本；MCP调用读取service.version，与包内VERSION对照。</td></tr><tr><td>service.name / service.version / service.version_source</td><td>MCP调用由服务端加入启动时固定的服务名、版本及mcp_server_startup来源，与握手和/health同源；不会随磁盘VERSION更新。CLI直接调用没有此字段，不能据此判断在线服务。</td></tr><tr><td>service.startup_version / current_disk_version / version_matches_disk</td><td>启动快照与当前磁盘版本对照；false时不能认为旧进程已经加载新版本。</td></tr><tr><td>service.startup_code_fingerprint / current_code_fingerprint / code_matches_disk / changed_files</td><td>启动时产品Python模块及model_validation/schema.json指纹与当前磁盘对照；只列相对包路径，不读取或回显文件内容。</td></tr><tr><td>service.restart_required / ready_for_new_operations / warnings</td><td>版本/产品代码或模型Schema不一致时提示重启并阻止新操作；查询和取消保留。ready_for_new_operations=false时不要提交。旧进程没有检测器的字段缺失应记未核实，先更新服务。</td></tr><tr><td>cross_sections_configured / cross_sections_env_set</td><td>均表示OPENMC_CROSS_SECTIONS环境变量是否设置，不是核数据可用性判据。false可以使用nuclear_data指示的受管候选索引；index_exists仍不证明数据齐备，先核对模型核素/热散射名称与索引匹配；静态语义不检查HDF5文件完整性，由部署者按生效索引另核对。</td></tr></tbody></table></div>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;properties&quot;: {},
+  &quot;properties&quot;: {
+    &quot;check_slurm&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;,
+      &quot;default&quot;: false,
+      &quot;description&quot;: &quot;集群任务需要了解队列时设true：复用MC_SLURM_CONFIG只读调用sinfo，不提交/改配置。默认false仅返回已配置站点信息，不连接Slurm。&quot;
+    },
+    &quot;slurm_reference&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;minLength&quot;: 1,
+      &quot;description&quot;: &quot;可选工作区内的现场脚本或资料/模型目录，相对MC_WORKSPACE；先读可借鉴资料，没有也可默认。只读有限的SBATCH资源和原文，不执行、不改站点配置；未处理内容明确列出。&quot;
+    }
+  },
   &quot;required&quot;: [],
   &quot;additionalProperties&quot;: false
 }
@@ -431,7 +442,7 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;MCP调用同时给服务启动快照service（version/startup_version/current_disk_version/version_matches_disk/code_matches_disk/current_code_fingerprint/changed_files/restart_required）和实时探测；任一不一致时warnings给出重启提示，不能把旧进程的工具清单当成磁盘新版本。openmc_version_matches只检查OpenMC；package是CLI调用时磁盘身份，CLI不返回在线服务快照。workspace为服务端绝对工作区；cross_sections_env_set仅检查环境变量，实际核数据须继续模型校核。&quot;,
+  &quot;description&quot;: &quot;MCP调用同时给服务启动快照service（version/startup_version/current_disk_version/version_matches_disk/code_matches_disk/current_code_fingerprint/changed_files/restart_required）和实时探测；任一不一致时warnings给出重启提示，不能把旧进程的工具清单当成磁盘新版本。openmc_version_matches只检查OpenMC；package是CLI调用时磁盘身份，CLI不返回在线服务快照。可选check_slurm=true用同一站点连接只读sinfo，默认不连集群；slurm_reference读取工作区脚本/目录并披露可复用资源与未处理项，不执行或修改配置；Slurm状态仅针对集群任务。workspace为服务端绝对工作区；cross_sections_env_set仅检查环境变量，实际核数据须继续模型校核。&quot;,
   &quot;properties&quot;: {
     &quot;workspace&quot;: {
       &quot;description&quot;: &quot;服务端绝对数据根；工作区相对路径以它为基准。&quot;
@@ -4744,13 +4755,18 @@
 <p class="source">函数：<a href="../mcp/openmc_import.py">mcp/openmc_import.py</a>。</p></details>
 <details class="tool" id="openmc_list_jobs"><summary>openmc_list_jobs
 <span class="tool-purpose">按可选任务名称和状态列出持久作业；重名返回所有匹配，后续按job_id操作。</span></summary>
-<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>name</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选中文或其他任务名，精确匹配；可重名，不会自动选择某个作业。</td><td>—</td></tr><tr><td>state</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选当前状态过滤；省略表示全部状态。</td><td>—</td></tr><tr><td>limit</td><td>integer</td><td>否</td><td>50</td><td>最多返回的作业数，按提交时间倒序；total_matches和truncated说明是否未展示完。</td><td>—</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>include_slurm</td><td>boolean</td><td>否</td><td>false</td><td>集群任务接续时设true，另返回离线slurm_submissions（含未取回任务），原jobs不变。只读记录不连集群；用原submission_id查询真实状态。</td><td>—</td></tr><tr><td>name</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选中文或其他任务名，精确匹配；可重名，不会自动选择某个作业。</td><td>—</td></tr><tr><td>state</td><td>string</td><td>否</td><td>省略时见说明</td><td>可选当前状态过滤；省略表示全部状态。</td><td>—</td></tr><tr><td>limit</td><td>integer</td><td>否</td><td>50</td><td>最多返回的作业数，按提交时间倒序；total_matches和truncated说明是否未展示完。</td><td>—</td></tr></tbody></table></div>
 <h3>返回怎么看</h3><p>按可选任务名称和状态列出持久作业；重名返回所有匹配，后续按job_id操作。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
   &quot;additionalProperties&quot;: false,
   &quot;properties&quot;: {
+    &quot;include_slurm&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;,
+      &quot;default&quot;: false,
+      &quot;description&quot;: &quot;集群任务接续时设true，另返回离线slurm_submissions（含未取回任务），原jobs不变。只读记录不连集群；用原submission_id查询真实状态。&quot;
+    },
     &quot;name&quot;: {
       &quot;type&quot;: &quot;string&quot;,
       &quot;minLength&quot;: 1,
@@ -5049,9 +5065,9 @@
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_slurm.py">mcp/openmc_slurm.py</a>。</p></details>
 <details class="tool" id="openmc_slurm_submit"><summary>openmc_slurm_submit
-<span class="tool-purpose">上传已准备快照并调用sbatch；同一编号不重复提交。回执丢失标未知，先status按唯一任务名核对。会实际访问管理员配置的登录节点。</span></summary>
+<span class="tool-purpose">上传已准备快照并调用sbatch；同一编号不重复提交。回执丢失标未知，先status按唯一提交标记核对。会实际访问管理员配置的登录节点。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>submission_id</td><td>string</td><td>是</td><td>不可省略</td><td>openmc_slurm_prepare返回的submission_id；不是数字cluster_job_id。collect后返回可供普通结果工具使用的job_id。</td><td>—</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>上传已准备快照并调用sbatch；同一编号不重复提交。回执丢失标未知，先status按唯一任务名核对。会实际访问管理员配置的登录节点。</p>
+<h3>返回怎么看</h3><p>上传已准备快照并调用sbatch；同一编号不重复提交。回执丢失标未知，先status按唯一提交标记核对。会实际访问管理员配置的登录节点。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
@@ -5071,14 +5087,14 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;上传已准备快照并调用sbatch；同一编号不重复提交。回执丢失标未知，先status按唯一任务名核对。会实际访问管理员配置的登录节点。&quot;
+  &quot;description&quot;: &quot;上传已准备快照并调用sbatch；同一编号不重复提交。回执丢失标未知，先status按唯一提交标记核对。会实际访问管理员配置的登录节点。&quot;
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_slurm.py">mcp/openmc_slurm.py</a>。</p></details>
 <details class="tool" id="openmc_slurm_status"><summary>openmc_slurm_status
-<span class="tool-purpose">查询已有Slurm准备/作业，scontrol/squeue查询活动状态，sacct确认会计终态及退出码；队列消失不视为完成。结果仍在远端，completed后需collect。</span></summary>
+<span class="tool-purpose">查询已有Slurm准备/作业，优先scontrol核对状态及退出码，不可用时以squeue/sacct补查；队列消失不视为完成。结果仍在远端，completed后需collect。</span></summary>
 <div class="table-wrap"><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>省略或默认</th><th>含义与来源</th><th>填写示例</th></tr></thead><tbody><tr><td>submission_id</td><td>string</td><td>是</td><td>不可省略</td><td>openmc_slurm_prepare返回的submission_id；不是数字cluster_job_id。collect后返回可供普通结果工具使用的job_id。</td><td>—</td></tr></tbody></table></div>
-<h3>返回怎么看</h3><p>查询已有Slurm准备/作业，scontrol/squeue查询活动状态，sacct确认会计终态及退出码；队列消失不视为完成。结果仍在远端，completed后需collect。</p>
+<h3>返回怎么看</h3><p>查询已有Slurm准备/作业，优先scontrol核对状态及退出码，不可用时以squeue/sacct补查；队列消失不视为完成。结果仍在远端，completed后需collect。</p>
 <details><summary>完整输入 Schema：嵌套参数、枚举与范围</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
@@ -5098,7 +5114,7 @@
 <details><summary>输出 Schema</summary><pre><code>
 {
   &quot;type&quot;: &quot;object&quot;,
-  &quot;description&quot;: &quot;查询已有Slurm准备/作业，scontrol/squeue查询活动状态，sacct确认会计终态及退出码；队列消失不视为完成。结果仍在远端，completed后需collect。&quot;
+  &quot;description&quot;: &quot;查询已有Slurm准备/作业，优先scontrol核对状态及退出码，不可用时以squeue/sacct补查；队列消失不视为完成。结果仍在远端，completed后需collect。&quot;
 }
 </code></pre></details>
 <p class="source">函数：<a href="../mcp/openmc_slurm.py">mcp/openmc_slurm.py</a>。</p></details>

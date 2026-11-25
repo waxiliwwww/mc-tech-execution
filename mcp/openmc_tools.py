@@ -19,7 +19,8 @@ from openmc_runtime import (ROOT, Error, api, atomic_json, command, config, path
                             provenance, relative, workspace, file_location)
 
 
-def environment() -> dict:
+def environment(check_slurm: bool = False, slurm_reference: str | None = None) -> dict:
+    if type(check_slurm) is not bool:raise Error('check_slurm须为布尔值；默认不连接集群')
     cfg = config()
     result = {'runtime': cfg['runtime'], 'expected_version': cfg['expected_version'],
               'workspace': str(workspace()), 'location': 'server',
@@ -54,6 +55,8 @@ def environment() -> dict:
                                                 'false不表示核数据不可用。请查看nuclear_data的source/index_path/index_exists，'
                                                 '再对具体模型执行openmc_validate_inputs；索引存在不证明库文件齐备。')
     result['nuclear_data'] = deployment_status(cfg)
+    from openmc_slurm import site_context
+    result['slurm'] = site_context(check_slurm, slurm_reference)
     result['note'] = ('接口包、可执行程序和核数据分别检查；openmc_version_matches只针对OpenMC；'
                       '探测成功不等于物理验收。')
     return result

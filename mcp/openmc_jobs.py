@@ -134,8 +134,9 @@ def checked_name(name: str | None) -> str | None:
     return name
 
 
-def list_jobs(name: str | None = None, state: str | None = None, limit: int = 50) -> dict:
+def list_jobs(name: str | None = None, state: str | None = None, limit: int = 50, include_slurm: bool = False) -> dict:
     """List durable records, preserving duplicate display names and old unnamed jobs."""
+    if type(include_slurm) is not bool:raise Error('include_slurm须为布尔值')
     name = checked_name(name)
     if state is not None and state not in TERMINAL | {'queued', 'running'}:
         raise Error('state须为queued/running/completed/failed/cancelled/interrupted')
@@ -167,9 +168,16 @@ def list_jobs(name: str | None = None, state: str | None = None, limit: int = 50
                           ('job_id', 'name', 'state', 'case_dir', 'mode', 'submitted_at',
                            'started_at', 'finished_at', 'exit_code', 'error')})
     items.sort(key=lambda v: (v.get('submitted_at') or 0, v['job_id']), reverse=True)
-    return {'jobs': items[:limit], 'total_matches': len(items), 'truncated': len(items) > limit,
+    result = {'jobs': items[:limit], 'total_matches': len(items), 'truncated': len(items) > limit,
             'unreadable_job_ids': unreadable, 'workspace': str(workspace()),
             'note': '名称为精确匹配，可重名；后续状态/取消/结果调用使用job_id。旧记录名称为null。'}
+    if include_slurm:
+        from openmc_slurm import list_submissions
+        try:result.update(list_submissions(name,state,limit))
+        except (Error,OSError) as exc:
+            result.update(slurm_submissions=[],slurm_total_matches=None,slurm_truncated=None,
+                slurm_record_error=str(exc),slurm_note='Slurm记录暂不可读取，不表示没有原任务；普通jobs保留。先找回原编号，不能据此重新提交。')
+    return result
 
 
 def _serialized_admission(function):

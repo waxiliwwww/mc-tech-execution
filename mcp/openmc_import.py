@@ -244,7 +244,7 @@ IMPORT_TOOLS = [
      'outputSchema': {'type': 'object'}, 'function': import_model},
     {'name': 'openmc_list_jobs', 'description': '按可选任务名称和状态列出持久作业；重名返回所有匹配，后续按job_id操作。',
      'inputSchema': {'type': 'object', 'additionalProperties': False,
-                     'properties': {'name': {'type': 'string', 'minLength': 1, 'maxLength': 120, 'description': '可选中文或其他任务名，精确匹配；可重名，不会自动选择某个作业。'},
+                     'properties': {'include_slurm': {'type':'boolean','default':False,'description':'集群任务接续时设true，另返回离线slurm_submissions（含未取回任务），原jobs不变。只读记录不连集群；用原submission_id查询真实状态。'}, 'name': {'type': 'string', 'minLength': 1, 'maxLength': 120, 'description': '可选中文或其他任务名，精确匹配；可重名，不会自动选择某个作业。'},
                                     'state': {'type': 'string', 'enum': ['queued', 'running', 'completed', 'failed', 'cancelled', 'interrupted'], 'description': '可选当前状态过滤；省略表示全部状态。'},
                                     'limit': {'type': 'integer', 'minimum': 1, 'maximum': 200, 'default': 50, 'description': '最多返回的作业数，按提交时间倒序；total_matches和truncated说明是否未展示完。'}},
                      'required': []}, 'outputSchema': {'type': 'object'}, 'function': list_jobs,
