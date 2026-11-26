@@ -12,7 +12,17 @@ import threading
 import uuid
 
 ROOT = Path(__file__).resolve().parent.parent
-WORKSPACE = Path(os.environ.get("MC_WORKSPACE", str(ROOT / "workspace"))).resolve()
+def _workspace_path() -> Path:
+    explicit = os.environ.get("MC_WORKSPACE")
+    if explicit:
+        return Path(explicit).resolve()
+    saved = ROOT / "config/launcher.local.json"
+    if saved.is_file():
+        return (ROOT / Path(json.loads(saved.read_text(encoding="utf-8"))["workspace"])).resolve()
+    return (ROOT / "workspace").resolve()
+
+
+WORKSPACE = _workspace_path()
 _repair_lock = threading.Lock()
 
 

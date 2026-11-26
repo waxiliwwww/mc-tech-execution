@@ -47,6 +47,7 @@ from pathlib import Path
 root=Path(sys.argv[1]);local=root/'config/launcher.local.json'
 previous=json.loads(local.read_text()) if local.exists() else {}
 workspace=Path(sys.argv[2] or os.environ.get('MC_WORKSPACE') or previous.get('workspace') or root/'workspace').resolve()
+os.environ['MC_WORKSPACE']=str(workspace)
 # Validate the existing runtime config without changing it or running a solver.
 sys.path.insert(0,str(root/'mcp'))
 from openmc_tools import environment
