@@ -57,6 +57,8 @@ def environment(check_slurm: bool = False, slurm_reference: str | None = None) -
     result['nuclear_data'] = deployment_status(cfg)
     from openmc_slurm import site_context
     result['slurm'] = site_context(check_slurm, slurm_reference)
+    from personal_config import summary
+    result['configuration'] = summary(ROOT, workspace(), cfg)
     result['note'] = ('接口包、可执行程序和核数据分别检查；openmc_version_matches只针对OpenMC；'
                       '探测成功不等于物理验收。')
     return result

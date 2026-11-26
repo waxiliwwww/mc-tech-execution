@@ -24,6 +24,7 @@ import time
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT/'mcp'))
 DEFAULT_MANIFEST = ROOT / 'tests/fixtures/accuracy/manifest.json'
 DEFAULT_PYTHON = ROOT / 'mcp/.venv/bin/python'
 TERMINAL = ('completed', 'failed', 'cancelled', 'partial', 'interrupted')
@@ -83,9 +84,10 @@ def analytic_infinite_medium(python: str, case_dir: Path, xs_file: str) -> dict:
 
 def runtime_python(env: dict) -> str:
     # 截面文件读取需要运行时的h5py，接口层venv不保证有；优先读openmc配置里的解释器。
-    candidate = env.get('MC_OPENMC_CONFIG') or str(ROOT / 'config/openmc.local.json')
     try:
-        command = json.loads(Path(candidate).read_text()).get('python_command') or []
+        # Use the same configuration and explicit overrides as the child MCP.
+        from personal_config import runtime
+        command = runtime(ROOT,env).get('python_command') or []
         if command:
             return command[0]
     except (OSError, ValueError):
@@ -266,12 +268,15 @@ def main() -> int:
     parser.add_argument('--manifest', default=str(DEFAULT_MANIFEST))
     parser.add_argument('--only', action='append', default=[],
                         help='仅运行指定名称的基准（可重复）；缺省运行全部')
-    parser.add_argument('--workspace', default=os.environ.get('MC_WORKSPACE') or str(ROOT / 'workspace'))
+    parser.add_argument('--workspace', default=None)
     parser.add_argument('--python', default=str(DEFAULT_PYTHON), help='接口层解释器（跑mcp/cli.py）')
     parser.add_argument('--timeout', type=float, default=900.0, help='单个作业等待秒数')
     parser.add_argument('--json', action='store_true', help='输出JSON报告')
     parser.add_argument('--report', default=None, help='报告写入路径（可选）')
     options = parser.parse_args()
+    if options.workspace is None:
+        from personal_config import workspace
+        options.workspace = workspace(ROOT)
     manifest_path = Path(options.manifest)
     manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
     benchmarks = manifest.get('benchmarks') or []

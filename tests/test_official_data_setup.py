@@ -3,6 +3,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import tarfile
 import tempfile
@@ -15,6 +16,12 @@ installer=importlib.util.module_from_spec(spec);spec.loader.exec_module(installe
 
 
 class OfficialDataSetup(unittest.TestCase):
+    def setUp(self):
+        personal=tempfile.TemporaryDirectory(prefix='official installer config ');self.addCleanup(personal.cleanup)
+        isolated={k:v for k,v in os.environ.items() if not k.startswith(('MC_','MCP_'))}
+        isolated['MC_PERSONAL_CONFIG']=str(Path(personal.name)/'personal.json')
+        guard=patch.dict(os.environ,isolated,clear=True);guard.start();self.addCleanup(guard.stop)
+
     def fixture(self,root,unsafe=False):
         archive=root/'data.tar.xz'
         entries={'dataset/cross_sections.xml':b'<cross_sections><library materials="H1" path="neutron/H1.h5" type="neutron"/></cross_sections>',
@@ -41,6 +48,20 @@ class OfficialDataSetup(unittest.TestCase):
             self.assertEqual((target/'neutron/H1.h5').read_bytes(),b'fixture bytes, not a scientific dataset')
             self.assertEqual(result['files']['neutron/H1.h5'],hashlib.sha256((target/'neutron/H1.h5').read_bytes()).hexdigest())
             self.assertTrue((target/'cross_sections.original.xml').is_file())
+
+    def test_personal_data_root_uses_new_location_and_retains_existing_legacy_archive(self):
+        import os,personal_config
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);archive=self.fixture(root);chosen=root/'chosen data'
+            personal=root/'personal.json'
+            with patch.dict(os.environ,{'MC_PERSONAL_CONFIG':str(personal)}):
+                personal_config.update({'runtime':{'nuclear_data_root':str(chosen)}},seed=False)
+                legacy=root/'.runtime/downloads/official-endfb71.tar.xz';legacy.parent.mkdir(parents=True)
+                legacy.write_bytes(archive.read_bytes());before=legacy.read_bytes()
+                with patch.object(installer,'ROOT',root):result=installer.install()
+                self.assertTrue((chosen/'data/cross_sections.xml').exists())
+                self.assertFalse((root/'.runtime/data').exists());self.assertEqual(legacy.read_bytes(),before)
+                self.assertEqual(result['archive_sha256'],hashlib.sha256(before).hexdigest())
 
     def test_bad_checksum_and_links_are_rejected_before_exposing_complete_data(self):
         for unsafe in (False,True):

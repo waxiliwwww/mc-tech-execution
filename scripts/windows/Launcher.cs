@@ -114,9 +114,10 @@ class Launcher {
             if (mode == "config") { if(args.Length != 1)throw new ArgumentException("config takes no options"); PrintConfig(); return 0; }
             if (mode != "setup" && mode != "stdio") throw new ArgumentException("Use setup, config, stdio or --help.");
             if (!File.Exists(Wsl)) throw new IOException("WSL is unavailable. Install WSL and a Linux distribution first (wsl --install), finish Linux account creation, then rerun setup.");
-            var config = Load(); var setup = new List<string>();
+            var config = Load(); var setup = new List<string>(); bool workspaceRequested = false;
             for (int i = 1; i < args.Length; i++) {
                 string option = args[i];
+                if (option == "--workspace") workspaceRequested = true;
                 if (option == "--distribution" || option == "--root" || option == "--workspace" || option == "--openmc-prefix") {
                     if (++i >= args.Length || args[i].Length == 0)throw new ArgumentException("Missing value for " + option);
                     if (option == "--distribution" || option == "--root" || option == "--workspace") { config[option.Substring(2)] = args[i]; if(option=="--root")config["managed"]="false"; }
@@ -159,7 +160,14 @@ class Launcher {
             var command = Command(distribution,"/bin/bash",root.TrimEnd('/') + (mode == "setup" ? "/scripts/local-setup.sh" : "/mcp/stdio.sh"));
             if (mode == "setup") {
                 command.Add("--no-connection-output"); command.AddRange(setup);
-                if (!String.IsNullOrEmpty(Get(config,"workspace"))) { command.Add("--workspace"); command.Add(config["workspace"]); }
+                // Legacy launcher settings seed only the first personal config.
+                // Later setup must honor edits made in the Linux personal file.
+                bool useSavedWorkspace = workspaceRequested;
+                if (!useSavedWorkspace && !String.IsNullOrEmpty(Get(config,"workspace"))) {
+                    int probe = Run(Command(distribution,"python3","-c","import sys;sys.path.insert(0,sys.argv[1]+'/mcp');import personal_config;print('1' if personal_config.location().is_file() else '0')",root),true,out output);
+                    useSavedWorkspace = probe == 0 && output == "0";
+                }
+                if (useSavedWorkspace) { command.Add("--workspace"); command.Add(config["workspace"]); }
             }
             int result = Run(command,false,out output,mode == "stdio");
             if (result == 0 && mode == "setup") {

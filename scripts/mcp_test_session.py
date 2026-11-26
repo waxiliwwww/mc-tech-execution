@@ -111,7 +111,7 @@ def main(argv=None):
     config.write_text(json.dumps({'host':'127.0.0.1', 'port':port, 'path':'/mcp',
         'name':'openmc-forge', 'clientName':'mc-test', 'versionFile':str(ROOT / 'VERSION')}))
     env = {k:v for k,v in os.environ.items() if not k.startswith(('MC_', 'MCP_')) or k.startswith('MC_TEST_')}
-    env.update(MC_WORKSPACE=str(workspace), MCP_CONFIG_FILE=str(config),
+    env.update(MC_WORKSPACE=str(workspace), MC_PERSONAL_CONFIG=str(directory/'personal.json'), MCP_CONFIG_FILE=str(config),
                MCP_CONNECTION_FILE=str(directory / 'connection.json'), MC_TEST_MCP_URL=url,
                MC_TEST_SESSION_DIR=str(directory))
     if os.environ.get('MC_TEST_OPENMC_CONFIG'):

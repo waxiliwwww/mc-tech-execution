@@ -77,12 +77,12 @@ def scan_network_points() -> dict:
 
 
 def runtime_versions() -> dict:
-    config = ROOT / 'config/openmc.local.json'
-    result = {'config': str(config.relative_to(ROOT)) if config.is_file() else None}
-    if not config.is_file():
-        return result
+    sys.path.insert(0,str(ROOT/'mcp'))
+    import personal_config
+    result = {'config': str(personal_config.runtime_target(ROOT))}
+    if not personal_config.has_runtime(ROOT):return result
     try:
-        command = json.loads(config.read_text()).get('python_command') or []
+        command = personal_config.runtime(ROOT).get('python_command') or []
         result['python_command'] = command
         if command:
             probe = subprocess.run([command[0], '-c',

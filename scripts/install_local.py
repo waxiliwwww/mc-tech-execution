@@ -11,14 +11,27 @@ import tempfile
 def reuse_runtime(target,previous):
     if previous is None or previous==target:return
     cfg=previous/'config/openmc.local.json'
-    if not cfg.is_file() or (target/'config/openmc.local.json').exists():return
+    import sys
+    sys.path.insert(0,str(target/'mcp'))
+    import personal_config
+    # Before the first personal migration, retain a saved legacy workspace
+    # across a versioned source copy. Resolve it against its original install.
+    saved=previous/'config/launcher.local.json'
+    destination=target/'config/launcher.local.json'
+    if not personal_config.location().is_file() and saved.is_file() and not destination.exists():
+        value=json.loads(saved.read_text())
+        if value.get('workspace'):
+            value['workspace']=str((previous/Path(value['workspace'])).expanduser().resolve())
+        destination.write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n');destination.chmod(0o600)
+    if (not cfg.is_file() and not personal_config.has_runtime(previous)) or (target/'config/openmc.local.json').exists():return
     # Runtime/data remain owned by the old installation; never move or mutate
     # them while its workers may still be running.
     runtime=previous/'.runtime'
     if runtime.is_dir() and not (target/'.runtime').exists():
         (target/'.runtime').symlink_to(runtime.resolve(),target_is_directory=True)
-    destination=target/'config/openmc.local.json'
-    shutil.copyfile(cfg,destination);destination.chmod(0o600)
+    if cfg.is_file() and not personal_config.location().is_file():
+        destination=target/'config/openmc.local.json'
+        shutil.copyfile(cfg,destination);destination.chmod(0o600)
     print('复用原运行时与核数据；原安装仍被引用，请保留：'+str(previous))
 
 

@@ -18,7 +18,14 @@ from openmc_runtime import atomic_json
 
 def install(archive: Path | None = None):
     descriptor=json.loads((ROOT/'config/official-nuclear-data.json').read_text())
-    target=ROOT/descriptor['directory'];record=target/'manifest.json'
+    import personal_config
+    # The standalone archive installer also works without an engine config.
+    import os
+    configured=os.environ.get('MC_OPENMC_CONFIG') or (ROOT/'config/openmc.local.json').is_file() or (ROOT/'config/openmc.json').is_file()
+    cfg=personal_config.runtime(ROOT) if configured else personal_config.read().get('runtime',{})
+    base=cfg.get('nuclear_data_root')
+    target=(ROOT/Path(base)/Path(descriptor['directory']).name) if base else ROOT/descriptor['directory']
+    record=target/'manifest.json'
     if target.exists():
         if not record.is_file():raise ValueError('已有数据目录未完成，不覆盖：'+str(target))
         value=json.loads(record.read_text())
@@ -26,7 +33,9 @@ def install(archive: Path | None = None):
             raise ValueError('已有数据版本不符，不覆盖：'+str(target))
         print('官方数据已初始化：'+str(target),flush=True);return value
     if archive is None:
-        archive=ROOT/'.runtime/downloads/official-endfb71.tar.xz';archive.parent.mkdir(parents=True,exist_ok=True)
+        previous=ROOT/'.runtime/downloads/official-endfb71.tar.xz'
+        archive=previous if previous.exists() or not base else target.parent/'.downloads/official-endfb71.tar.xz'
+        archive.parent.mkdir(parents=True,exist_ok=True)
         if not archive.exists():
             fetch_file(descriptor['url'],archive,descriptor['archive_bytes'],
                        expected_sha256=descriptor['archive_sha256'],max_time_seconds=900)

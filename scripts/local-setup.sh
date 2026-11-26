@@ -25,11 +25,24 @@ while [[ $# -gt 0 ]]; do
     --skip-cad) mc_local_cad=0;shift ;;
     --with-office) mc_local_office=1;shift ;;
     -h|--help)
-      printf '用法：bash scripts/local-setup.sh [--workspace 目录] [--openmc-prefix 已有环境] [--install-runtime] [--skip-cad] [--with-office]\n已有config/openmc.local.json时默认复用；否则准备基础计算和绘图，首次需网络并下载OpenMC及核数据。默认准备cadquery和cad_to_dagmc转换环境；--skip-cad显式跳过，Office按需安装。不会启动HTTP或修改宿主设置。\n';exit 0 ;;
+      printf '用法：bash scripts/local-setup.sh [--workspace 目录] [--openmc-prefix 已有环境] [--install-runtime] [--skip-cad] [--with-office]\n已有个人配置或config/openmc.local.json时默认复用；否则准备基础计算和绘图，首次需网络并下载OpenMC及核数据。默认准备cadquery和cad_to_dagmc转换环境；--skip-cad显式跳过，Office按需安装。不会启动HTTP或修改宿主设置。\n';exit 0 ;;
     *) printf '未知选项：%s\n' "$1" >&2;exit 2 ;;
   esac
 done
-if [[ -f config/openmc.local.json && "$mc_local_install" == 0 ]]; then
+mc_local_reuse="$(python3 - "$mc_local_root" "$mc_local_workspace" <<'PY'
+import os,sys
+from pathlib import Path
+root=Path(sys.argv[1]);sys.path.insert(0,str(root/'mcp'))
+import personal_config
+reusable=personal_config.has_runtime(root)
+# Seed the previous saved workspace; commit a requested change only after probes pass.
+os.environ.pop('MC_WORKSPACE',None)
+personal_config.ensure(root)
+print('1' if reusable else '0')
+PY
+)"
+if [[ -n "$mc_local_workspace" ]]; then export MC_WORKSPACE="$mc_local_workspace";fi
+if [[ "$mc_local_reuse" == 1 && "$mc_local_install" == 0 ]]; then
   printf '复用已有OpenMC配置，准备MCP依赖...\n' >&2
   bash mcp/setup.sh >&2
   mc_local_extras=()
@@ -44,16 +57,17 @@ fi
 mcp/.venv/bin/python - "$mc_local_root" "$mc_local_workspace" "$mc_local_quiet" <<'PY'
 import json,os,sys,tempfile
 from pathlib import Path
-root=Path(sys.argv[1]);local=root/'config/launcher.local.json'
-previous=json.loads(local.read_text()) if local.exists() else {}
-workspace=Path(sys.argv[2] or os.environ.get('MC_WORKSPACE') or previous.get('workspace') or root/'workspace').resolve()
+root=Path(sys.argv[1])
+sys.path.insert(0,str(root/'mcp'))
+import personal_config
+workspace=personal_config.workspace(root)
 os.environ['MC_WORKSPACE']=str(workspace)
 # Validate the existing runtime config without changing it or running a solver.
 sys.path.insert(0,str(root/'mcp'))
 from openmc_tools import environment
 state=environment()
 if not state.get('api_available') or not state.get('executable_available') or not state.get('openmc_version_matches'):
- raise SystemExit('环境尚未就绪；检查config/openmc.local.json中的python_command/openmc_command及OpenMC版本，或运行--install-runtime。原配置保留。')
+ raise SystemExit('环境尚未就绪；检查个人配置runtime中的python_command/openmc_command及OpenMC版本，或运行--install-runtime。原配置保留。')
 workspace.mkdir(parents=True,exist_ok=True)
 from openmc_import import publish_directory
 try:
@@ -65,10 +79,11 @@ except ValueError as error:
 def save(path,value):
  pending=path.with_suffix(path.suffix+'.tmp')
  pending.write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n');pending.chmod(0o600);pending.replace(path)
-save(local,{'workspace':str(workspace)})
+personal_config.update({'workspace':str(workspace)},root)
 entry={'command':'/bin/bash','args':[str(root/'mcp/stdio.sh')]}
 save(root/'config/stdio-connection.local.json',{'mcpServers':{'openmc-forge':entry}})
-print('准备完成。工作区：'+str(workspace))
+print('准备完成。个人配置：'+str(personal_config.location()))
+print('工作区：'+str(workspace))
 sys.path.insert(0,str(root/'scripts'))
 from install_local_extras import cad_status
 from openmc_runtime import config

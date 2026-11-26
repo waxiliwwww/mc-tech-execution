@@ -9,7 +9,7 @@ details{border:1px solid var(--line);background:var(--panel);padding:14px 20px;m
 .diagram-title{margin:24px 0 8px;font-size:18px;color:var(--accent)}
 </style></head><body><main><p>Agent常见改参/同一网格追加通过openmc_run_case组合已有参数更新、计分更新、读回、执行说明及绑定提交；不重写物理建模能力，不替代原子工具。组合始终派生新副本，避免回复未知后重复提交。宿主文件逻辑统一在host_transfer.py，安装入口和examples/transfer_files.py共享实现；远端MCP只返回下载会话/host_action，不写宿主文件。</p>
 <nav aria-label="文档导航"><a href="index.html">工具包总览</a><a href="toolkit-usage.html">使用手册</a><a href="deployment.html">部署与接入</a><a href="toolkit.html" aria-current="page">架构设计</a><a href="reference.html">接口参考</a></nav>
-<p class="eyebrow">面向开发者 · 实现基线0.26.1 · 2026-11-25</p><h1>MC工具包架构设计</h1>
+<p class="eyebrow">面向开发者 · 实现基线0.27.0 · 2026-11-25</p><h1>MC工具包架构设计</h1><p>运行设置由mcp/personal_config.py集中读取和原子写回个人JSON；本机stdio、HTTP、CLI、安装器与维护脚本共用优先级，原runtime/slurm/transfer校验与任务快照继续负责各自业务。配置与迁移说明统一见<a href="deployment.html#configuration">部署与接入</a>。</p>
 <p class="lead">本包在OpenMC之上组织模型输入、计算作业和结果分析。CLI与MCP共用领域实现，宿主负责自然语言编排；本包负责模型和文件交接、后台计算及可追查的产物。下面从总图展开各模块，说明常见任务怎样落实到源码与运行过程。</p>
 <p class="minor">当前执行后端为Linux/WSL本地进程。Slurm适配已有实现及受控调度验证，真实集群尚待账号联调。本文解释系统机制；具体命令与结果阅读见<a href="toolkit-usage.html">使用说明</a>。</p>
 <div class="jump"><a href="#architecture">总体架构</a><a href="#scenarios">常见场景</a><a href="#inputs">M1模型准备</a><a href="#jobs">M2作业管理</a><a href="#results">M3结果分析</a><a href="#developer">运行与扩展</a></div>

@@ -182,18 +182,20 @@ def run_probe(python, library, directory, spec):
 
 def update_config(path, python, library):
     """Only publish CAD fields after a real probe succeeds; keep all other keys."""
-    path = Path(path)
-    value = json.loads(path.read_text()) if path.exists() else json.loads((ROOT / 'config/openmc.json').read_text())
+    import personal_config
+    path = Path(path) if path is not None else None
+    value = (json.loads(path.read_text()) if path.exists() else json.loads((ROOT / 'config/openmc.json').read_text())) if path else personal_config.runtime(ROOT)
     # Keep the venv interpreter path: resolving bin/python's symlink would point
     # at the base interpreter and lose the newly installed CAD site-packages.
     value.update(cad_python_command=[str(python.absolute())], cad_library_path=str(library.resolve()))
-    atomic_json(path, value)
+    if path:atomic_json(path, value)
+    else:personal_config.save_runtime(value,ROOT)
 
 
 def check_install_space(directory, config_path):
     """Reserve room for the roughly 2 GiB runtime plus transient wheel extraction."""
-    source = config_path if config_path.is_file() else ROOT / 'config/openmc.json'
-    cfg = json.loads(source.read_text())
+    import personal_config
+    cfg = (json.loads((config_path if config_path.is_file() else ROOT/'config/openmc.json').read_text()) if config_path else personal_config.runtime(ROOT))
     reserve = cfg.get('min_free_disk_bytes', 1024 ** 3)
     checks = cfg.get('disk_space_check_paths', [])
     if type(reserve) is not int or reserve < 0 or not isinstance(checks, list):
@@ -256,7 +258,7 @@ def install(prefix, python, native_prefix, config_path):
         update_config(config_path, interpreter, library)
         pending.unlink(missing_ok=True)
         print('CAD环境已准备：同一STEP读取、mm→cm转换和H5M坐标/指纹检查通过。', flush=True)
-        print('运行环境：' + str(interpreter) + '\n配置：' + str(config_path), flush=True)
+        print('运行环境：' + str(interpreter) + '\n配置：' + str(config_path or __import__('personal_config').runtime_target(ROOT)), flush=True)
         return receipt
 
 
@@ -265,7 +267,7 @@ def main():
     parser.add_argument('--prefix', type=Path, default=ROOT / '.runtime/cadenv')
     parser.add_argument('--python', type=Path, default=Path(sys.executable))
     parser.add_argument('--native-prefix', type=Path, default=ROOT / '.runtime/cad-native')
-    parser.add_argument('--config', type=Path, default=ROOT / 'config/openmc.local.json')
+    parser.add_argument('--config', type=Path, default=None)
     args = parser.parse_args()
     try:
         install(args.prefix, args.python, args.native_prefix, args.config)

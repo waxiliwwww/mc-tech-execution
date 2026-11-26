@@ -19,6 +19,22 @@ class SlurmContext(unittest.TestCase):
     def sinfo(self):
         self.p['commands']['sinfo']=[fixture.sys.executable,str(fixture.ROOT/'tests/fixtures/slurm_scheduler.py'),'sinfo'];self.write_profile()
 
+    def test_personal_slurm_defaults_and_original_receipt_survive_site_edit(self):
+        import personal_config
+        self.sinfo()
+        with patch.dict(os.environ,{'MC_PERSONAL_CONFIG':str(self.root/'personal.json')}):
+            personal_config.update({'slurm':self.p},seed=False)
+            original=os.environ.pop('MC_SLURM_CONFIG')
+            try:
+                self.assertTrue(slurm.site_context()['configured'])
+                self.assertEqual(slurm.site_context(True)['queue_discovery']['status'],'available')
+                os.environ['SLURM_FIXTURE_MODE']='hold'
+                sid=self.prepare()['submission_id'];slurm.submit_slurm(sid)
+                personal_config.update({'slurm':{'remote_root':str(self.root/'different site')}})
+                self.assertEqual(slurm.status_slurm(sid)['state'],'queued')
+                self.assertEqual(len(self.rows()),1)
+            finally:os.environ['MC_SLURM_CONFIG']=original
+
     def test_default_context_is_offline_and_explicit_discovery_reuses_profile(self):
         self.sinfo();before=self.profile.read_bytes()
         with patch.object(slurm,'_remote',side_effect=AssertionError('default must not connect')):

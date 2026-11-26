@@ -93,3 +93,6 @@ test_execution_preview_real.ExecutionPreviewReal
 test_agent_workflow_real.AgentWorkflowsReal
 test_result_value_rows_real.ResultValueRowsReal
 test_result_semantics.ResultSemantics
+
+test_personal_config_startup.PersonalConfigStartup
+test_personal_setup.PersonalSetup

@@ -20,20 +20,32 @@ while [[ $# -gt 0 ]]; do
     --cad-prefix)
       [[ $# -gt 1 && -n "$2" && "$2" != --* ]] || { printf -- '--cad-prefix需要目录参数。\n' >&2; exit 2; }
       mc_quick_cad_prefix="$(realpath -m -- "$2")"; shift 2 ;;
-    -h|--help) printf '用法：./quickstart.sh [--openmc-prefix 已有OpenMC环境] [--cad-prefix CAD环境目录] [--skip-cad] [--skip-office]\n补装CAD：./quickstart.sh --cad-only [--openmc-prefix 已有环境] [--cad-prefix 新CAD目录]\n默认准备CLI/MCP、OpenMC、图表、独立CAD转换环境及Word/PDF转换；只写项目目录。--cad-only不重复准备OpenMC、核数据或Office，不可与--skip-cad同时使用。\n'; exit 0 ;;
+    -h|--help) printf '用法：./quickstart.sh [--openmc-prefix 已有OpenMC环境] [--cad-prefix CAD环境目录] [--skip-cad] [--skip-office]\n补装CAD：./quickstart.sh --cad-only [--openmc-prefix 已有环境] [--cad-prefix 新CAD目录]\n默认准备CLI/MCP、OpenMC、图表、独立CAD转换环境及Word/PDF转换；运行时写项目目录，个人设置写个人配置文件。--cad-only不重复准备OpenMC、核数据或Office，不可与--skip-cad同时使用。\n'; exit 0 ;;
     *) printf '未知选项：%s\n' "$1" >&2; exit 2 ;;
   esac
 done
 [[ "$mc_quick_cad_only" == 0 || "$mc_quick_cad" == 1 ]] || { printf -- '--cad-only与--skip-cad不能同时使用。\n' >&2; exit 2; }
 [[ "$(uname -s)" == Linux ]] || { printf '服务端请使用Linux/WSL；其他系统可作为MCP客户端。\n' >&2; exit 1; }
+mc_quick_personal() {
+python3 - <<'PY'
+import sys
+from pathlib import Path
+sys.path.insert(0,str(Path('mcp').resolve()))
+import personal_config
+personal_config.ensure(Path.cwd())
+PY
+}
+
 if [[ "$mc_quick_cad_only" == 1 ]]; then
   [[ -x "$mc_quick_prefix/bin/python" ]] || { printf '补装CAD需要已有OpenMC Python；先完成基础初配，或指定--openmc-prefix。\n' >&2; exit 1; }
+  mc_quick_personal
   printf '[1/1] 仅准备CAD环境并实测STEP到H5M；保留其他运行配置...\n'
   "$mc_quick_prefix/bin/python" scripts/install_cad.py --python "$mc_quick_prefix/bin/python" --prefix "$mc_quick_cad_prefix"
   exit 0
 fi
 command -v g++ > /dev/null || { printf '初配需要C++编译器（gcc/g++与make）；请在系统环境准备后重试。\n' >&2; exit 1; }
 command -v make > /dev/null || { printf '初配需要make；请先准备系统构建工具。\n' >&2; exit 1; }
+mc_quick_personal
 printf '[1/5] 准备独立CLI与MCP环境...\n'
 ./mcp/setup.sh
 if [[ ! -x "$mc_quick_prefix/bin/openmc" || ! -x "$mc_quick_prefix/bin/python" ]]; then
@@ -76,9 +88,10 @@ python3 scripts/install_official_data.py
 python3 - "$mc_quick_prefix" <<'PY'
 import json,sys
 from pathlib import Path
-p=Path('config/openmc.local.json');v=json.loads(p.read_text());v['nuclear_data_library']='official-endfb-vii.1'
+sys.path.insert(0,str(Path('mcp').resolve()));import personal_config
+v=personal_config.runtime(Path.cwd());v['nuclear_data_library']='official-endfb-vii.1'
 v['cmake_command']=[str(Path(sys.argv[1])/'bin/cmake')]
-p.write_text(json.dumps(v,ensure_ascii=False,indent=2)+'\n')
+personal_config.save_runtime(v,Path.cwd())
 PY
 if [[ "$mc_quick_cad" == 1 ]]; then
   printf '[4/5] 准备CAD转换环境并实测STEP到H5M...\n'
@@ -97,12 +110,13 @@ if [[ "$mc_quick_office" == 1 ]]; then
   python3 - "$mc_quick_office_command" <<'PY'
 import json,os,sys
 from pathlib import Path
-p=Path('config/openmc.local.json'); config=json.loads(p.read_text())
+sys.path.insert(0,str(Path('mcp').resolve()));import personal_config
+config=personal_config.runtime(Path.cwd())
 config['office_command']=[sys.argv[1]]
 for base in [Path('.runtime/office/usr/share/fonts'), Path('/usr/share/fonts')]:
     matches=list(base.rglob('NotoSansCJK-Regular.ttc'))
     if matches:config['font_path']=str(matches[0].resolve()); break
-p.write_text(json.dumps(config,ensure_ascii=False,indent=2)+'\n');os.chmod(p,0o600)
+personal_config.save_runtime(config,Path.cwd())
 PY
 else
   printf '[5/5] 按选项跳过Office准备；PDF/DOC须另行配置，DOCX无需转换组件。\n'
@@ -113,7 +127,8 @@ import sys,json
 from pathlib import Path
 sys.path.insert(0,'scripts')
 from install_local_extras import cad_status
-print(cad_status(json.loads(Path('config/openmc.local.json').read_text())))
+import personal_config
+print(cad_status(personal_config.runtime(Path.cwd())))
 PY
 printf '\n环境准备完成。下一步：\n'
 printf '  1) 启动 MCP 服务（前台保持运行）：./mcp/start.sh\n'

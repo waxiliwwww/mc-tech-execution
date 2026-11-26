@@ -52,14 +52,11 @@ def file_location(path: Path) -> dict:
 
 
 def config() -> dict:
-    local = ROOT / 'config/openmc.local.json'
-    source = Path(os.environ.get('MC_OPENMC_CONFIG', local if local.exists() else ROOT / 'config/openmc.json'))
-    if not source.is_absolute():
-        source = ROOT / source
+    from personal_config import runtime
     try:
-        value = json.loads(source.read_text(encoding='utf-8'))
+        value = runtime(ROOT)
     except (OSError, ValueError) as exc:
-        raise Error("无法读取OpenMC配置；检查MC_OPENMC_CONFIG") from exc
+        raise Error("无法读取OpenMC配置；检查个人配置或MC_OPENMC_CONFIG") from exc
     if value.get('runtime') != 'native':
         raise Error("首版支持native运行；容器部署请在容器内启动工具服务并配置native")
     for key in ('python_command', 'openmc_command'):

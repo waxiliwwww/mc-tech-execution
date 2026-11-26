@@ -70,7 +70,8 @@ def fetch_file(url: str, destination: Path, expected_size: int,
 
 
 def managed_directory(cfg: dict | None = None) -> Path:
-    return ROOT / '.runtime/nuclear-data' / library(cfg)[0]
+    base=(cfg or {}).get('nuclear_data_root')
+    return ((ROOT/Path(base)) if base else ROOT/'.runtime/nuclear-data') / library(cfg)[0]
 
 
 def deployment_status(cfg: dict) -> dict:

@@ -9,8 +9,8 @@ import sys
 
 def main() -> int:
     parser = argparse.ArgumentParser(description='MC接口工具直接调用；不需要模型或MCP服务')
-    parser.add_argument('--workspace', help='业务工作目录；未指定时沿用安装保存的目录，否则项目workspace')
-    parser.add_argument('--config', help='OpenMC运行配置；默认config/openmc.json')
+    parser.add_argument('--workspace', help='业务工作目录；未指定时沿用个人配置、旧保存目录，否则项目workspace')
+    parser.add_argument('--config', help='OpenMC运行配置；未指定时沿用个人配置、旧私有配置或发行默认')
     sub = parser.add_subparsers(dest='action', required=True)
     sub.add_parser('list', help='输出工具定义和输入输出schema')
     from examples_cli import configure_parser

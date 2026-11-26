@@ -84,6 +84,7 @@ class Config:
 
 def load_config(env=None, defaults=None):
     env = os.environ if env is None else env
+    explicit_defaults = defaults is not None
     config_file = resolve_path(env.get("MCP_CONFIG_FILE", "service.config.json"))
     if defaults is None:
         try:
@@ -93,6 +94,9 @@ def load_config(env=None, defaults=None):
     if not isinstance(defaults, dict) or not {"host", "port", "path", "name", "clientName"} <= defaults.keys():
         raise ValueError("Configuration requires host, port, path, name, clientName and version/versionFile.")
     defaults = dict(defaults)
+    if not explicit_defaults and not env.get('MCP_CONFIG_FILE'):
+        from personal_config import http
+        defaults.update(http(env))
     version_path = None
     if "versionFile" in defaults:
         if not isinstance(defaults["versionFile"], str) or not defaults["versionFile"].strip():
@@ -294,6 +298,11 @@ def create_mcp_server(config, log, tools=None, startup_identity=None):
                            "ready_for_new_operations": not drift["restart_required"],
                            "identity_check": drift.get("identity_check") or ("mismatch" if drift["restart_required"] else "matched")}
                 result = {**result, "service": service}
+                if 'configuration' in result:
+                    if getattr(log,'path',None):result['configuration']['log_directory']=str(log.path.parent)
+                    if hasattr(config,'host'):
+                        result['configuration']['http']={'host':config.host,'port':config.port,'path':config.path,'url':config.url,'authentication':config.authentication}
+
                 if drift["restart_required"]:
                     result["warnings"] = [*result.get("warnings", []), drift["message"]]
                     if log:
@@ -331,7 +340,7 @@ def create_mcp_server(config, log, tools=None, startup_identity=None):
     @server.read_resource()
     async def read_resource(uri):
         from mcp.server.lowlevel.helper_types import ReadResourceContents
-        content = resources.read(str(uri))
+        content = resources.read(str(uri),log_directory=log.path.parent if getattr(log,'path',None) else None)
         mime = next(item["mimeType"] for item in resources.RESOURCES if item["uri"] == str(uri))
         return [ReadResourceContents(content=content, mime_type=mime)]
 
@@ -483,7 +492,8 @@ def main():
         return 2
     log = None
     try:
-        log = EventLog(ROOT / "logs")
+        from personal_config import logs
+        log = EventLog(logs(ROOT.parent))
         asyncio.run(serve(config, log))
         return 0
     except KeyboardInterrupt:

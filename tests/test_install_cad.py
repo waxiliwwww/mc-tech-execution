@@ -95,8 +95,11 @@ class CadInstallPublication(unittest.TestCase):
             (['--cad-prefix'], '--cad-prefix需要目录'),
             (['--cad-only', '--openmc-prefix', '/nonexistent/mc-install-test'], '需要已有OpenMC Python'),
         ]:
-            result = subprocess.run([str(ROOT / 'quickstart.sh'), *arguments], text=True,
-                                    capture_output=True, timeout=10)
+            with tempfile.TemporaryDirectory() as tmp:
+                personal=Path(tmp)/'personal.json'
+                result = subprocess.run([str(ROOT / 'quickstart.sh'), *arguments], text=True,
+                                    capture_output=True, timeout=10,env={**os.environ,'MC_PERSONAL_CONFIG':str(personal)})
+                self.assertFalse(personal.exists(),'invalid setup arguments must not write personal settings')
             self.assertNotEqual(result.returncode, 0)
             self.assertIn(expected, result.stderr)
 

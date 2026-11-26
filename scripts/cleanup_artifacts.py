@@ -17,6 +17,7 @@ import sys
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT/'mcp'))
 SAFE_STATES = {'completed', 'failed', 'cancelled', 'partial'}
 IDENTIFIER = re.compile(r'[a-f0-9]{32}')
 
@@ -217,7 +218,7 @@ def apply_plan(value, refresh):
 
 def main():
     parser = argparse.ArgumentParser(description='维护窗口清理内部计算/扫描记录；默认仅预览，不删除原算例目录')
-    parser.add_argument('--workspace', default=os.environ.get('MC_WORKSPACE', str(ROOT / 'workspace')))
+    parser.add_argument('--workspace', default=None)
     parser.add_argument('--job-id', action='append', default=[])
     parser.add_argument('--scan-id', action='append', default=[])
     parser.add_argument('--example-id', action='append', default=[], help='官方例题实例编号；连同所属步骤作业清理，保留原输入')
@@ -226,6 +227,9 @@ def main():
     parser.add_argument('--apply', action='store_true', help='确认已停止服务及其他CLI写操作，永久删除列出的内部记录')
     parser.add_argument('--json', action='store_true')
     args = parser.parse_args()
+    if args.workspace is None:
+        from personal_config import workspace
+        args.workspace = workspace(ROOT)
     try:
         raw = Path(args.workspace).absolute()
         if raw.is_symlink() or raw == Path('/'):raise CleanupError('工作区不能为符号链接或系统根目录')

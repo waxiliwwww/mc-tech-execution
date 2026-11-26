@@ -5,6 +5,7 @@ No runtime/data downloads or system changes.
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -28,6 +29,9 @@ class LocalInstall(unittest.TestCase):
         self.addCleanup(restore_source_imports)
         self.temp=tempfile.TemporaryDirectory(prefix='mc install 中文 spaces ');self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name);self.source=self.root/'source';self.source.mkdir()
+        isolated={k:v for k,v in os.environ.items() if not k.startswith(('MC_','MCP_'))}
+        isolated['MC_PERSONAL_CONFIG']=str(self.root/'personal.json')
+        env=patch.dict(os.environ,isolated,clear=True);env.start();self.addCleanup(env.stop)
         shutil.copytree(ROOT/'mcp',self.source/'mcp',ignore=shutil.ignore_patterns('.venv','logs','__pycache__'))
         (self.source/'config').mkdir()
         shutil.copy2(ROOT/'config/openmc.json',self.source/'config/openmc.json')
@@ -58,10 +62,13 @@ class LocalInstall(unittest.TestCase):
         old=self.root/'old';(old/'config').mkdir(parents=True);(old/'.runtime').mkdir()
         (old/'.runtime/data').write_text('existing nuclear data')
         config=old/'config/openmc.local.json';config.write_text('{"python_command":["/existing/python"]}')
+        launcher=old/'config/launcher.local.json';launcher.write_text('{"workspace":"saved tasks"}')
         installer.install(self.source,self.target,old)
         self.assertEqual((self.target/'config/openmc.local.json').read_bytes(),config.read_bytes())
         self.assertEqual((self.target/'.runtime/data').read_text(),'existing nuclear data')
         self.assertTrue((old/'.runtime/data').is_file())
+        self.assertEqual(json.loads((self.target/'config/launcher.local.json').read_text())['workspace'],str(old/'saved tasks'))
+        self.assertEqual(launcher.read_text(),'{"workspace":"saved tasks"}')
 
     def test_office_addition_preserves_external_openmc_environment(self):
         config=self.root/'config';config.mkdir()
@@ -82,13 +89,14 @@ class LocalInstall(unittest.TestCase):
                 with self.subTest(existing=existing,option=option),tempfile.TemporaryDirectory() as tmp:
                     root=Path(tmp);(root/'scripts').mkdir();(root/'mcp/.venv/bin').mkdir(parents=True);(root/'config').mkdir()
                     shutil.copy2(ROOT/'scripts/local-setup.sh',root/'scripts/local-setup.sh')
+                    shutil.copy2(ROOT/'mcp/personal_config.py',root/'mcp/personal_config.py')
                     (root/'mcp/setup.sh').write_text('#!/bin/bash\nexit 0\n')
                     (root/'quickstart.sh').write_text('#!/bin/bash\nprintf "%s\\n" "$@" > "$SETUP_DISPATCH_RECEIPT"\n')
                     (root/'scripts/install_local_extras.py').write_text('import os,sys\nfrom pathlib import Path\nPath(os.environ["SETUP_DISPATCH_RECEIPT"]).write_text("\\n".join(sys.argv[1:]))\n')
                     python=root/'mcp/.venv/bin/python';python.write_text('#!/bin/bash\nif [[ "$1" == scripts/install_local_extras.py ]]; then exec '+shlex.quote(sys.executable)+' "$@"; fi\ncat > /dev/null\n');python.chmod(0o755)
                     if existing:(root/'config/openmc.local.json').write_text('{"existing":"untouched"}')
                     receipt=root/'dispatch.txt'
-                    result=subprocess.run(['bash',str(root/'scripts/local-setup.sh')]+([option] if option else []),env={**os.environ,'SETUP_DISPATCH_RECEIPT':str(receipt)},capture_output=True,text=True)
+                    result=subprocess.run(['bash',str(root/'scripts/local-setup.sh')]+([option] if option else []),env={**os.environ,'SETUP_DISPATCH_RECEIPT':str(receipt),'MC_PERSONAL_CONFIG':str(root/'personal.json')},capture_output=True,text=True)
                     self.assertEqual(result.returncode,0,result.stderr)
                     flags=receipt.read_text().splitlines() if receipt.exists() else []
                     if existing:self.assertEqual('--cad' in flags,option!='--skip-cad')

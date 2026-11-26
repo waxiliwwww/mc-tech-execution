@@ -35,4 +35,4 @@ mc_agent_tools = ["service.config.json", "requirements.txt", "UPSTREAM.json", "R
 "share/mc-agent-tools/skills/openmc-workflows/references" = ["skills/openmc-workflows/references/file-transfer.md", "skills/openmc-workflows/references/extended-tasks.md"]
 
 "share/mc-agent-tools" = ["VERSION"]
-"share/mc-agent-tools/config" = ["config/file-transfer-tools.json"]
+"share/mc-agent-tools/config" = ["config/file-transfer-tools.json", "config/openmc.json"]

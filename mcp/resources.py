@@ -1,7 +1,7 @@
 """MCP resources, 2026-11-03. Read-only views derived from existing modules and logs.
 
 每个资源都只重组仓库里已有的事实：参数定义取自 openmc_parameters，例题清单取自
-official_catalog，调用记录取自 logs/*.jsonl。这里不生成、不推断、不缓存业务结论。
+official_catalog，调用记录取自实际事件日志目录。这里不生成、不推断、不缓存业务结论。
 """
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-LOG_DIR = ROOT / "logs"
+LOG_DIR = None  # optional local override; service reads pass their actual EventLog directory
 
 RESOURCES = [
     {"uri": "mc://parameters/settings",
@@ -22,7 +22,7 @@ RESOURCES = [
      "mimeType": "application/json"},
     {"uri": "mc://logs/tool-calls",
      "name": "最近工具调用记录",
-     "description": "最近 50 条工具调用与失败事件（时间、事件、工具名、是否成功）。取自 logs/*.jsonl；只给调用参数名，不给参数值。",
+     "description": "最近 50 条工具调用与失败事件（时间、事件、工具名、是否成功）。取自当前服务实际事件日志；只给调用参数名，不给参数值。",
      "mimeType": "application/json"},
 ]
 
@@ -57,9 +57,12 @@ def _catalog() -> dict:
                        "scope": item.get("scope")} for item in items]}
 
 
-def _tool_calls(limit: int = 50) -> dict:
+def _tool_calls(limit: int = 50, log_directory=None) -> dict:
+    from personal_config import logs
+    from business import WORKSPACE
+    directory=Path(log_directory or LOG_DIR or logs(ROOT.parent,WORKSPACE))
     events = []
-    for path in sorted(LOG_DIR.glob("*.jsonl"), key=lambda p: p.stat().st_mtime)[-6:]:
+    for path in sorted(directory.glob("*.jsonl"), key=lambda p: p.stat().st_mtime)[-6:]:
         for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
             try:
                 rec = json.loads(line)
@@ -78,12 +81,12 @@ from workflow_guidance import RESOURCES as WORKFLOW_RESOURCES, read_resource as 
 RESOURCES += WORKFLOW_RESOURCES
 
 
-def read(uri: str) -> str:
+def read(uri: str, log_directory=None) -> str:
     if str(uri).startswith("skill://"):
         return read_workflow_resource(str(uri))
     table = {"mc://parameters/settings": _settings,
              "mc://examples/catalog": _catalog,
-             "mc://logs/tool-calls": _tool_calls}
+             "mc://logs/tool-calls": lambda: _tool_calls(log_directory=log_directory)}
     factory = table.get(str(uri))
     if factory is None:
         raise ValueError(f"不支持的资源：{uri}；先读取 resources/list")

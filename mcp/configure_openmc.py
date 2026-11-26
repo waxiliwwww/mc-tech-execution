@@ -5,15 +5,15 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import personal_config
 
 root = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--prefix', required=True, help='已安装OpenMC的Conda/micromamba环境目录')
 args = parser.parse_args()
 prefix = Path(args.prefix).resolve()
-config = json.loads((root / 'config/openmc.json').read_text())
-target = root / 'config/openmc.local.json'
-if target.exists():config.update(json.loads(target.read_text()))
+config = personal_config.runtime(root)
+target = personal_config.runtime_target(root)
 python = prefix / 'bin/python'
 solver = prefix / 'bin/openmc'
 try:
@@ -24,7 +24,6 @@ try:
 except (OSError, subprocess.SubprocessError, ValueError) as error:
     raise SystemExit('配置未修改：' + str(error))
 config.update(python_command=[str(python)], openmc_command=[str(solver)])
-target.write_text(json.dumps(config, ensure_ascii=False, indent=2) + '\n')
-os.chmod(target, 0o600)
+personal_config.save_runtime(config,root)
 print('已配置OpenMC ' + api_version + '：' + str(target))
 print('下一步：./mc.sh call openmc_environment')

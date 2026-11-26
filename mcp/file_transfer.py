@@ -33,12 +33,12 @@ MAX_CHUNK=1024**2
 
 
 def policy():
-    values=dict(DEFAULTS);name=os.environ.get('MC_TRANSFER_CONFIG')
-    if name:
-        try:custom=json.loads(Path(name).read_text())
-        except (OSError,ValueError) as exc:raise Error('MC_TRANSFER_CONFIG无法读取；现有OpenMC/服务配置不受影响') from exc
-        if not isinstance(custom,dict) or set(custom)-set(values):raise Error('文件传输配置包含未知字段')
-        values.update(custom)
+    from personal_config import transfer
+    values=dict(DEFAULTS)
+    try:custom=transfer()
+    except (OSError,ValueError) as exc:raise Error('文件传输配置无法读取；检查个人配置或MC_TRANSFER_CONFIG') from exc
+    if not isinstance(custom,dict) or set(custom)-set(values):raise Error('文件传输配置包含未知字段')
+    values.update(custom)
     for key,value in values.items():
         if type(value) is not int or value<(0 if key=='min_free_disk_bytes' else 1):raise Error(key+'须为合法整数字节数/数量')
     if values['chunk_bytes']>MAX_CHUNK:raise Error('chunk_bytes不能超过MCP分块帧上限1 MiB；完整文件限制由max_file_bytes配置')
@@ -99,7 +99,7 @@ def _lock(direction,identifier):
 
 
 def _check_size(size,limit,label='文件'):
-    if size>limit:raise Error(f'{label}大小{size}字节超过本次传输上限{limit}字节；调整MC_TRANSFER_CONFIG后重试，或留在服务端分析。不限制服务端已有大文件计算。')
+    if size>limit:raise Error(f'{label}大小{size}字节超过本次传输上限{limit}字节；调整个人transfer配置或MC_TRANSFER_CONFIG后重试，或留在服务端分析。不限制服务端已有大文件计算。')
 
 
 def _space(bytes_needed,p):

@@ -40,11 +40,11 @@ def _argv(value, key):
 
 
 def profile():
-    source = os.environ.get('MC_SLURM_CONFIG')
-    if not source: raise Error('Slurm尚未配置：无需自备脚本，工具有内置默认模板；仍需确认集群入口/工作目录及OpenMC环境。可复制config/slurm.example.json到私有位置并设置MC_SLURM_CONFIG；不会猜测站点或修改现有OpenMC配置')
-    try: p = json.loads(Path(source).read_text())
-    except (OSError, ValueError) as exc: raise Error('MC_SLURM_CONFIG无法读取') from exc
-    if not isinstance(p,dict):raise Error('MC_SLURM_CONFIG须为JSON对象')
+    from personal_config import slurm
+    try:p=slurm()
+    except (OSError,ValueError) as exc:raise Error('Slurm配置无法读取；检查个人配置或MC_SLURM_CONFIG') from exc
+    if p is None:raise Error('Slurm尚未配置：无需自备脚本；先在个人配置的slurm段填写真实集群入口/工作目录及OpenMC环境，或沿用MC_SLURM_CONFIG。不会猜测站点。')
+    if not isinstance(p,dict):raise Error('Slurm配置须为JSON对象')
     if p.get('transport') not in ('ssh', 'local'): raise Error('transport须为ssh或local（登录节点）')
     root = p.get('remote_root', '')
     if not isinstance(root, str) or not root.startswith('/') or '..' in PurePosixPath(root).parts or any(c in root for c in '\r\n\0'):
@@ -150,7 +150,8 @@ def site_context(check_queues=False, reference=None):
     result={'backend':'slurm','scope':'cluster_tasks_only','configured':False,'reference_materials':materials,'network_used':False,
             'template':'builtin_in_slurm','queue_discovery':{'status':'not_checked','queues':[]},
             'note':'集群任务默认按Slurm处理；先看已有资料和设置，必要时查队列。不会提交或更改配置。'}
-    if not os.environ.get('MC_SLURM_CONFIG'):
+    from personal_config import has_slurm
+    if not has_slurm():
         result.update(status='needs_configuration',resource_defaults=_resources(None),
             next='无需自备脚本；补齐真实集群入口、可写目录和OpenMC/核数据环境，默认模板不代填站点。')
         return result
@@ -520,20 +521,19 @@ def _transfer_profile(record):
     # Endpoint/commands/material paths belong to this submission. Operational
     # transfer ceilings can change without moving a job to another cluster.
     saved=record['profile'];effective=dict(saved)
-    if os.environ.get('MC_SLURM_CONFIG'):
-        try:current=profile()
-        except Error:return effective  # Resume using this task's frozen endpoint when current configuration is unavailable.
-        identity=set(saved)|set(current)
-        limits={'max_transfer_bytes','transfer_timeout_seconds','command_timeout_seconds'}
-        # Older records predate optional scontrol. Its implicit default is not
-        # an endpoint change; explicitly changed command prefixes still are.
-        saved_identity={**saved,'commands':{'scontrol':['scontrol'],**saved.get('commands',{})}}
-        current_identity={**current,'commands':dict(current['commands'])}
-        # sinfo is discovery-only: changing it never reroutes a frozen job.
-        saved_identity['commands'].pop('sinfo',None);current_identity['commands'].pop('sinfo',None)
-        if any(saved_identity.get(k)!=current_identity.get(k) for k in identity-limits):
-            return effective  # A different active profile never reroutes an existing task.
-        for key in limits:effective[key]=current[key]
+    try:current=profile()
+    except Error:return effective  # Resume using this task's frozen endpoint when current configuration is unavailable.
+    identity=set(saved)|set(current)
+    limits={'max_transfer_bytes','transfer_timeout_seconds','command_timeout_seconds'}
+    # Older records predate optional scontrol. Its implicit default is not
+    # an endpoint change; explicitly changed command prefixes still are.
+    saved_identity={**saved,'commands':{'scontrol':['scontrol'],**saved.get('commands',{})}}
+    current_identity={**current,'commands':dict(current['commands'])}
+    # sinfo is discovery-only: changing it never reroutes a frozen job.
+    saved_identity['commands'].pop('sinfo',None);current_identity['commands'].pop('sinfo',None)
+    if any(saved_identity.get(k)!=current_identity.get(k) for k in identity-limits):
+        return effective  # A different active profile never reroutes an existing task.
+    for key in limits:effective[key]=current[key]
     return effective
 
 
@@ -564,7 +564,7 @@ def collect_slurm(submission_id: str) -> dict:
             if not name or PurePosixPath(name).is_absolute() or '..' in PurePosixPath(name).parts or name in r['input_hashes'] or not re.fullmatch('[a-f0-9]{64}',info.get('sha256','')) or type(info.get('bytes')) is not int or info['bytes']<0:
                 raise Error('远端结果清单不合法')
         size=sum(info['bytes'] for info in outputs.values())
-        if size>p['max_transfer_bytes']:raise Error('结果超过max_transfer_bytes；调整与该任务连接身份一致的MC_SLURM_CONFIG限额后重试collect，不重新计算')
+        if size>p['max_transfer_bytes']:raise Error('结果超过max_transfer_bytes；调整与该任务连接身份一致的个人slurm/MC_SLURM_CONFIG限额后重试collect，不重新计算')
         required=2*size+sum(x.stat().st_size for x in (d/'input').rglob('*') if x.is_file())+r['runtime'].get('min_free_disk_bytes',1024**3)
         if shutil.disk_usage(workspace()).free<required:raise Error('结果取回空间不足；保留远端数据，清理或扩容后重试collect')
         root=path_in_workspace('.mc-jobs',exists=False,internal=True);root.mkdir(exist_ok=True)
@@ -626,7 +626,7 @@ RESOURCES=_schema({
 },[])
 RESOURCES['description']='资源请求；优先复用已确认的站点resource_defaults，本次字段覆盖同名默认值。无站点资源默认时用1节点/1进程/1线程/10分钟，队列使用站点默认；没有现场脚本也可用内置模板，但集群入口、环境和本次资源仍须明确。'
 SLURM_TOOLS=[
- {'name':'openmc_slurm_prepare','description':'离线校核并快照已有模型，使用内置默认模板和站点设置生成普通in.slurm，返回资源摘要与输入哈希，绝不连接或提交集群。现场脚本可选参考，不是使用前提；先明确MC_SLURM_CONFIG中的集群入口与环境。此能力不代表真实HPC已验证。',
+ {'name':'openmc_slurm_prepare','description':'离线校核并快照已有模型，使用内置默认模板和站点设置生成普通in.slurm，返回资源摘要与输入哈希，绝不连接或提交集群。现场脚本可选参考，不是使用前提；先明确个人配置slurm段或MC_SLURM_CONFIG中的集群入口与环境。此能力不代表真实HPC已验证。',
   'inputSchema':_schema({'case_dir':{'type':'string','minLength':1,'description':'已有模型在MC_WORKSPACE内的相对目录，先生成/导入、预览并按需要校核。'},'resources':RESOURCES,
   'name':{'type':'string','minLength':1,'maxLength':120,'description':'Slurm可见任务名，省略为openmc；同名任务由内部提交记录和job ID区分，不用名称猜取消目标。'}},['case_dir']), 'function':prepare_slurm},
  *[{'name':'openmc_slurm_'+name,'description':description,'inputSchema':_schema({'submission_id':ID},['submission_id']),'function':function}

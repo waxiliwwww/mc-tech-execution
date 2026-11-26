@@ -11,7 +11,7 @@ from jsonschema import Draft202012Validator
 
 
 COMMON = {
-    'case_dir': '算例目录，相对服务端工作区（显式MC_WORKSPACE优先，否则沿用安装保存目录，再默认包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。',
+    'case_dir': '算例目录，相对服务端工作区（显式MC_WORKSPACE优先，其次个人配置workspace、旧保存目录，最后包根目录/workspace），不是客户端路径。读取已有算例；生成接口要求目标尚不存在。可沿用准备例题返回的case_dir。',
     'target_dir': '新副本目录，相对服务端MC_WORKSPACE，必须尚不存在且位于原算例之外；原输入保留。后续计算使用返回的新case_dir。',
     'job_id': '计算编号，直接使用openmc_submit_job或扫描子项返回的job_id；不是目录、文件名或scan_id。查询/读取不会自动提交新计算。',
     'job_a': '对比基准方作业编号（32位十六进制），直接使用openmc_submit_job返回的job_id；结果中记为a方，difference=b-a。',

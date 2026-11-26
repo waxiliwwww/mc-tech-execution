@@ -21,7 +21,9 @@ async def serve():
     # legacy business diagnostics, then go to stderr rather than corrupt JSON.
     async with stdio_server() as (read, write):
         with contextlib.redirect_stdout(sys.stderr):
-            log = EventLog(Path(__file__).resolve().parent / 'logs')
+            from personal_config import logs
+            from openmc_runtime import workspace
+            log = EventLog(logs(Path(__file__).resolve().parent.parent,workspace()))
             try:
                 server, _ = create_mcp_server(config, log)
                 log.emit('INFO', 'server.started', transport='stdio', version=version)

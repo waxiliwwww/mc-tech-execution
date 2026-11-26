@@ -9,7 +9,7 @@ import subprocess
 import sys
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'mcp'))
-from openmc_runtime import atomic_json
+import personal_config
 
 
 def cad_status(cfg):
@@ -29,7 +29,7 @@ def cad_status(cfg):
 
 
 def install(cad=False,office=False):
-    path=ROOT/'config/openmc.local.json';cfg=json.loads(path.read_text())
+    cfg=personal_config.runtime(ROOT)
     if cad:
         command=cfg['python_command']
         interpreter=subprocess.check_output(command+['-c','import sys;print(sys.executable)'],text=True,timeout=30).strip()
@@ -38,7 +38,7 @@ def install(cad=False,office=False):
         if len(current)==1 and Path(current[0]).parent.name=='bin':prefix=Path(current[0]).parent.parent
         subprocess.run(command+[str(ROOT/'scripts/install_cad.py'),'--python',interpreter,'--prefix',str(prefix)],check=True)
     if office:
-        cfg=json.loads(path.read_text())  # Preserve a successful CAD update.
+        cfg=personal_config.runtime(ROOT)  # Preserve a successful CAD update.
         command=cfg.get('office_command',[])
         if not command or not shutil.which(command[0]):
             system=shutil.which('soffice')
@@ -51,7 +51,7 @@ def install(cad=False,office=False):
         for base in [ROOT/'.runtime/office/usr/share/fonts',Path('/usr/share/fonts')]:
             match=next(base.rglob('NotoSansCJK-Regular.ttc'),None)
             if match:cfg['font_path']=str(match.resolve());break
-        atomic_json(path,cfg)
+        personal_config.save_runtime(cfg,ROOT)
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)

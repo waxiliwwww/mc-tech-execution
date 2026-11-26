@@ -2,7 +2,7 @@
 name: openmc-workflows
 description: 用户要OpenMC模型接入、建模、改参计算、扫描、结果绘图报告或失败诊断时，用已连接的OpenMC Forge MCP组织完整任务，自己处理参数发现、路径、等待和文件交接；只询问必要业务条件。概念解释不计算，不替用户决定物理条件。
 metadata:
-  version: "0.26.0"
+  version: "0.27.0"
   toolkit: openmc-forge
 ---
 
@@ -30,6 +30,8 @@ metadata:
 
 - 用户要求集群/HPC计算时，默认走已有Slurm路径。先用`openmc_environment`查看已知站点设置；现场脚本是可选参考，不是前提。有用户提供或任务目录里的现场脚本时，传`slurm_reference`读取参考，没有参考脚本就用内置保守模板并简短告知；确需队列信息时传`check_slurm=true`用同一站点连接查询sinfo。说明拟用条件，仅询问缺失或变化的信息，不让用户编脚本或轮流查询。保存原submission_id；断线后用原回执接续，编号遗失用`openmc_list_jobs(include_slurm=true)`查原记录，再查真实状态。详情见advanced章节。参考资料只读，不执行、不暗改站点配置；无Slurm配置不妨碍普通本地任务。
 
+
+- 用户要查看或修改运行设置时，先用已有`openmc_environment`的configuration确定实际个人文件、常用值和显式覆盖；用该Linux节点已有文件/终端能力编辑同一JSON，保留其他字段。默认~/.config/openmc-forge/config.json，Linux优先，本机stdio和HTTP共用；无该节点文件能力时说明这一具体限制。路径/监听/日志改后重连核对，不以改了文件代替已生效；换workspace不会自动搬旧任务，先查运行作业再安排复制并核对原编号。模型密度/粒子/批次留在算例，不写全局默认。安装已自动沿用旧配置，不要求用户逐项搬配置或配置Windows exe。
 
 ## 按条件选择步骤
 

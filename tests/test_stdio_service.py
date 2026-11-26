@@ -68,13 +68,17 @@ class StdioService(unittest.IsolatedAsyncioTestCase):
         site=self.root/'site'
         result=await asyncio.to_thread(subprocess.run,[sys.executable,'-m','pip','install','--no-deps','--target',str(site),os.environ['MC_TEST_WORKFLOW_WHEEL']],capture_output=True,text=True,timeout=60)
         self.assertEqual(result.returncode,0,result.stderr)
-        params=StdioServerParameters(command=sys.executable,args=['-c','from mc_agent_tools.launcher import stdio;raise SystemExit(stdio())'],cwd=str(self.root),env={**self.env,'PYTHONPATH':str(site)})
+        params=StdioServerParameters(command=sys.executable,args=['-c','from mc_agent_tools.launcher import stdio;raise SystemExit(stdio())'],cwd=str(self.root),env={**self.env,'PYTHONPATH':str(site),'MC_PERSONAL_CONFIG':str(self.root/'wheel-personal-not-created.json')})
         async with stdio_client(params,errlog=self.stderr) as (read,write):
             async with ClientSession(read,write) as session:
                 hello=await session.initialize()
                 self.assertEqual(hello.serverInfo.version,(ROOT/'VERSION').read_text().strip())
                 self.assertEqual({t.name for t in (await session.list_tools()).tools},{t['name'] for t in TOOLS})
                 self.assertFalse((await session.call_tool('openmc_get_workflow',{'chapter':'start'})).isError)
+                self.assertFalse((await session.call_tool('openmc_list_jobs',{})).isError)
+                self.assertTrue(list((site/'mc_agent_tools/logs').glob('*.jsonl')))
+                calls=json.loads((await session.read_resource('mc://logs/tool-calls')).contents[0].text)
+                self.assertIn('openmc_list_jobs',[event['tool'] for event in calls['events']])
 
     async def test_business_prints_and_event_logs_do_not_corrupt_protocol(self):
         fixture=self.root/'noisy.py'

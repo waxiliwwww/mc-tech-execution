@@ -42,9 +42,20 @@ class CleanupRecords(unittest.TestCase):
     def invoke(self,*args):
         return subprocess.run([str(ROOT/'cleanup.sh'),'--workspace',str(self.root),*args],capture_output=True,text=True)
 
+    def test_default_preview_uses_personal_workspace_without_new_flags_or_deletion(self):
+        self.record('job',J)
+        profile=self.root/'personal.json';profile.write_text(json.dumps({'workspace':str(self.root)}))
+        env={k:v for k,v in os.environ.items() if k!='MC_WORKSPACE'}
+        result=subprocess.run([str(ROOT/'cleanup.sh'),'--job-id',J,'--json'],env={**env,'MC_PERSONAL_CONFIG':str(profile)},capture_output=True,text=True)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(json.loads(result.stdout)['plan']['workspace'],str(self.root))
+        self.assertEqual(json.loads(result.stdout)['state'],'preview')
+        self.assertTrue((self.root/'.mc-jobs'/J/'job.json').exists())
+
     def test_shell_entry_runs_from_other_cwd_and_preserves_relative_workspace(self):
         source=self.record('job',J)
         package=self.root/'package with spaces';(package/'scripts').mkdir(parents=True)
+        (package/'mcp').mkdir();shutil.copy2(ROOT/'mcp/personal_config.py',package/'mcp/personal_config.py')
         shutil.copy2(ROOT/'cleanup.sh',package/'cleanup.sh')
         shutil.copy2(ROOT/'scripts/cleanup_artifacts.py',package/'scripts/cleanup_artifacts.py')
         client=self.root/'client cwd';data=client/'data';data.mkdir(parents=True)
