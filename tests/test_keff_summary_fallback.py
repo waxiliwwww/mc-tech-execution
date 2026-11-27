@@ -57,6 +57,17 @@ class KefSummaryFallback(unittest.TestCase):
         (directory / 'solver.log').write_text(log)
         return directory
 
+    def test_fixed_source_completed_never_reports_missing_k(self):
+        directory = self.make_job('fa' * 16, ' ====> RESULTS <====\n Leakage Fraction = 0.5 +/- 0.1\n')
+        (directory/'work/settings.xml').write_text('<settings><run_mode>fixed source</run_mode><particles>123</particles><batches>5</batches></settings>')
+        value=jobs.status('fa' * 16)
+        self.assertIn('固定源计算已完成',value['human_summary'])
+        self.assertNotIn('k',value['human_summary'])
+        self.assertIn('123',value['human_summary'])
+        self.assertIn('openmc_read_results',value['human_summary'])
+        self.assertNotIn('不可用',value['human_summary'])
+        self.assertNotIn('keff_note',value['progress'])
+
     def test_combined_nan_does_not_announce_a_fallback_as_a_result(self):
         log = (' 1/10 1.6 1.0 1.6 +/- 0.1\n'
                ' 2/10 1.6 1.0 1.6 +/- 0.1\n' + RESULTS_BLOCK)

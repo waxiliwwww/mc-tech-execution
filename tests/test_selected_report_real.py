@@ -60,6 +60,58 @@ class SelectedReportReal(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):cls.temp.cleanup()
 
+    def test_fixed_source_status_and_selected_spectrum_from_real_solver(self):
+        spec=json.loads((ROOT/'examples/model-specs/fixed-source-water.json').read_text())
+        self.call('openmc_build_model',{'case_dir':'fixed','spec':spec})
+        case=self.workspace/'fixed'
+        model=case/'model.xml'
+        tallies=ET.fromstring('''<tallies>
+<filter id="31" type="material"><bins>2</bins></filter>
+<filter id="32" type="energy"><bins>0 1000 10000 100000 1000000 20000000</bins></filter>
+<tally id="3"><filters>31 32</filters><scores>flux</scores></tally>
+</tallies>''')
+        if model.exists():
+            tree=ET.parse(model);root=tree.getroot();old=root.find('tallies')
+            if old is not None:root.remove(old)
+            root.append(tallies);tree.write(model)
+        else:ET.ElementTree(tallies).write(case/'tallies.xml')
+        job=self.call('openmc_submit_job',{'case_dir':'fixed'})['job_id']
+        status={'state':'running'}
+        try:
+            deadline=time.monotonic()+45
+            while time.monotonic()<deadline:
+                status=self.call('openmc_job_status',{'job_id':job,'wait_seconds':1})
+                if status['state'] in ('completed','failed','cancelled','interrupted'):break
+            self.assertEqual(status['state'],'completed',status)
+            self.assertIn('固定源计算已完成',status['human_summary'])
+            self.assertNotIn('k',status['human_summary'])
+            self.assertNotIn('不可用',status['human_summary'])
+            self.assertIsNone(status['final_result']['keff'])
+            self.assertEqual(status['final_result']['warnings'],[])
+            self.assertIsNone(status['progress']['keff_note'])
+            results=self.call('openmc_read_results',{'job_id':job})
+            self.assertIsNone(results['keff'])
+            selection={'tally_id':3,'score':'flux','filter_selection':[{'type':'MaterialFilter','bins':[2]}]}
+            chart=self.call('openmc_plot_results',{'job_id':job,**selection})
+            data=json.loads((self.workspace/chart['series_json']).read_text())
+            self.assertEqual(data['x_unit'],'eV')
+            self.assertEqual(data['x_lower'],[0.,1000.,10000.,100000.,1000000.])
+            self.assertEqual(data['x_upper'],[1000.,10000.,100000.,1000000.,20000000.])
+            point=next((self.workspace/'.mc-jobs'/job/'work').glob('statepoint.*.h5'))
+            script="import openmc,json,sys; p=openmc.StatePoint(sys.argv[1],autolink=False); t=p.get_tally(id=3); print(json.dumps({'mean':t.mean.ravel().tolist(),'std_dev':t.std_dev.ravel().tolist()}))"
+            native=json.loads(subprocess.check_output(self.runtime['python_command']+['-c',script,str(point)],text=True))
+            self.assertEqual(data['mean'],native['mean'])
+            self.assertEqual(data['std_dev'],native['std_dev'])
+            keep=os.environ.get('MC_TEST_FIRST_USE_EVIDENCE')
+            if keep:
+                import shutil
+                folder=Path(keep);folder.mkdir(parents=True,exist_ok=True)
+                (folder/'fixed-source.json').write_text(json.dumps({'status':status,'series':data,'native':native},ensure_ascii=False,indent=2))
+                shutil.copy2(self.workspace/chart['path'],folder/'spectrum.png')
+        finally:
+            if status['state'] not in ('completed','failed','cancelled','interrupted'):
+                self.call('openmc_cancel_job',{'job_id':job})
+
     def test_all_plot_families_export_registered_reproduction_scripts(self):
         import shutil
         for tool, selection, template in [
@@ -187,13 +239,14 @@ with openmc.StatePoint(sys.argv[1],autolink=False) as p:
         self.assertIn('score或nuclide不存在',error)
         self.assertEqual(old,{name:hashlib.sha256((self.record/name).read_bytes()).hexdigest() for name in old})
 
-    def test_multifilter_coordinates_are_explicit_flat_indices(self):
+    def test_multifilter_with_unique_cell_retains_energy_coordinates(self):
         output = self.call('openmc_plot_results', {'job_id':self.job,'tally_id':3,'score':'flux'})
         data = json.loads((self.workspace/output['series_json']).read_text())
-        self.assertEqual(data['x'],[0,1])
-        self.assertEqual(data['x_kind'],'filter_bin_index')
-        self.assertIn('EnergyFilter',data['x_label']);self.assertIn('CellFilter',data['x_label'])
-        self.assertNotIn('eV',data['x_label'])
+        self.assertEqual(data['x'],[500000.,10500000.])
+        self.assertEqual(data['x_kind'],'energy_bin_midpoint')
+        self.assertEqual(data['x_lower'],[0.,1000000.])
+        self.assertEqual(data['x_upper'],[1000000.,20000000.])
+        self.assertEqual(data['x_unit'],'eV')
 
     def test_explicit_empty_selection_is_not_the_legacy_summary(self):
         output = self.call('openmc_export_report', {'job_id':self.job,'filter_selection':[],'format':'csv'})

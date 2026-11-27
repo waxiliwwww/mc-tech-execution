@@ -20,7 +20,7 @@
 
 自有模型可先只读检查依赖，再显式绑定服务器已有文件并导入；失败批次可在用户确认后续算未完成项，保留成功结果。比较按原始计分箱对齐，参数与核数据身份可回查。详见[使用自己的模型](docs/toolkit-usage.html#input-more)和[批量计算与续算](docs/toolkit-usage.html#scan)。
 
-服务端优先Linux，适配OpenMC 0.16.0，源码版本0.27.0。运行一次 `bash scripts/local-setup.sh`，再把输出配置导入Helix等MCP宿主：stdio由宿主按需启动；HTTP用 `bash mcp/start.sh` 常驻运行。两种方式共用一份个人配置 `~/.config/openmc-forge/config.json`，工作目录、日志、计算环境、Slurm默认资源、HTTP和传输设置分组存放；已有配置首次准备时自动沿用，普通启动不安装、不搬数据。Agent可通过所在Linux节点已有的文件/终端能力代改，用户也可手改；现有 `openmc_environment` 显示实际生效的常用值。细节见[配置与迁移](docs/deployment.html#configuration)。Windows exe＋WSL保留为可选入口，无需在Linux部署时配置exe。首次准备需网络下载运行时、核数据和依赖。工作目录未设置时仍使用本包 `workspace/`。
+服务端优先Linux，适配OpenMC 0.16.0，源码版本0.27.1。运行一次 `bash scripts/local-setup.sh`，再把输出配置导入Helix等MCP宿主：stdio由宿主按需启动；HTTP用 `bash mcp/start.sh` 常驻运行。两种方式共用一份个人配置 `~/.config/openmc-forge/config.json`，工作目录、日志、计算环境、Slurm默认资源、HTTP和传输设置分组存放；已有配置首次准备时自动沿用，普通启动不安装、不搬数据。Agent可通过所在Linux节点已有的文件/终端能力代改，用户也可手改；现有 `openmc_environment` 显示实际生效的常用值。细节见[配置与迁移](docs/deployment.html#configuration)。Windows exe＋WSL保留为可选入口，无需在Linux部署时配置exe。首次准备需网络下载运行时、核数据和依赖。工作目录未设置时仍使用本包 `workspace/`。
 
 `./scripts/test-mcp.sh` 自启临时服务，核对版本和完整工具定义后自动停止；带测试命令的用法见[部署手册的测试入口](docs/deployment.html#test-session)。`./verify.sh --tools-only` 通过该入口做工具工程检查；`./package.sh` 生成 `dist/` 压缩包与对应版本清单/摘要，`./scripts/verify-package.sh <压缩包路径>` 校验这份交付物；`./cleanup.sh` 默认只预览。工程检查、归档校验、分发和维护各有用途，具体步骤在手册对应章节。
 

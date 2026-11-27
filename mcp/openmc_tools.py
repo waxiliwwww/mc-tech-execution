@@ -872,7 +872,7 @@ def submit_job(case_dir: str, mode: str = 'run', threads: int = 1, name: str | N
 def verified_result(job_id: str):
     status = jobs.status(job_id)
     if status['state'] != 'completed':
-        raise Error('作业尚未成功完成，当前状态=' + status['state'] + '；' + ('用openmc_diagnose_job查看失败原因' if status['state'] in ('failed','interrupted') else '先查询openmc_job_status等待终态'))
+        raise Error('作业尚未成功完成，当前状态=' + status['state'] + '；' + ('用openmc_diagnose_job查看失败原因' if status['state'] in ('failed','interrupted','cancelled') else '先查询openmc_job_status等待终态'))
     directory = jobs.job_directory(job_id)
     record = jobs.read(directory)
     workflow=record.get('example_workflow')
@@ -1683,7 +1683,7 @@ def read_depletion(job_id: str, key_nuclides: list | None = None) -> dict:
     """读取已完成燃耗作业的depletion_results.h5：逐时间步keff、燃耗估算、关键核素质量。"""
     status = jobs.status(job_id)
     if status['state'] != 'completed':
-        raise Error('作业尚未成功完成，当前状态=' + status['state'] + '；' + ('用openmc_diagnose_job查看失败原因' if status['state'] in ('failed','interrupted') else '先查询openmc_job_status等待终态'))
+        raise Error('作业尚未成功完成，当前状态=' + status['state'] + '；' + ('用openmc_diagnose_job查看失败原因' if status['state'] in ('failed','interrupted','cancelled') else '先查询openmc_job_status等待终态'))
     directory = jobs.job_directory(job_id)
     record = jobs.read(directory)
     if record.get('mode') != 'deplete':

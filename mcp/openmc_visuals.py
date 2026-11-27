@@ -110,16 +110,26 @@ def selected_series(point, params):
                          'coordinate_note': 'Mesh cells map to 0-based (i,j,k) and centers; filter_selection and OpenMC MeshFilter.bins use 1-based [i,j,k]. Values remain raw mesh bins.'})
     # The same API indices that selected the values must select the coordinates.
     # In particular, explicit bins may be non-contiguous or requested in reverse order.
-    if len(tally.filters) == 1 and type(tally.filters[0]).__name__ in ('EnergyFilter', 'EnergyoutFilter'):
-        indices = tally.get_filter_indices(filters=types, filter_bins=bins)
-        intervals = np.asarray(tally.filters[0].bins)[indices]
+    energies = [i for i,f in enumerate(tally.filters) if type(f).__name__ in ('EnergyFilter','EnergyoutFilter')]
+    if energies:
+        indices = np.asarray(tally.get_filter_indices(filters=types, filter_bins=bins), dtype=int)
+        positions = np.unravel_index(indices, tuple(f.num_bins for f in tally.filters))
+        counts = [len(np.unique(items)) for items in positions]
+        varying = [i for i in energies if counts[i] > 1]
+        unresolved = [type(f).__name__ for i,f in enumerate(tally.filters) if i not in energies and counts[i] != 1]
+        if unresolved or len(varying) > 1:
+            raise ResultSelectionError('能谱需要唯一确定其他过滤器；请用filter_selection为'
+                + '、'.join(unresolved or [type(tally.filters[i]).__name__ for i in varying])
+                + '选择一个分箱，只保留一个能量维度展开；不自动混合或求和。')
+        energy = varying[0] if varying else energies[0]
+        intervals = np.asarray(tally.filters[energy].bins)[positions[energy]]
         lower, upper = intervals[:, 0], intervals[:, 1]
-        outgoing = type(tally.filters[0]).__name__ == 'EnergyoutFilter'
+        outgoing = type(tally.filters[energy]).__name__ == 'EnergyoutFilter'
         axis = {'x': ((lower + upper) / 2).tolist(), 'x_lower': lower.tolist(), 'x_upper': upper.tolist(),
                 'x_kind': 'energy_bin_midpoint', 'x_unit': 'eV',
                 'x_scale': 'log' if (lower > 0).all() else 'linear',
                 'x_label': ('Outgoing energy' if outgoing else 'Energy') + ' (eV; arithmetic bin midpoint)',
-                'coordinate_note': 'Arithmetic bin midpoints; bounds in x_lower/x_upper. Values remain bin-integrated; not divided by energy-bin width. Request order is preserved.'}
+                'coordinate_note': 'Arithmetic bin midpoints; bounds in x_lower/x_upper. Other filters select one bin each. Values remain bin-integrated; not divided by energy-bin width. Request order is preserved.'}
     def finite(values):return [float(v) if np.isfinite(v) else None for v in values]
     return {'tally_id': int(tally.id), 'score': score, 'nuclide': nuclide,
             'filter_selection': selections, 'filters': [str(f)[:2000] for f in tally.filters],

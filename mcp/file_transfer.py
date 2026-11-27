@@ -299,8 +299,9 @@ def _download_info(d,r,prefix_bytes=0,verify=True):
     return {**_info(r),'chunk_bytes':p['chunk_bytes'],'prefix_bytes':prefix_bytes,'prefix_sha256':h.hexdigest(),
             'host_action':{'entrypoint':'mc-agent-tools-transfer',
                 'argv':['--mcp-url','<actual MCP URL>','receive',r['transfer_id'],'<host output path>'],
+                'stdio_argv':['--stdio-config','<host MCP config>','receive',r['transfer_id'],'<host output path>'],
                 'source_fallback':'python <toolkit>/examples/transfer_files.py',
-                'note':'在有同版客户端和MCP依赖的宿主执行单条命令，替换URL和本机目标；自动创建父目录、分块续传并校验，不拼接mkdir。不通过模型搬字节。'},
+                'note':'在有同版客户端和MCP依赖的宿主执行单条命令，HTTP替换URL；stdio沿stdio_argv复用宿主配置，多服务加--server；填写本机目标。自动创建父目录、分块续传并校验，不拼接mkdir。不通过模型搬字节。'},
             'local_file_verified':False,
             'verification_note':'此字段仅表示服务端不能验证宿主文件，不代表宿主未下载或校验失败；本机状态以宿主客户端重新核验结果为准。'}
 

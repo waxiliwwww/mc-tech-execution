@@ -3,7 +3,7 @@
 Run this on the computer that owns the source/destination file. A remote MCP
 server cannot read a host path. Receipts persist request IDs across reconnects.
 """
-from contextlib import contextmanager, asynccontextmanager
+from contextlib import contextmanager, asynccontextmanager, AsyncExitStack
 import argparse
 import asyncio
 import base64
@@ -37,13 +37,18 @@ def client_data():
     raise ValueError('宿主工具包缺少VERSION或文件契约；请安装同版完整工具包')
 
 @asynccontextmanager
-async def client(url):
+async def client(url, stdio=None):
     """Portable client: do not import the Linux server to check definitions."""
-    from mcp import ClientSession
-    from mcp.client.streamable_http import streamablehttp_client
-    token=os.environ.get('MCP_AUTH_TOKEN')
-    headers={'Authorization':'Bearer '+token} if token else None
-    async with streamablehttp_client(url,headers=headers) as (read,write,_):
+    from mcp import ClientSession, StdioServerParameters
+    async with AsyncExitStack() as stack:
+        if stdio is not None:
+            from mcp.client.stdio import stdio_client
+            read,write=await stack.enter_async_context(stdio_client(StdioServerParameters(**stdio)))
+        else:
+            from mcp.client.streamable_http import streamablehttp_client
+            token=os.environ.get('MCP_AUTH_TOKEN')
+            headers={'Authorization':'Bearer '+token} if token else None
+            read,write,_=await stack.enter_async_context(streamablehttp_client(url,headers=headers))
         async with ClientSession(read,write) as session:
             hello=await session.initialize();data=client_data();expected=(data/'VERSION').read_text().strip()
             if hello.serverInfo.version!=expected:raise ValueError('MCP服务版本'+hello.serverInfo.version+'与宿主工具包'+expected+'不同；先确认正确实例，不传文件')
@@ -61,6 +66,40 @@ async def client(url):
                 if result.isError:raise ToolCallError('; '.join(c.text for c in result.content if c.type=='text'))
                 return result.structuredContent or json.loads(result.content[0].text)
             yield call
+
+
+def stdio_connection(path, server=None):
+    """Read an existing MCP command/args/env configuration, without shell parsing."""
+    path=Path(path).resolve()
+    value=json.loads(path.read_text(encoding='utf-8-sig'))
+    if not isinstance(value,dict):raise ValueError('stdio配置须为JSON对象')
+    if 'mcpServers' in value:
+        servers=value['mcpServers']
+        if not isinstance(servers,dict) or not servers:raise ValueError('mcpServers为空或格式错误')
+        if server is None:
+            if len(servers)!=1:raise ValueError('配置含多个MCP服务；用 --server 指定已有服务名')
+            server=next(iter(servers))
+        if server not in servers:raise ValueError('配置中不存在指定MCP服务')
+        value=servers[server]
+    elif server is not None:
+        raise ValueError('--server仅用于含mcpServers的配置')
+    if not isinstance(value,dict) or not isinstance(value.get('command'),str) or not value['command']:
+        raise ValueError('stdio配置缺少command；HTTP连接使用 --mcp-url')
+    args=value.get('args',[]);env=value.get('env',{})
+    if not isinstance(args,list) or any(not isinstance(v,str) for v in args):raise ValueError('stdio args须为字符串数组')
+    if not isinstance(env,dict) or any(not isinstance(k,str) or not isinstance(v,str) for k,v in env.items()):
+        raise ValueError('stdio env须为字符串键值对象')
+    cwd=value.get('cwd')
+    if cwd is not None and (not isinstance(cwd,str) or not cwd):raise ValueError('stdio cwd须为非空路径')
+    cwd=str((path.parent/cwd).resolve()) if cwd else str(Path.cwd())
+    selected={'command':value['command'],'args':args,'env':env,'cwd':cwd}
+    # Receipts identify the connection without copying credentials from env.
+    identity='stdio:'+hashlib.sha256(json.dumps(selected,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
+    return {**selected,'env':{**os.environ,**env}},identity
+
+
+def connection_identity(args):
+    return getattr(args,'stdio_identity',None) or args.mcp_url
 
 
 def digest(path, length=None):
@@ -99,7 +138,7 @@ def receipt(path, identity):
 async def upload(call,args):
     source=Path(args.file).resolve()
     if not source.is_file():raise ValueError('宿主源文件不存在：'+str(source))
-    identity={'direction':'upload','url':args.mcp_url,'file':str(source),
+    identity={'direction':'upload','url':connection_identity(args),'file':str(source),
               'filename':source.name,'size_bytes':source.stat().st_size,'sha256':digest(source),'archive':args.archive}
     rp=Path(args.receipt or str(source)+'.mc-upload.json');r=receipt(rp,identity)
     status=await call('openmc_upload_begin',{k:identity[k] for k in ('filename','size_bytes','sha256','archive')}|{'request_id':r['request_id']})
@@ -167,7 +206,7 @@ async def download(call,args):
         raise ValueError('下载需kind identifier paths，或--transfer-id使用已准备的会话')
     target=Path(args.output).resolve();target.parent.mkdir(parents=True,exist_ok=True)
     rp=Path(args.receipt or str(target)+'.mc-download.json')
-    identity={'direction':'download','url':args.mcp_url,'output':str(target)}
+    identity={'direction':'download','url':connection_identity(args),'output':str(target)}
     identity.update({'transfer_id':transfer_id} if transfer_id else {'kind':args.kind,'identifier':args.identifier,'paths':args.paths})
     r=receipt(rp,identity)
     # If publication succeeded but acknowledgement/close failed, finish idempotently.
@@ -205,7 +244,7 @@ async def run(args):
     # Explicit business errors and local integrity errors stop without replay.
     for attempt in range(3):
         try:
-            async with client(args.mcp_url) as call:
+            async with client(args.mcp_url, getattr(args,'stdio',None)) as call:
                 if args.command=='upload':return await upload(call,args)
                 if args.command=='download':return await download(call,args)
                 if args.command=='preview':return await call('openmc_preview_file',{'kind':args.kind,'identifier':args.identifier,'path':args.path})
@@ -249,7 +288,10 @@ def local_lock(args):
 
 def main():
     p=argparse.ArgumentParser(description='宿主侧标准MCP文件交接；不调用模型。断线后原命令重跑，保留回执和.part。')
-    p.add_argument('--mcp-url',help='实际MCP地址，例如 http://127.0.0.1:8770/mcp；鉴权用MCP_AUTH_TOKEN环境变量')
+    connection=p.add_mutually_exclusive_group()
+    connection.add_argument('--mcp-url',help='实际MCP地址，例如 http://127.0.0.1:8770/mcp；鉴权用MCP_AUTH_TOKEN环境变量')
+    connection.add_argument('--stdio-config',help='复用宿主MCP JSON中的command/args/env/cwd；不需要HTTP入口')
+    p.add_argument('--server',help='mcpServers中要复用的服务名；仅一个时可省略')
     sub=p.add_subparsers(dest='command',required=True)
     u=sub.add_parser('upload');u.add_argument('file');u.add_argument('--archive',action='store_true',help='按ZIP模型包解压');u.add_argument('--receipt')
     d=sub.add_parser('download');d.add_argument('kind',choices=['job','scan','upload'],nargs='?');d.add_argument('identifier',nargs='?');d.add_argument('paths',nargs='*');d.add_argument('--transfer-id',help='沿用已准备的下载会话，不重新选文件或准备快照');d.add_argument('--output',required=True);d.add_argument('--receipt')
@@ -260,10 +302,13 @@ def main():
     verify=sub.add_parser('verify-download',help='离线重新核验已有本机文件和下载回执；不连接服务器、不下载、不求解')
     verify.add_argument('--receipt',required=True)
     args=p.parse_args()
-    if args.command!='verify-download' and not args.mcp_url:p.error('此命令需要 --mcp-url')
+    if args.command!='verify-download' and not (args.mcp_url or args.stdio_config):p.error('此命令需要 --mcp-url 或 --stdio-config')
+    if args.server and not args.stdio_config:p.error('--server需要 --stdio-config')
     if args.command=='receive':
         args.command='download';args.kind=None;args.identifier=None;args.paths=[]
     try:
+        if args.stdio_config and args.command!='verify-download':
+            args.stdio,args.stdio_identity=stdio_connection(args.stdio_config,args.server)
         with local_lock(args):
             result=verify_download_receipt(args) if args.command=='verify-download' else asyncio.run(run(args))
             print(json.dumps(result,ensure_ascii=False,indent=2))

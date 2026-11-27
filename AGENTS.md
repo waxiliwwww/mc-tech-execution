@@ -67,3 +67,5 @@
 | 反应估计不作实际事件计数；RegularMesh输入1基/offset0基且不当全数组序号；未做专业验收不解释为失败，规则首次连接可见 | `tests/test_result_semantics.py` + `tests/fixtures/result_value_rows_check.py` + `tests/test_result_bundle_delivery.py` + `tests/test_workflow_guidance.py`；三项错误含义负对照与实际握手验证 |
 
 | 批次总数/非活跃/活跃正向同源，设置不混同realizations/代数，未知不补数，固定源不套分解 | `tests/test_result_semantics.py` + `tests/test_result_bundle_delivery.py` + `tests/test_workflow_guidance.py`；旧矛盾括号负对照及既有StatePoint/真实Agent验证 |
+
+| stdio交接无需HTTP、断线沿原传输续传且SHA一致；能谱固定其他维度后保留能量上下界；固定源成功不误报缺k，取消后不等待 | `test_file_transfer_stdio` + `test_energy_selection` + `test_selected_report_real` + `test_keff_summary_fallback` + `test_stdio_service`；受控协议/原生SDK/真实求解分别核验 |

@@ -362,13 +362,15 @@ def _progress(directory: Path, value: dict) -> dict:
     """从solver.log尾部解析批次行为结构化进度；只读日志，不影响状态机与统计结论。"""
     work = directory / 'work'
     mode = None
-    batches_total = inactive = None
+    batches_total = inactive = particles = None
     settings = work / ('model.xml' if (work / 'model.xml').exists() else 'settings.xml')
     if settings.is_file():
         try:
             import xml.etree.ElementTree as ET
             root = ET.parse(settings).getroot()
-            mode = root.findtext('.//run_mode')
+            mode = root.findtext('.//run_mode', 'eigenvalue')
+            raw = root.findtext('.//particles')
+            particles = int(raw) if raw else None
             raw = root.findtext('.//batches')
             batches_total = int(raw) if raw else None
             raw = root.findtext('.//inactive')
@@ -378,7 +380,7 @@ def _progress(directory: Path, value: dict) -> dict:
     started = value.get('started_at')
     finished = value.get('finished_at')
     elapsed = round((finished or time.time()) - started, 3) if started else None
-    progress = {'run_mode': mode, 'batches_total': batches_total, 'inactive': inactive,
+    progress = {'run_mode': mode, 'particles': particles, 'batches_total': batches_total, 'inactive': inactive,
                 'latest_batch': None, 'latest_generation': None, 'percent': None,
                 'keff_latest': None, 'entropy_latest': None, 'keff_average': None,
                 'keff_combined': None, 'keff_estimates': {}, 'keff_source': None,
@@ -411,6 +413,10 @@ def _progress(directory: Path, value: dict) -> dict:
         progress['note'] = '暂未解析到批次行；计算可能仍在初始化或日志已截断。'
     else:
         progress['note'] = '该run_mode无批次k表；进度以状态与日志尾部为准，不编造百分比。'
+    if mode == 'fixed source':
+        progress['note'] = '固定源进度以状态与日志尾部为准；未解析批次进度，不编造百分比。'
+        if value.get('state') == 'completed':progress['percent'] = 100.0
+        return progress
     # One RESULTS block is one transport solve, especially during depletion.
     # Never combine the first Combined with estimates from a later solve.
     blocks = re.split(r'^.*[=>]\s+RESULTS\s+[<=>].*$', text, flags=re.M)
@@ -535,7 +541,7 @@ def _status_snapshot(job_id: str) -> dict:
             progress['log_keff_combined'] = progress.get('keff_combined')
             progress['keff_combined'] = k if summary_source == 'statepoint:k_combined' else None
             progress['keff_selected'] = k
-            progress['keff_note'] = None if _usable_keff(k) else '最终StatePoint的k或标准差不可用；请查看final_result.warnings，不改报日志估计器。'
+            progress['keff_note'] = None if progress.get('run_mode') == 'fixed source' or _usable_keff(k) else '最终StatePoint的k或标准差不可用；请查看final_result.warnings，不改报日志估计器。'
     if summary_source:
         progress['keff_source'] = summary_source
         result['keff_source'] = summary_source
@@ -543,6 +549,10 @@ def _status_snapshot(job_id: str) -> dict:
         has_k = _usable_keff(k)
         if value.get('mode') == 'deplete':
             result['human_summary'] = '燃耗计算已完成；逐时间点的k与核素变化请调用openmc_read_depletion；日志末段k不代表完整燃耗结果'
+        elif progress.get('run_mode') == 'fixed source':
+            particles = progress.get('particles')
+            result['human_summary'] = ('固定源计算已完成；' + (f'每批粒子数={particles}；' if particles is not None else '')
+                + '计分请用openmc_read_results查看；产物见files。')
         elif progress.get('keff_note'):
             result['human_summary'] = '已完成；k统计不可用：' + progress['keff_note']
         elif has_k:

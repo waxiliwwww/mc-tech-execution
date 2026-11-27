@@ -23,7 +23,7 @@
 
 ## 已提供的客户端
 
-安装工具包提供固定入口`mc-agent-tools-transfer`；源码包保留`python <工具包>/examples/transfer_files.py`同源入口。两者直接处理字节，不经过语言模型。它应在拥有源/目标文件的宿主机器运行，需要Python及MCP客户端依赖；命令行用其`--help`查询。它会核对服务版本与文件工具定义，地址通过`--mcp-url`提供，鉴权用`MCP_AUTH_TOKEN`环境变量，不在聊天中索取密钥。
+安装工具包提供固定入口`mc-agent-tools-transfer`；源码包保留`python <工具包>/examples/transfer_files.py`同源入口。两者直接处理字节，不经过语言模型。它应在拥有源/目标文件的宿主机器运行，需要Python及MCP客户端依赖；命令行用其`--help`查询。它会核对服务版本与文件工具定义，HTTP地址通过`--mcp-url`提供；stdio用`--stdio-config <宿主MCP配置.json>`复用command/args/env/cwd，配置含多个服务时加`--server <服务名>`。stdio另启协议会话，沿相同工作区及transfer_id取回，不需要额外HTTP服务。鉴权用`MCP_AUTH_TOKEN`环境变量，不在聊天中索取密钥。
 
 只有服务端包时，不要假设宿主机器也有此脚本；需要将随包客户端及其依赖放到宿主，或使用宿主等效本地文件能力。完整安装与示例在工具包 `docs/deployment.html#file-transfer-config`和`docs/toolkit-usage.html#file-transfer`。
 
@@ -42,3 +42,9 @@ mc-agent-tools-transfer --mcp-url '<实际MCP地址>' receive '<transfer_id>' '<
 断线后原命令及回执恢复。普通结果包路径不必先list_artifacts；完整文件已保存时只重试清理。宿主缺少本地执行/写入能力时说明未取回，不在模型上下文手工拼字节。
 
 客户端安装在实际宿主的Python环境中：`python -m pip install <同版源码包.tar.gz>`（会安装MCP依赖；安装须在该环境已获授权）。源码方式用`python <工具包>/examples/transfer_files.py --mcp-url <地址> receive <transfer_id> <本机目标>`。旧`download --transfer-id ... --output ...`和按kind/identifier/paths方式继续可用。receive只是固定参数入口，同一回执恢复；输出JSON的file/sha256/local_file_verified才是本机交付证据，host_action不是执行回执。
+
+stdio连接时直接沿用宿主已有JSON配置，无需改成HTTP；不要根据服务端路径猜测宿主的配置路径：
+```sh
+mc-agent-tools-transfer --stdio-config '<宿主MCP配置.json>' --server '<服务名>' receive '<transfer_id>' '<本机成果.zip>'
+```
+配置可为`{"command":"...","args":["..."],"env":{"MC_WORKSPACE":"..."},"cwd":"..."}`或包含`mcpServers`的宿主配置；仅一个服务时省略`--server`。command/args按数组执行，不经过shell；相对cwd从配置文件目录解析，省略时沿当前目录。环境变量沿当前宿主环境并由env覆盖，填写实际值，不解析变量占位符。回执只保存连接摘要，不复制env密钥。重跑时使用相同配置、服务和目标，以原回执及.part续传。

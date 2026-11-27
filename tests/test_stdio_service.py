@@ -127,6 +127,11 @@ raise SystemExit(stdio_service.main())
                     if status['state']=='cancelled':break
                     await asyncio.sleep(.05)
                 self.assertEqual(status['state'],'cancelled')
+                for tool in ('openmc_read_results','openmc_read_depletion'):
+                    error=await session.call_tool(tool,{'job_id':identifier})
+                    self.assertTrue(error.isError)
+                    self.assertIn('openmc_diagnose_job',error.content[0].text)
+                    self.assertNotIn('等待终态',error.content[0].text)
         finally:
             if identifier:
                 await asyncio.to_thread(subprocess.run,[sys.executable,str(ROOT/'mcp/cli.py'),'call','openmc_cancel_job',json.dumps({'job_id':identifier})],env=self.env,capture_output=True,timeout=15)
